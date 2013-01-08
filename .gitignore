@@ -1,0 +1,16 @@
+.depend
+flocq
+tlc
+settings.sh
+
+*.vo
+*.glob
+interpreter
+interpreter.cmi
+interpreter.cmx
+interpreter.o
+interpreter.ml
+interpreter.mli
+syntax.ml
+syntax.mli
+TAGS

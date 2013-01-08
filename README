@@ -1,0 +1,77 @@
+
+*********************************************************************
+REQUIREMENTS
+
+Files compile with Coq v8.4. If your Coq binaries are not in the
+default location (/usr/bin/ or /usr/local/bin/), you need to create a
+file called "settings.sh" and set COQBIN to the appropriate path, e.g.:
+COQBIN=/var/tmp/coq8.4/bin/
+
+You also need subversion to get TLC (else you need to import the TLC
+library by hand).
+
+*********************************************************************
+INSTALLATION AND COMPILATION
+
+1) Run "make init" to install TLC and Flocq (requires subversion)
+
+2) Run "make" to compile the files (ignore the warnings),
+   Run "make -j 2" if your machine has two cores.
+
+3) Run "./open.sh & " to edit files in CoqIDE
+
+4) Run "make clean" to clean JS files,
+   Run "make clean_all" to also clean in TLC and Flocq
+
+
+*********************************************************************
+USING THE CERTIFIED INTERPRETER
+
+The interpreter is defined and proven in the file “JsInterpreter.v” by
+the functions “run_expr”, “run_stat” and “run_prog” (and the theorems
+“run_expr_correct”, “run_stat_correct” and “run_prog_correct”). As
+every function must terminate in Coq, its first argument is the
+maximum number of step the computation has to last.  This function
+returns one of the three following output:
+- out_bottom, when the computation lasts longer than the "max_step" argument.
+- out_unspec, when the output result is unspecified.
+- out_return h r, when the computation ran without problem,
+  returning the heap state h and the result r.
+  Note that the result may be an error.
+
+There is a boolean parameter “Mnostuck” stating what should be done
+when no reduction rule in “red_expr”, “red_stat” or “red_prog” can be
+applied.  If it is set to true, then it returns an error, otherwise it
+stops and returns “out_unspec”.
+
+Examples of code generation are given in the file “JsInterpreterExample.v”.
+
+The first step is to define a Javascript program using the grammar of JsDefs.
+See the definition of the objects “prog1” and “prog2”. The “seq” construction
+just constructs a tree of “exp_seq” with its arguments list. Then you have to
+define its run (it is the definition of “computation1” and “computation2”),
+ in the initial heap and the default scope [loc_global ; loc_scope].
+
+Once you have defined it, you can extract it with the line
+"Extraction "js/interpreter.ml" fresh_for_list <your computation>."
+Note that "fresh_for_list" have to be extracted too.
+This will create a file "interpreter.ml" which contains the ocaml source code.
+To compile it, you can use the "make interpreter" command.
+The executable won't output anything though, so you should use the interpreter
+"ocaml" to see the result.
+
+Type "#use "interpreter.ml";;" to load the interpreter code, including
+ the result of the computation.  The result may be too complex to be displayed,
+so you can need the following commands to see it:
+    #print_length 10_000;;
+    computation2;;
+If you want to make sense of the heap, you need to use another small tool:
+   #use "../tools/prheap.ml";;
+   main computation2;;
+This will dump some text that you can copy and paste in a dot file,
+which you can look with tools like graphviz.
+At the top of each cell is the location.  If there is a "null" in the bottom left,
+ it means the prototype is loc_null, and if there is an "obj_pr"
+the prototype is "obj_proto" (this gather many common cases).
+At the bottom right is the common this field (glob for loc_global).
+Scopes are written as list of locations, as in "8 | global | scope".

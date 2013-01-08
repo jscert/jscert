@@ -1,0 +1,20 @@
+Abbreviations used in the formalization:
+
+  - op for operator
+  - prog for program
+  - stat for statement
+  - expr for expression
+  - prim for primitive
+  - seq for sequence
+  - loc for location
+  - env for environment
+  - decl for declarative
+  - ctx for context
+  - ref for reference
+  - prop for property
+  - args for arguments
+  - proto for prototype
+  - spec for specification
+
+From LibHeap
+  - rem for remove
