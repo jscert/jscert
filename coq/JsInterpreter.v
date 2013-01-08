@@ -40,47 +40,12 @@ Implicit Type P : object_properties_type.
 Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 
 
-Global Instance state_inhab : Inhab state.
-Admitted.
-
-Global Instance prop_descriptor_inhab : Inhab prop_descriptor.
-Proof. apply (prove_Inhab prop_descriptor_undef). Qed.
-
-Global Instance object_inhab : Inhab object.
-Proof.
-  apply prove_Inhab. apply object_create; try apply arbitrary.
-  apply empty.
-Qed.
-
-Global Instance res_inhab : Inhab res.
-Proof.
-  destruct value_inhab. destruct inhabited as [r _].
-  apply prove_Inhab. apply res_normal. apply~ ret_value.
-Qed.
-
-Definition mutability_compare m1 m2 : bool :=
-  match m1, m2 with
-  | mutability_uninitialized_immutable, mutability_uninitialized_immutable => true
-  | mutability_immutable, mutability_immutable => true
-  | mutability_nondeletable, mutability_nondeletable => true
-  | mutability_deletable, mutability_deletable => true
-  | _, _ => false
-  end.
-
-Global Instance mutability_comparable : Comparable mutability.
-Proof.
-  apply make_comparable. introv.
-  applys decidable_make (mutability_compare x y).
-  destruct x; destruct y; simpl; rew_refl;
-    ((rewrite~ eqb_eq; fail) || (rewrite~ eqb_neq; discriminate)).
-Qed.
-
 Global Instance prop_attributes_contains_dec : forall oldpf newpf,
   Decidable (prop_attributes_contains oldpf newpf).
 Proof.
   introv. destruct oldpf. destruct newpf. simpl.
-  repeat apply and_decidable.
-Admitted.
+  typeclass.
+Qed.
 
 Global Instance change_enumerable_attributes_on_non_configurable_dec : forall oldpf newpf,
   Decidable (change_enumerable_attributes_on_non_configurable oldpf newpf).

@@ -366,3 +366,13 @@ Qed.
 Global Instance le_int_decidable : forall i1 i2 : int, Decidable (i1 <= i2).
 Admitted.
 
+
+(**************************************************************)
+(** ** LATER: move to LibHeap *)
+
+Global Instance heap_inhab : forall (K V : Type),
+    Inhab (heap K V).
+Proof.
+  introv. apply (prove_Inhab empty).
+Qed.
+

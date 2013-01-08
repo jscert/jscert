@@ -188,6 +188,27 @@ Qed.
 Global Instance mutability_inhab : Inhab mutability.
 Proof. apply (prove_Inhab mutability_deletable). Qed.
 
+(** Boolean comparison *)
+
+Definition mutability_compare m1 m2 : bool :=
+  match m1, m2 with
+  | mutability_uninitialized_immutable, mutability_uninitialized_immutable => true
+  | mutability_immutable, mutability_immutable => true
+  | mutability_nondeletable, mutability_nondeletable => true
+  | mutability_deletable, mutability_deletable => true
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance mutability_comparable : Comparable mutability.
+Proof.
+  apply make_comparable. introv.
+  applys decidable_make (mutability_compare x y).
+  destruct x; destruct y; simpl; rew_refl;
+    ((rewrite~ eqb_eq; fail) || (rewrite~ eqb_neq; discriminate)).
+Qed.
+
 
 (**************************************************************)
 (** ** Type [ref] *)
@@ -236,6 +257,19 @@ Global Instance object_inhab : Inhab object.
 Proof.
   apply (prove_Inhab (object_create arbitrary arbitrary arbitrary arbitrary)).
 Qed.
+
+
+(**************************************************************)
+(** ** Type [res] *)
+
+(** Inhabitants **)
+
+Global Instance res_inhab : Inhab res.
+Proof.
+  destruct value_inhab. destruct inhabited as [r _].
+  apply prove_Inhab. apply res_normal. apply~ ret_value.
+Qed.
+
 
 (**************************************************************)
 (** TODO: complete this file *)

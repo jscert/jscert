@@ -610,41 +610,6 @@ Parameter function_declarations : function_code -> list function_declaration.
 Parameter variable_declarations : function_code -> list string.
 
 
-(**************************************************************)
-(**************************************************************)
-(****************************************************************)
-(** ** Definition of outcomes *)
-
-(** Normal return value of an expression *)
-
-Inductive ret :=
-  | ret_value : value -> ret
-  | ret_ref : ref -> ret.
-
-(** Result of an evaluation *)
-
-Inductive res :=
-  | res_normal : ret -> res
-  | res_break : option loop_label -> res
-  | res_continue : option loop_label -> res
-  | res_return : ret -> res (* todo : is it value -> res *)
-  | res_throw : value -> res.
-
-(** Outcome of an evaluation *)
-
-Inductive out :=
-  | out_div : out
-  | out_ter : state -> res -> out.
-
-(** Coercions *)
-
-Coercion ret_value : value >-> ret.
-Coercion ret_ref : ref >-> ret.
-Coercion res_normal : ret >-> res.
-
-(* <informal> Implicit Type o : out_*  *)
-
-
 (****************************************************************)
 (** ** Intermediate expression for the Pretty-Big-Step semantic *)
 
