@@ -1,0 +1,10 @@
+We can collect here some links to test suites...
+
+---
+
+https://developer.mozilla.org/en/SpiderMonkey
+http://ftp.mozilla.org/pub/mozilla.org/js/js185-1.0.0.tar.gz
+http://code.google.com/p/v8/wiki/Testing
+http://code.google.com/p/sputniktests/
+
+... add more!
