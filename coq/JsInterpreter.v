@@ -192,23 +192,9 @@ Admitted.
 Global Instance object_loc_comparable : Comparable object_loc.
 Admitted.
 
-Global Instance binds_exists_property_pickable :
-  forall (A B : Type) (P : A -> Prop) (Q : A -> B -> Prop),
-  `{Pickable P} -> `{forall a : A, Pickable (Q a)} ->
-  Pickable (fun b : B => exists (a : A), P a /\ Q a b).
-Admitted.
-
-Lemma pi S l : Pickable (object_binds S l).
-Proof.
-  typeclass.
-Qed.
-
-Typeclasses Transparent object_binds.
-
-Set Printing All.
-
-Definition test1 S l := @pick object (object_binds S l) _.
-Definition test2 S l := pick (object_proto S l).
+Global Instance object_binds_pickable : forall S l,
+  Pickable (object_binds S l).
+Proof. typeclass. Qed.
 
 
 (**************************************************************)
@@ -306,6 +292,9 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   | Some b => f b
   end.
 
+Definition extract_from_option {B : Type} `{Inhab B} :=
+  morph_option arbitrary id.
+
 Definition if_success (o : out_interp) (k : state -> ret -> out_interp) : out_interp :=
   match o with
   | out_interp_normal (out_ter S0 (res_normal re)) => k S0 re
@@ -360,17 +349,36 @@ Section LexicalEnvironments.
 Definition run_call_type : Type := (* Type of run_call *)
   state -> execution_ctx -> value -> list value -> value -> out_interp.
 
-Definition run_object_class S l : string :=
-  object_class_ (read (state_object_heap S) l).
 
 Definition run_object_proto S l : value :=
-  object_proto_ (read (state_object_heap S) l).
+  object_proto_ (pick (object_binds S l)).
 
-Definition run_object_properties S l : object_properties_type :=
-  object_properties_ (read (state_object_heap S) l).
+Definition run_object_class S l : string :=
+  object_class_ (pick (object_binds S l)).
 
 Definition run_object_extensible S l : bool :=
-  object_extensible_ (read (state_object_heap S) l).
+  object_extensible_ (pick (object_binds S l)).
+
+Definition run_object_prim_value S l : value :=
+  extract_from_option (object_prim_value_ (pick (object_binds S l))).
+
+Definition run_object_call S l : option function_code :=
+  object_call_ (pick (object_binds S l)).
+
+Definition run_object_formal_parameters S l : option (list string) :=
+  object_formal_parameters_ (pick (object_binds S l)).
+
+Definition run_object_properties S l : object_properties_type :=
+  object_properties_ (pick (object_binds S l)).
+
+Definition run_object_heap_set_properties S l P' : state :=
+  let O := (pick (object_binds S l)) in
+  object_write S l (object_with_properties O P').
+
+Definition run_object_heap_map_properties S l F : state :=
+  let O := (pick (object_binds S l)) in
+  object_write S l (object_map_properties O F).
+
 
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
