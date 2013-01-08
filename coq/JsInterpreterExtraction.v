@@ -240,5 +240,5 @@ Extract Constant Pos.succ => "Pervasives.succ". (* Martin:  Because of a bug of 
 (* Some constants *)
 Extract Constant max_int => max_int.
 
-Extraction "interpreter.ml" computation1 computation2 computation3.
+Extraction "interp/src/interpreter.ml" computation1 computation2 computation3.
 

@@ -193,8 +193,8 @@ Inductive builtin :=
   | builtin_function
   | builtin_function_call
   | builtin_function_new
-  (*
   | builtin_function_proto
+  (*
   | builtin_function_proto_apply
   | builtin_function_proto_call
   | builtin_function_proto_to_string
