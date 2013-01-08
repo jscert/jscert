@@ -16,9 +16,9 @@ let _ =
   arguments (); 
   let exp = Translate_syntax.coq_syntax_from_file !file in
   match Interpreter.run_prog 
-          Interpreter.max_int 
-          Interpreter.init_heap 
-          Interpreter.init_scope 
+          max_int 
+          Interpreter.state_initial
+          Interpreter.execution_ctx_initial 
           exp
   with
   | Interpreter.Out_return (heap,

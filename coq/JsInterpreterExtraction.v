@@ -85,4 +85,4 @@ Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
 Set Extraction AccessOpaque.
 Extract Constant Pos.succ => "Pervasives.succ". (* Martin:  Because of a bug of the extraction printer, we are forced to precise the way we want such objects to be extracted... *)
 
-Extraction "interp/src/interpreter.ml" run_prog. 
+Extraction "interp/src/interpreter.ml" state_initial execution_ctx_initial run_prog. 
