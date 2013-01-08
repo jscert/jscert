@@ -46,6 +46,14 @@ Admitted.
 (**************************************************************)
 (** To be moved in TLC *)
 
+Class Pickable (A : Type) (P : A -> Prop) := pickable_make {
+  pick : A;
+  pick_spec : (exists a, P a) -> P pick }.
+
+Implicit Arguments pick [A [Pickable]].
+Extraction Inline pick.
+
+
 Global Instance neg_decidable (P : Prop) :
   Decidable P -> Decidable (~ P).
 Proof.
@@ -61,6 +69,29 @@ Proof.
   applys decidable_make (d1 || d2).
   rew_refl. subst~.
 Qed.
+
+Global Instance binds_pickable : forall K V : Type,
+  `{Comparable K} -> `{Inhab V} ->
+  forall (h : heap K V) (v : K),
+  Pickable (binds h v).
+Proof.
+  introv CK IV; introv. applys pickable_make (read h v).
+  introv [a Ba].
+  apply~ read_binds. applys @binds_indom Ba.
+Qed.
+
+Section Temporary.
+Definition B (h : heap nat nat) := binds h.
+Definition test (h : heap nat nat) (n : nat) := pick ((B h) n).
+
+Lemma t : forall (h : heap nat nat) (n : nat),
+  indom h n ->
+  binds h n (test h n).
+Proof.
+  introv I.
+  apply pick_spec. apply* @indom_binds.
+Qed.
+End Temporary.
 
 
 (**************************************************************)

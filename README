@@ -25,7 +25,7 @@ INSTALLATION AND COMPILATION
 
 
 *********************************************************************
-USING THE CERTIFIED INTERPRETER
+USING THE CERTIFIED INTERPRETER		(* TODO:  Update *)
 
 The interpreter is defined and proven in the file “JsInterpreter.v” by
 the functions “run_expr”, “run_stat” and “run_prog” (and the theorems
@@ -75,3 +75,4 @@ At the top of each cell is the location.  If there is a "null" in the bottom lef
 the prototype is "obj_proto" (this gather many common cases).
 At the bottom right is the common this field (glob for loc_global).
 Scopes are written as list of locations, as in "8 | global | scope".
+
