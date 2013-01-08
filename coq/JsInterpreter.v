@@ -70,6 +70,14 @@ Proof.
   rew_refl. subst~.
 Qed.
 
+Global Instance equal_pickable :
+  forall (A : Type) (a : A),
+  Pickable (eq a).
+Proof.
+  introv. applys pickable_make a.
+  intro. reflexivity.
+Qed.
+
 Global Instance binds_pickable : forall K V : Type,
   `{Comparable K} -> `{Inhab V} ->
   forall (h : heap K V) (v : K),
@@ -79,19 +87,6 @@ Proof.
   introv [a Ba].
   apply~ read_binds. applys @binds_indom Ba.
 Qed.
-
-Section Temporary.
-Definition B (h : heap nat nat) := binds h.
-Definition test (h : heap nat nat) (n : nat) := pick ((B h) n).
-
-Lemma t : forall (h : heap nat nat) (n : nat),
-  indom h n ->
-  binds h n (test h n).
-Proof.
-  introv I.
-  apply pick_spec. apply* @indom_binds.
-Qed.
-End Temporary.
 
 
 (**************************************************************)
@@ -193,6 +188,28 @@ Admitted.
 Global Instance change_accessor_on_non_configurable_dec : forall oldpf newpf,
   Decidable (change_accessor_on_non_configurable oldpf newpf).
 Admitted.
+
+Global Instance object_loc_comparable : Comparable object_loc.
+Admitted.
+
+Global Instance binds_exists_property_pickable :
+  forall (A B : Type) (P : A -> Prop) (Q : A -> B -> Prop),
+  `{Pickable P} -> `{forall a : A, Pickable (Q a)} ->
+  Pickable (fun b : B => exists (a : A), P a /\ Q a b).
+Admitted.
+
+Lemma pi S l : Pickable (object_binds S l).
+Proof.
+  typeclass.
+Qed.
+
+Typeclasses Transparent object_binds.
+
+Set Printing All.
+
+Definition test1 S l := @pick object (object_binds S l) _.
+Definition test2 S l := pick (object_proto S l).
+
 
 (**************************************************************)
 (** ** Some types used by the interpreter *)
