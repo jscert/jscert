@@ -138,8 +138,24 @@ Admitted.
 Global Instance prop_descriptor_inhab : Inhab prop_descriptor.
 Proof. apply (prove_Inhab prop_descriptor_undef). Qed.
 
+Global Instance prop_attributes_comparable : Comparable prop_attributes.
+Proof.
+  apply make_comparable. introv.
+  skip. (* applys decidable_make (decide (prop_attributes_contains x y /\ prop_attributes_contains y x)). *)
+Qed.
+
 Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
-Admitted.
+Proof.
+  apply make_comparable.
+  introv. destruct x; destruct y.
+    applys decidable_make true. rewrite~ eqb_self.
+    applys decidable_make false. rewrite~ eqb_neq. discriminate.
+    applys decidable_make false. rewrite~ eqb_neq. discriminate.
+    applys decidable_make (decide (p = p0)). rewrite decide_spec.
+     tests: (p = p0).
+      repeat rewrite~ eqb_self.
+      repeat rewrite~ eqb_neq. intro A. inverts~ A.
+Qed.
 
 Global Instance object_inhab : Inhab object.
 Proof.
@@ -194,6 +210,10 @@ Admitted.
 
 Global Instance object_binds_pickable : forall S l,
   Pickable (object_binds S l).
+Proof. typeclass. Qed.
+
+Global Instance env_record_binds_pickable : forall S L,
+  Pickable (env_record_binds S L).
 Proof. typeclass. Qed.
 
 
@@ -372,11 +392,11 @@ Definition run_object_properties S l : object_properties_type :=
   object_properties_ (pick (object_binds S l)).
 
 Definition run_object_heap_set_properties S l P' : state :=
-  let O := (pick (object_binds S l)) in
+  let O := pick (object_binds S l) in
   object_write S l (object_with_properties O P').
 
 Definition run_object_heap_map_properties S l F : state :=
-  let O := (pick (object_binds S l)) in
+  let O := pick (object_binds S l) in
   object_write S l (object_map_properties O F).
 
 
@@ -388,12 +408,6 @@ Definition run_object_get_own_property_base P x : prop_descriptor :=
 
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
   run_object_get_own_property_base (run_object_properties S l) x.
-
-Definition run_object_prim_value S l : value :=
-  match object_prim_value_ (read (state_object_heap S) l) with
-  | Some v => v
-  | None => arbitrary
-  end.
 
 Definition run_object_get_own_property S l x : prop_descriptor :=
   let sclass := run_object_class S l in
@@ -598,7 +612,7 @@ Definition object_put S l x v (throw : bool) : out_interp :=
       else out_ter_interp S false).
 
 Definition env_record_set_mutable_binding S L x v (strict : bool) : out_interp :=
-  match read (state_env_record_heap S) L with
+  match pick (env_record_binds S L) with
   | env_record_decl D =>
     let (mu, v) := read D x in
     ifb mutability_is_mutable mu then
@@ -612,7 +626,7 @@ Definition env_record_set_mutable_binding S L x v (strict : bool) : out_interp :
 
 Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : out_interp :=
   let deletable := unsome_default false deletable_opt in
-  match read (state_env_record_heap S) L with
+  match pick (env_record_binds S L) with
   | env_record_decl D =>
     ifb decl_env_record_indom D x then out_interp_stuck
     else
@@ -668,7 +682,7 @@ Definition run_is_callable S v : option function_code :=
   match v with
   | value_prim w => None
   | value_object l =>
-    object_call_ (read (state_object_heap S) l)
+    run_object_call S l
   end.
 
 Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_interp :=
