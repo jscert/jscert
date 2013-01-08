@@ -64,7 +64,7 @@ Extract Constant JsNumber.zero => "0.".
 Extract Constant JsNumber.neg_zero => "(-0.)".
 Extract Constant JsNumber.one => "1.".
 Extract Constant JsNumber.infinity => "infinity".
-Extract Constant JsNumber.neg_infinity => "(-infinity)".
+Extract Constant JsNumber.neg_infinity => "(-.infinity)".
 Extract Constant JsNumber.floor => "floor".
 Extract Constant JsNumber.absolute => "abs_float".
 Extract Constant JsNumber.from_string => "(fun s -> float_of_string (String.concat """" (List.map (String.make 1) s)))".
@@ -72,10 +72,10 @@ Extract Constant JsNumber.to_string =>
   "(fun f -> let ret = ref [] in (* Ugly, but the API for Ocaml string is not ver functionnal... *)
     String.iter (fun c -> ret := c :: !ret) (string_of_float f);
     List.rev !ret)".
-Extract Constant JsNumber.sign => "(fun f -> string_of_int (compare f 0.))".
+Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
 Extract Constant JsNumber.mult => "( *. )".
 Extract Constant JsNumber.number_comparable => "(=)".
-Extract Constant JsNumber_to_int => "(float_of_int)".
+Extract Constant JsNumber_to_int => "(int_of_float)".
 (* The following functions make pattern matches with floats and shall thus be removed. *)
 Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bits.b64_plus.
 Extraction Inline Fappli_IEEE.Bmult Fappli_IEEE.Bmult_FF Fappli_IEEE_bits.b64_mult.
