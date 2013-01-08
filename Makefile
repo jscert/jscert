@@ -96,17 +96,21 @@ init:
 #######################################################
 
 .v.vo : .depend
-	$(COQC) -I $(TLC) $<
+	$(COQC) -I coq -I $(TLC) $<
 
 
 
 #######################################################
 # INTERPRETER
 
-interpreter: JsInterpreter.vo Makefile
-	$(OCAMLOPT) -I . -c interpreter.mli
-	$(OCAMLOPT) -I . -c interpreter.ml
-	$(OCAMLOPT) -I . -o interpreter interpreter.cmx
+interp/src/interpreter.ml: coq/JsInterpreterExtraction.vo
+
+interp/run_js: interp/src/interpreter.ml
+
+# interpreter: JsInterpreter.vo Makefile
+# 	$(OCAMLOPT) -I . -c interpreter.mli
+# 	$(OCAMLOPT) -I . -c interpreter.ml
+# 	$(OCAMLOPT) -I . -o interpreter interpreter.cmx
 
 
 #######################################################
@@ -142,10 +146,3 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
-
-
-
-#######################################################
-# TEMP
-
-js/interpreter.ml: js/JsInterpreterExtraction.vo
