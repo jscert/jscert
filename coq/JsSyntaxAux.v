@@ -5,6 +5,61 @@ Implicit Type l : object_loc.
 
 
 (**************************************************************)
+(** ** Smart constructors for objects *)
+
+(** Builds an object with all optional fields to None *)
+
+Definition object_create vproto sclass bextens P :=
+  {| object_proto_ := vproto;
+     object_class_ := sclass;
+     object_extensible_ := bextens;
+     object_properties_ := P;
+     object_prim_value_ := None;
+     object_construct_ := None;
+     object_call_ := None;
+     object_has_instance_ := None;
+     object_scope_ := None;
+     object_formal_parameters_ := None;
+     object_code_ := None;
+     object_target_function_ := None; 
+     object_bound_this_ := None; 
+     object_bound_args_ := None; 
+     object_parameter_map_ := None |}.
+
+(** Modifies the property field of an object. *)
+
+Definition object_with_properties O properties :=
+  match O with 
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
+    object_intro x1 x2 x3 properties x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15  
+  end.
+
+(** Modifies the primitive value field of an object *)
+
+Definition object_with_primitive_value O v :=
+  match O with 
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
+    object_intro x1 x2 x3 x4 (Some v) x6 x7 x8 x9 x10 x11 x12 x13 x14 x15  
+  end.
+
+(** Modifies the construct, call and has_instance fields of an object *)
+
+Definition object_with_invokation O constr call has_instance :=
+  match O with 
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
+    object_intro x1 x2 x3 x4 x5 constr call has_instance x9 x10 x11 x12 x13 x14 x15  
+  end.
+
+(** Modifies the other parameters of an object *)
+
+Definition object_with_details O scope params code target boundthis boundargs paramsmap :=
+  match O with 
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
+    object_intro x1 x2 x3 x4 x5 x6 x7 x8 scope params code target boundthis boundargs paramsmap
+  end.
+
+
+(**************************************************************)
 (** ** Type [builtin] *)
 
 (** Inhabitant *)
@@ -116,6 +171,14 @@ Definition value_compare v1 v2 :=
   | _, _ => false
   end.
 
+(** Decidable comparison *)
+
+Global Instance value_comparable : Comparable value.
+Proof.
+  applys (comparable_beq value_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
 
 (**************************************************************)
 (** ** Type [mutability] *)
@@ -146,6 +209,34 @@ Global Instance env_record_inhab : Inhab env_record.
 Proof. apply (prove_Inhab (env_record_decl Heap.empty)). Qed.
 
 
+(**************************************************************)
+(** ** Type [state] *)
+
+(** Inhabitants **)
+
+Global Instance state_inhab : Inhab state.
+Admitted.
+
+
+(**************************************************************)
+(** ** Type [prop_descriptor] *)
+
+(** Inhabitants **)
+
+Global Instance prop_descriptor_inhab : Inhab prop_descriptor.
+Proof. apply (prove_Inhab prop_descriptor_undef). Qed.
+
+
+(**************************************************************)
+(** ** Type [object] *)
+
+(** Inhabitants **)
+
+Global Instance object_inhab : Inhab object.
+Proof.
+  apply (prove_Inhab (object_create arbitrary arbitrary arbitrary arbitrary)).
+Qed.
 
 (**************************************************************)
 (** TODO: complete this file *)
+

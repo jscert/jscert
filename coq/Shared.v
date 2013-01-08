@@ -294,3 +294,75 @@ Ltac case_if_on_tactic_core E Eq ::=
     end
   end.
 
+
+(**************************************************************)
+(** ** LATER: move to LibReflect *)
+
+Class Pickable (A : Type) (P : A -> Prop) := pickable_make {
+  pick : A;
+  pick_spec : (exists a, P a) -> P pick }.
+
+Implicit Arguments pick [A [Pickable]].
+Extraction Inline pick.
+
+
+Global Instance neg_decidable (P : Prop) :
+  Decidable P -> Decidable (~ P).
+Proof.
+  introv [dec spec]. applys decidable_make (neg dec).
+  rew_refl. rewrite~ spec.
+Qed.
+
+Global Instance or_decidable (P1 P2 : Prop) :
+  Decidable P1 -> Decidable P2 ->
+  Decidable (P1 \/ P2).
+Proof.
+  intros [d1 D1] [d2 D2].
+  applys decidable_make (d1 || d2).
+  rew_refl. subst~.
+Qed.
+
+Global Instance equal_pickable :
+  forall (A : Type) (a : A),
+  Pickable (eq a).
+Proof.
+  introv. applys pickable_make a.
+  intro. reflexivity.
+Qed.
+
+(**************************************************************)
+(** ** LATER: move to LibHeap *)
+
+Require Import LibHeap.
+
+Global Instance binds_pickable : forall K V : Type,
+  `{Comparable K} -> `{Inhab V} ->
+  forall (h : heap K V) (v : K),
+  Pickable (binds h v).
+Proof.
+  introv CK IV; introv. applys pickable_make (read h v).
+  introv [a Ba].
+  apply~ read_binds. applys @binds_indom Ba.
+Qed.
+
+
+(**************************************************************)
+(** ** LATER: move to LibProd *)
+
+(* Already there, but didn't work as instance... *)
+Global Instance prod_inhab : forall A B : Type,
+  Inhab A -> Inhab B ->
+  Inhab (A * B).
+Proof.
+  introv IA IB.
+  destruct IA. destruct inhabited as [a _].
+  destruct IB. destruct inhabited as [b _].
+  applys prove_Inhab (a, b).
+Qed.
+
+(**************************************************************)
+(** ** LATER: move to LibInt *)
+
+Global Instance le_int_decidable : forall i1 i2 : int, Decidable (i1 <= i2).
+Admitted.
+
