@@ -57,7 +57,7 @@ JS_SRC=\
 	coq/JsSafety.v \
 	coq/JsScopes.v \
 	coq/JsInterpreterProofs.v \
-	coq/JsInterpreterExample.v \
+	coq/JsInterpreterExtraction.v \
 	coq/JsProvePrograms.v \
 	coq/JsExtraction.v
 
@@ -148,4 +148,4 @@ local:
 #######################################################
 # TEMP
 
-js/interpreter.ml: js/JsInterpreterExample.vo
+js/interpreter.ml: js/JsInterpreterExtraction.vo
