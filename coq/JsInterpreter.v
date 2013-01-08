@@ -138,25 +138,6 @@ Admitted.
 Global Instance prop_descriptor_inhab : Inhab prop_descriptor.
 Proof. apply (prove_Inhab prop_descriptor_undef). Qed.
 
-Global Instance prop_attributes_comparable : Comparable prop_attributes.
-Proof.
-  apply make_comparable. introv.
-  skip. (* applys decidable_make (decide (prop_attributes_contains x y /\ prop_attributes_contains y x)). *)
-Qed.
-
-Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
-Proof.
-  apply make_comparable.
-  introv. destruct x; destruct y.
-    applys decidable_make true. rewrite~ eqb_self.
-    applys decidable_make false. rewrite~ eqb_neq. discriminate.
-    applys decidable_make false. rewrite~ eqb_neq. discriminate.
-    applys decidable_make (decide (p = p0)). rewrite decide_spec.
-     tests: (p = p0).
-      repeat rewrite~ eqb_self.
-      repeat rewrite~ eqb_neq. intro A. inverts~ A.
-Qed.
-
 Global Instance object_inhab : Inhab object.
 Proof.
   apply prove_Inhab. apply object_create; try apply arbitrary.
@@ -204,6 +185,57 @@ Admitted.
 Global Instance change_accessor_on_non_configurable_dec : forall oldpf newpf,
   Decidable (change_accessor_on_non_configurable oldpf newpf).
 Admitted.
+
+Lemma value_same_self : forall v,
+  value_same v v.
+Admitted.
+
+Lemma if_some_value_then_same_self : forall vo,
+  if_some_value_then_same vo vo.
+Proof.
+  introv. unfolds. unfolds. destruct vo.
+   apply value_same_self.
+   auto*.
+Qed.
+
+Lemma if_some_bool_then_same_self : forall bo,
+  if_some_bool_then_same bo bo.
+Proof.
+  introv. destruct bo.
+   simpls~.
+   simpls~.
+Qed.
+
+Lemma prop_attributes_contains_self : forall A,
+  prop_attributes_contains A A.
+Proof.
+  introv. destruct A. simpl.
+  splits; (apply if_some_value_then_same_self
+    || apply if_some_bool_then_same_self).
+Qed.
+
+Global Instance prop_attributes_comparable : Comparable prop_attributes.
+Proof.
+  apply make_comparable. introv.
+  applys decidable_make (decide (prop_attributes_contains x y /\ prop_attributes_contains y x)).
+  tests: (x = y).
+    rew_refl. rewrite eqb_self.
+     rewrite~ isTrue_true. apply prop_attributes_contains_self.
+    skip. (* TODO *)
+Qed.
+
+Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
+Proof.
+  apply make_comparable.
+  introv. destruct x; destruct y.
+    applys decidable_make true. rewrite~ eqb_self.
+    applys decidable_make false. rewrite~ eqb_neq. discriminate.
+    applys decidable_make false. rewrite~ eqb_neq. discriminate.
+    applys decidable_make (decide (p = p0)). rewrite decide_spec.
+     tests: (p = p0).
+      repeat rewrite~ eqb_self.
+      repeat rewrite~ eqb_neq. intro A. inverts~ A.
+Qed.
 
 Global Instance object_loc_comparable : Comparable object_loc.
 Admitted.
