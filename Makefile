@@ -19,7 +19,7 @@ FLOCQ_INC=-R $(FLOCQ)/src Flocq
 # Alternative definition for FLOCQ_INC: 
 # FLOCQ_FOLDERS=$(addprefix $(FLOCQ)/src/,Core Calc Appli Prop)
 # FLOCQ_INC=$(addprefix -I ,$(FLOCQ_FOLDERS))
- 
+
 # Edit settings.sh to modify the default paths mentioned above
 -include settings.sh
 
@@ -33,7 +33,7 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 
 #######################################################
 
-INCLUDES=-I . -I $(TLC) $(FLOCQ_INC) 
+INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC) 
 COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 OCAMLOPT=ocamlopt
@@ -42,24 +42,24 @@ OCAMLOPT=ocamlopt
 # MAIN SOURCE FILES
 
 JS_SRC=\
-	Shared.v \
-	JsNumber.v \
-	JsSyntax.v \
-	JsSyntaxAux.v \
-	JsSemanticsDefs.v \
-	JsSemanticsInit.v \
-	JsSemanticsRules.v \
-	JsSemanticsAux.v \
-	JsInterpreter.v \
-	JsWf.v \
-	JsWfAux.v \
-	JsExtra.v \
-	JsSafety.v \
-	JsScopes.v \
-	JsInterpreterProofs.v \
-	JsInterpreterExample.v \
-	JsProvePrograms.v \
-	JsExtraction.v
+	coq/Shared.v \
+	coq/JsNumber.v \
+	coq/JsSyntax.v \
+	coq/JsSyntaxAux.v \
+	coq/JsSemanticsDefs.v \
+	coq/JsSemanticsInit.v \
+	coq/JsSemanticsRules.v \
+	coq/JsSemanticsAux.v \
+	coq/JsInterpreter.v \
+	coq/JsWf.v \
+	coq/JsWfAux.v \
+	coq/JsExtra.v \
+	coq/JsSafety.v \
+	coq/JsScopes.v \
+	coq/JsInterpreterProofs.v \
+	coq/JsInterpreterExample.v \
+	coq/JsProvePrograms.v \
+	coq/JsExtraction.v
 
 JS_VO=$(JS_SRC:.v=.vo)
 
@@ -128,7 +128,7 @@ endif
 # CLEAN
 
 clean:
-	bash -c "rm -f *.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
+	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
 	bash -c "rm -f .depend" || echo ok
 
 clean_all: clean
