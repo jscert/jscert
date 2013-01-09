@@ -125,7 +125,6 @@ Section LexicalEnvironments.
 Definition run_call_type : Type := (* Type of run_call *)
   state -> execution_ctx -> value -> list value -> value -> out_interp.
 
-
 Definition run_object_proto S l : value :=
   object_proto_ (pick (object_binds S l)).
 
