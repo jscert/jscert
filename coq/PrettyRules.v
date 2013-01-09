@@ -1720,17 +1720,54 @@ END OF TO CLEAN----*)
   | red_expr_execution_ctx_binding_instantiation_8_nil : forall o1 L S0 S C K func code args o, (* Step 8 *)
       red_expr S0 C (spec_execution_ctx_binding_instantiation_13 K func code args L nil (out_void S)) (out_void S)
 
-  (* TODO 13.2 *)
-  (*| red_expr_creating_function_object : forall o1 S C names fc X strict o,
-     let O := object_create builtin_function_proto "Function" true Heap.empty in
-     let O1 := object_with_details O (Some X) (Some names) (Some fc) None None None None in
-     (* TODO: create internals for [[Get]] [[Call]] [[Construct]] [[HasInstance]] *)
-     let (S', l) = object_fresh S in
-     let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in
-     red_expr S C (spec_object_define_own_prop O1 "length" A false) o1
-     red_expr S C (spec_creating_function_object_1 names fc X strict O1 o1) o ->
-     red_expr S C (spec_creating_function_object names fc X strict) o*)
-
+  (* TODO cleanup unused variables *)    
+  | red_expr_creating_function_object : forall l S' o1 S C names fc X strict o,
+      (* TODO: formalize Function prototype object as in 15.3.3.1 *)
+      let O := object_create builtin_function_proto "Function" true Heap.empty in
+      let O1 := object_with_details O (Some X) (Some names) (Some fc) None None None None in
+      (* TODO: create internals for [[Get]] [[Call]] [[Construct]] [[HasInstance]] *)
+      (l, S') = object_alloc S O1 ->
+      let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
+      red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
+      red_expr S' C (spec_creating_function_object_1 names fc X strict l o1) o ->
+      red_expr S C (spec_creating_function_object names fc X strict) o
+     
+  | red_expr_creating_function_object_1 : forall o1 S0 S C names fc X strict l b o, 
+      red_expr S C (spec_builtin_object_new None) o1 ->
+      red_expr S C (spec_creating_function_object_2 names fc X strict l o1) o ->
+      red_expr S0 C (spec_creating_function_object_1 names fc X strict l (out_ter S b)) o
+    
+  | red_expr_creating_function_object_2 : forall o1 S0 S C names fc X strict l lproto b o, 
+      let A := prop_attributes_create_data (value_object l) true false true in 
+      red_expr S C (spec_object_define_own_prop lproto "constructor" A false) o1 ->
+      red_expr S C (spec_creating_function_object_3 names fc X strict l lproto o1) o ->
+      red_expr S0 C (spec_creating_function_object_2 names fc X strict l (out_ter S lproto)) o
+      
+   | red_expr_creating_function_object_3 : forall o1 S0 S C names fc X strict l lproto b o, 
+      let A := prop_attributes_create_data (value_object lproto) true false false in 
+      red_expr S C (spec_object_define_own_prop l "prototype" A false) o1 ->
+      red_expr S C (spec_creating_function_object_4 names fc X strict l o1) o ->
+      red_expr S0 C (spec_creating_function_object_3 names fc X strict l lproto (out_ter S b)) o
+      
+   | red_expr_creating_function_object_4_not_strict : forall o1 S0 S C names fc X l b, 
+      red_expr S0 C (spec_creating_function_object_4 names fc X false l (out_ter S b)) (out_ter S l)
+      
+   | red_expr_creating_function_object_4_strict : forall o1 S0 S C names fc X l b o, 
+      let vthrower := value_object builtin_function_throw_type_error in
+      let A := prop_attributes_create_accessor vthrower vthrower false false in 
+      red_expr S C (spec_object_define_own_prop l "caller" A false) o1 ->
+      red_expr S C (spec_creating_function_object_5 names fc X l o1) o ->
+      red_expr S0 C (spec_creating_function_object_4 names fc X true l (out_ter S b)) o
+      
+  | red_expr_creating_function_object_5 : forall o1 S0 S C names fc X l b o, 
+      let vthrower := value_object builtin_function_throw_type_error in
+      let A := prop_attributes_create_accessor vthrower vthrower false false in 
+      red_expr S C (spec_object_define_own_prop l "arguments" A false) o1 ->
+      red_expr S C (spec_creating_function_object_6 names fc X l o1) o ->
+      red_expr S0 C (spec_creating_function_object_5 names fc X l (out_ter S b)) o
+      
+  | red_expr_creating_function_object_6 : forall o1 S0 S C names fc X l b o, 
+      red_expr S0 C (spec_creating_function_object_6 names fc X l (out_ter S b)) (out_ter S l)
 
 
 (**************************************************************)

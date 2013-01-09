@@ -774,6 +774,16 @@ Definition function_code_strict fc :=
     | function_code_builtin _ => false
   end.
 
+(** Grammar of preferred types for use by the default_value
+    conversion. *)
+
+Inductive preftype :=
+  | preftype_number
+  | preftype_string.
+
+Implicit Type pref : preftype.
+
+
 (* TODO : retrieve function and variable declarations from code *)
 Parameter function_declarations : function_code -> list function_declaration.
 Parameter variable_declarations : function_code -> list string.
@@ -1006,15 +1016,6 @@ Definition convert_prim_to_string w :=
   | prim_number n => JsNumber.to_string n
   | prim_string s => s
   end.
-
-(** Grammar of preferred types for use by the default_value
-    conversion. *)
-
-Inductive preftype :=
-  | preftype_number
-  | preftype_string.
-
-Implicit Type pref : preftype.
 
 (* <informal> Implicit Types pref : preftype *)
 
