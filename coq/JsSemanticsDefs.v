@@ -1346,7 +1346,10 @@ Definition prop_attributes_contains oldpf newpf :=
     descriptors into another descriptor. *)
 
 Definition option_transfer (A:Type) (oldopt newopt : option A) :=
-  ifb newopt <> None then newopt else oldopt.
+  match newopt with
+  | None => oldopt
+  | _ => newopt
+  end.
 
   (* TEMP: Alternative definition:
   match newopt,oldopt with

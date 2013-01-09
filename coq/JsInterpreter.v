@@ -39,6 +39,11 @@ Implicit Type P : object_properties_type.
 
 Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 
+Global Instance if_some_then_same_dec : forall (A : Type) F (x y : option A),
+  (forall u v : A, Decidable (F u v)) ->
+  Decidable (if_some_then_same F x y).
+(* TODO *)
+Admitted.
 
 Global Instance prop_attributes_contains_dec : forall oldpf newpf,
   Decidable (prop_attributes_contains oldpf newpf).
@@ -134,6 +139,7 @@ Inductive out_interp :=
   | out_interp_stuck : out_interp
   | out_interp_bottom : out_interp.
 
+(* TODO:  Add coercion *)
 
 Global Instance out_interp_inhab : Inhab out_interp.
 Proof. applys prove_Inhab out_interp_stuck. Qed.

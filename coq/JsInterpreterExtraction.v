@@ -76,6 +76,7 @@ Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
 Extract Constant JsNumber.mult => "( *. )".
 Extract Constant JsNumber.number_comparable => "(=)".
 Extract Constant JsNumber_to_int => "(int_of_float)".
+Extract Constant builtin_compare => "(=)".
 (* The following functions make pattern matches with floats and shall thus be removed. *)
 Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bits.b64_plus.
 Extraction Inline Fappli_IEEE.Bmult Fappli_IEEE.Bmult_FF Fappli_IEEE_bits.b64_mult.

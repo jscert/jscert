@@ -67,7 +67,7 @@ Definition object_with_details O scope params code target boundthis boundargs pa
 Global Instance builtin_inhab : Inhab builtin.
 Proof. apply (prove_Inhab builtin_global). Qed.
 
-(** Boolean comparison 
+(** Boolean comparison
 
 Definition object_loc_compare bl1 bl2 :=
   match bl1, bl2 with
@@ -82,18 +82,12 @@ Definition object_loc_compare bl1 bl2 :=
 
 (** Decidable comparison *)
 
+Parameter builtin_compare : builtin -> builtin -> bool.
+
 Global Instance builtin_comparable : Comparable builtin.
 Proof.
-  apply make_comparable. introv.
-  destruct x; destruct y;
-    ((applys decidable_make false;
-    rewrite eqb_neq; auto; discriminate) ||
-    (applys decidable_make true;
-    rewrite eqb_self; auto; fail) ||
-    idtac).
-  destruct m; destruct m0.
-    applys decidable_make true.
-    rewrite* eqb_self.
+  applys (comparable_beq builtin_compare).
+  skip.
 Qed.
 
 
