@@ -385,4 +385,15 @@ Proof. applys decidable_make true. rew_refl~. Qed.
 Global Instance false_dec : Decidable False.
 Proof. applys decidable_make false. rew_refl~. Qed.
 
+(**************************************************************)
+(** ** LATER: move to LibReflect *)
 
+Global Instance If_dec : forall P Q R,
+  Decidable P -> Decidable Q -> Decidable R ->
+  Decidable (If P then Q else R).
+Proof.
+  introv [p Hp] [q Hq] [r Hr]. applys decidable_make (if p then q else r).
+  repeat cases_if~; false.
+   rewrite~ isTrue_false in Hp; false.
+   rewrite~ isTrue_true in Hp; false.
+Qed.
