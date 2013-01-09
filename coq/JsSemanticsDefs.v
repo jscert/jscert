@@ -433,9 +433,11 @@ Definition ref_create_env_loc L x strict :=
     the condition under which a SyntaxError gets triggered 
     (see the semantics of simple assignement in the spec). *)
 
+Open Scope string_scope. (* todo: move *)
+
 Definition valid_lhs_for_assign R :=
   ~ (exists r, 
-         rt = ret_ref r 
+         R = ret_ref r 
       /\ ref_strict r = true
       /\ ref_kind_of r = ref_kind_env_record
       /\ let s := ref_name r in
@@ -673,6 +675,19 @@ Inductive ext_expr :=
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
+  | expr_delete_1 : out -> ext_expr
+  | expr_delete_2 : string -> bool -> out -> ext_expr
+  | expr_delete_3 : ref -> env_loc -> bool -> ext_expr
+  | expr_typeof_1 : out -> ext_expr
+  | expr_typeof_2 : out -> ext_expr
+  | expr_prepost_1 : unary_op -> out -> ext_expr
+  | expr_prepost_2 : unary_op -> ret -> out -> ext_expr
+  | expr_prepost_3 : unary_op -> ret -> out -> ext_expr
+  | expr_prepost_4 : value -> out -> ext_expr
+  | expr_unary_op_neg_1 : out -> ext_expr
+  | expr_unary_op_bitwise_not_1 : int -> ext_expr
+  | expr_unary_op_not_1 : out -> ext_expr
+
   | expr_binary_op_1 : out -> binary_op -> expr -> ext_expr (* The right argument have been executed. *)
   | expr_binary_op_2 : option out -> value -> binary_op -> expr -> ext_expr (* The execution checks if this value matches the lazy evaluation rules. *)
   | expr_binary_op_3 : value -> binary_op -> ext_expr -> ext_expr (* It does not:  the right expression is executed. *)
@@ -699,6 +714,8 @@ Inductive ext_expr :=
   | spec_to_string : value -> ext_expr
   | spec_to_string_1 : out -> ext_expr
   | spec_to_object : value -> ext_expr
+
+  | spec_to_int32 : value -> (int -> ext_expr) -> ext_expr
   | spec_check_object_coercible : value -> ext_expr
 
   | spec_to_default : object_loc -> preftype -> ext_expr 
@@ -1068,6 +1085,8 @@ Definition throw_irrelevant : strictness_flag := false.
 (**************************************************************)
 (** ** Auxiliary definition for the evaluation of a program code *)
 
+(* TODO: fix
+
 (** Computing local variables of a statement or a program *)
 
 (* TODO: problem below if we do Open Scope string_scope (why?).*) 
@@ -1105,6 +1124,7 @@ Fixpoint defs_prog (lx:list string) p :=
 
 (* TODO: the same thing for function declarations. *)
 
+*)
 
 (**************************************************************)
 (** ** Auxiliary functions on values and types *)
@@ -1273,20 +1293,24 @@ Definition equality_test_for_same_type T v1 v2 :=
   | type_undef => true 
   | type_null => true
   | type_number => 
-     (* note: by assumption, v1 and v2 must be number *)
-     let n1 := convert_prim_to_number v1 in
-     let n2 := convert_prim_to_number v2 in
-     ifb n1 = JsNumber.nan then false
-     else ifb n2 = JsNumber.nan then false
-     else ifb n1 = JsNumber.zero /\ n2 = JsNumber.neg_zero then true
-     else ifb n1 = JsNumber.neg_zero /\ n2 = JsNumber.zero then true
-     else decide (n1 = n2)
+     match v1,v2 with
+     | value_prim (prim_number n1), value_prim (prim_number n2) =>
+       ifb n1 = JsNumber.nan then false
+       else ifb n2 = JsNumber.nan then false
+       else ifb n1 = JsNumber.zero /\ n2 = JsNumber.neg_zero then true
+       else ifb n1 = JsNumber.neg_zero /\ n2 = JsNumber.zero then true
+       else decide (n1 = n2)
+     | _,_ => false (* this case never happens, by assumption *)
+     end
   | type_string => decide (v1 = v2) 
   | type_bool => decide (v1 = v2) 
   | type_object => decide (v1 = v2)
   end.
 
 (** Strict equality comparison *)
+
+(* todo: move *)
+Axiom type_dec : Comparable type.
 
 Definition strict_equality_test v1 v2 :=
   let T1 := type_of v1 in 
@@ -1309,6 +1333,10 @@ Definition inequality_test_number n1 n2 : value :=
   else JsNumber.lt_bool n1 n2.
 
 (** Inequality comparison for strings *)
+
+(* todo: move *)
+Axiom ascii_dec : Comparable ascii.
+Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
 
 (* TODO: extract in more efficient way *)
 Fixpoint inequality_test_string s1 s2 : bool :=
@@ -1432,7 +1460,7 @@ Definition typeof_prim w :=
 Definition typeof_value S v :=
   match v with
   | value_prim w => typeof_prim w
-  | value_object l => if is_callable S l then "function" else "object" 
+  | value_object l => If is_callable S l then "function" else "object" 
   end.
 
 

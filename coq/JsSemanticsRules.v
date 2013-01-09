@@ -48,6 +48,8 @@ Parameter alloc_primitive_value :
 Parameter basic_value_convertible_to_object : value -> Prop.
 
 
+(*todo: *)
+Axiom expr_unary_op_bitwise_not_1 : int -> ext_expr.
 
 (**************************************************************)
 (** ** Reduction rules for programs *)
@@ -244,7 +246,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_for_in_6e : forall S0 S C e1 t l vret lhdRef initProps visitedProps res o,
       let vnew := match res with
-        | res_normal ret => Some ret
+        | res_normal R => Some R
         | _ => vret end
       in 
       red_stat S C (stat_for_in_9 e1 t l vnew lhdRef initProps visitedProps res) o ->
@@ -384,9 +386,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_list_then_2 K vs o1 es) o ->
       red_expr S C (expr_list_then_1 K vs (e::es)) o
 
-  | red_expr_list_then_2 : forall S0 S C k v vs es o,
-      red_expr S C (expr_list_then_1 k (vs&v) es) o ->
-      red_expr S0 C (expr_list_then_2 k vs (out_ter S v) es) o
+  | red_expr_list_then_2 : forall S0 S C K v vs es o,
+      red_expr S C (expr_list_then_1 K (vs&v) es) o ->
+      red_expr S0 C (expr_list_then_2 K vs (out_ter S v) es) o
 
   (** This construct *)
 
@@ -408,7 +410,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 (*---begin to clean ---*)
 
-  (*----- TOCLEAN
+  (*----- TOCLEAN---
 
   (** Array initializer [TODO] *)
 
@@ -568,17 +570,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       getvalue S1 r v ->
       red_expr S0 C (expr_call_4 (out_ter S1 r)) (out_ter S1 v)*)
 
-(*---end to clean ---*)
+---end to clean ---*)
 
   (** Unary op (regular rules) *)
 
-  | red_expr_unary_op : forall S0 C op e o1 o,
+  | red_expr_unary_op : forall S C op e o1 o,
       regular_unary_op op ->
       red_expr S C (spec_expr_get_value e) o1 ->
       red_expr S C (expr_unary_op_1 op o1) o ->
       red_expr S C (expr_unary_op op e) o
 
-  | red_expr_unary_op_1 : forall S0 C op v o,
+  | red_expr_unary_op_1 : forall S0 S C op v o,
       red_expr S C (expr_unary_op_2 op v) o ->
       red_expr S0 C (expr_unary_op_1 op (out_ter S v)) o
 
@@ -586,74 +588,75 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_delete : forall S C e o1 o,
       red_expr S C e o1 ->
-      red_expr S C (red_expr_delete_1 o1) o ->
+      red_expr S C (expr_delete_1 o1) o ->
       red_expr S C (expr_unary_op unary_op_delete e) o
 
   | red_expr_delete_1_value : forall S0 S C v,
-      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_value v)) (out_ter S true)
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_value v))) (out_ter S true)
 
   | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
       ref_is_unresolvable r ->
       (* TODO uncomment: red_expr s C (spec_syntax_error_or_cst (ref_strict r) true) o -> *)
-      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_ref r)) o
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
 
-  | red_expr_delete_1_ref_property : forall S0 S C r o,
+  | red_expr_delete_1_ref_property : forall S0 S C r v o1 o,
       ref_is_property r ->
-      red_expr S C (spec_to_object (ref_base r)) o1 ->
-      red_expr S C (red_expr_delete_2 (ref_name r) (ref_strict r) o1) o ->
-      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_ref r)) o
+      ref_base r = ref_base_type_value v ->
+      red_expr S C (spec_to_object v) o1 ->
+      red_expr S C (expr_delete_2 (ref_name r) (ref_strict r) o1) o ->
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
 
-  | red_expr_delete_2 : forall S0 S C s l o,
+  | red_expr_delete_2 : forall S0 S C x l bstrict o,
       red_expr S C (spec_object_delete l x bstrict) o ->
-      red_expr S0 C (red_expr_delete_2 x bstrict (out_ter S l) o
+      red_expr S0 C (expr_delete_2 x bstrict (out_ter S l)) o
 
-   | red_expr_delete_1_ref_env_record : forall S0 S C r o,
+  | red_expr_delete_1_ref_env_record : forall S0 S C r L o,
       ref_is_env_record r L ->
-      red_expr S C (red_expr_delete_3 r L (ref_strict r)) o ->
-      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_ref r)) o
+      red_expr S C (expr_delete_3 r L (ref_strict r)) o ->
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
 
   | red_expr_delete_3_strict : forall S C r L o,
       (* TODO uncomment: red_expr s C spec_syntax_error o -> *)
-      red_expr S C (red_expr_delete_3 r L true) o ->
+      red_expr S C (expr_delete_3 r L true) o 
 
   | red_expr_delete_3_nonstrict : forall S C r L o,
       red_expr S C (spec_env_record_delete_binding L (ref_name r)) o ->
-      red_expr S C (red_expr_delete_3 r L (ref_strict r)) o ->
+      red_expr S C (expr_delete_3 r L (ref_strict r)) o 
     
   (** Unary op : void *)
 
-  | red_expr_unary_op_void : forall S0 C op e o1 o,
+  | red_expr_unary_op_void : forall S C v,
       red_expr S C (expr_unary_op_2 unary_op_void v) (out_ter S undef)
 
   (** Unary op : typeof *)
 
   | red_expr_typeof : forall S C e o1 o,
       red_expr S C e o1 ->
-      red_expr S C (red_expr_typeof_1 o1) o ->
+      red_expr S C (expr_typeof_1 o1) o ->
       red_expr S C (expr_unary_op unary_op_typeof e) o
 
-  | red_expr_typeof_1_unresolvable : forall S0 S C e o1 o,
+  | red_expr_typeof_1_unresolvable : forall S0 S r C,
       ref_is_unresolvable r ->
-      red_expr S0 C (red_expr_typeof_1 (out_ter S (ret_ref r))) (out_ter S "undefined")
+      red_expr S0 C (expr_typeof_1 (out_ter S (ret_ref r))) (out_ter S "undefined")
 
   | red_expr_typeof_1_resolvable : forall S0 S C R o1 o,
       red_expr S C (spec_get_value R) o1 ->
-      red_expr S C (red_expr_typeof_2 o1) o ->
-      red_expr S0 C (red_expr_typeof_1 (out_ter S R)) o
+      red_expr S C (expr_typeof_2 o1) o ->
+      red_expr S0 C (expr_typeof_1 (out_ter S R)) o
 
   | red_expr_typeof_2 : forall S0 S s C v o,
       s = typeof_value S v ->
-      red_expr S0 C (red_expr_typeof_2 (out_ter S v)) (out_ter S s)
+      red_expr S0 C (expr_typeof_2 (out_ter S v)) (out_ter S s)
 
   (** Unary op : pre/post incr/decr *)
 
-  | red_expr_prepost : forall S C op op e o1 o,
+  | red_expr_prepost : forall S C op e o1 o,
       prepost_unary_op op ->
       red_expr S C e o1 ->
       red_expr S C (expr_prepost_1 op o1) o ->
       red_expr S C (expr_unary_op op e) o
 
-  | red_expr_prepost_1_invalid : forall S0 S C op o1 o,
+  | red_expr_prepost_1_invalid : forall S0 S C op R,
       ~ valid_lhs_for_assign R ->
       red_expr S0 C (expr_prepost_1 op (out_ter S R)) (out_syntax_error S)
 
@@ -668,16 +671,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_prepost_3 op R o1) o ->
       red_expr S0 C (expr_prepost_2 op R (out_ter S v)) o
  
-  | red_expr_prepost_3 : forall S0 S C R op number_op is_pre v1 v2 vret o1 o,  
+  | red_expr_prepost_3 : forall S0 S C R op number_op is_pre v n1 n2 o1 o,  
       prepost_op op number_op is_pre ->
-      v2 = number_op v1 ->
-      vret = if is_pre then v2 else v1 ->
-      red_expr S C (spec_put_value R ) o1 ->
-      red_expr S C (expr_prepost_4 vret o1) o ->
-      red_expr S0 C (expr_prepost_3 op R (out_ter S v1)) o
+      n2 = number_op n1 ->
+      v = prim_number (if is_pre then n2 else n1) ->
+      red_expr S C (spec_put_value R n2) o1 ->
+      red_expr S C (expr_prepost_4 v o1) o ->
+      red_expr S0 C (expr_prepost_3 op R (out_ter S n1)) o
  
-  | red_expr_prepost_4 : forall S0 S C R',  
-      red_expr S0 C (expr_prepost_4 vret (out_ter S R')) (out_ter S vret)  (* todo: do we ignore R' ? is it out_void ? *) 
+  | red_expr_prepost_4 : forall S0 S C v R',  
+      red_expr S0 C (expr_prepost_4 v (out_ter S R')) (out_ter S v)  (* todo: do we ignore R' ? is it out_void ? *) 
 
   (** Unary op : neg *)
 
@@ -686,7 +689,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_unary_op_neg_1 o1) o ->
       red_expr S C (expr_unary_op_2 unary_op_neg v) o
 
-  | red_expr_unary_op_neg_1 : forall S0 S C b,
+  | red_expr_unary_op_neg_1 : forall S0 S C n,
       red_expr S0 C (expr_unary_op_neg_1 (out_ter S n)) (out_ter S (JsNumber.neg n))
 
   (** Unary op : bitwise not *)
@@ -695,8 +698,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_to_int32 v expr_unary_op_bitwise_not_1) o ->
       red_expr S C (expr_unary_op_2 unary_op_bitwise_not v) o
 
-  | red_expr_unary_op_bitwise_not_1 : forall S0 S C k,
-      red_expr S0 C (expr_unary_op_bitwise_not_1 k) (out_ter S (JsNumber.int32_bitwise_not k))
+  | red_expr_unary_op_bitwise_not_1 : forall S C k n,
+      n = JsNumber.of_int (JsNumber.int32_bitwise_not k) ->
+      red_expr S C (expr_unary_op_bitwise_not_1 k) (out_ter S n)
 
   (** Unary op : not *)
 
@@ -709,7 +713,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_unary_op_not_1 (out_ter S b)) (out_ter S (neg b))
 
 
-----
+(* --begin clean---
 
   (** Binary op *)
 
@@ -935,6 +939,9 @@ END OF TO CLEAN----*)
       red_expr S C (eq1 v1 v2) (out_ter S false)
 
 *)
+
+
+(* --end clean--- *)
 
 
 (**************************************************************)
@@ -1389,7 +1396,7 @@ END OF TO CLEAN----*)
       red_expr S C (spec_expr_get_value_1 o1) o ->
       red_expr S C (spec_expr_get_value e) o
 
-  | red_spec_expr_get_value_1 : forall S0 S C r o,
+  | red_spec_expr_get_value_1 : forall S0 S C R o,
       red_expr S C (spec_get_value R) o ->
       red_expr S0 C (spec_expr_get_value_1 (out_ter S R)) o
 

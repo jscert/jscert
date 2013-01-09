@@ -1,5 +1,5 @@
-TLC=tlc
-FLOCQ=flocq
+TLC=coq/tlc
+FLOCQ=coq/flocq
 COQBIN=
 if [ -f settings.sh ]
 then
@@ -9,7 +9,7 @@ if [ "${*}" != "" ]
 then
    ARGS="${*}"
 else
-   ARGS="Shared.v JsSyntax.v JsSyntaxAux.v JsSemantics.v JsReduction.v JsSemanticsAux.v JsSafety.v JsWf.v JsScopes.v JsInterpreter.v JsInterpreterProofs.v"
+   ARGS="coq/Shared.v coq/JsSyntax.v coq/JsSemanticsDefs.v coq/JsSemanticsRules.v"
 fi
 #FLOCQ_INC="-I ${FLOCQ}/src/Appli -I ${FLOCQ}/src/Calc -I ${FLOCQ}/src/Core -I ${FLOCQ}/src/Prop"
 FLOCQ_INC="-R ${FLOCQ}/src Flocq"

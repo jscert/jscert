@@ -12,8 +12,8 @@
 # Default paths for TLC and COQBIN are as follows:
 
 COQBIN=
-TLC=tlc
-FLOCQ=flocq
+TLC=coq/tlc
+FLOCQ=coq/flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
 # Alternative definition for FLOCQ_INC: 
