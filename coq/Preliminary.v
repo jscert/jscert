@@ -211,6 +211,17 @@ Definition state_map_object_heap S F :=
 
 Definition object_write S l O :=
   state_map_object_heap S (fun H => Heap.write H l O).
+  
+(** [object_alloc S O] returns a pair [(L,S')]
+    made of a fresh object location [L],
+    and an updated state [S'] in which [L] is bound
+    to the object [O]. *) 
+
+Definition object_alloc S O :=
+   match S with state_intro cells bindings (n:::alloc) =>
+     let L := object_loc_normal n in
+     (L, object_write S L O)
+   end.
 
 (** [object_binds S l O] asserts that [l] is bound to the object [O]
     in the heap of the state [S]. *)
