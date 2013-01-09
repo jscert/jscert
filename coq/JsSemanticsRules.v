@@ -162,26 +162,37 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
     
   (** For-in statement *)
   
-  | red_stat_for_in_1 : forall o1 S C e1 e2 t o,
+  | red_stat_for_in : forall o1 S C e1 e2 t o,
       red_expr S C e2 o1 ->
       red_stat S C (stat_for_in_1 e1 t o1) o ->
       red_stat S C (stat_for_in e1 e2 t) o
       
-  | red_stat_for_in_2 : forall o1 S0 S C e1 t exprRef o,
-      red_expr S C (spec_ref_get_value exprRef) o1 ->
+  | red_stat_for_in_1 : forall o1 S0 S C e1 t r1 o,
+      red_expr S C (spec_ref_get_value r1) o1 ->
       red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_1 e1 t (out_ter S exprRef)) o
+      red_stat S0 C (stat_for_in_1 e1 t (out_ter S r1)) o
+   (* todo: use spec_expr_get_value to factorize first two rules *)
+
+  | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      (* todo: replace premise with   [is_null_or_undef v1] *)
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S undef)
       
-  | red_stat_for_in_3_null_undef : forall S0 S C e1 t exprValue o,
-      exprValue = null \/ exprValue = undef ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) (out_void S)
-      
-  | red_stat_for_in_4 : forall o1 S0 S C e1 t exprValue o,
-      exprValue <> null /\ exprValue <> undef ->
-      red_expr S C (spec_to_object exprValue) o1 ->
+  | red_stat_for_in_2_else : forall o1 S0 S C e1 t v1 o,
+      v1 <> null /\ v1 <> undef ->
+      (* todo: replace premise with  [~ is_null_or_undef v1] *)
+      red_expr S C (spec_to_object v1) o1 ->
       red_stat S C (stat_for_in_3 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) o  
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) o  
       
+      (* todo: rename rules below *)
+
+      (* todo: use notations : 
+        Open Scope set_scope.
+        x \in E   \{}  \{x}  E \u F    E = F \u \{x}   *)
+
+      (*  
+      *)
   | red_stat_for_in_6a_start : forall S0 S C e1 t l initProps o,
       object_all_enumerable_properties S (value_object l) initProps ->
       red_stat S C (stat_for_in_4 e1 t l None None initProps (@empty_impl prop_name)) o ->
@@ -195,7 +206,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (* allow possibility to skip new added property in for-in loop *)
   | red_stat_for_in_6a_skip_added_property : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
       object_all_enumerable_properties S (value_object l) currentProps ->
-      in_impl x (remove_impl (remove_impl currentProps visitedProps) initProps) ->
+      x \in (remove_impl (remove_impl currentProps visitedProps) initProps) ->
       let newVisitedProps := union_impl (single_impl x) visitedProps in
       red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps newVisitedProps) o ->
       red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
@@ -250,7 +261,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       ~ (is_res_break res) /\ ((is_res_continue res) \/ (is_res_normal res)) ->
       red_stat S C (stat_for_in_4 e1 t l vret lhdRef initProps visitedProps) o ->
       red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) o  
-
+ 
   (** With statement *)
 
   | red_stat_with : forall S C e1 t2 o,
@@ -1540,6 +1551,7 @@ END OF TO CLEAN----*)
       red_expr S C (spec_execution_ctx_binding_instantiation_2 K func code args L names) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 K (Some func) code args L) o
       
+      (* todo: isolate substeps of (d) into a different group of rules, with more precise name *)
   | red_expr_execution_ctx_binding_instantiation_function_names_empty : forall S C K func code args L o,  (* Loop ends in Step 4d *)  
       red_expr S C (spec_execution_ctx_binding_instantiation_6 K (Some func) code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_2 K func code args L nil) o
@@ -1604,7 +1616,7 @@ END OF TO CLEAN----*)
       red_expr S0 C (spec_execution_ctx_binding_instantiation_9 K func code args env_loc_global_env_record fd fds strict fo (out_ter S true)) o
       
   | red_expr_execution_ctx_binding_instantiation_function_decls_5eiii : forall o1 L S C K func code args fd fds strict fo o, (* Step 5e iii *)
-      let A := prop_attributes_create_data undef true true false in
+      let A := prop_attributes_create_data undef true true false in (* todo: fix configurable *)
       red_expr S C (spec_object_define_own_prop builtin_global (fd_name fd) A true) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_11 K func code args env_loc_global_env_record fd fds strict fo o1) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_10 K func code args fd fds strict fo A (Some true)) o
