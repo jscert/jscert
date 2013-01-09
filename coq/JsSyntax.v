@@ -21,26 +21,44 @@ Notation "'number'" := (JsNumber.number).
 (* Unary operator *)
 
 Inductive unary_op :=
-  | unary_op_not
   | unary_op_delete
+  | unary_op_void
   | unary_op_typeof
-  | unary_op_pre_incr
   | unary_op_post_incr
-  | unary_op_pre_decr
   | unary_op_post_decr
-  | unary_op_void.
+  | unary_op_pre_incr
+  | unary_op_pre_decr
+  | unary_op_neg
+  | unary_op_bitwise_not  
+  | unary_op_not.
 
 (** Binary operators *)
 
 Inductive binary_op :=
-  | binary_op_add
   | binary_op_mult
   | binary_op_div
-  | binary_op_equal
+  | binary_op_mod
+  | binary_op_add
+  | binary_op_sub
+  | binary_op_left_shift
+  | binary_op_right_shift
+  | binary_op_unsigned_right_shift
+  | binary_op_lt
+  | binary_op_gt
+  | binary_op_le
+  | binary_op_ge
   | binary_op_instanceof
   | binary_op_in
+  | binary_op_equal
+  | binary_op_disequal
+  | binary_op_strict_equal
+  | binary_op_strict_disequal
+  | binary_op_bitwise_and
+  | binary_op_bitwise_or
+  | binary_op_bitwise_xor
   | binary_op_and
-  | binary_op_or.
+  | binary_op_or
+  | binary_op_coma.
 
 (** Grammar of literals *)
 
@@ -60,13 +78,20 @@ Definition loop_label := string.
 
 Definition strictness_flag := bool.
 
+(** Property name in source code *)
+
+Inductive prop :=
+  | prop_literal : literal -> prop
+  | prop_string : string -> prop
+  | prop_number : number -> prop.
+
 (** Grammar of expressions *)
 
 Inductive expr :=
   | expr_this : expr
-  | expr_variable : string -> expr
+  | expr_variable : string -> expr (* todo: rename to expr_identifier *)
   | expr_literal : literal -> expr
-  | expr_object : list (string * expr) -> expr
+  | expr_object : list (prop * expr) -> expr
   | expr_function : option string -> list string -> prog -> expr
   | expr_access : expr -> expr -> expr
   | expr_member : expr -> string -> expr
@@ -74,6 +99,7 @@ Inductive expr :=
   | expr_call : expr -> list expr -> expr
   | expr_unary_op : unary_op -> expr -> expr
   | expr_binary_op : expr -> binary_op -> expr -> expr
+  | expr_conditional : expr -> expr -> expr -> expr
   | expr_assign : expr -> option binary_op -> expr -> expr
 
 (** Grammar of statements *)

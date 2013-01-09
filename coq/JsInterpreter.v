@@ -536,7 +536,7 @@ Definition if_success_value (o : out_interp) (k : state -> value -> out_interp) 
       end)).
 
 
-Definition run_is_callable S v : option function_code :=
+Definition run_callable S v : option function_code :=
   match v with
   | value_prim w => None
   | value_object l =>
@@ -550,7 +550,7 @@ Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_inte
     if_success (object_get S l x) (fun S1 re1 =>
       match re1 with
       | ret_value lf =>
-        match run_is_callable S lf with
+        match run_callable S lf with
         | Some fc =>
           if_success_value (call S C lf nil l) (fun S2 v =>
             match v with
