@@ -601,7 +601,7 @@ Definition execution_ctx_with_lex_this C lex lthis :=
 
 Definition function_code_strict fc :=
   match fc with
-    | function_code_code p s => s
+    | function_code_code p => function_body_is_strict p
     | function_code_builtin _ => false
   end. 
   

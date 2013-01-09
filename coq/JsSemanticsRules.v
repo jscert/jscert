@@ -1649,7 +1649,7 @@ END OF TO CLEAN----*)
   | red_expr_execution_ctx_binding_instantiation_function_decls_cons : forall o1 L S0 S C K func code args fd fds o, (* Step 5b *)
       let p := fd_code fd in
       let strict := (function_code_strict code) || (function_body_is_strict p) in
-      let f_code := function_code_code (fd_code fd) (function_body_is_strict p) in
+      let f_code := function_code_code (fd_code fd) in
       red_expr S C (spec_creating_function_object (fd_parameters fd) (f_code) (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_8 K func code args L fd fds strict o1) o ->
       red_expr S0 C (spec_execution_ctx_binding_instantiation_7 K func code args L (fd::fds) (out_void S)) o

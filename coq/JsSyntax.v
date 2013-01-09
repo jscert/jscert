@@ -397,7 +397,7 @@ Definition class_name := string.
 (** Representation of function code *)
 
 Inductive function_code :=
-  | function_code_code : prog -> strictness_flag -> function_code
+  | function_code_code : prog -> function_code
   | function_code_builtin : builtin -> function_code.
 
 (** Representation of the map from properties to attributes *)
