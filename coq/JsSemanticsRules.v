@@ -821,6 +821,47 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 END OF TO CLEAN----*)
 
 (**************************************************************)
+(** ** Reduction rules for comparisons *)
+
+  (*------------------------------------------------------------*)
+  (** ** Abstract equality comparison *)
+(*
+ | spec_eq_same_type : 
+     (type_of v1 = type_of v2) ->
+     red_expr S C (eq v1 v2) (out_ter (value_equality_test_same_type v1 v2))
+
+ | spec_eq_diff_type : 
+     (type_of v1 != type_of v2) ->
+     red_expr S C (eq0 v1 v2) o -> 
+     red_expr S C (eq v1 v2) o
+
+ | eq0 : forall v1 v2 S C r o,  
+     r = symCases v1 v2 (= type_null) (= type_undef) eq1  
+        (symCases v1 v2 (= type_number) (= type_string) (eq2 spec_to_number)
+        (symCases v1 v2 (= type_boolean) ( fun _ => True ) (eq2 spec_to_number)
+        (symCases v1 v2 (= type_string \/ = type_number ) ( fun _ => True ) (eq2 spec_to_primitive)
+        eq_5 v1 v2 ))) ->
+        red_expr r (*v1 v2*) o ->
+        red_expr S C (eq0 v1 v2) o
+  (* 1 *)
+  | eq1: forall S c v1 v2, 
+      red_expr S C (eq1 v1 v2) (out_ter S true)
+  (* 2 *)
+  | eq2: forall S C v1 v2 o o', 
+      red_expr S C (Conv v1) o
+      red_expr S C (eq2_1 v2 o) o' ->
+      red_expr S C (eq2 Conv v1 v2) o' 
+  | eq2_1: forall S C v n o, 
+      red_expr S C (eq v n) o ->
+      red_expr S C (eq2_1 v (out_ter S n)) o 
+  (* 5 *)
+  | eq5: 
+      red_expr S C (eq1 v1 v2) (out_ter S false)
+
+*)
+
+
+(**************************************************************)
 (** ** Reduction rules for specification functions *)
 
   (*------------------------------------------------------------*)

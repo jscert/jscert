@@ -1252,6 +1252,48 @@ Definition other_preftypes pref :=
   | preftype_string => preftype_number
   end.
 
+(**************************************************************)
+(** ** Auxiliary functions for comparisons *)
+
+ (** Abstract equality comparison for values of the same type *)
+
+(*
+Fixpoint value_equality_test_same_type T v1 v2 : bool :=
+ let aux := value_equality_test in
+   match T with
+   | type_undef => true (* 1-a *)
+   | type_null => true (* 1-b *)
+   | type_number => (* 1-c *)
+       match (v1, v2) with
+       | (number_nan, _) => false 
+       | (_, number_nan) => false 
+       | (number_pos, number_neg_zero) => true 
+       | (number_neg_zero, number_pos_zero) => true 
+       | (_, _) => decide (v1 = v2) 
+       end
+   | type_string => decide (v1 = v2) 
+   | type_bool => decide (v1 = v2) 
+   | type_object => decide (v1 = v2).
+*)
+(** Strict Equality Operator *)
+(*
+Fixpoint value_strict_equality_test v1 v2 : bool :=
+  let T1 := type_of v1 in 
+  let T2 := type_of v2 in 
+  if decide (T1 = T2)
+            value_equality_test_same_type T1 v1 v2 
+ else
+   false.
+*)
+(** Definition of symCases *)
+(*
+Fixpoint sym_cases v1 v2 P1 P2 eq_n K :=
+  let T1 := type_of v1 in 
+  let T2 := type_of v2 in 
+  if P1 T1 /\ P2 T2 eq_n v1 v2 else
+    if P1 T2 /\ P2 T1 eq_n v2 v1 else K.
+*)
+
 
 (**************************************************************)
 (** ** Implementation of [is_callable] *)
