@@ -39,152 +39,41 @@ Implicit Type P : object_properties_type.
 
 Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 
-Global Instance le_int_decidable : forall i1 i2, Decidable (i1 <= i2).
-Admitted.
 
-
-(**************************************************************)
-(** To be moved in TLC *)
-
-Class Pickable (A : Type) (P : A -> Prop) := pickable_make {
-  pick : A;
-  pick_spec : (exists a, P a) -> P pick }.
-
-Implicit Arguments pick [A [Pickable]].
-Extraction Inline pick.
-
-
-Global Instance neg_decidable (P : Prop) :
-  Decidable P -> Decidable (~ P).
+Global Instance if_some_then_same_dec : forall (A : Type) F (x y : option A),
+  (forall u v : A, Decidable (F u v)) ->
+  Decidable (if_some_then_same F x y).
 Proof.
-  introv [dec spec]. applys decidable_make (neg dec).
-  rew_refl. rewrite~ spec.
+  introv D.
+  destruct x; destruct y; simpls~; typeclass.
 Qed.
 
-Global Instance or_decidable (P1 P2 : Prop) :
-  Decidable P1 -> Decidable P2 ->
-  Decidable (P1 \/ P2).
+Global Instance some_compare_dec : forall (A : Type) F (x y : option A),
+  (forall u v : A, Decidable (F u v)) ->
+  Decidable (some_compare F x y).
 Proof.
-  intros [d1 D1] [d2 D2].
-  applys decidable_make (d1 || d2).
-  rew_refl. subst~.
+  introv D.
+  destruct x; destruct y; simpls~; typeclass.
 Qed.
 
-Global Instance equal_pickable :
-  forall (A : Type) (a : A),
-  Pickable (eq a).
+Global Instance value_same_dec : forall v1 v2,
+  Decidable (value_same v1 v2).
 Proof.
-  introv. applys pickable_make a.
-  intro. reflexivity.
-Qed.
-
-Global Instance binds_pickable : forall K V : Type,
-  `{Comparable K} -> `{Inhab V} ->
-  forall (h : heap K V) (v : K),
-  Pickable (binds h v).
-Proof.
-  introv CK IV; introv. applys pickable_make (read h v).
-  introv [a Ba].
-  apply~ read_binds. applys @binds_indom Ba.
-Qed.
-
-
-(**************************************************************)
-(** To be moved in JsSemanticsAux *)
-
-Lemma prim_compare_correct : forall w1 w2,
-  prim_compare w1 w2 = isTrue (w1 = w2).
-Proof.
-  extens.
-  destruct w1; destruct w2; simpl; rew_refl;
-   try solve [ iff M; tryfalse; auto; try congruence ].
-Qed.
-
-Lemma value_compare_correct : forall v1 v2,
-  value_compare v1 v2 = isTrue (v1 = v2).
-Proof.
-  extens.
-  destruct v1; destruct v2; simpl; rew_refl;
-   try solve [ iff M; tryfalse; auto; try congruence ].
-Qed.
-
-Global Instance prim_comparable : Comparable prim.
-Proof.
-  apply make_comparable.
-  introv. applys decidable_make (prim_compare x y).
-  apply* prim_compare_correct.
-Qed.
-
-Global Instance value_comparable : Comparable value.
-Proof.
-  apply make_comparable.
-  introv. applys decidable_make (value_compare x y).
-  apply* value_compare_correct.
-Qed.
-
-Global Instance prod_inhab : forall A B : Type,
-  Inhab A -> Inhab B ->
-  Inhab (A * B).
-Proof.
-  introv IA IB.
-  destruct IA. destruct inhabited as [a _].
-  destruct IB. destruct inhabited as [b _].
-  applys prove_Inhab (a, b).
-Qed.
-
-Global Instance sate_inhab : Inhab state.
-Admitted.
-
-Global Instance prop_descriptor_inhab : Inhab prop_descriptor.
-Proof. apply (prove_Inhab prop_descriptor_undef). Qed.
-
-Global Instance object_inhab : Inhab object.
-Proof.
-  apply prove_Inhab. apply object_create; try apply arbitrary.
-  apply empty.
-Qed.
-
-Global Instance res_inhab : Inhab res.
-Proof.
-  destruct value_inhab. destruct inhabited as [r _].
-  apply prove_Inhab. apply res_normal. apply~ ret_value.
-Qed.
-
-Definition mutability_compare m1 m2 : bool :=
-  match m1, m2 with
-  | mutability_uninitialized_immutable, mutability_uninitialized_immutable => true
-  | mutability_immutable, mutability_immutable => true
-  | mutability_nondeletable, mutability_nondeletable => true
-  | mutability_deletable, mutability_deletable => true
-  | _, _ => false
-  end.
-
-Global Instance mutability_comparable : Comparable mutability.
-Proof.
-  apply make_comparable. introv.
-  applys decidable_make (mutability_compare x y).
-  destruct x; destruct y; simpl; rew_refl;
-    ((rewrite~ eqb_eq; fail) || (rewrite~ eqb_neq; discriminate)).
+  introv. unfolds value_same.
+  sets_eq T1 E1: (type_of v1). sets_eq T2 E2: (type_of v2).
+  cases_if.
+   typeclass.
+   destruct T1; try typeclass.
+    repeat (cases_if; [typeclass|]).
+    typeclass.
 Qed.
 
 Global Instance prop_attributes_contains_dec : forall oldpf newpf,
   Decidable (prop_attributes_contains oldpf newpf).
 Proof.
   introv. destruct oldpf. destruct newpf. simpl.
-  repeat apply and_decidable.
-Admitted.
-
-Global Instance change_enumerable_attributes_on_non_configurable_dec : forall oldpf newpf,
-  Decidable (change_enumerable_attributes_on_non_configurable oldpf newpf).
-Admitted.
-
-Global Instance change_data_attributes_on_non_configurable_dec : forall oldpf newpf,
-  Decidable (change_data_attributes_on_non_configurable oldpf newpf).
-Admitted.
-
-Global Instance change_accessor_on_non_configurable_dec : forall oldpf newpf,
-  Decidable (change_accessor_on_non_configurable oldpf newpf).
-Admitted.
+  repeat apply and_decidable; typeclass.
+Qed.
 
 Lemma value_same_self : forall v,
   value_same v v.
@@ -238,7 +127,11 @@ Proof.
 Qed.
 
 Global Instance object_loc_comparable : Comparable object_loc.
-Admitted.
+Proof.
+  applys (comparable_beq object_loc_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
 
 Global Instance object_binds_pickable : forall S l,
   Pickable (object_binds S l).
@@ -257,6 +150,7 @@ Inductive out_interp :=
   | out_interp_stuck : out_interp
   | out_interp_bottom : out_interp.
 
+(* TODO:  Add coercion *)
 
 Global Instance out_interp_inhab : Inhab out_interp.
 Proof. applys prove_Inhab out_interp_stuck. Qed.
@@ -264,74 +158,6 @@ Proof. applys prove_Inhab out_interp_stuck. Qed.
 
 (**************************************************************)
 (** ** Helper functions for the interpreter *)
-
-Section SmallConversions.
-
-Definition run_convert_number_to_bool (n : number) :=
-  decide (n = JsNumber.zero \/ n = JsNumber.neg_zero \/ n = JsNumber.nan).
-
-Definition run_convert_string_to_bool s :=
-  decide (s = "").
-
-Definition run_convert_number_to_integer (n : number) :=
-  ifb n = JsNumber.nan then JsNumber.zero
-  else (
-    ifb n = JsNumber.zero \/
-        n = JsNumber.neg_zero \/
-        n = JsNumber.infinity \/ n = JsNumber.neg_infinity then n
-     else JsNumber.mult (JsNumber.sign n)
-            (JsNumber.floor (JsNumber.absolute n))
-  ).
-
-Definition run_convert_primitive_to_integer w :=
-  run_convert_number_to_integer (convert_prim_to_number w).
-
-Definition run_convert_prim_to_boolean w :=
-  match w with
-  | prim_undef => false
-  | prim_null => false
-  | prim_bool b => b
-  | prim_number n => run_convert_number_to_bool n
-  | prim_string s => run_convert_string_to_bool s
-  end.
-
-Definition run_convert_value_to_boolean v :=
-  match v with
-  | value_prim p => run_convert_prim_to_boolean p
-  | value_object _ => true
-  end.
-
-
-Definition run_option_transfer {A : Type} `{Comparable A} (oldopt newopt : option A) :=
-  ifb newopt <> None then newopt else oldopt.
-
-Definition run_prop_attributes_transfer oldpf newpf := 
-  match oldpf, newpf with 
-  | prop_attributes_intro ov ow og os oe oc, 
-    prop_attributes_intro nv nw ng ns ne nc =>
-    prop_attributes_intro 
-      (run_option_transfer ov nv)
-      (run_option_transfer ow nw)
-      (run_option_transfer og ng)
-      (run_option_transfer os ns)
-      (run_option_transfer oe ne)
-      (run_option_transfer oc nc)
-  end.
-
-(* I've just copy pasted it from JsSemanticsDefs:  if we change the specification, this one should be changed too. *)
-Definition run_object_get_own_property_builder A :=
-  let if_data {X:Type} (m:option X) (d:X) := 
-    ifb prop_attributes_is_data A then Some (unsome_default d m) else None in
-  let if_accessor {X:Type} (m:option X) (d:X) := 
-    ifb prop_attributes_is_accessor A then Some (unsome_default d m) else None in
-  {| prop_attributes_value := if_data (prop_attributes_value A) undef;
-     prop_attributes_writable := if_data (prop_attributes_writable A) false;
-     prop_attributes_get := if_accessor (prop_attributes_get A) undef;
-     prop_attributes_set := if_accessor (prop_attributes_set A) undef;
-     prop_attributes_enumerable := Some (unsome_default false (prop_attributes_enumerable A));
-     prop_attributes_configurable := Some (unsome_default false (prop_attributes_configurable A)) |}.
-
-End SmallConversions.
 
 Section InterpreterEliminations.
 
@@ -435,7 +261,7 @@ Definition run_object_heap_map_properties S l F : state :=
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
   | None => prop_descriptor_undef
-  | Some A => prop_descriptor_some (run_object_get_own_property_builder A)
+  | Some A => prop_descriptor_some (object_get_own_property_builder A)
   end.
 
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
@@ -446,7 +272,7 @@ Definition run_object_get_own_property S l x : prop_descriptor :=
   let An := run_object_get_own_property_default S l x in
   ifb sclass = "String" then (
     ifb An = prop_descriptor_undef then An
-    else let ix := run_convert_primitive_to_integer x in
+    else let ix := convert_primitive_to_integer x in
     ifb prim_string x <> convert_prim_to_string (prim_number (JsNumber.absolute ix)) then
       prop_descriptor_undef
     else (
@@ -592,7 +418,7 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
     ) else out_interp_normal (run_out_reject S throw)
   | prop_descriptor_some oldpf =>
     let fman S' :=
-      let S'' := run_object_set_property S' l x (run_prop_attributes_transfer oldpf newpf) in
+      let S'' := run_object_set_property S' l x (prop_attributes_transfer oldpf newpf) in
       out_ter_interp S'' true in
     if extensible then (
       ifb prop_attributes_contains oldpf newpf then
@@ -1151,7 +977,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
 
     | stat_if e1 t2 to =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
-        if (run_convert_value_to_boolean v1) then
+        if (convert_value_to_boolean v1) then
           run_stat' S1 C t2
         else
           match to with
@@ -1163,7 +989,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
 
     | stat_while e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
-        if (run_convert_value_to_boolean v1) then
+        if (convert_value_to_boolean v1) then
           if_success (run_stat' S1 C t2) (fun S2 re2 =>
             run_stat' S2 C (stat_while e1 t2))
         else
