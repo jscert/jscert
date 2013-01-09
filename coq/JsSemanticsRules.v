@@ -1649,7 +1649,8 @@ END OF TO CLEAN----*)
   | red_expr_execution_ctx_binding_instantiation_function_decls_cons : forall o1 L S0 S C K func code args fd fds o, (* Step 5b *)
       let p := fd_code fd in
       let strict := (function_code_strict code) || (function_body_is_strict p) in
-      red_expr S C (spec_creating_function_object (fd_parameters fd) (fd_code fd) (execution_ctx_variable_env C) strict) o1 ->
+      let f_code := function_code_code (fd_code fd) (function_body_is_strict p) in
+      red_expr S C (spec_creating_function_object (fd_parameters fd) (f_code) (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_8 K func code args L fd fds strict o1) o ->
       red_expr S0 C (spec_execution_ctx_binding_instantiation_7 K func code args L (fd::fds) (out_void S)) o
       
@@ -1720,8 +1721,15 @@ END OF TO CLEAN----*)
       red_expr S0 C (spec_execution_ctx_binding_instantiation_13 K func code args L nil (out_void S)) (out_void S)
       
   (* TODO 13.2 *)    
-  | red_expr_creating_function_object : forall S C names p X strict o,
-     red_expr S C (spec_creating_function_object names p X strict) o
+  (*| red_expr_creating_function_object : forall o1 S C names fc X strict o,
+     let O := object_create builtin_function_proto "Function" true Heap.empty in
+     let O1 := object_with_details O (Some X) (Some names) (Some fc) None None None None in
+     (* TODO: create internals for [[Get]] [[Call]] [[Construct]] [[HasInstance]] *)
+     let (S', l) = object_fresh S in
+     let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in
+     red_expr S C (spec_object_define_own_prop O1 "length" A false) o1
+     red_expr S C (spec_creating_function_object_1 names fc X strict O1 o1) o ->
+     red_expr S C (spec_creating_function_object names fc X strict) o*)
 
   
 

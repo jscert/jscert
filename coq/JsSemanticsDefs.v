@@ -795,7 +795,8 @@ Inductive ext_expr :=
   | spec_execution_ctx_binding_instantiation_13 : type -> option object_loc -> function_code -> list value -> env_loc -> list string -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation_14 : type -> option object_loc -> function_code -> list value -> env_loc -> string -> list string -> out -> ext_expr
   
-  | spec_creating_function_object : list string -> prog -> lexical_env -> strictness_flag -> ext_expr
+  | spec_creating_function_object : list string -> function_code -> lexical_env -> strictness_flag -> ext_expr
+  | spec_creating_function_object_1 : list string -> function_code -> lexical_env -> strictness_flag -> object -> out -> ext_expr
 
 (** Grammar of extended statements *)
 
