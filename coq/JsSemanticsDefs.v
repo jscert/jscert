@@ -1025,7 +1025,7 @@ Definition out_void S :=
     [bthrow] is true, else returns the value [false] *)
 
 Definition out_reject S bthrow :=
-  If bthrow = true 
+  ifb bthrow = true 
     then (out_type_error S) 
     else (out_ter S false).
 

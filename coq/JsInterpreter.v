@@ -48,7 +48,10 @@ Inductive out_interp :=
   | out_interp_stuck : out_interp
   | out_interp_bottom : out_interp.
 
-(* TODO:  Add coercion *)
+(* Coercion *)
+
+Coercion out_interp_normal : out >-> out_interp.
+
 
 Global Instance out_interp_inhab : Inhab out_interp.
 Proof. applys prove_Inhab out_interp_stuck. Qed.
@@ -58,9 +61,6 @@ Proof. applys prove_Inhab out_interp_stuck. Qed.
 (** ** Helper functions for the interpreter *)
 
 Section InterpreterEliminations.
-
-Definition out_ter_interp S re :=
-  out_interp_normal (out_ter S re).
 
 Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   match op with
@@ -73,14 +73,14 @@ Definition extract_from_option {B : Type} `{Inhab B} :=
 
 Definition if_success (o : out_interp) (k : state -> ret -> out_interp) : out_interp :=
   match o with
-  | out_interp_normal (out_ter S0 (res_normal re)) => k S0 re
+  | out_ter S0 (res_normal re) => k S0 re
   | _ => o
   end.
 
 Definition if_success_throw (o : out_interp) (k1 : state -> res -> out_interp) (k2 : state -> value -> out_interp) : out_interp :=
   match o with
-  | out_interp_normal (out_ter S0 (res_normal re)) => k1 S0 re
-  | out_interp_normal (out_ter S0 (res_throw v)) => k2 S0 v
+  | out_ter S0 (res_normal re) => k1 S0 re
+  | out_ter S0 (res_throw v) => k2 S0 v
   | _ => o
   end.
 
@@ -106,7 +106,7 @@ Definition if_defined_else {B C : Type} (op : option B) (k : B -> C) (k' : True 
 
 Definition if_value_object (o : out_interp) (k : state -> object_loc -> out_interp) : out_interp :=
   match o with
-  | out_interp_normal (out_ter S0 re) =>
+  | out_ter S0 re =>
     match re with
     | res_normal rt =>
       match rt with
@@ -231,10 +231,10 @@ Fixpoint lexical_env_get_identifier_ref S X x (strict : bool) : ref :=
 
 Definition object_get S v x : out_interp :=
   match run_object_get_property S v x with
-  | prop_descriptor_undef => out_ter_interp S undef
+  | prop_descriptor_undef => out_ter S undef
   | prop_descriptor_some A =>
     ifb prop_attributes_is_data A then
-      @morph_option value _ out_interp_stuck (out_ter_interp S) (prop_attributes_value A)
+      @morph_option value _ out_interp_stuck (out_ter S) (prop_attributes_value A)
     else out_interp_stuck
   end.
 
@@ -243,11 +243,11 @@ Definition run_alloc_primitive_value S w : state * object_loc :=
 
 Definition to_object S v : out_interp :=
   match v with
-  | prim_null | prim_undef => out_interp_normal (out_type_error S)
+  | prim_null | prim_undef => out_type_error S
   | value_prim w =>
     let (S', l) := run_alloc_primitive_value S w in
-    out_ter_interp S' l
-  | value_object l => out_ter_interp S l
+    out_ter S' l
+  | value_object l => out_ter S l
   end.
 
 Definition object_get_special S v x : out_interp :=
@@ -260,12 +260,12 @@ Definition env_record_get_binding_value S L x (strict : bool) : out_interp :=
     | env_record_decl D =>
       let (mu, v) := read D x in
       ifb mu = mutability_uninitialized_immutable then
-        out_interp_normal (out_ref_error_or_undef S strict)
-      else out_ter_interp S v
+        out_ref_error_or_undef S strict
+      else out_ter S v
     | env_record_object l pt =>
       if object_has_prop S l x then
         object_get S l x
-      else out_interp_normal (out_ref_error_or_undef S strict)
+      else out_ref_error_or_undef S strict
     end).
 
 Definition object_can_put S l x : out_interp :=
@@ -274,30 +274,27 @@ Definition object_can_put S l x : out_interp :=
   match An with
   | prop_descriptor_some A =>
     ifb prop_attributes_is_accessor A then
-      out_ter_interp S (decide (prop_attributes_set A = Some undef) || decide (prop_attributes_set A = None))
+      out_ter S (decide (prop_attributes_set A = Some undef)
+        || decide (prop_attributes_set A = None))
     else ifb prop_attributes_is_data A then
-      out_ter_interp S (morph_option undef prim_bool (prop_attributes_writable A))
+      out_ter S (morph_option undef prim_bool (prop_attributes_writable A))
     else out_interp_stuck
   | prop_descriptor_undef =>
     let lproto := run_object_proto S l in
-    ifb lproto = null then out_ter_interp S oe
+    ifb lproto = null then out_ter S oe
     else (
       let Anproto := run_object_get_property S lproto x in
       match Anproto with
-      | prop_descriptor_undef => out_ter_interp S oe
+      | prop_descriptor_undef => out_ter S oe
       | prop_descriptor_some A =>
         ifb prop_attributes_is_accessor A then
-          out_ter_interp S (decide (prop_attributes_set A = Some undef) || decide (prop_attributes_set A = None))
+          out_ter S (decide (prop_attributes_set A = Some undef) || decide (prop_attributes_set A = None))
         else ifb prop_attributes_is_data A then
-          out_ter_interp S (if oe then false else morph_option undef prim_bool (prop_attributes_writable A))
+          out_ter S (if oe then false else morph_option undef prim_bool (prop_attributes_writable A))
         else out_interp_stuck
       end
     )
   end.
-
-Definition run_out_reject S (bthrow : bool) :=
-  if bthrow then out_type_error S
-  else out_ter S false.
 
 Definition run_object_set_property S l x A : state :=
   arbitrary (* TODO *).
@@ -312,22 +309,22 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
         (if decide (prop_attributes_is_generic newpf) || decide (prop_attributes_is_data newpf) then
           prop_attributes_convert_to_data newpf
         else prop_attributes_convert_to_accessor newpf) in
-      out_ter_interp S' true
-    ) else out_interp_normal (run_out_reject S throw)
+      out_ter S' true
+    ) else out_reject S throw
   | prop_descriptor_some oldpf =>
     let fman S' :=
       let S'' := run_object_set_property S' l x (prop_attributes_transfer oldpf newpf) in
-      out_ter_interp S'' true in
+      out_ter S'' true in
     if extensible then (
       ifb prop_attributes_contains oldpf newpf then
-        out_ter_interp S true
+        out_ter S true
       else ifb change_enumerable_attributes_on_non_configurable oldpf newpf then
-        out_interp_normal (run_out_reject S throw)
+        out_reject S throw
       else ifb prop_attributes_is_generic newpf then (
         fman S
       ) else ifb decide (prop_attributes_is_data oldpf) <> decide (prop_attributes_is_data newpf) then (
        ifb prop_attributes_configurable oldpf = Some false then
-         out_interp_normal (run_out_reject S throw)
+         out_reject S throw
        else let S' := run_object_set_property S l x
         (ifb prop_attributes_is_data oldpf then
           prop_attributes_convert_to_accessor oldpf
@@ -335,11 +332,11 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
         fman S'
      ) else if decide (prop_attributes_is_data oldpf) && decide (prop_attributes_is_data newpf) then (
        if decide (prop_attributes_configurable oldpf = Some false) && decide (change_data_attributes_on_non_configurable oldpf newpf) then
-         out_interp_normal (run_out_reject S throw)
+         out_reject S throw
        else fman S
      ) else if decide (prop_attributes_is_accessor oldpf) && decide (prop_attributes_is_accessor newpf) then
        ifb change_accessor_on_non_configurable oldpf newpf then
-         out_interp_normal (run_out_reject S throw)
+         out_reject S throw
        else fman S
      else out_interp_stuck
     ) else out_interp_stuck
@@ -361,21 +358,17 @@ Definition object_put S l x v (throw : bool) : out_interp :=
           arbitrary (* TODO *)
         end
       )
-    end) (fun S =>
-      (* I don't understand why, but this is not accepted by Coq:  out_interp_normal (run_out_reject S throw) *)
-      if throw then
-        out_interp_normal (out_type_error S)
-      else out_ter_interp S false).
+    end) (fun S => out_reject S throw).
 
 Definition env_record_set_mutable_binding S L x v (strict : bool) : out_interp :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
     let (mu, v) := read D x in
     ifb mutability_is_mutable mu then
-      arbitrary (* TODO:  This expression should be correct once [heap_set_environment_decl] will be declared:  out_ter_interp (heap_set_environment_decl S L x mu v) prim_undef *)
+      arbitrary (* TODO:  This expression should be correct once [heap_set_environment_decl] will be declared:  out_ter (heap_set_environment_decl S L x mu v) prim_undef *)
     else if strict then
-      out_interp_normal (out_type_error S)
-    else out_ter_interp S prim_undef
+      out_type_error S
+    else out_ter S prim_undef
   | env_record_object l pt =>
     object_put S l x v strict
   end.
@@ -387,7 +380,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
     ifb decl_env_record_indom D x then out_interp_stuck
     else
       let S' := arbitrary (* TODO:  heap_set_environment_decl S L x (mutability_of_bool deletable) undef *) in
-      out_interp_normal (out_void S')
+      out_void S'
   | env_record_object l pt =>
     if object_has_prop S l x then out_interp_stuck
     else let An := prop_attributes_create_data undef true true deletable in
@@ -404,10 +397,10 @@ Definition env_record_create_set_mutable_binding S L x (deletable_opt : option b
 
 Definition ref_get_value S (re : ret) : out_interp :=
   match re with
-  | ret_value v => out_ter_interp S v
+  | ret_value v => out_ter S v
   | ret_ref r =>
     match ref_kind_of r with
-    | ref_kind_null | ref_kind_undef => out_interp_normal (out_ref_error S)
+    | ref_kind_null | ref_kind_undef => out_ref_error S
     | ref_kind_primitive_base =>
       match ref_base r with
       | ref_base_type_value v =>
@@ -430,16 +423,23 @@ Definition if_success_value (o : out_interp) (k : state -> value -> out_interp) 
     if_success (ref_get_value S1 re1) (fun S2 re2 =>
       match re2 with
       | ret_value v => k S2 v
-      | _ => out_interp_normal (out_ref_error S1)
+      | _ => out_ref_error S1
       end)).
 
-
-Definition run_is_callable S v : option function_code :=
+Definition run_is_callable S v :=
   match v with
   | value_prim w => None
   | value_object l =>
     run_object_call S l
   end.
+
+Global Instance is_callable_pickable : forall S v,
+  Pickable (is_callable S v).
+Proof.
+  introv. applys pickable_make (run_is_callable S v).
+  intros [a Ha]. destruct v; simpls~.
+  skip. (* TODO *)
+Qed.
 
 Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_interp :=
   let lpref := other_preftypes gpref in
@@ -448,11 +448,11 @@ Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_inte
     if_success (object_get S l x) (fun S1 re1 =>
       match re1 with
       | ret_value lf =>
-        match run_is_callable S lf with
+        match pick (is_callable S lf) with
         | Some fc =>
           if_success_value (call S C lf nil l) (fun S2 v =>
             match v with
-            | value_prim w => out_ter_interp S w
+            | value_prim w => out_ter S w
             | value_object l => K True
             end)
         | None => K True
@@ -461,24 +461,22 @@ Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_inte
       end) in
   sub1 gmeth (fun _ =>
     let lmeth := method_of_preftype lpref in
-    sub1 lmeth (fun _ =>
-      out_interp_normal (out_type_error S)
-    )).
+    sub1 lmeth (fun _ => out_type_error S)).
 
 Definition to_primitive (call : run_call_type) C S v (gpref : preftype) : out_interp :=
   match v with
-  | value_prim w => out_ter_interp S w
+  | value_prim w => out_ter S w
   | value_object l => to_default call C S l gpref
   end.
 
 Definition to_number (call : run_call_type) C S v : out_interp :=
   match v with
-  | value_prim w => out_ter_interp S (prim_number (convert_prim_to_number w))
+  | value_prim w => out_ter S (prim_number (convert_prim_to_number w))
   | value_object l =>
     if_success (to_primitive call C S (value_object l) preftype_number) (fun S1 re1 =>
       match re1 with
       | value_prim w =>
-        out_ter_interp S (prim_number (convert_prim_to_number w))
+        out_ter S (prim_number (convert_prim_to_number w))
       | _ => out_interp_stuck
       end)
   end.
@@ -487,18 +485,18 @@ Definition to_integer (call : run_call_type) C S v : out_interp :=
   if_success (to_number call C S v) (fun S1 re1 =>
     match re1 with
     | prim_number m =>
-      out_ter_interp S (prim_number (convert_number_to_integer m))
+      out_ter S (prim_number (convert_number_to_integer m))
     | _ => out_interp_stuck
     end).
 
 Definition to_string (call : run_call_type) C S v : out_interp :=
   match v with
-  | value_prim w => out_ter_interp S (convert_prim_to_string w)
+  | value_prim w => out_ter S (convert_prim_to_string w)
   | value_object l =>
     if_success (to_primitive call C S (value_object l) preftype_string) (fun S1 re1 => (* TODO:  Define an “if_success_primitive” *)
       match re1 with
       | value_prim w =>
-        out_ter_interp S (convert_prim_to_string w)
+        out_ter S (convert_prim_to_string w)
       | _ => out_interp_stuck
       end)
   end.
@@ -658,7 +656,7 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
     match e with
 
     | expr_literal i =>
-      out_ter_interp S (convert_literal_to_prim i)
+      out_ter S (convert_literal_to_prim i)
 
     | expr_variable name =>
       arbitrary
@@ -801,7 +799,7 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
       *)
 
     | expr_this =>
-      out_ter_interp S (execution_ctx_this_binding C)
+      out_ter S (execution_ctx_this_binding C)
 
     | expr_new e1 le2 =>
       arbitrary
@@ -846,14 +844,14 @@ with run_stat (max_step : nat) S C t : out_interp :=
       run_expr' S C e
 
     | stat_skip =>
-      out_ter_interp S undef
+      out_ter S undef
 
     | stat_var_decl x eo =>
       match eo with
-      | None => out_ter_interp S undef
+      | None => out_ter S undef
       | Some e =>
         if_success (run_expr' S C e) (fun S1 re1 =>
-          out_ter_interp S1 undef)
+          out_ter S1 undef)
       end
 
     | stat_with e1 t2 =>
@@ -871,7 +869,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
     | stat_seq t1 t2 =>
       if_success (run_stat' S C t1) (fun S1 re1 =>
         if_success (run_stat' S1 C t2) (fun S2 re2 =>
-          out_ter_interp S2 re2))
+          out_ter S2 re2))
 
     | stat_if e1 t2 to =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
@@ -882,7 +880,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
           | Some t3 =>
             run_stat' S1 C t3
           | None =>
-            out_ter_interp S undef
+            out_ter S undef
           end)
 
     | stat_while e1 t2 =>
@@ -891,29 +889,29 @@ with run_stat (max_step : nat) S C t : out_interp :=
           if_success (run_stat' S1 C t2) (fun S2 re2 =>
             run_stat' S2 C (stat_while e1 t2))
         else
-          out_ter_interp S1 undef)
+          out_ter S1 undef)
 
     | stat_throw e =>
       if_success_value (run_expr' S C e) (fun S1 v1 =>
-        out_ter_interp S (res_throw v1))
+        out_ter S (res_throw v1))
 
     | stat_try t1 t2o t3o =>
-      let finally :=
+      let finally : out_interp -> out_interp :=
         match t3o with
         | None => fun o => o
         | Some t3 => fun o =>
           match o with
-          | out_interp_normal (out_ter S1 re) =>
+          | out_ter S1 re =>
             if_success (run_stat' S1 C t3) (fun S2 re' =>
-              out_ter_interp S2 re)
+              out_ter S2 re)
           | _ => o
           end
         end
       in
       if_success_throw (run_stat' S C t1) (fun S1 re1 =>
-        finally (out_ter_interp S1 re1)) (fun S1 v =>
+        finally (out_ter S1 re1)) (fun S1 v =>
         match t2o with
-        | None => finally (out_ter_interp S1 (res_throw v))
+        | None => finally (out_ter S1 (res_throw v))
         | Some (x, t2) =>
           let lex := execution_ctx_lexical_env C in
           let (lex', S') := lexical_env_alloc_decl S lex in
@@ -933,10 +931,10 @@ with run_stat (max_step : nat) S C t : out_interp :=
     | stat_return eo =>
       match eo with
       | None =>
-        out_ter_interp S (res_return undef)
+        out_ter S (res_return undef)
       | Some e =>
         if_success_value (run_expr' S C e) (fun S1 v1 =>
-          out_ter_interp S (res_return v1))
+          out_ter S (res_return v1))
       end
 
     | stat_break =>
@@ -968,7 +966,7 @@ with run_prog (max_step : nat) S C p : out_interp :=
     | prog_seq p1 p2 =>
       if_success (run_prog' S C p1) (fun S1 re1 =>
         if_success (run_prog' S1 C p2) (fun S2 re2 =>
-          out_ter_interp S2 re2))
+          out_ter S2 re2))
 
     | prog_function_decl f lx P =>
       arbitrary (* TODO *)
