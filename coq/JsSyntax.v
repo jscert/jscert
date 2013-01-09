@@ -37,6 +37,11 @@ Inductive binary_op :=
   | binary_op_mult
   | binary_op_div
   | binary_op_equal
+  (* Daniele 
+  | binary_op_not_equal
+  | binary_op_strict_equal
+  | binary_op_strict_not_equal
+  *)
   | binary_op_instanceof
   | binary_op_in
   | binary_op_and
