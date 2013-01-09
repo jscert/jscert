@@ -695,6 +695,13 @@ Inductive ext_expr :=
   | spec_convert_twice_1 : out -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
   | spec_convert_twice_2 : out -> (value -> ext_expr) -> ext_expr
 
+
+  (** Extended expressions for conversions *)
+  | spec_eq : value -> value -> ext_expr
+  | spec_eq0 : value -> value -> ext_expr
+  | spec_eq1 : value -> value -> ext_expr
+  | spec_eq2 : ext_expr -> value -> value -> ext_expr
+
   (** Extended expressions for operations on objects *)
 
   | spec_object_get : value -> prop_name -> ext_expr 

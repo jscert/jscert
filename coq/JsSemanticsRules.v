@@ -735,13 +735,27 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       m = JsNumber.div (convert_prim_to_number v1) (convert_prim_to_number v2) ->
       red_expr S C (expr_binary_op_5 v1 binary_op_div v2) (out_ter S m)*)
 
-  (* Daniele: equality *)
+  (* Daniele: equality , TODO: check*)
   (*| red_expr_binary_op_5_equals : forall S v v' b,
-      (* Not needed anymore? *)
-      (*basic_value v ->
-      basic_value v' -> *)
-      b = (EqualityComparison v1 v2)
-      red_expr S C (expr_binary_op_5 v1 binary_op_equals v2) (out_ter S b)*)
+      red_expr S C (spec_eq v1 v2) (out_ter S' b)
+      red_expr S C (expr_binary_op_5 v1 binary_op_equals v2) (out_ter S' b)*)
+
+ (* Daniele: does-not-equals , TODO: check*)
+  (*| red_expr_binary_op_5_not_equals : forall S v v' b,
+      red_expr S C (spec_eq v1 v2) (out_ter S' b) ->
+      b' = if (b = true) false else true
+      red_expr S C (expr_binary_op_5 v1 binary_op_not_equals v2) (out_ter S' b')*)
+
+  (* Daniele: strict equality , TODO: check*)
+  (*| red_expr_binary_op_5_strict_equals : forall S v v' b,
+      b = value_strict_eqiality_test v1 v2 ->
+      red_expr S C (expr_binary_op_5 v1 binary_op_strict_equals v2) (out_ter S b)*)
+
+(* Daniele: strict does-not-equals , TODO: check*)
+  (*| red_expr_binary_op_5_not_equals : forall S v v' b,
+      red_expr S C (spec_strict_eq v1 v2) (out_ter S' b) ->
+      b' = if (b = true) false else true
+      red_expr S C (expr_binary_op_5 v1 binary_op_strict_not_equals v2) (out_ter S' b')*)
 
   (*| red_expr_binary_op_add_1_string : forall S C v1 v2 g,
       (value_is_string v1 \/ value_is_string v2) ->
@@ -828,38 +842,48 @@ END OF TO CLEAN----*)
 (*
  | spec_eq_same_type : 
      (type_of v1 = type_of v2) ->
-     red_expr S C (eq v1 v2) (out_ter (value_equality_test_same_type v1 v2))
+     T = type_of v1 ->
+     red_expr S C (spec_eq v1 v2) (out_ter (value_equality_test_same_type T v1 v2))
 
  | spec_eq_diff_type : 
      (type_of v1 != type_of v2) ->
-     red_expr S C (eq0 v1 v2) o -> 
-     red_expr S C (eq v1 v2) o
+     red_expr S C (spec_eq0 v1 v2) o -> 
+     red_expr S C (spec_eq v1 v2) o
 
- | eq0 : forall v1 v2 S C r o,  
-     r = symCases v1 v2 (= type_null) (= type_undef) eq1  
-        (symCases v1 v2 (= type_number) (= type_string) (eq2 spec_to_number)
-        (symCases v1 v2 (= type_boolean) ( fun _ => True ) (eq2 spec_to_number)
-        (symCases v1 v2 (= type_string \/ = type_number ) ( fun _ => True ) (eq2 spec_to_primitive)
-        eq_5 v1 v2 ))) ->
-        red_expr r (*v1 v2*) o ->
-        red_expr S C (eq0 v1 v2) o
+ | spec_eq0 : forall v1 v2 S C r o,  
+     r = symCases v1 v2 (= type_null) (= type_undef) spec_eq1  
+        (symCases v1 v2 (= type_number) (= type_string) (spec_eq2 spec_to_number)
+        (symCases v1 v2 (= type_boolean) ( fun _ => True ) (spec_eq2 spec_to_number)
+        (symCases v1 v2 (= type_string \/ = type_number ) ( fun _ => True ) (spec_eq2 spec_to_primitive)
+        spec_eq_3 v1 v2 ))) ->
+        red_expr r o ->
+        red_expr S C (spec_eq0 v1 v2) o
   (* 1 *)
-  | eq1: forall S c v1 v2, 
-      red_expr S C (eq1 v1 v2) (out_ter S true)
+  | spec_eq1: forall S c v1 v2, 
+      red_expr S C (spec_eq1 v1 v2) (out_ter S true)
   (* 2 *)
-  | eq2: forall S C v1 v2 o o', 
+  | spec_eq2: forall S C v1 v2 o o', 
       red_expr S C (Conv v1) o
-      red_expr S C (eq2_1 v2 o) o' ->
-      red_expr S C (eq2 Conv v1 v2) o' 
-  | eq2_1: forall S C v n o, 
-      red_expr S C (eq v n) o ->
-      red_expr S C (eq2_1 v (out_ter S n)) o 
+      red_expr S C (spec_eq2_1 v2 o) o' ->
+      red_expr S C (spec_eq2 Conv v1 v2) o' 
+  | spec_eq2_1: forall S C v n o, 
+      red_expr S C (spec_eq v n) o ->
+      red_expr S C (spec_eq2_1 v (out_ter S n)) o 
   (* 5 *)
-  | eq5: 
-      red_expr S C (eq1 v1 v2) (out_ter S false)
-
+  | spec_eq3: 
+      red_expr S C (spec_eq3 v1 v2) (out_ter S false)
 *)
 
+ (*------------------------------------------------------------*)
+  (** ** Strict equality comparison *)
+
+ (* Daniele: I think we don't need this one, as it can be done directly
+    in the reduction rule for strict_equality (see red_expr_binary_op_5_strict_equals)  *)
+(*
+  | spec_strict_eq : 
+     b = value_strict_equality_test v1 v2 ->
+     red_expr S C (spec_strict_eq v1 v2) (out_ter S b)
+*)
 
 (**************************************************************)
 (** ** Reduction rules for specification functions *)
