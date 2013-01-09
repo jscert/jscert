@@ -39,30 +39,41 @@ Implicit Type P : object_properties_type.
 
 Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 
+
 Global Instance if_some_then_same_dec : forall (A : Type) F (x y : option A),
   (forall u v : A, Decidable (F u v)) ->
   Decidable (if_some_then_same F x y).
-(* TODO *)
-Admitted.
+Proof.
+  introv D.
+  destruct x; destruct y; simpls~; typeclass.
+Qed.
+
+Global Instance some_compare_dec : forall (A : Type) F (x y : option A),
+  (forall u v : A, Decidable (F u v)) ->
+  Decidable (some_compare F x y).
+Proof.
+  introv D.
+  destruct x; destruct y; simpls~; typeclass.
+Qed.
+
+Global Instance value_same_dec : forall v1 v2,
+  Decidable (value_same v1 v2).
+Proof.
+  introv. unfolds value_same.
+  sets_eq T1 E1: (type_of v1). sets_eq T2 E2: (type_of v2).
+  cases_if.
+   typeclass.
+   destruct T1; try typeclass.
+    repeat (cases_if; [typeclass|]).
+    typeclass.
+Qed.
 
 Global Instance prop_attributes_contains_dec : forall oldpf newpf,
   Decidable (prop_attributes_contains oldpf newpf).
 Proof.
   introv. destruct oldpf. destruct newpf. simpl.
-  typeclass.
+  repeat apply and_decidable; typeclass.
 Qed.
-
-Global Instance change_enumerable_attributes_on_non_configurable_dec : forall oldpf newpf,
-  Decidable (change_enumerable_attributes_on_non_configurable oldpf newpf).
-Admitted.
-
-Global Instance change_data_attributes_on_non_configurable_dec : forall oldpf newpf,
-  Decidable (change_data_attributes_on_non_configurable oldpf newpf).
-Admitted.
-
-Global Instance change_accessor_on_non_configurable_dec : forall oldpf newpf,
-  Decidable (change_accessor_on_non_configurable oldpf newpf).
-Admitted.
 
 Lemma value_same_self : forall v,
   value_same v v.
@@ -250,7 +261,7 @@ Definition run_object_heap_map_properties S l F : state :=
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
   | None => prop_descriptor_undef
-  | Some A => prop_descriptor_some (run_object_get_own_property_builder A)
+  | Some A => prop_descriptor_some (object_get_own_property_builder A)
   end.
 
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
@@ -261,7 +272,7 @@ Definition run_object_get_own_property S l x : prop_descriptor :=
   let An := run_object_get_own_property_default S l x in
   ifb sclass = "String" then (
     ifb An = prop_descriptor_undef then An
-    else let ix := run_convert_primitive_to_integer x in
+    else let ix := convert_primitive_to_integer x in
     ifb prim_string x <> convert_prim_to_string (prim_number (JsNumber.absolute ix)) then
       prop_descriptor_undef
     else (
@@ -407,7 +418,7 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
     ) else out_interp_normal (run_out_reject S throw)
   | prop_descriptor_some oldpf =>
     let fman S' :=
-      let S'' := run_object_set_property S' l x (run_prop_attributes_transfer oldpf newpf) in
+      let S'' := run_object_set_property S' l x (prop_attributes_transfer oldpf newpf) in
       out_ter_interp S'' true in
     if extensible then (
       ifb prop_attributes_contains oldpf newpf then
@@ -966,7 +977,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
 
     | stat_if e1 t2 to =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
-        if (run_convert_value_to_boolean v1) then
+        if (convert_value_to_boolean v1) then
           run_stat' S1 C t2
         else
           match to with
@@ -978,7 +989,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
 
     | stat_while e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
-        if (run_convert_value_to_boolean v1) then
+        if (convert_value_to_boolean v1) then
           if_success (run_stat' S1 C t2) (fun S2 re2 =>
             run_stat' S2 C (stat_while e1 t2))
         else

@@ -376,3 +376,13 @@ Proof.
   introv. apply (prove_Inhab empty).
 Qed.
 
+(**************************************************************)
+(** ** LATER: move to LibLogic *)
+
+Global Instance true_dec : Decidable True.
+Proof. applys decidable_make true. rew_refl~. Qed.
+
+Global Instance false_dec : Decidable False.
+Proof. applys decidable_make false. rew_refl~. Qed.
+
+
