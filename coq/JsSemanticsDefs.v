@@ -6,6 +6,7 @@ Require Export JsSyntax JsSyntaxAux.
 
 Implicit Type b : bool.
 Implicit Type n : number.
+Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l : object_loc.
@@ -399,6 +400,12 @@ Definition ref_is_property r :=
   let k := ref_kind_of r in
      k = ref_kind_primitive_base
   \/ k = ref_kind_object.
+
+(** [ref_is_env_record r L] asserts that the reference [r]
+    either has the environment record L as base. *)
+
+Definition ref_is_env_record r L :=
+  ref_base r = ref_base_type_env_loc L.
 
 (** [ref_is_unresolvable r] asserts that the reference [r]
     as either [undef] for base. *)

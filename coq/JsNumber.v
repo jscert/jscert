@@ -35,6 +35,7 @@ Parameter neg_infinity : number.
 
 (* TODO: find definitions in Flocq *)
 
+Parameter neg : number -> number.
 Parameter floor : number -> number.
 Parameter absolute : number -> number.
 Parameter sign : number -> number. (* returns arbitrary when x is zero or nan *)
@@ -96,10 +97,14 @@ Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
 
 (**************************************************************)
 
-(* Implements the operation that masks all but the 5 least significant bits
+(** Implements the operation that masks all but the 5 least significant bits
    of a non-negative number (obtained as the result of to_uint32 *)
 
 Parameter modulo_32 : int -> int.
+
+(** Implements int32 bitwise not operation *)
+
+Parameter int32_bitwise_not : int -> int.
 
 
 (**************************************************************)

@@ -5,6 +5,7 @@ Require Import JsSemanticsDefs.
 
 Implicit Type b : bool.
 Implicit Type n : number.
+Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l : object_loc.
@@ -405,7 +406,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
 
-(*----- TOCLEAN
+(*---begin to clean ---*)
+
+  (*----- TOCLEAN
 
   (** Array initializer [TODO] *)
 
@@ -565,6 +568,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       getvalue S1 r v ->
       red_expr S0 C (expr_call_4 (out_ter S1 r)) (out_ter S1 v)*)
 
+(*---end to clean ---*)
 
   (** Unary op (regular rules) *)
 
@@ -580,16 +584,42 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Unary op : delete *)
 
-      (*| red_expr_unary_op_1_delete_true : forall S0 S1 S2 C r,
-          ~ dont_delete r ->
-          S2 = dealloc S1 r ->
-          (* LATER: will raise an exception if r is loc_null *)
-          red_expr S0 C (expr_unary_op_1 unary_op_delete (out_ter S1 r)) (out_ter S2 (prim_bool true))*)
+  | red_expr_delete : forall S C e o1 o,
+      red_expr S C e o1 ->
+      red_expr S C (red_expr_delete_1 o1) o ->
+      red_expr S C (expr_unary_op unary_op_delete e) o
 
-      (*| red_expr_unary_op_1_delete_false : forall S0 S1 C r,
-          dont_delete r ->
-          red_expr S0 C (expr_unary_op_1 unary_op_delete (out_ter S1 r)) (out_ter S1 (prim_bool false))*)
+  | red_expr_delete_1_value : forall S0 S C v,
+      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_value v)) (out_ter S true)
 
+  | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
+      ref_is_unresolvable r ->
+      (* TODO uncomment: red_expr s C (spec_syntax_error_or_cst (ref_strict r) true) o -> *)
+      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_ref r)) o
+
+  | red_expr_delete_1_ref_property : forall S0 S C r o,
+      ref_is_property r ->
+      red_expr S C (spec_to_object (ref_base r)) o1 ->
+      red_expr S C (red_expr_delete_2 (ref_name r) (ref_strict r) o1) o ->
+      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_ref r)) o
+
+  | red_expr_delete_2 : forall S0 S C s l o,
+      red_expr S C (spec_object_delete l x bstrict) o ->
+      red_expr S0 C (red_expr_delete_2 x bstrict (out_ter S l) o
+
+   | red_expr_delete_1_ref_env_record : forall S0 S C r o,
+      ref_is_env_record r L ->
+      red_expr S C (red_expr_delete_3 r L (ref_strict r)) o ->
+      red_expr S0 C (red_expr_delete_1 (out_ter S (ret_ref r)) o
+
+  | red_expr_delete_3_strict : forall S C r L o,
+      (* TODO uncomment: red_expr s C spec_syntax_error o -> *)
+      red_expr S C (red_expr_delete_3 r L true) o ->
+
+  | red_expr_delete_3_nonstrict : forall S C r L o,
+      red_expr S C (spec_env_record_delete_binding L (ref_name r)) o ->
+      red_expr S C (red_expr_delete_3 r L (ref_strict r)) o ->
+    
   (** Unary op : void *)
 
   | red_expr_unary_op_void : forall S0 C op e o1 o,
@@ -649,83 +679,37 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_prepost_4 : forall S0 S C R',  
       red_expr S0 C (expr_prepost_4 vret (out_ter S R')) (out_ter S vret)  (* todo: do we ignore R' ? is it out_void ? *) 
 
+  (** Unary op : neg *)
+
+  | red_expr_unary_op_neg : forall S C v o1 o,
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (expr_unary_op_neg_1 o1) o ->
+      red_expr S C (expr_unary_op_2 unary_op_neg v) o
+
+  | red_expr_unary_op_neg_1 : forall S0 S C b,
+      red_expr S0 C (expr_unary_op_neg_1 (out_ter S n)) (out_ter S (JsNumber.neg n))
+
+  (** Unary op : bitwise not *)
+
+  | red_expr_unary_op_bitwise_not : forall S C v o,
+      red_expr S C (spec_to_int32 v expr_unary_op_bitwise_not_1) o ->
+      red_expr S C (expr_unary_op_2 unary_op_bitwise_not v) o
+
+  | red_expr_unary_op_bitwise_not_1 : forall S0 S C k,
+      red_expr S0 C (expr_unary_op_bitwise_not_1 k) (out_ter S (JsNumber.int32_bitwise_not k))
+
+  (** Unary op : not *)
+
+  | red_expr_unary_op_not : forall S C v o1 o,
+      red_expr S C (spec_to_boolean v) o1 ->
+      red_expr S C (expr_unary_op_not_1 o1) o ->
+      red_expr S C (expr_unary_op_2 unary_op_not v) o
+
+  | red_expr_unary_op_not_1 : forall S0 S C b,
+      red_expr S0 C (expr_unary_op_not_1 (out_ter S b)) (out_ter S (neg b))
 
 
-
-
-  (*| red_expr_unary_op_2_not : forall S C op v,
-      red_expr S C (expr_unary_op_2 unary_op_not v) (out_ter S (prim_bool (neg (convert_prim_to_boolean v))))*)
-  
-
-
-
-  | unary_op_post_incr
-  | unary_op_post_decr
-  | unary_op_pre_incr
-  | unary_op_pre_decr
-  | unary_op_neg
-  | unary_op_bitwise_not  
-  | unary_op_not.
-
-
-
-
-
-  | red_expr_unary_op_1 : forall S0 S1 C op r1 v1 v,
-      red_expr S0 C (expr_unary_op_1 op (out_ter S1 v1)) (out_ter S1 v)*)
-
-
-
-   (* ---todo merge::
-   typeof_prim
-
-  | typeof_red_function : forall S l,
-      indom_scope_or_body S l -> 
-      (* TODO: change to test [binds S l O] /\ [object_function O <> None],
-         which should be named as a predicate [is_function S l] *)
-      typeof_red S (value_loc l) "function"
-
-  | typeof_red_object : forall S l,
-      ~ indom_scope_or_body S l ->
-        (* TODO: change to test [binds S l O] /\ [object_function O = None],
-           which should be named as a predicate [is_not_function S l] *)
-      typeof_red S (value_loc l) "object"
-      *).
-
-
-
-
-  (*| red_expr_unary_op_1_typeof_undef : forall S0 S1 s x,
-      red_expr S0 C (expr_unary_op_1 unary_op_typeof (out_ter S1 (Ref loc_null x))) (out_ter S1 (prim_string "undefined"))*)
-
-  (* todo: handle ++ and -- pre and post *)
-  (* Martin:  You mean the errors they can throw if they are not given a reference? *)
-
-  (*| red_expr_unary_op_1_pre_incr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int 1) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_pre_incr (out_ter S1 (Ref l x))) (out_ter S2 va)*)
-
-  (*| red_expr_unary_op_1_pre_decr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int (-1)%Z) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_pre_decr (out_ter S1 (Ref l x))) (out_ter S2 va)*)
- 
-  (*| red_expr_unary_op_1_post_incr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int 1) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_post_incr (out_ter S1 (Ref l x))) (out_ter S2 v)*)
-  
-  (*| red_expr_unary_op_1_post_decr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int (-1)%Z) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_post_decr (out_ter S1 (Ref l x))) (out_ter S2 v)*)
-
-
+----
 
   (** Binary op *)
 
