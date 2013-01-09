@@ -446,3 +446,38 @@ Record state := state_intro {
    state_env_record_heap : Heap.heap env_loc env_record;
    state_fresh_locations : stream nat }.
 
+
+(**************************************************************)
+(**************************************************************)
+(****************************************************************)
+(** ** Definition of outcomes *)
+
+(** Normal return value of an expression *)
+
+Inductive ret :=
+  | ret_value : value -> ret
+  | ret_ref : ref -> ret.
+
+(** Result of an evaluation *)
+
+Inductive res :=
+  | res_normal : ret -> res
+  | res_break : option loop_label -> res
+  | res_continue : option loop_label -> res
+  | res_return : ret -> res (* todo : is it value -> res *)
+  | res_throw : value -> res.
+
+(** Outcome of an evaluation *)
+
+Inductive out :=
+  | out_div : out
+  | out_ter : state -> res -> out.
+
+(** Coercions *)
+
+Coercion ret_value : value >-> ret.
+Coercion ret_ref : ref >-> ret.
+Coercion res_normal : ret >-> res.
+
+(* <informal> Implicit Type o : out_*  *)
+

@@ -33,61 +33,6 @@ Implicit Type t : stat.
 
 
 (**************************************************************)
-(** ** Smart constructors for objects *)
-
-(** Builds an object with all optional fields to None *)
-
-Definition object_create vproto sclass bextens P :=
-  {| object_proto_ := vproto;
-     object_class_ := sclass;
-     object_extensible_ := bextens;
-     object_properties_ := P;
-     object_prim_value_ := None;
-     object_construct_ := None;
-     object_call_ := None;
-     object_has_instance_ := None;
-     object_scope_ := None;
-     object_formal_parameters_ := None;
-     object_code_ := None;
-     object_target_function_ := None; 
-     object_bound_this_ := None; 
-     object_bound_args_ := None; 
-     object_parameter_map_ := None |}.
-
-(** Modifies the property field of an object. *)
-
-Definition object_with_properties O properties :=
-  match O with 
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 properties x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15  
-  end.
-
-(** Modifies the primitive value field of an object *)
-
-Definition object_with_primitive_value O v :=
-  match O with 
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 (Some v) x6 x7 x8 x9 x10 x11 x12 x13 x14 x15  
-  end.
-
-(** Modifies the construct, call and has_instance fields of an object *)
-
-Definition object_with_invokation O constr call has_instance :=
-  match O with 
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 x5 constr call has_instance x9 x10 x11 x12 x13 x14 x15  
-  end.
-
-(** Modifies the other parameters of an object *)
-
-Definition object_with_details O scope params code target boundthis boundargs paramsmap :=
-  match O with 
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 x5 x6 x7 x8 scope params code target boundthis boundargs paramsmap
-  end.
-
-
-(**************************************************************)
 (** ** Operations on objects *)
 
 (** Update the state by updating the object heap *)
@@ -665,41 +610,6 @@ Parameter function_declarations : function_code -> list function_declaration.
 Parameter variable_declarations : function_code -> list string.
 
 
-(**************************************************************)
-(**************************************************************)
-(****************************************************************)
-(** ** Definition of outcomes *)
-
-(** Normal return value of an expression *)
-
-Inductive ret :=
-  | ret_value : value -> ret
-  | ret_ref : ref -> ret.
-
-(** Result of an evaluation *)
-
-Inductive res :=
-  | res_normal : ret -> res
-  | res_break : option loop_label -> res
-  | res_continue : option loop_label -> res
-  | res_return : ret -> res (* todo : is it value -> res *)
-  | res_throw : value -> res.
-
-(** Outcome of an evaluation *)
-
-Inductive out :=
-  | out_div : out
-  | out_ter : state -> res -> out.
-
-(** Coercions *)
-
-Coercion ret_value : value >-> ret.
-Coercion ret_ref : ref >-> ret.
-Coercion res_normal : ret >-> res.
-
-(* <informal> Implicit Type o : out_*  *)
-
-
 (****************************************************************)
 (** ** Intermediate expression for the Pretty-Big-Step semantic *)
 
@@ -1262,14 +1172,14 @@ Definition typeof_prim w :=
 (** Converts a number to a boolean *)
 
 Definition convert_number_to_bool n :=
-  If (n = JsNumber.zero \/ n = JsNumber.neg_zero \/ n = JsNumber.nan)
+  ifb (n = JsNumber.zero \/ n = JsNumber.neg_zero \/ n = JsNumber.nan)
     then false
     else true.
 
 (** Converts a string to a boolean *)
 
 Definition convert_string_to_bool s :=
-  If (s = "") then false else true.
+  ifb (s = "") then false else true.
 
 (** Convert primitive to boolean *)
 
@@ -1302,9 +1212,9 @@ Definition convert_prim_to_number w :=
 (** Convert number to integer *)
 
 Definition convert_number_to_integer n :=
-  If n = JsNumber.nan
+  ifb n = JsNumber.nan
     then JsNumber.zero
-  else If (n = JsNumber.zero \/ n = JsNumber.neg_zero
+  else ifb (n = JsNumber.zero \/ n = JsNumber.neg_zero
        \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity)
     then n
   else
@@ -1443,7 +1353,10 @@ Definition prop_attributes_contains oldpf newpf :=
     descriptors into another descriptor. *)
 
 Definition option_transfer (A:Type) (oldopt newopt : option A) :=
-  If newopt <> None then newopt else oldopt.
+  match newopt with
+  | None => oldopt
+  | _ => newopt
+  end.
 
   (* TEMP: Alternative definition:
   match newopt,oldopt with
@@ -1511,9 +1424,9 @@ Definition change_accessor_on_non_configurable oldpf newpf : Prop :=
 
 Definition object_get_own_property_builder A :=
   let if_data {X:Type} (m:option X) (d:X) := 
-    If prop_attributes_is_data A then Some (unsome_default d m) else None in
+    ifb prop_attributes_is_data A then Some (unsome_default d m) else None in
   let if_accessor {X:Type} (m:option X) (d:X) := 
-    If prop_attributes_is_accessor A then Some (unsome_default d m) else None in
+    ifb prop_attributes_is_accessor A then Some (unsome_default d m) else None in
   {| prop_attributes_value := if_data (prop_attributes_value A) undef;
      prop_attributes_writable := if_data (prop_attributes_writable A) false;
      prop_attributes_get := if_accessor (prop_attributes_get A) undef;
