@@ -1503,7 +1503,9 @@ Definition object_get_own_property_default S l x An :=
     (* TODO: should the spec say that the function above always returns
        a fully populated descriptor or undefined, like it does for getproperty? *)
 
-Parameter string_sub : string -> int -> int -> string. (* TODO *)
+(* TODO:  To be moved on LibString in TLC *)
+Fixpoint string_sub s (n l : int) : string :=
+  substring (abs n) (abs l) s.
 
 Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_descriptor -> Prop := 
   | object_get_own_property_not_string : forall S l x An sclass,

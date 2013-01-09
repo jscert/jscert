@@ -1,8 +1,17 @@
-open Batteries_uni
 open Parser_syntax
 open List
 
 exception CoqSyntaxDoesNotSupport of string
+exception Empty_list
+
+let split_last stmts = 
+  match stmts with
+    | [] -> raise Empty_list 
+    | hd :: tl ->
+      let rec aux l acc = function
+          | [] -> l, rev acc
+          | hd :: tl -> aux hd (l::acc) tl
+      in aux hd [] tl
 
 let string_to_coq s =
   let l = ref [] in
@@ -159,8 +168,8 @@ and exp_to_stat exp : Interpreter.stat =
       | With (e1, e2) -> Interpreter.Stat_with (exp_to_exp e1, f e2) 
       | Try (e, None, None) -> Interpreter.Stat_try (f e, None, None)
       | Try (e, None, Some fe) -> Interpreter.Stat_try (f e, None, Some (f fe))
-      | Try (e, Some (s, ce), None) -> Interpreter.Stat_try (f e, Some (Interpreter.Catch_block_intro (string_to_coq s, f ce)), None)
-      | Try (e, Some (s, ce), Some fe) -> Interpreter.Stat_try (f e, Some (Interpreter.Catch_block_intro (string_to_coq s, f ce)), Some (f fe))  
+      | Try (e, Some (s, ce), None) -> Interpreter.Stat_try (f e, Some (string_to_coq s, f ce), None)
+      | Try (e, Some (s, ce), Some fe) -> Interpreter.Stat_try (f e, Some (string_to_coq s, f ce), Some (f fe))  
       | If (e1, e2, Some e3) -> Interpreter.Stat_if (exp_to_exp e1, f e2, Some (f e3))
       | If (e1, e2, None) -> Interpreter.Stat_if (exp_to_exp e1, f e2, None)
       | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
@@ -168,10 +177,9 @@ and exp_to_stat exp : Interpreter.stat =
       | Block es -> 
         begin match es with
 	        | [] -> Interpreter.Stat_skip
-	        | stmts -> 
-	          let last = f (List.last stmts) in
-	          let stmts = List.take (List.length stmts - 1) stmts in
-	          List.fold_right (fun s1 s2 -> Interpreter.Stat_seq (f s1, s2)) stmts last
+	        | stmts ->
+             let last, stmts = split_last stmts in
+	           List.fold_right (fun s1 s2 -> Interpreter.Stat_seq (f s1, s2)) stmts (f last)
         end
 
 and exp_to_prog exp =

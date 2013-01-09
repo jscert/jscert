@@ -28,13 +28,17 @@ Definition object_loc_compare bl1 bl2 :=
 (** Decidable comparison *)
 
 Global Instance builtin_comparable : Comparable builtin.
-Proof. 
-  skip.
-(* TODO
-  applys (comparable_beq object_loc_compare). intros x y.
-  destruct x; destruct y; simpl; rew_refl; iff;
-   tryfalse; auto; try congruence.
-*)
+Proof.
+  apply make_comparable. introv.
+  destruct x; destruct y;
+    ((applys decidable_make false;
+    rewrite eqb_neq; auto; discriminate) ||
+    (applys decidable_make true;
+    rewrite eqb_self; auto; fail) ||
+    idtac).
+  destruct m; destruct m0.
+    applys decidable_make true.
+    rewrite* eqb_self.
 Qed.
 
 

@@ -70,6 +70,14 @@ Proof.
   rew_refl. subst~.
 Qed.
 
+Global Instance equal_pickable :
+  forall (A : Type) (a : A),
+  Pickable (eq a).
+Proof.
+  introv. applys pickable_make a.
+  intro. reflexivity.
+Qed.
+
 Global Instance binds_pickable : forall K V : Type,
   `{Comparable K} -> `{Inhab V} ->
   forall (h : heap K V) (v : K),
@@ -79,19 +87,6 @@ Proof.
   introv [a Ba].
   apply~ read_binds. applys @binds_indom Ba.
 Qed.
-
-Section Temporary.
-Definition B (h : heap nat nat) := binds h.
-Definition test (h : heap nat nat) (n : nat) := pick ((B h) n).
-
-Lemma t : forall (h : heap nat nat) (n : nat),
-  indom h n ->
-  binds h n (test h n).
-Proof.
-  introv I.
-  apply pick_spec. apply* @indom_binds.
-Qed.
-End Temporary.
 
 
 (**************************************************************)
@@ -143,9 +138,6 @@ Admitted.
 Global Instance prop_descriptor_inhab : Inhab prop_descriptor.
 Proof. apply (prove_Inhab prop_descriptor_undef). Qed.
 
-Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
-Admitted.
-
 Global Instance object_inhab : Inhab object.
 Proof.
   apply prove_Inhab. apply object_create; try apply arbitrary.
@@ -193,6 +185,69 @@ Admitted.
 Global Instance change_accessor_on_non_configurable_dec : forall oldpf newpf,
   Decidable (change_accessor_on_non_configurable oldpf newpf).
 Admitted.
+
+Lemma value_same_self : forall v,
+  value_same v v.
+Admitted.
+
+Lemma if_some_value_then_same_self : forall vo,
+  if_some_value_then_same vo vo.
+Proof.
+  introv. unfolds. unfolds. destruct vo.
+   apply value_same_self.
+   auto*.
+Qed.
+
+Lemma if_some_bool_then_same_self : forall bo,
+  if_some_bool_then_same bo bo.
+Proof.
+  introv. destruct bo.
+   simpls~.
+   simpls~.
+Qed.
+
+Lemma prop_attributes_contains_self : forall A,
+  prop_attributes_contains A A.
+Proof.
+  introv. destruct A. simpl.
+  splits; (apply if_some_value_then_same_self
+    || apply if_some_bool_then_same_self).
+Qed.
+
+Global Instance prop_attributes_comparable : Comparable prop_attributes.
+Proof.
+  apply make_comparable. introv.
+  applys decidable_make (decide (prop_attributes_contains x y /\ prop_attributes_contains y x)).
+  tests: (x = y).
+    rew_refl. rewrite eqb_self.
+     rewrite~ isTrue_true. apply prop_attributes_contains_self.
+    skip. (* TODO *)
+Qed.
+
+Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
+Proof.
+  apply make_comparable.
+  introv. destruct x; destruct y.
+    applys decidable_make true. rewrite~ eqb_self.
+    applys decidable_make false. rewrite~ eqb_neq. discriminate.
+    applys decidable_make false. rewrite~ eqb_neq. discriminate.
+    applys decidable_make (decide (p = p0)). rewrite decide_spec.
+     tests: (p = p0).
+      repeat rewrite~ eqb_self.
+      repeat rewrite~ eqb_neq. intro A. inverts~ A.
+Qed.
+
+Global Instance object_loc_comparable : Comparable object_loc.
+Admitted.
+
+Global Instance object_binds_pickable : forall S l,
+  Pickable (object_binds S l).
+Proof. typeclass. Qed.
+
+Global Instance env_record_binds_pickable : forall S L,
+  Pickable (env_record_binds S L).
+Proof. typeclass. Qed.
+
 
 (**************************************************************)
 (** ** Some types used by the interpreter *)
@@ -289,6 +344,9 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   | Some b => f b
   end.
 
+Definition extract_from_option {B : Type} `{Inhab B} :=
+  morph_option arbitrary id.
+
 Definition if_success (o : out_interp) (k : state -> ret -> out_interp) : out_interp :=
   match o with
   | out_interp_normal (out_ter S0 (res_normal re)) => k S0 re
@@ -343,17 +401,36 @@ Section LexicalEnvironments.
 Definition run_call_type : Type := (* Type of run_call *)
   state -> execution_ctx -> value -> list value -> value -> out_interp.
 
-Definition run_object_class S l : string :=
-  object_class_ (read (state_object_heap S) l).
 
 Definition run_object_proto S l : value :=
-  object_proto_ (read (state_object_heap S) l).
+  object_proto_ (pick (object_binds S l)).
 
-Definition run_object_properties S l : object_properties_type :=
-  object_properties_ (read (state_object_heap S) l).
+Definition run_object_class S l : string :=
+  object_class_ (pick (object_binds S l)).
 
 Definition run_object_extensible S l : bool :=
-  object_extensible_ (read (state_object_heap S) l).
+  object_extensible_ (pick (object_binds S l)).
+
+Definition run_object_prim_value S l : value :=
+  extract_from_option (object_prim_value_ (pick (object_binds S l))).
+
+Definition run_object_call S l : option function_code :=
+  object_call_ (pick (object_binds S l)).
+
+Definition run_object_formal_parameters S l : option (list string) :=
+  object_formal_parameters_ (pick (object_binds S l)).
+
+Definition run_object_properties S l : object_properties_type :=
+  object_properties_ (pick (object_binds S l)).
+
+Definition run_object_heap_set_properties S l P' : state :=
+  let O := pick (object_binds S l) in
+  object_write S l (object_with_properties O P').
+
+Definition run_object_heap_map_properties S l F : state :=
+  let O := pick (object_binds S l) in
+  object_write S l (object_map_properties O F).
+
 
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
@@ -363,12 +440,6 @@ Definition run_object_get_own_property_base P x : prop_descriptor :=
 
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
   run_object_get_own_property_base (run_object_properties S l) x.
-
-Definition run_object_prim_value S l : value :=
-  match object_prim_value_ (read (state_object_heap S) l) with
-  | Some v => v
-  | None => arbitrary
-  end.
 
 Definition run_object_get_own_property S l x : prop_descriptor :=
   let sclass := run_object_class S l in
@@ -573,7 +644,7 @@ Definition object_put S l x v (throw : bool) : out_interp :=
       else out_ter_interp S false).
 
 Definition env_record_set_mutable_binding S L x v (strict : bool) : out_interp :=
-  match read (state_env_record_heap S) L with
+  match pick (env_record_binds S L) with
   | env_record_decl D =>
     let (mu, v) := read D x in
     ifb mutability_is_mutable mu then
@@ -587,7 +658,7 @@ Definition env_record_set_mutable_binding S L x v (strict : bool) : out_interp :
 
 Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : out_interp :=
   let deletable := unsome_default false deletable_opt in
-  match read (state_env_record_heap S) L with
+  match pick (env_record_binds S L) with
   | env_record_decl D =>
     ifb decl_env_record_indom D x then out_interp_stuck
     else
@@ -643,7 +714,7 @@ Definition run_is_callable S v : option function_code :=
   match v with
   | value_prim w => None
   | value_object l =>
-    object_call_ (read (state_object_heap S) l)
+    run_object_call S l
   end.
 
 Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_interp :=

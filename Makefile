@@ -57,7 +57,7 @@ JS_SRC=\
 	coq/JsSafety.v \
 	coq/JsScopes.v \
 	coq/JsInterpreterProofs.v \
-	coq/JsInterpreterExample.v \
+	coq/JsInterpreterExtraction.v \
 	coq/JsProvePrograms.v \
 	coq/JsExtraction.v
 
@@ -96,18 +96,40 @@ init:
 #######################################################
 
 .v.vo : .depend
-	$(COQC) -I $(TLC) $<
+	$(COQC) -I coq -I $(TLC) $<
 
 
 
 #######################################################
 # INTERPRETER
 
-interpreter: JsInterpreter.vo Makefile
-	$(OCAMLOPT) -I . -c interpreter.mli
-	$(OCAMLOPT) -I . -c interpreter.ml
-	$(OCAMLOPT) -I . -o interpreter interpreter.cmx
+interp/src/interpreter.ml: coq/JsInterpreterExtraction.vo
 
+PARSER_INC=-I $(shell ocamlfind query xml-light) -I interp/src
+
+interp/src/parser_syntax.cmx: interp/parser/src/parser_syntax.ml
+	$(OCAMLOPT) -c -o $@ $<
+
+interp/src/pretty_print.cmx: interp/parser/src/pretty_print.ml
+	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
+
+interp/src/parser.cmx: interp/parser/src/parser.ml interp/src/parser_syntax.cmx
+	$(OCAMLOPT) $(PARSER_INC) -c -o $@ str.cmxa $<
+
+interp/src/parser_main.cmx: interp/parser/src/parser_main.ml interp/src/parser.cmx interp/src/pretty_print.cmx
+	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
+
+interp/src/interpreter.cmi: interp/src/interpreter.mli interp/src/parser_main.cmx
+	$(OCAMLOPT) -c -I interp/src -o interp/src/interpreter.cmi interp/src/interpreter.mli
+
+interp/src/interpreter.cmx: interp/src/interpreter.ml interp/src/interpreter.cmi interp/src/parser_main.cmx
+	$(OCAMLOPT) -c -I interp/src -o $@ $<
+
+interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/interpreter.cmx
+	$(OCAMLOPT) -c -I interp/src -o $@ $<
+
+interp/run_js: interp/src/run_js.ml interp/src/interpreter.cmx interp/src/translate_syntax.cmx
+	$(OCAMLOPT) -I interp/src -o $@ $<
 
 #######################################################
 # DEPENDENCIES
@@ -142,10 +164,3 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
-
-
-
-#######################################################
-# TEMP
-
-js/interpreter.ml: js/JsInterpreterExample.vo
