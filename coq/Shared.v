@@ -80,12 +80,12 @@ Qed.
 Axiom last_eq_last_inv : forall A a1 a2 (l1 l2:list A),
   l1 & a1 = l2 & a2 -> l1 = l2 /\ a1 = a2.
 
-Axiom case_last : forall A (l:list A), 
+Axiom case_last : forall A (l:list A),
   l = nil \/ exists x l', l = l' & x.
 
-Axiom Forall_last_inv : forall A (P:A->Prop) l x, 
+Axiom Forall_last_inv : forall A (P:A->Prop) l x,
   Forall P (l & x) ->
-  P x /\ Forall P l. 
+  P x /\ Forall P l.
 (* todo: change hypotheses in forall_last *)
 
 
@@ -114,9 +114,9 @@ Definition FixFun4Mod B {IB:Inhab B} (E:binary B)
 Definition FixFun4 B {IB:Inhab B} := FixFun4Mod eq.
 
 Lemma FixFun4_fix_partial : forall A1 A2 A3 A4 (R:binary (A1*A2*A3*A4)) (P:A1->A2->A3->A4->Prop)
-  B {IB:Inhab B} F (f:A1->A2->A3->A4->B), 
-  f = FixFun4 F -> wf R -> 
-  (forall x1 x2 x3 x4 f1 f2, P x1 x2 x3 x4 ->   
+  B {IB:Inhab B} F (f:A1->A2->A3->A4->B),
+  f = FixFun4 F -> wf R ->
+  (forall x1 x2 x3 x4 f1 f2, P x1 x2 x3 x4 ->
     (forall y1 y2 y3 y4, P y1 y2 y3 y4 -> R (y1,y2,y3,y4) (x1,x2,x3,x4) -> f1 y1 y2 y3 y4 = f2 y1 y2 y3 y4) ->
      F f1 x1 x2 x3 x4 = F f2 x1 x2 x3 x4) ->
   (forall x1 x2 x3 x4, P x1 x2 x3 x4 -> f x1 x2 x3 x4 = F f x1 x2 x3 x4).
@@ -168,12 +168,12 @@ Variables A B C D : Type.
 
 (** Similar to [Forall2] except that it relates four lists *)
 
-Inductive Forall4 (P : A -> B -> C -> D -> Prop) 
+Inductive Forall4 (P : A -> B -> C -> D -> Prop)
   : list A -> list B -> list C -> list D -> Prop :=
   | Forall4_nil :
       Forall4 P nil nil nil nil
-  | Forall4_cons : forall l1 l2 l3 l4 x1 x2 x3 x4, 
-      P x1 x2 x3 x4 -> Forall4 P l1 l2 l3 l4 -> 
+  | Forall4_cons : forall l1 l2 l3 l4 x1 x2 x3 x4,
+      P x1 x2 x3 x4 -> Forall4 P l1 l2 l3 l4 ->
       Forall4 P (x1::l1) (x2::l2) (x3::l3) (x4::l4).
 End LogicList.
 
@@ -189,7 +189,7 @@ Proof.
     apply Forall_nil.
     apply~ Forall_cons.
 Qed.
-  
+
 Lemma Forall4_trans : forall P Q : A -> B -> C -> D -> Prop,
   (forall a b c d, P a b c d -> Q a b c d) ->
   forall la lb lc ld, Forall4 P la lb lc ld ->
@@ -200,7 +200,7 @@ Proof.
     apply Forall4_nil.
     apply~ Forall4_cons.
 Qed.
-  
+
 Lemma Forall3_trans : forall P Q : A -> B -> C -> Prop,
   (forall a b c, P a b c -> Q a b c) ->
   forall la lb lc, Forall3 P la lb lc->
@@ -281,14 +281,14 @@ End ListProp.
 
 Ltac case_if_on_tactic_core E Eq ::=
   match E with
-  | @decide ?P ?M => 
+  | @decide ?P ?M =>
       let Q := fresh in let Eq := fresh in
-      forwards (Q&Eq): (@Decidable_dec P M); 
-      rewrite Eq in *; clear Eq; destruct Q 
+      forwards (Q&Eq): (@Decidable_dec P M);
+      rewrite Eq in *; clear Eq; destruct Q
   | _ =>
     match type of E with
     | {_}+{_} => destruct E as [Eq|Eq]; try subst_hyp Eq
-    | _ => let X := fresh in 
+    | _ => let X := fresh in
            sets_eq <- X Eq: E;
            destruct X
     end

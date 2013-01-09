@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 Require Import LibLogic LibHeap.
-Require Export JsSyntax. 
+Require Export Syntax.
 Implicit Type l : object_loc.
 
 
@@ -21,39 +21,39 @@ Definition object_create vproto sclass bextens P :=
      object_scope_ := None;
      object_formal_parameters_ := None;
      object_code_ := None;
-     object_target_function_ := None; 
-     object_bound_this_ := None; 
-     object_bound_args_ := None; 
+     object_target_function_ := None;
+     object_bound_this_ := None;
+     object_bound_args_ := None;
      object_parameter_map_ := None |}.
 
 (** Modifies the property field of an object. *)
 
 Definition object_with_properties O properties :=
-  match O with 
+  match O with
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 properties x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15  
+    object_intro x1 x2 x3 properties x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
   end.
 
 (** Modifies the primitive value field of an object *)
 
 Definition object_with_primitive_value O v :=
-  match O with 
+  match O with
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 (Some v) x6 x7 x8 x9 x10 x11 x12 x13 x14 x15  
+    object_intro x1 x2 x3 x4 (Some v) x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
   end.
 
 (** Modifies the construct, call and has_instance fields of an object *)
 (* TODO: These should be reductions *)
 Definition object_with_invokation O constr call has_instance :=
-  match O with 
+  match O with
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 x5 constr call has_instance x9 x10 x11 x12 x13 x14 x15  
+    object_intro x1 x2 x3 x4 x5 constr call has_instance x9 x10 x11 x12 x13 x14 x15
   end.
 
 (** Modifies the other parameters of an object *)
 
 Definition object_with_details O scope params code target boundthis boundargs paramsmap :=
-  match O with 
+  match O with
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
     object_intro x1 x2 x3 x4 x5 x6 x7 x8 scope params code target boundthis boundargs paramsmap
   end.
@@ -209,10 +209,10 @@ Qed.
 (** ** Type [ref] *)
 
 Global Instance ref_inhab : Inhab ref.
-Proof. 
+Proof.
   (* apply (prove_Inhab (reference_intro )).
   ---TODO
-  *) skip. 
+  *) skip.
 Qed.
 
 
@@ -266,113 +266,14 @@ Qed.
 
 
 (**************************************************************)
-(** ** TODO:  To be moved on Preliminary once defined. *)
-
-Global Instance if_some_then_same_dec : forall (A : Type) F (x y : option A),
-  (forall u v : A, Decidable (F u v)) ->
-  Decidable (if_some_then_same F x y).
-Proof.
-  introv D.
-  destruct x; destruct y; simpls~; typeclass.
-Qed.
-
-Global Instance some_compare_dec : forall (A : Type) F (x y : option A),
-  (forall u v : A, Decidable (F u v)) ->
-  Decidable (some_compare F x y).
-Proof.
-  introv D.
-  destruct x; destruct y; simpls~; typeclass.
-Qed.
-
-Global Instance value_same_dec : forall v1 v2,
-  Decidable (value_same v1 v2).
-Proof.
-  introv. unfolds value_same.
-  sets_eq T1 E1: (type_of v1). sets_eq T2 E2: (type_of v2).
-  apply If_dec; try typeclass.
-  destruct T1; try typeclass.
-  repeat apply If_dec; try typeclass.
-Qed.
-
-Global Instance prop_attributes_contains_dec : forall oldpf newpf,
-  Decidable (prop_attributes_contains oldpf newpf).
-Proof.
-  introv. destruct oldpf. destruct newpf. simpl.
-  repeat apply and_decidable; typeclass.
-Qed.
-
-Lemma value_same_self : forall v,
-  value_same v v.
-Proof.
-  introv. unfolds value_same. sets_eq T E: (type_of v).
-  cases_if; tryfalse. destruct~ T.
-  repeat cases_if~.
-   skip. (* Where is the lemma stating that zero <> neg_zero in JsNumber? *)
-   skip.
-Qed.
-
-Lemma if_some_value_then_same_self : forall vo,
-  if_some_value_then_same vo vo.
-Proof.
-  introv. unfolds. unfolds. destruct~ vo.
-   apply value_same_self.
-Qed.
-
-Lemma if_some_bool_then_same_self : forall bo,
-  if_some_bool_then_same bo bo.
-Proof.
-  introv. destruct bo; simpls~.
-Qed.
-
-Lemma prop_attributes_contains_self : forall A,
-  prop_attributes_contains A A.
-Proof.
-  introv. destruct A. simpl.
-  splits; (apply if_some_value_then_same_self
-    || apply if_some_bool_then_same_self).
-Qed.
-
-
-(**************************************************************)
 (** ** Type [prop_attributes] *)
 
-(** Boolean comparison *)
-
-Definition prop_attributes_compare A1 A2 :=
-  decide (prop_attributes_contains A1 A2 /\ prop_attributes_contains A2 A1).
-
-(** Decidable comparison *)
-
-Global Instance prop_attributes_comparable : Comparable prop_attributes.
-Proof.
-  applys (comparable_beq prop_attributes_compare). intros x y.
-  skip. (* TODO:  The magical tactic here does not work as it requires to destruct all option types in the context before doing all those congruence stuff. *)
-Qed.
-
+(* Done in PreliminaryAux *)
 
 (**************************************************************)
 (** ** Type [prop_descriptor] *)
 
-(** Inhabitants **)
-
-Global Instance prop_descriptor_inhab : Inhab prop_descriptor.
-Proof. apply (prove_Inhab prop_descriptor_undef). Qed.
-
-(** Boolean comparison *)
-
-Definition prop_descriptor_compare An1 An2 :=
-  match An1, An2 with
-  | prop_descriptor_undef, prop_descriptor_undef => true
-  | prop_descriptor_some A1, prop_descriptor_some A2 => decide (A1 = A2)
-  | _, _ => false
-  end.
-
-Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
-Proof.
-  applys (comparable_beq prop_descriptor_compare). intros x y.
-  destruct x; destruct y; simpl; rew_refl; iff;
-   tryfalse; auto; try congruence.
-Qed.
+(* Done in PreliminaryAux *)
 
 
 (**************************************************************)

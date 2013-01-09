@@ -47,7 +47,7 @@ Lemma binds_cases_demo_3 : forall h l l' f f' v v' v'',
 Proof. introv N H. binds_cases H. Admitted.
 
 Lemma binds_cases_demo_4 : forall h l f f' f'' v v' v'' l',
-  f' <> f -> binds (write_fields h l' ((f',v')::(f'',v'')::nil)) l f v -> True. 
+  f' <> f -> binds (write_fields h l' ((f',v')::(f'',v'')::nil)) l f v -> True.
 Proof. introv N H. binds_cases H. skip. skip. Admitted.
 
 

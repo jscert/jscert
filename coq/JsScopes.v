@@ -11,7 +11,7 @@ Hint Constructors proto.
 
 Lemma protochain_proto : forall h s l,
   protochain h l ->
-  ok_heap h -> 
+  ok_heap h ->
   exists l', proto h s l l'.
 Proof.
   introv P O. induction P.
@@ -21,7 +21,7 @@ Proof.
     forwards (l''&IH''): IHP. exists* l''.
 Qed.
 
-Lemma proto_defined : forall h s l, 
+Lemma proto_defined : forall h s l,
   bound h l ->
   ok_heap h ->
   exists l', proto h s l l'.
@@ -31,12 +31,12 @@ Proof.
 Qed.
 
 Lemma proto_func : forall h f l l1 l2,
-  proto h f l l1 -> 
+  proto h f l l1 ->
   proto h f l l2 ->
   ok_heap h ->
   l1 = l2.
 Proof.
-  introv P1. induction P1; introv P2 O; inverts P2. 
+  introv P1. induction P1; introv P2 O; inverts P2.
   auto.
   auto.
   false* ok_heap_null.

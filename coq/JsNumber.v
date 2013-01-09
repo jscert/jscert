@@ -6,14 +6,14 @@ Require Flocq.Appli.Fappli_IEEE Flocq.Appli.Fappli_IEEE_bits.
 (**************************************************************)
 (** ** Type for number (IEEE floats) *)
 
-Definition number : Type := 
+Definition number : Type :=
   Fappli_IEEE_bits.binary64.
 
 
 (**************************************************************)
 (** ** Conversions on numbers *)
 
-Definition of_int : int -> number := 
+Definition of_int : int -> number :=
   Fappli_IEEE_bits.b64_of_bits.
 
 (* TODO: implement definitions *)

@@ -12,7 +12,7 @@ Implicit Types h : heap.
 Definition has_some_proto h l :=
   indom h l field_proto.
 
-(** [has_null_proto h l] asssert that [l] has a null 
+(** [has_null_proto h l] asssert that [l] has a null
     prototype field in [h]. *)
 
 Definition has_null_proto h l :=
@@ -22,19 +22,19 @@ Definition has_null_proto h l :=
     prototype chain in [h] starting from object [l] *)
 
 Inductive protochain h : loc -> Prop :=
-  | protochain_end : 
-     protochain h loc_null 
-  | protochain_step : forall l l',  
+  | protochain_end :
+     protochain h loc_null
+  | protochain_step : forall l l',
      binds h l field_proto (value_loc l') ->
      protochain h l' ->
      protochain h l.
 
-(** [ok_scope h s] asserts that the scope [s] contains 
-    only valid objects and that the scope is loc_scope-terminated. 
+(** [ok_scope h s] asserts that the scope [s] contains
+    only valid objects and that the scope is loc_scope-terminated.
     (this predicate is called "schain" in the paper *)
 
-Inductive ok_scope h : scope -> Prop := 
-  | ok_scope_end : 
+Inductive ok_scope h : scope -> Prop :=
+  | ok_scope_end :
      ok_scope h (loc_scope::nil)
   | ok_scope_cons : forall l s,
      ok_scope h s ->
@@ -62,14 +62,14 @@ Inductive ok_value (h:heap) : value -> Prop :=
 Definition ok_heap_protochain_def h := forall l f v,
   binds h l f v -> protochain h l.
 
-(** (2) if the heap contains a reference (l, f)  
-        (except field_scope and field_body), then this 
-        reference must contains either a basic value 
+(** (2) if the heap contains a reference (l, f)
+        (except field_scope and field_body), then this
+        reference must contains either a basic value
         or a location with a valid prototype *)
 
 Definition ok_heap_ok_value_def h := forall l f v,
-  binds h l f v ->   
-  not_scope_or_body f ->  
+  binds h l f v ->
+  not_scope_or_body f ->
   ok_value h v.
 
 (** (3) if [(l,@this)] is bound to a value [v], then [v] must be a
@@ -77,13 +77,13 @@ Definition ok_heap_ok_value_def h := forall l f v,
         the proto field of [l] must be [null] *)
 
 Definition ok_heap_this_def h := forall l v,
-  binds h l field_this v -> 
+  binds h l field_this v ->
   exists l',
     v = value_loc l' /\
     has_null_proto h l /\
     has_some_proto h l'.
 
-(** (4) if [(l,@scope)] or [(l,@body)] is bound to a value [v], 
+(** (4) if [(l,@scope)] or [(l,@body)] is bound to a value [v],
         then [(l,@scope)] must contain a valid scope, and
         [(l,@body)] must contain some body, and the user field
         named "prototype" must contain a location that has a
@@ -119,7 +119,7 @@ Definition ok_heap_null_def h := forall f v,
 Record ok_heap h := {
   ok_heap_protochain : ok_heap_protochain_def h;
   ok_heap_ok_value : ok_heap_ok_value_def h;
-  ok_heap_this : ok_heap_this_def h; 
+  ok_heap_this : ok_heap_this_def h;
   ok_heap_function : ok_heap_function_def h;
   ok_heap_null : ok_heap_null_def h;
   ok_heap_special : ok_heap_special_def h }.
@@ -135,7 +135,7 @@ Inductive ok_ret_expr (h:heap) : ret_expr -> Prop :=
       (l = loc_null \/ has_some_proto h l) ->
       ok_ret_expr h (ret_expr_ref (Ref l (field_normal x))).
 
-(** [extends_proto h h'] states that if [l] has a prototype 
+(** [extends_proto h h'] states that if [l] has a prototype
     in [h] then it also has a prototype in [h']. *)
 
 Definition extends_proto (h h' : heap) :=

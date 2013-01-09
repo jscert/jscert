@@ -5,8 +5,8 @@ Definition inverse_worker {A B} (f : A -> B) (f' : B -> A) :=
   forall x, f'(f(x)) = x.
 
 Inductive inverse {A B} (f : A -> B) (f' : B -> A) : Prop :=
-  | inverse_intro : 
-    inverse_worker f f' -> 
+  | inverse_intro :
+    inverse_worker f f' ->
     inverse_worker f' f ->
     inverse f f'.
 
@@ -45,15 +45,15 @@ Definition value_subst (v : value) : value :=
 End LocSubstitution.
 
 Inductive heap_subst (f : loc_normal_subst) (H H' : heap) : Prop :=
-  | heap_subst_intro : (forall l x v, 
+  | heap_subst_intro : (forall l x v,
     binds H l x v ->
     binds H' (loc_subst f l) x (value_subst f v)) ->
     heap_subst f H H'.
 
-Inductive heap_related 
-  (f f' : loc_normal_subst) 
+Inductive heap_related
+  (f f' : loc_normal_subst)
   (H H' : heap) : Prop :=
-  | heap_related_intro : 
+  | heap_related_intro :
     inverse f f' ->
     heap_subst f H H' -> heap_subst f' H' H -> heap_related f f' H H'.
 
@@ -99,10 +99,10 @@ Proof.
   trivial.
 Qed.
 
-Lemma subst_write : 
+Lemma subst_write :
   injective f ->
-  forall l x v, heap_subst f 
-    (write h l x v) 
+  forall l x v, heap_subst f
+    (write h l x v)
     (write h' (loc_subst f l) x (value_subst f v)).
 Proof.
   intros.
@@ -125,7 +125,7 @@ Proof.
   trivial.
 Qed.
 
-Lemma subst_rem : 
+Lemma subst_rem :
   injective f ->
   forall l x, heap_subst f
     (rem h l x)
@@ -198,5 +198,5 @@ Proof.
   apply* subst_read.
 Qed.
 
-End HeapRelatedLemmas. 
+End HeapRelatedLemmas.
 

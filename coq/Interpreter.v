@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix.
-Require Import JsSemanticsDefs. (* JsSemanticsAux *)
+Require Import Syntax SyntaxAux Preliminary PreliminaryAux.
 
 
 (**************************************************************)
@@ -416,7 +416,7 @@ Definition ref_get_value S (re : ret) : out_interp :=
       end
     end
   end.
-  
+
 Definition if_success_value (o : out_interp) (k : state -> value -> out_interp) : out_interp :=
   if_success o (fun S1 re1 =>
     if_success (ref_get_value S1 re1) (fun S2 re2 =>
