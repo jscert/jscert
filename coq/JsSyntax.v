@@ -9,6 +9,7 @@ Require JsNumber.
 Notation "'number'" := (JsNumber.number).
 
 
+
 (************************************************************)
 (************************************************************)
 (************************************************************)
@@ -70,9 +71,17 @@ Inductive literal :=
 
 (** Labels used by break and continue keywords *)
 
-Definition loop_label := string.
+Definition label := string.
 
-(* TODO: define a type loop_label_opt for option loop_label *)
+(** An optional label:
+    [None] refers to "the empty label", and [Some s] 
+    refers to a user label with string [s]. *)
+
+Definition label_opt := option label.
+
+(** A set of label, possibly including the empty label. *)
+
+Definition label_set := set label_opt.
 
 (** Strictness flag *)
 
@@ -109,21 +118,22 @@ Inductive expr :=
 
 with stat :=
 (* -->TODO: var x,y;  is it equivalent to var x; var y ? *)
+  (* TODO | stat_label : label -> expr -> stat *)
   | stat_expr : expr -> stat
   | stat_seq : stat -> stat -> stat
   | stat_var_decl : string -> option expr -> stat
   | stat_if : expr -> stat -> option stat -> stat
-  | stat_while : (* TODO: option loop_label -> *) expr -> stat -> stat
+  | stat_while : (* TODO: label_set -> *) expr -> stat -> stat
   | stat_with : expr -> stat -> stat
   | stat_throw : expr -> stat
   | stat_return : option expr -> stat
-  | stat_break : (* TODO: option loop_label -> *) stat
-  | stat_continue : (* TODO: option loop_label -> *) stat
+  | stat_break : (* TODO: label_opt -> *) stat
+  | stat_continue : (* TODO: label_opt -> *) stat
   | stat_try : stat -> option (string * stat) -> option stat -> stat
                (* try s1 [catch (x) s2] [finally s3] *)
   | stat_skip (* for semi-column *)
-  | stat_for_in : expr -> expr -> stat -> stat (* for (e1 in e2) stat *)
-  | stat_for_in_var : string -> option expr -> expr -> stat -> stat (* for (var x [= e1] in e2) stat *)
+  | stat_for_in : (* TODO: label_set -> *) expr -> expr -> stat -> stat (* for (e1 in e2) stat *)
+  | stat_for_in_var : (* TODO: label_set -> *) string -> option expr -> expr -> stat -> stat (* for (var x [= e1] in e2) stat *)
   (* todo: factorize the two *)
 (* TODO: missing do_while and for *)
 (* TODO: missing switch *)
@@ -475,22 +485,48 @@ Record state := state_intro {
 (****************************************************************)
 (** ** Definition of outcomes *)
 
-(** Normal return value of an expression *)
+(** Description of the normal result of an expression: 
+    a value or a reference *)
 
 Inductive ret :=
   | ret_value : value -> ret
   | ret_ref : ref -> ret.
 
-(** Result of an evaluation *)
+(** Possibly empty normal result *)
+
+Inductive ret_or_empty := 
+  | ret_or_empty_empty : ret_or_empty
+  | ret_or_empty_ret : ret -> ret_or_empty.
+
+Coercion ret_or_empty_ret : ret >-> ret_or_empty.
+
+(** Result of an evaluation:
+
+    In the specification, these are triples of the form
+    (type,value,label), where 
+    type is normal or return or break or continue or throw,
+    value is empty or a javascript value,
+    label is empty or a label.
+
+    We represent results as follows:
+    - (normal,empty,empty) as [res_normal ret_or_empty_empty] 
+    - (normal,value,empty) as [res_normal (ret_or_empty_ret value)] 
+    - (break,empty,labelopt) as [res_break labelopt] 
+    - (continue,empty,labelopt) as [res_continue labelopt] 
+    - (return,empty,empty) as [res_return None] 
+    - (return,value,empty) as [res_return (Some value)] 
+    - (throw,value,empty) as [res_throw value] 
+    
+    Other combinations are not used in the specification. *)
 
 Inductive res :=
-  | res_normal : ret -> res
-  | res_break : option loop_label -> res
-  | res_continue : option loop_label -> res
-  | res_return : ret -> res (* todo : is it value -> res *)
+  | res_normal : ret_or_empty -> res
+  | res_break : label_opt -> res
+  | res_continue : label_opt -> res
+  | res_return : value -> res
   | res_throw : value -> res.
 
-(** Outcome of an evaluation *)
+(** Outcome of an evaluation: divergence or termination *)
 
 Inductive out :=
   | out_div : out
@@ -500,7 +536,6 @@ Inductive out :=
 
 Coercion ret_value : value >-> ret.
 Coercion ret_ref : ref >-> ret.
-Coercion res_normal : ret >-> res.
+Coercion res_normal : ret_or_empty >-> res.
 
-(* <informal> Implicit Type o : out_*  *)
 

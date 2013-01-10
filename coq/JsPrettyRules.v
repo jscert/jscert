@@ -272,6 +272,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps o1) o ->
       red_stat S0 C (stat_for_in_7 e1 t l vret lhdRef initProps visitedProps (out_void S)) o
 
+(*-- todo: make compile following introduction of ret_or_empty (see JsSyntax) 
+
   | red_stat_for_in_6e : forall S0 S C e1 t l vret lhdRef initProps visitedProps res o,
       let vnew := match res with
         | res_normal R => Some R
@@ -294,7 +296,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       ~ (is_res_break res) /\ ((is_res_continue res) \/ (is_res_normal res)) ->
       red_stat S C (stat_for_in_4 e1 t l vret lhdRef initProps visitedProps) o ->
       red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) o  
- 
+
+-- end todo *) 
+
 (**------ end under dvpt --------*)
 
   (** With statement *)
