@@ -273,8 +273,12 @@ Inductive ext_expr :=
   | spec_call_builtin : builtin -> list value -> ext_expr
   
   | spec_call_prog : prog -> value -> list value -> ext_expr
-
-  | spec_builtin_object_new : option value -> ext_expr
+  
+  | spec_constructor : function_code -> list value -> ext_expr
+  
+  | spec_constructor_builtin : builtin -> list value -> ext_expr
+  
+  | spec_constructor_prog : prog -> list value -> ext_expr
 
 
 (** Grammar of extended statements *)

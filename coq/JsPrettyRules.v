@@ -1924,7 +1924,7 @@ END OF TO CLEAN----*)
       red_expr S C (spec_creating_function_object names fc X strict) o
      
   | red_expr_creating_function_object_1 : forall o1 S0 S C strict l b o, 
-      red_expr S C (spec_builtin_object_new None) o1 ->
+      red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
       red_expr S C (spec_creating_function_object_2 strict l o1) o ->
       red_expr S0 C (spec_creating_function_object_1 strict l (out_ter S b)) o
     
@@ -1967,6 +1967,14 @@ END OF TO CLEAN----*)
   | red_expr_spec_call_prog: forall S C p this args o,
       red_expr S C (spec_call_prog p this args) o -> 
       red_expr S C (spec_call (function_code_code p) (Some this) args) o
+      
+  | red_expr_spec_constructor_builtin: forall S C builtinid args o,
+      red_expr S C (spec_constructor_builtin builtinid args) o -> 
+      red_expr S C (spec_constructor (function_code_builtin builtinid) args) o
+      
+  | red_expr_spec_constructor_prog: forall S C p args o,
+      red_expr S C (spec_constructor_prog p args) o -> 
+      red_expr S C (spec_constructor (function_code_code p) args) o
 .
 
 (* TODO: spec_object_put_special *)
