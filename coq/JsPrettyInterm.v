@@ -231,8 +231,8 @@ Inductive ext_expr :=
   (** Extended expressions for function calls *)
 
   (* TODO: the definitions below will change *)
-  | spec_execution_ctx_function_call : function_code -> value -> list value -> ext_expr
-  | spec_execution_ctx_function_call_1 : function_code -> list value -> out -> ext_expr
+  | spec_execution_ctx_function_call : object_loc -> value -> list value -> ext_expr
+  | spec_execution_ctx_function_call_1 : object_loc -> list value -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation : option object_loc -> function_code -> list value -> ext_expr
   | spec_execution_ctx_binding_instantiation_1 : option object_loc -> function_code -> list value -> env_loc -> ext_expr
   | spec_execution_ctx_binding_instantiation_2 : object_loc -> function_code -> list value -> env_loc -> list string -> ext_expr

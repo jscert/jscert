@@ -1756,6 +1756,7 @@ END OF TO CLEAN----*)
   (** Function call --- TODO: check this section*)
 
   | red_expr_execution_ctx_function_call_direct : forall strict newthis S C func this args o,
+      (* TODO: set strict according to function code *)
       (If (strict = true) then newthis = this
       else If this = null \/ this = undef then newthis = builtin_global
       else If type_of this = type_object then newthis = this
@@ -1765,18 +1766,22 @@ END OF TO CLEAN----*)
       red_expr S C (spec_execution_ctx_function_call func this args) o
 
   | red_expr_execution_ctx_function_call_convert : forall strict o1 S C func this args o,
+      (* TODO: set strict according to function code *)
       (~ (strict = true) /\ this <> null /\ this <> undef /\ type_of this <> type_object) ->
       red_expr S C (spec_to_object this) o1 ->
       red_expr S C (spec_execution_ctx_function_call_1 func args o1) o ->
       red_expr S C (spec_execution_ctx_function_call func this args) o
 
-  (*| red_expr_execution_ctx_function_call_1 : forall h' lex' c' strict' S0 C func args S this o,
-      (lex',h') = lexical_env_alloc_decl S (function_scope func) ->
-      strict' = (function_code_is_strict (function_code func) || execution_ctx_strict C) ->
+  | red_expr_execution_ctx_function_call_1 : forall scope fc S' lex' C' strict' S0 C func args S this o,
+      object_scope S func (Some scope) ->
+      object_call S func (Some fc) ->
+      (lex', S') = lexical_env_alloc_decl S scope ->
+      (* TODO: Do we want to take the old execution context's strict value? *)
+      strict' = (* TODO: set strict according to function code (function_code_is_strict (function_code func) ||*) execution_ctx_strict C ->
         (* todo this line may change; note that in the spec this is in done in binding instantiation *)
-      c' = execution_ctx_intro_same lex' this strict' ->
-      red_expr h' c' (spec_execution_ctx_binding_instantiation func (function_code func) args) o ->
-      red_expr S0 C (spec_execution_ctx_function_call_1 func args (out_ter S this)) o *)
+      C' = execution_ctx_intro_same lex' this strict' ->
+      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) fc args) o ->
+      red_expr S0 C (spec_execution_ctx_function_call_1 func args (out_ter S this)) o 
 
   (** Binding instantiation --- TODO: check this section *)
 
