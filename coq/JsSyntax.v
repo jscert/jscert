@@ -451,7 +451,7 @@ Record object := object_intro {
    object_has_instance_ : bool; (* indicates whether the object has an has_instance method *)
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
-   object_code_ : option string;
+   object_code_ : option function_code;
    object_target_function_ : option object_loc;
    object_bound_this_ : option value;
    object_bound_args_ : option (list value);
