@@ -260,7 +260,7 @@ Inductive ext_expr :=
 
   (* Function creation *)
 
-  | spec_creating_function_object : list string -> function_code -> lexical_env -> strictness_flag -> ext_expr
+  | spec_creating_function_object : list string -> string -> function_code -> lexical_env -> strictness_flag -> ext_expr
   | spec_creating_function_object_1 : strictness_flag -> object_loc -> out -> ext_expr
   | spec_creating_function_object_2 : strictness_flag -> object_loc -> out -> ext_expr
   | spec_creating_function_object_3 : strictness_flag -> object_loc -> object_loc -> out -> ext_expr

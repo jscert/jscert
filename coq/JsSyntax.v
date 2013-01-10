@@ -148,7 +148,6 @@ with stat :=
 with prog :=
   | prog_stat : stat -> prog
   | prog_seq : prog -> prog -> prog
-  (* TODO: use function_declaration type *)
   | prog_function_decl : string -> list string -> prog -> prog.
   (* TODO:  Add prog_use_strict : prog -> prog. *)
 
@@ -161,7 +160,8 @@ Coercion prog_stat : stat >-> prog.
 Record function_declaration := function_declaration_intro {
    fd_name : string;
    fd_parameters : list string;
-   fd_code : prog }.
+   fd_code : prog;
+   fd_string : string }.
 
 (* TODO *)
 Parameter function_body_is_strict : prog -> bool.
@@ -451,7 +451,7 @@ Record object := object_intro {
    object_has_instance_ : bool; (* indicates whether the object has an has_instance method *)
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
-   object_code_ : option function_code;
+   object_code_ : option string;
    object_target_function_ : option object_loc;
    object_bound_this_ : option value;
    object_bound_args_ : option (list value);

@@ -1817,7 +1817,7 @@ END OF TO CLEAN----*)
       red_expr S0 C (spec_execution_ctx_binding_instantiation_3 K func code args L argname names v (out_ter S false)) o
 
   | red_expr_execution_ctx_binding_instantiation_function_names_set : forall o1 S S0 C K func code args L argname names v o,  (* Step 4d v *)
-      red_expr S C (spec_env_record_set_mutable_binding L argname v (function_code_strict code)) o1 ->
+      red_expr S C (spec_env_record_set_mutable_binding L argname v (execution_ctx_strict C)) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_5 K func code args L names o1) o ->
       red_expr S0 C (spec_execution_ctx_binding_instantiation_4 K func code args L argname names v (out_void S)) o
 
@@ -1840,9 +1840,10 @@ END OF TO CLEAN----*)
 
   | red_expr_execution_ctx_binding_instantiation_function_decls_cons : forall o1 L S0 S C K func code args fd fds o, (* Step 5b *)
       let p := fd_code fd in
-      let strict := (function_code_strict code) || (function_body_is_strict p) in
+      let strict := (execution_ctx_strict C) || (function_body_is_strict p) in
       let f_code := function_code_code (fd_code fd) in
-      red_expr S C (spec_creating_function_object (fd_parameters fd) (f_code) (execution_ctx_variable_env C) strict) o1 ->
+      let f_string := fd_string fd in
+      red_expr S C (spec_creating_function_object (fd_parameters fd) f_string f_code (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_8 K func code args L fd fds strict o1) o ->
       red_expr S0 C (spec_execution_ctx_binding_instantiation_7 K func code args L (fd::fds) (out_void S)) o
 
@@ -1905,23 +1906,24 @@ END OF TO CLEAN----*)
       red_expr S0 C (spec_execution_ctx_binding_instantiation_14 K func code args L vd vds (out_ter S true)) o
 
   | red_expr_execution_ctx_binding_instantiation_8c_false : forall o1 L S0 S C K func code args vd vds o, (* Step 8c *)
-      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some false) undef (function_code_strict code)) o1 ->
+      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some false) undef (execution_ctx_strict C)) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_13 K func code args L vds o1) o ->
       red_expr S0 C (spec_execution_ctx_binding_instantiation_14 K func code args L vd vds (out_ter S false)) o
 
   | red_expr_execution_ctx_binding_instantiation_8_nil : forall o1 L S0 S C K func code args o, (* Step 8 *)
       red_expr S0 C (spec_execution_ctx_binding_instantiation_13 K func code args L nil (out_void S)) (out_void S)
   
-  | red_expr_creating_function_object : forall l S' o1 S C names fc X strict o,
+  | red_expr_creating_function_object : forall l S' o1 S C names fb fc X strict o,
       (* TODO: formalize Function prototype object as in 15.3.3.1 *)
       let O := object_create builtin_function_proto "Function" true Heap.empty in
-      let O1 := object_with_details O (Some X) (Some names) (Some fc) None None None None in
+      let O1 := object_with_details O (Some X) (Some names) (Some fb) None None None None in
+      (* TODO : set [[Call]] *)
       (* TODO: create internals for [[Get]] [[Call]] [[Construct]] [[HasInstance]] *)
       (l, S') = object_alloc S O1 ->
       let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
       red_expr S' C (spec_creating_function_object_1 strict l o1) o ->
-      red_expr S C (spec_creating_function_object names fc X strict) o
+      red_expr S C (spec_creating_function_object names fb fc X strict) o
      
   | red_expr_creating_function_object_1 : forall o1 S0 S C strict l b o, 
       red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
