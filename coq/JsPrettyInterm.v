@@ -6,6 +6,7 @@ Require Export JsSyntax JsSyntaxAux JsPreliminary.
 
 Implicit Type b : bool.
 Implicit Type n : number.
+Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l : object_loc.
@@ -95,7 +96,7 @@ Inductive ext_expr :=
   | expr_shift_op_1 : (int -> int -> int) -> value -> int -> ext_expr
   | expr_shift_op_2 : (int -> int -> int) -> int -> int -> ext_expr
   | expr_inequality_op_1 : bool -> bool -> value -> value -> ext_expr
-  | expr_inequality_op_2 : bool -> bool -> prim -> prim -> ext_expr
+  | expr_inequality_op_2 : bool -> bool -> value -> value -> ext_expr
   | expr_binary_op_in_1 : object_loc -> out -> ext_expr
   | expr_binary_op_strict_disequal_1 : out -> ext_expr
   | spec_equal : value -> value -> ext_expr
@@ -104,6 +105,7 @@ Inductive ext_expr :=
   | spec_equal_3 : value -> (value -> ext_expr) -> value -> ext_expr
   | spec_equal_4 : value -> out -> ext_expr
   | expr_bitwise_op_1 : (int -> int -> int) -> value -> int -> ext_expr
+  | expr_bitwise_op_2 : (int -> int -> int) -> int -> int -> ext_expr
   | expr_lazy_op_1 : bool -> out -> expr -> ext_expr
   | expr_lazy_op_2 : bool -> value -> out -> expr -> ext_expr
 
