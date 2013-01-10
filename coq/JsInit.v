@@ -84,14 +84,14 @@ Definition object_create_builtin_common length P :=
 
 Definition object_create_builtin_function builtin_call length P :=
   let O := object_create_builtin_common length P in
-  object_with_invokation O None (Some builtin_call) None.
+  object_with_invokation O None (Some builtin_call) false.
 
 (** Builds a native constructor object, with a Call method and
     a Construct method implemented by builtin code. *)
 
 Definition object_create_builtin_constructor builtin_call builtin_construct length P :=
   let O := object_create_builtin_common length P in
-  object_with_invokation O (Some builtin_construct) (Some builtin_call) None.
+  object_with_invokation O (Some builtin_construct) (Some builtin_call) false.
 
 (** Shorthand to extend a heap with a native method *)
 

@@ -261,12 +261,18 @@ Inductive ext_expr :=
   (* Function creation *)
 
   | spec_creating_function_object : list string -> function_code -> lexical_env -> strictness_flag -> ext_expr
-  | spec_creating_function_object_1 : list string -> function_code -> lexical_env -> strictness_flag -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_2 : list string -> function_code -> lexical_env -> strictness_flag -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_3 : list string -> function_code -> lexical_env -> strictness_flag -> object_loc -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_4 : list string -> function_code -> lexical_env -> strictness_flag -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_5 : list string -> function_code -> lexical_env -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_6 : list string -> function_code -> lexical_env -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_1 : strictness_flag -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_2 : strictness_flag -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_3 : strictness_flag -> object_loc -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_4 : strictness_flag -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_5 : object_loc -> out -> ext_expr
+  | spec_creating_function_object_6 : object_loc -> out -> ext_expr
+  
+  | spec_call : function_code -> option value -> list value -> ext_expr
+  
+  | spec_call_builtin : builtin -> list value -> ext_expr
+  
+  | spec_call_prog : prog -> value -> list value -> ext_expr
 
   | spec_builtin_object_new : option value -> ext_expr
 
