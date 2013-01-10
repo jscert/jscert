@@ -266,6 +266,12 @@ Inductive ext_expr :=
   | spec_creating_function_object_4 : strictness_flag -> object_loc -> out -> ext_expr
   | spec_creating_function_object_5 : object_loc -> out -> ext_expr
   | spec_creating_function_object_6 : object_loc -> out -> ext_expr
+  
+  | spec_call : function_code -> option value -> list value -> ext_expr
+  
+  | spec_call_builtin : builtin -> list value -> ext_expr
+  
+  | spec_call_prog : prog -> value -> list value -> ext_expr
 
   | spec_builtin_object_new : option value -> ext_expr
 
