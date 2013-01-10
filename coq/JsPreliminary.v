@@ -13,6 +13,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
+Implicit Type B : builtin.
 Implicit Type T : type.
 
 Implicit Type x : prop_name.
@@ -265,12 +266,19 @@ Definition object_extensible S l b :=
 Definition object_prim_value S l v :=
   exists O, object_binds S l O /\ object_prim_value_ O = Some v.
 
-(** [object_call S l fco] asserts that the primitive value
+(** [object_call S l fco] asserts that the "primitive value"
     field of the object stored at address [l] in [S] contains
     an option [fco] which may contain function code. *)
 
 Definition object_call S l fco :=
   exists O, object_binds S l O /\ object_call_ O = fco.
+
+(** [object_has_instance S l b] asserts that the existance of
+    the "has instance" method for the object stored at address [l] 
+    is described by the boolean [b]. *)
+
+Definition object_has_instance S l b :=
+  exists O, object_binds S l O /\ object_has_instance_ O = b.
 
 (** [object_formal_parameters S l fp] asserts that the [[FormalParameters]]
     field of the object stored at address [l] in [S] contains
@@ -1103,16 +1111,7 @@ Definition inequality_test w1 w2 : value :=
 (**************************************************************)
 (** ** Factorization of reductions unary and binary operators *)
 
-(** Characterization of unary "prepost" operators. *)
-
-Definition prepost_unary_op op :=
-  match op with
-  | unary_op_post_incr
-  | unary_op_post_decr
-  | unary_op_pre_incr
-  | unary_op_pre_decr => True
-  | _ => False
-  end.
+(* todo: move to js_pretty_inter *)
 
 (** Characterization of unary operators that start by 
     evaluating and calling get_value on their argument. *)
@@ -1125,20 +1124,17 @@ Definition regular_unary_op op :=
            else True
   end.
 
-(** Characterization of binary operators that start by 
-    evaluating and calling get_value on both of their 
-    arguments. *)
+(** Characterization of unary "prepost" operators. *)
 
-Definition regular_binary_op op :=
+Definition prepost_unary_op op :=
   match op with
-  | binary_op_and
-  | binary_op_or => False
-  | _ => True
+  | unary_op_post_incr
+  | unary_op_post_decr
+  | unary_op_pre_incr
+  | unary_op_pre_decr => True
+  | _ => False
   end.
 
-
-(**************************************************************)
-(** ** Factorization of pre/post incr/decr unary operators *)
 
 (** Operations increment and decrement *)
 
@@ -1147,6 +1143,21 @@ Definition add_one n :=
 
 Definition sub_one n :=
   JsNumber.sub n JsNumber.one.
+
+(** Characterization of binary "shift" operators. *)
+
+(* TODO: change def below into 
+   prepost_unary_op op := exists f b, prepost_op op f b. 
+   and possibly even remove this definition *)
+
+Definition prepost_unary_op op :=
+  match op with
+  | unary_op_post_incr
+  | unary_op_post_decr
+  | unary_op_pre_incr
+  | unary_op_pre_decr => True
+  | _ => False
+  end.
 
 (** Relates a binary operator [++] or [--] with the value
     +1 or -1 and with a boolean that indicates whether the
@@ -1159,6 +1170,51 @@ Inductive prepost_op : unary_op -> (number -> number) -> bool -> Prop :=
   | prepost_op_post_incr : prepost_op unary_op_post_incr add_one false
   | prepost_op_post_decr : prepost_op unary_op_post_decr sub_one false.
 
+(** Characterizes pure mathematical operators, which always call toNumber
+    before applying a mathematical function *)
+
+Inductive puremath_op : binary_op -> (int -> int -> int) -> Prop := 
+  | puremath_op_mult : puremath_op binary_op_mult JsNumber.mult
+  | puremath_op_div : puremath_op binary_op_div JsNumber.div
+  | puremath_op_mod : puremath_op binary_op_mod JsNumber.mod.
+  | puremath_op_sub : puremath_op binary_op_sub JsNumber.sub.
+
+(** Characterizes bitwise operators, which always call toInt32
+    before applying a mathematical function *)
+
+Inductive bitwise_op : binary_op -> (int -> int -> int) -> Prop := 
+  | bitwise_op_and : bitwise_op binary_op_bitwise_and JsNumber.int32_bitwise_and
+  | bitwise_op_or : bitwise_op binary_op_bitwise_or JsNumber.int32_bitwise_or
+  | bitwise_op_xor : bitwise_op binary_op_bitwise_xor JsNumber.int32_bitwise_xor.
+
+(** Characterizes shift operators, and tell whether they are
+    signed or unsigned, and to the corresponding mathematical function *)
+
+Inductive shift_op : binary_op -> bool -> (int -> int -> int) -> Prop := 
+  | shift_op_left_shift : shift_op binary_op_left_shift false JsNumber.int32_left_shift
+  | shift_op_right_shift : shift_op binary_op_right_shift false JsNumber.int32_right_shift
+  | shift_op_unsigned_right_shift : shift_op binary_op_unsigned_right_shift true JsNumber.uint32_right_shift.
+
+(** Characterizes lazy binary operators (&& and ||),
+    and the boolean value for which the first operand triggers 
+    an immediate return *)
+
+Inductive lazy_op : binary_op -> bool -> Prop := 
+  | lazy_op_and : lazy_op binary_op_and false
+  | lazy_op_or : lazy_op binary_op_or true.
+
+(** Characterization of binary operators that start by 
+    evaluating and calling get_value on both of their 
+    arguments. *)
+
+Definition regular_binary_op op :=
+  match op with
+  | binary_op_and
+  | binary_op_or => False
+  | _ => True
+  end.
+  (* TODO: discard alternative definition below?
+      ~ (exists b, lazy_op op b). *)
 
 (**************************************************************)
 (** ** Implementation of [callable] *)

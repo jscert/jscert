@@ -596,7 +596,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 ---end to clean ---*)
 
-  (** Unary op (regular rules) *)
+  (** Unary op -- regular rules *)
 
   | red_expr_unary_op : forall S C op e o1 o,
       regular_unary_op op ->
@@ -620,7 +620,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
       ref_is_unresolvable r ->
-      (* TODO uncomment: red_expr s C (spec_syntax_error_or_cst (ref_strict r) true) o -> *)
+      red_expr s C (spec_error_or_cst (ref_strict r) builtin_syntax_error true) o -> 
       red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
 
   | red_expr_delete_1_ref_property : forall S0 S C r v o1 o,
@@ -640,7 +640,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
 
   | red_expr_delete_3_strict : forall S C r L o,
-      (* TODO uncomment: red_expr s C spec_syntax_error o -> *)
+      red_expr s C (spec_error builtin_syntax_error) o -> 
       red_expr S C (expr_delete_3 r L true) o 
 
   | red_expr_delete_3_nonstrict : forall S C r L o,
@@ -736,165 +736,210 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_unary_op_not_1 : forall S0 S C b,
       red_expr S0 C (expr_unary_op_not_1 (out_ter S b)) (out_ter S (neg b))
 
+  (** Binary op -- regular rules *)
+
+  | red_expr_binary_op : forall S C op e o1 o,
+      regular_binary_op op ->
+      red_expr S C (spec_expr_get_value e1) o1 ->
+      red_expr S C (expr_binary_op_1 op o1 e2) o ->
+      red_expr S C (expr_binary_op op e1 e2) o
+
+  | red_expr_binary_op_1 : forall S0 S C op v o2 o,
+      red_expr S C (spec_expr_get_value e2) o2 ->
+      red_expr S C (expr_binary_op_2 op v1 o2) o ->
+      red_expr S0 C (expr_binary_op_1 op (out_ter S v1) e2) o
+
+  | red_expr_binary_op_2 : forall S0 S C op v1 v2 o,
+      red_expr S C (expr_binary_op_2 op v1 v2) o ->
+      red_expr S0 C (expr_binary_op_2 op v1 (out_ter S v2)) o
+
+  (** Binary op : addition *)
+  
+  | red_expr_binary_op_add : forall S C v1 v2 o,
+      red_expr S C (spec_convert_twice (spec_to_primitive v1) (spec_to_primitive v2) expr_binary_op_add_1) o ->
+      red_expr S C (expr_binary_op_3 binay_op_add v1 v2) o
+
+  | red_expr_binary_op_add_1_string : forall S C v1 v2 o,
+      (type_of v1 = type_string \/ type_of v2 = type_string) ->
+      red_expr S C (spec_convert_twice (spec_to_string v1) (spec_to_string v2) expr_binary_op_add_string_1) o ->
+      red_expr S C (expr_binary_op_add_1 v1 v2) o
+
+  | red_expr_binary_op_add_string_1 : forall S C s1 s2 s o,
+      s = string_concat s1 s2 ->
+      red_expr S C (expr_binary_op_add_string_1 s1 s2) (out_ter S s)
+
+  | red_expr_binary_op_add_1_number : forall S C v1 v2 o,
+      ~ (type_of v1 = type_string \/ type_of v2 = type_string) ->
+      red_expr S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2) (red_expr_puremath_op_1 JsNumber.add)) o ->
+      red_expr S C (expr_binary_op_add_1 v1 v2) o
+
+  (** Binary op : pure maths operations *)
+ 
+  | red_expr_puremath_op : forall S C op F v1 v2 o,
+      puremath_op op F ->
+      red_expr S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2) (expr_puremath_op_1 F)) o ->
+      red_expr S C (expr_binary_op_3 op v1 v2) o
+
+  | red_expr_puremath_op_1 : forall S C F n1 n2,
+      n = JsNumber.of_int (F n1 n2) ->
+      red_expr S C (red_expr_puremath_op_1 F n1 n2) (out_ter S n)
+
+  (** Binary op : shift operations *)
+
+  | red_expr_shift_op : forall S C op b_unsigned F ext v1 v2 o,
+      shift_op op b_unsigned F ->
+      ext = if b_unsigned then spec_to_uint32 else spec_to_int32 ->
+      red_expr S C (ext v1 (expr_shift_op_1 F v2)) o ->
+      red_expr S C (expr_binary_op_3 op v1 v2) o
+
+  | red_expr_shift_op_1 : forall S C F k1 v2 o,
+      red_expr S C (spec_to_uint32 v2 (expr_shift_op_2 F k1)) o ->
+      red_expr S C (expr_shift_op_1 F v2 k1) o
+
+  | red_expr_shift_op_2 : forall S C k1 k2 F n o,
+      n = JsNumber.of_int (F k1 (JsNumber.modulo_32 k2)) ->
+      red_expr S C (expr_shift_op_1 F k1 k2) (out_ter S n)
+
+  (** Binary op : instanceof *)
+
+  | red_expr_binary_op_instanceof_non_object : forall S C v1 v2 o,
+      type_of v2 <> type_object ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (expr_binary_op_3 binary_op_in v1 v2) o
+
+  | red_expr_binary_op_instanceof_non_instance : forall S C v1 l o,
+      object_has_instance S l false ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
+
+  | red_expr_binary_op_instanceof_normal : forall S C v1 l o,
+      object_has_instance S l true ->
+      red_expr S C (spec_has_instance l v1) o ->
+      red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
+
+  (** Binary op : in *)
+
+  | red_expr_binary_op_in_non_object : forall S C v1 v2 o,
+      type_of v2 <> type_object ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (expr_binary_op_3 binary_op_in v1 v2) o
+
+  | red_expr_binary_op_in_object : forall S C v1 l o1 o,
+      red_expr S C (spec_to_string v1) o1 ->
+      red_expr S C (expr_binary_op_in_1 l) o ->
+      red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
+
+  | red_expr_binary_op_in_1 : forall S0 S C l x o,
+      red_expr S C (spec_object_has_prop l x) o ->
+      red_expr S0 C (expr_binary_op_in_1 l (out_ter S x)) o
+
+  (** Binary op : equality/disequality *)
+
+  | red_expr_binary_op_equal : forall S C v1 v2 o,
+      red_expr S C (spec_equal v1 v2) o ->
+      red_expr S C (expr_binary_op_3 binary_op_strict_equal v1 v2) o
+
+  | red_expr_binary_op_disequal : forall S C v1 v2 o1 o,
+      red_expr S C (spec_equal v1 v2) o1 ->
+      red_expr S C (expr_binary_op_strict_disequal_1 o1) o ->
+      red_expr S C (expr_binary_op_3 binary_op_strict_disequal v1 v2) o
+
+  | red_expr_binary_op_disequal_1 : forall S0 S C b,
+      red_expr S0 C (expr_binary_op_strict_disequal_1 (out_ter S b)) (out_ter S (negb b))
+
+  (** Binary op : conversion steps for the abstract equality algorithm *)
+
+  | red_spec_equal : forall S C v1 v2 T1 T2 o,
+      T1 = type_of v1 ->
+      T2 = type_of_v2 ->
+      red_expr S C (spec_equal_1 T1 T2 v1 v2) o -> 
+      red_expr S C (spec_equal v1 v2) o 
+
+  | red_spec_equal_1_same_type : forall S C v1 v2 T b,
+      b = equality_test_for_same_type T v1 v2 ->
+      red_expr S C (spec_equal_1 T T v1 v2) (out_ter S b)
+
+  | red_spec_equal_1_diff_type : forall S C v1 v2 T1 T2 b,
+      ext =  
+        (If T1 = type_null /\ T2 = type_undef then (spec_equal_2 true)
+        else If T1 = type_undef /\ T2 = type_null then (spec_equal_2 true)
+        else If T1 = type_number /\ T2 = type_string then (spec_equal_3 v1 spec_to_number v2)
+        else If T1 = type_string /\ T2 = type_number then (spec_equal_3 v2 spec_to_number v1)
+        else If T1 = type_bool then (spec_equal_3 v2 spec_to_number v1)
+        else If T2 = type_bool then (spec_equal_3 v1 spec_to_number v2)
+        else If (T1 = type_string \/ T1 = type_number) /\ T2 = type_object then (spec_equal_3 v1 spec_to_primitive v2)
+        else If T1 = type_object /\ (T2 = type_string \/ T2 = type_number) then (spec_equal_3 v2 spec_to_primitive v1)
+        else (spec_equal_2 false)) ->
+      red_expr S C ext o ->
+      red_expr S C (spec_equal_1 T1 T2 v1 v2) o
+
+  | red_spec_equal_2 : forall S C b,
+      red_expr S C (spec_equal_2 b) (out_ter S b)
+
+  | red_spec_equal_3 : forall S C v1 v2 conv o2,
+      red_expr S C (conv v2) o2 ->
+      red_expr S C (spec_equal_4 v1 o2) o ->
+      red_expr S C (spec_equal_3 v1 conv v2) o
+
+  | red_spec_equal_4 : forall S0 S C v1 v2 o,
+      red_expr S C (spec_equal v1 v2) o ->    
+      red_expr S0 C (spec_equal_4 v1 (out_ter S v2)) o
+
+  (** Binary op : strict equality/disequality *)
+
+  | red_expr_binary_op_strict_equal : forall S C v1 v2 b,
+      b = strict_equality_test v1 v2 ->
+      red_expr S C (expr_binary_op_3 binary_op_strict_equal v1 v2) (out_ter S b)
+
+  | red_expr_binary_op_strict_disequal : forall S C v1 v2 b,
+      b = negb (strict_equality_test v1 v2) ->
+      red_expr S C (expr_binary_op_3 binary_op_strict_disequal v1 v2) (out_ter S b)
+
+  (** Binary op : bitwise op *)
+
+  | red_expr_bitwise_op : forall S C op F v1 v2 o,
+      bitwise_op op F ->
+      red_expr S C (spec_to_int32 v1 (expr_bitwise_op_1 F v2)) o ->
+      red_expr S C (expr_binary_op_3 op v1 v2) o
+
+  | red_expr_bitwise_op_1 : forall S C F k1 v2 o,
+      red_expr S C (spec_to_int32 v2 (expr_bitwise_op_2 F k1)) o ->
+      red_expr S C (expr_bitwise_op_1 F v2 k1) o
+
+  | red_expr_bitwise_op_2 : forall S C F k1 k2 n,
+      n = JsNumber.of_int (F k1 k2) ->
+      red_expr S C (expr_bitwise_op_1 F k1 k2) (out_ter S n)
+
+  (** Binary op : lazy ops (and, or) *)
+
+  | red_expr_binary_op_lazy : forall S C op b_ret e1 e2 o1 o,
+      lazy_op op b_ret ->
+      red_expr S C (spec_expr_get_value e1) o1 ->
+      red_expr S C (expr_lazy_op_1 b_ret o1 e2) o ->
+      red_expr S C (expr_binary_op op e1 e2) o
+
+  | red_expr_lazy_op_1 : forall S0 S C b_ret e1 e2 v1 v o2 o,
+      red_expr S C (spec_to_boolean v1) o1 ->
+      red_expr S C (expr_lazy_op_2 b_ret v1 o1 e2) o ->      
+      red_expr S0 C (expr_lazy_op_1 b_ret (out_ter S v1) e2) o
+
+  | red_expr_lazy_op_2_first : forall S0 S C b_ret b1 e2 v1,
+      b1 = b_ret ->
+      red_expr S0 C (expr_lazy_op_2 b_ret v1 (out_ter S b1) e2) (out_ter S v1)
+
+  | red_expr_lazy_op_2_second : forall S0 S C b_ret b1 e2, 
+      b1 <> b_ret ->
+      red_expr S C (spec_expr_get_value e2) o ->
+      red_expr S0 C (expr_lazy_op_2 b_ret v1 (out_ter S b1) e2) o
+
+  (** Binary op : coma *)
+
+  | red_expr_binary_op_strict_equal : forall S C v1 v2,
+      red_expr S C (expr_binary_op_3 binary_op_coma v1 v2) (out_ter S v2)
+
+
 
 (* --begin clean---
-
-  (** Binary op *)
-
-  | red_expr_binary_op : forall S0 C op e1 e2 o o1,
-      red_expr S0 C (expr_basic e1) o1 ->
-      red_expr S0 C (expr_binary_op_1 o1 op e2) o ->
-      red_expr S0 C (expr_binary_op e1 op e2) o
-
-  (*| red_expr_binary_op_1 : forall S0 S1 C op r1 v1 e2 o,
-      getvalue S1 r1 v1 ->
-      red_expr S1 C (expr_binary_op_2 v1 op e2) o ->
-      red_expr S0 C (expr_binary_op_1 (out_ter S1 r1) op e2) o*)
-
-  (*| red_expr_binary_op_2_general : forall S C v1 op e2 o,
-      (op = binary_op_and -> convert_prim_to_boolean v1 <> false) ->
-      (op = binary_op_or -> convert_prim_to_boolean v1 <> true) ->
-      red_expr S C (expr_binary_op_3 v1 op e2) o ->
-      red_expr S C (expr_binary_op_2 v1 op e2) o *)
-
-  (*| red_expr_binary_op_2_and_false : forall S C v1 e2 o,
-      convert_prim_to_boolean v1 = value_bool false ->
-      red_expr S C (expr_binary_op_2 v1 binary_op_and e2) (Some (out_ter S v1))*)
-
-  (*| red_expr_binary_op_2_or_true : forall S C v1 e2 o,
-      convert_prim_to_boolean v1 = value_bool true ->
-      red_expr S C (expr_binary_op_2 v1 binary_op_and e2) (Some (out_ter S v1))*)
-
-  | red_expr_binary_op_3 : forall S C op e2 v1 o o2,
-      red_expr S C e2 o2 ->
-      red_expr S C (expr_binary_op_4 v1 op o2) o ->
-      red_expr S C (expr_binary_op_3 v1 op e2) o
-
-  (*| red_expr_binary_op_4 : forall S0 S1 C op r v1 v2 o,
-      getvalue S1 r v2 ->
-      red_expr S1 C (expr_binary_op_5 v1 op v2) o ->
-      red_expr S0 C (expr_binary_op_4 v1 op (out_ter S1 r)) o*)
-
-  (* todo: could factorize the next two rules *)
-
-  | red_expr_binary_op_5_and : forall S C v1 v2,
-      (* not needed: convert_prim_to_boolean v1 = value_bool true -> *)
-      red_expr S C (expr_binary_op_5 v1 binary_op_and v2) (out_ter S v2)
-
-  | red_expr_binary_op_5_or : forall S C v1 v2,
-      (* not needed: convert_prim_to_boolean v1 = value_bool false -> *)
-      red_expr S C (expr_binary_op_5 v1 binary_op_or v2) (out_ter S v2)
-
-  | red_expr_binary_op_5_instanceof_basic : forall S C v1 v2,
-      red_expr S C (expr_binary_op_5 (value_prim v1) binary_op_instanceof v2) (out_type_error S)
-
-  (*| red_expr_binary_op_5_instanceof_object : forall S C l v2 v o,
-      (* later: test hasInstance *)
-      instanceof_red S l v2 v ->
-      red_expr S C (expr_binary_op_5 (value_object l) binary_op_instanceof v2) (out_ter S v)*)
-
-    (* TODO: merge these rules in there
-       Inductive instanceof_red : heap -> loc -> value -> value -> Prop :=
-
-      | instanceof_red_value : forall l w S,
-          instanceof_red S l w false
-
-      | instanceof_red_true : forall l l1 l2 S,
-          binds S l field_normal_prototype l2 ->
-          binds S l1 field_proto l2 ->
-          instanceof_red S l l1 true
-
-      | instanceof_red_trans : forall l l1 l2 l3 S v',
-          binds S l1 field_proto l3 ->
-          binds S l field_normal_prototype l2 ->
-          l2 <> l3 ->
-          instanceof_red S l l3 v' ->
-          instanceof_red S l l1 v'.*)
-
-
-  | red_expr_binary_op_5_in_basic : forall S C v1 v2,
-      red_expr S C (expr_binary_op_5 v1 binary_op_in (value_prim v2)) (out_type_error S)
-
-  (*| red_expr_binary_op_5_in : forall S C v1 l b,
-      l <> loc_null ->
-      b = isTrue (object_indom S l (field_normal (convert_prim_to_string v1))) ->
-      red_expr S C (expr_binary_op_5 v1 binary_op_in (value_object l)) (out_ter S b)*)
-
-  (*| red_expr_binary_op_5_add : forall S C v1 v2 o,
-      red_expr S C (spec_convert_twice (spec_to_primitive v1) (spec_to_primitive v2) expr_binary_op_add_1) o ->
-      red_expr S C (expr_binary_op_5 v1 binary_op_add v2) o*)
-
-  (* Daniele: can we factorize the rules for mult and div? ('multiplicative operators' on the spec*)
-  (* Daniele: mult *)
-  (*| red_expr_binary_op_5_mult : forall S C v1 v2 m,
-      ~ value_is_string v1 ->
-      ~ value_is_string v2 ->
-      m = JsNumber.mult (convert_prim_to_number v1) (convert_prim_to_number v2) ->
-      red_expr S C (expr_binary_op_5 v1 binary_op_mult v2) (out_ter S m)*)
-
-  (* Daniele: div *)
-  (*| red_expr_binary_op_5_div : forall S C v1 v2 m,
-      ~ value_is_string v1 ->
-      ~ value_is_string v2 ->
-      m = JsNumber.div (convert_prim_to_number v1) (convert_prim_to_number v2) ->
-      red_expr S C (expr_binary_op_5 v1 binary_op_div v2) (out_ter S m)*)
-
-  (* Daniele: equality , TODO: check*)
-  (*| red_expr_binary_op_5_equals : forall S v v' b,
-      red_expr S C (spec_eq v1 v2) (out_ter S' b)
-      red_expr S C (expr_binary_op_5 v1 binary_op_equals v2) (out_ter S' b)*)
-
- (* Daniele: does-not-equals , TODO: check*)
-  (*| red_expr_binary_op_5_not_equals : forall S v v' b,
-      red_expr S C (spec_eq v1 v2) (out_ter S' b) ->
-      b' = if (b = true) false else true
-      red_expr S C (expr_binary_op_5 v1 binary_op_not_equals v2) (out_ter S' b')*)
-
-  (* Daniele: strict equality , TODO: check*)
-  (*| red_expr_binary_op_5_strict_equals : forall S v v' b,
-      b = value_strict_eqiality_test v1 v2 ->
-      red_expr S C (expr_binary_op_5 v1 binary_op_strict_equals v2) (out_ter S b)*)
-
-(* Daniele: strict does-not-equals , TODO: check*)
-  (*| red_expr_binary_op_5_not_equals : forall S v v' b,
-      red_expr S C (spec_strict_eq v1 v2) (out_ter S' b) ->
-      b' = if (b = true) false else true
-      red_expr S C (expr_binary_op_5 v1 binary_op_strict_not_equals v2) (out_ter S' b')*)
-
-  (*| red_expr_binary_op_add_1_string : forall S C v1 v2 g,
-      (value_is_string v1 \/ value_is_string v2) ->
-      g = string_concat (convert_prim_to_string v1) (convert_prim_to_string v2) ->
-      red_expr S C (expr_binary_op_add_1 v1 v2) (out_ter S g)*)
-
-  (*| red_expr_binary_op_add_1_number : forall S C v1 v2 o m,
-      ~ value_is_string v1 ->
-      ~ value_is_string v2 ->
-      m = number_add (convert_prim_to_number v1) (convert_prim_to_number v2) ->
-      red_expr S C (expr_binary_op_add_1 v1 v2) (out_ter S m)*)
-
-
-(* TODO : translate these rules into the new scheme, following the template for [add] *)
-
-(* Daniele: updaed (type conversion)
-  | binary_op_red_add_str : forall S g g',
-      binary_op_red binary_op_add S (value_string g) (value_string g')
-        (value_string (String.append g g')) *)
-
-(* Daniele: updaed (type conversion)
-  | binary_op_red_mult_number : forall S m m',
-      binary_op_red binary_op_mult S m m' (number_mult m m') *)
-
-(* Daniele: updated (type conversion)
-  | binary_op_red_div_number : forall S m m',
-      binary_op_red binary_op_div S m m' (number_div m m') *)
-
-(* Daniele: updated (type conversion)
-  | binary_op_red_equal : forall S v v',
-      basic_value v ->
-      basic_value v' ->
-      binary_op_red binary_op_equal S v v' (value_bool (isTrue (v=v')))
-*)
-
 
   (** Assignment *)
 
@@ -937,60 +982,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (ext_expr_assign_2_op (Ref l x) v1 op (out_ter S1 r2)) (out_ter S2 v)*)
 
 END OF TO CLEAN----*)
-
-(**************************************************************)
-(** ** Reduction rules for comparisons *)
-
-  (*------------------------------------------------------------*)
-  (** ** Abstract equality comparison *)
-(*
- | spec_eq_same_type :
-     (type_of v1 = type_of v2) ->
-     red_expr S C (eq v1 v2) (out_ter (equality_test_for_same_type v1 v2))
-     T = type_of v1 ->
-     red_expr S C (spec_eq v1 v2) (out_ter (value_equality_test_same_type T v1 v2))
-
- | spec_eq_diff_type :
-     (type_of v1 != type_of v2) ->
-     red_expr S C (spec_eq0 v1 v2) o ->
-     red_expr S C (spec_eq v1 v2) o
-
- | spec_eq0 : forall v1 v2 S C r o,
-     r = symCases v1 v2 (= type_null) (= type_undef) spec_eq1
-        (symCases v1 v2 (= type_number) (= type_string) (spec_eq2 spec_to_number)
-        (symCases v1 v2 (= type_boolean) ( fun _ => True ) (spec_eq2 spec_to_number)
-        (symCases v1 v2 (= type_string \/ = type_number ) ( fun _ => True ) (spec_eq2 spec_to_primitive)
-        spec_eq_3 v1 v2 ))) ->
-        red_expr r o ->
-        red_expr S C (spec_eq0 v1 v2) o
-  (* 1 *)
-  | spec_eq1: forall S c v1 v2,
-      red_expr S C (spec_eq1 v1 v2) (out_ter S true)
-  (* 2 *)
-  | spec_eq2: forall S C v1 v2 o o',
-      red_expr S C (Conv v1) o
-      red_expr S C (spec_eq2_1 v2 o) o' ->
-      red_expr S C (spec_eq2 Conv v1 v2) o'
-  | spec_eq2_1: forall S C v n o,
-      red_expr S C (spec_eq v n) o ->
-      red_expr S C (spec_eq2_1 v (out_ter S n)) o
-  (* 5 *)
-  | spec_eq3:
-      red_expr S C (spec_eq3 v1 v2) (out_ter S false)
-*)
-
- (*------------------------------------------------------------*)
-  (** ** Strict equality comparison *)
-
- (* Daniele: I think we don't need this one, as it can be done directly
-    in the reduction rule for strict_equality (see red_expr_binary_op_5_strict_equals)  *)
-(*
-  | spec_strict_eq :
-     b = value_strict_equality_test v1 v2 ->
-     red_expr S C (spec_strict_eq v1 v2) (out_ter S b)
-*)
-
-(* --end clean--- *)
 
 
 (**************************************************************)
@@ -1144,6 +1135,35 @@ END OF TO CLEAN----*)
   | red_expr_conv_two_2 : forall S0 S C v2 K o,
       red_expr S C (K v2) o ->
       red_expr S0 C (spec_convert_twice_2 (out_ter S v2) K) o
+
+  (** Auxiliary: Conversion of two expressions *)
+(* TODO: uniform convention for convert/conv  *)
+
+(* todo: is neeeded?
+  | red_spec_expr_conv_twice : forall S C e1 e2 conv1 conv2 K o1 o,
+      red_expr S C (spec_expr_get_value_1 e1) o1 ->
+      red_expr S C (spec_expr_conv_twice_1 o1 e2 conv1 conv2 K) o ->
+      red_expr S C (spec_expr_conv_twice e1 e2 conv1 conv2 K) o
+
+  | red_spec_expr_conv_twice_1 : forall S0 S C v1 e2 conv1 conv2 K o2 o,
+      red_expr S C (spec_expr_get_value_1 e2) o2 ->
+      red_expr S C (spec_expr_conv_twice_2 v1 o2 conv1 conv2 K) o ->
+      red_expr S0 C (spec_expr_conv_twice_1 (out_ter S v1) e2 conv1 conv2 K) o
+
+  | red_spec_expr_conv_twice_2 : forall S0 S C v1 v2 conv1 conv2 K o2 o,
+      red_expr S C (conv1 v1) o1 ->
+      red_expr S C (spec_expr_conv_twice_3 o1 v2 conv2 K) o ->
+      red_expr S0 C (spec_expr_conv_twice_2 v1 (out_ter S v2) conv1 conv2 K) o
+
+  | red_spec_expr_conv_twice_3 : forall S0 S C v1 v2 conv2 K o2 o,
+      red_expr S C (conv2 v2) o2 ->
+      red_expr S C (spec_expr_conv_twice_4 o2 (K v1)) o ->
+      red_expr S0 C (spec_expr_conv_twice_3 (out_ter S v1) v2 conv2 K) o
+
+  | red_spec_expr_conv_twice_4 : forall S0 S C v2 K o,
+      red_expr S C (K v2) o ->
+      red_expr S0 C (spec_convert_twice_2 (out_ter S v2) K) o
+*)
 
   (*------------------------------------------------------------*)
   (** ** Operations on objects *)
@@ -1438,7 +1458,7 @@ END OF TO CLEAN----*)
       red_expr S C (spec_object_get l x) o ->
       red_expr S0 C (spec_object_get_special_1 x (out_ter S (value_object l))) o
 
-  (** Auxiliary: combine  functions for combining [red_expr] and [get_value] *)
+  (** Auxiliary: combine [red_expr] and [get_value] *)
 
   | red_spec_expr_get_value : forall S C e o o1,
       red_expr S C e o1 ->
@@ -1448,6 +1468,17 @@ END OF TO CLEAN----*)
   | red_spec_expr_get_value_1 : forall S0 S C R o,
       red_expr S C (spec_get_value R) o ->
       red_expr S0 C (spec_expr_get_value_1 (out_ter S R)) o
+
+  (** Auxiliary: combine [red_expr] and [get_value] and a conversion *)
+
+  | red_spec_expr_get_value_conv : forall S C e o o1,
+      red_expr S C e o1 ->
+      red_expr S C (spec_expr_get_value_conv_1 conv o1) o ->
+      red_expr S C (spec_expr_get_value_conv conv e) o
+
+  | red_spec_expr_get_value_conv_1 : forall S0 S C v o,
+      red_expr S C (conv v) o ->
+      red_expr S0 C (spec_expr_get_value_conv_1 conv (out_ter S v)) o
 
   (** Put value on a reference *)
 

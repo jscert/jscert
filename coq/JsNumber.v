@@ -50,6 +50,7 @@ Definition add : number -> number -> number :=
 
 Parameter sub : number -> number -> number. (*todo: bind *)
 
+Parameter mod : number -> number -> number. (*todo: bind *)
 
 Definition mult : number -> number -> number :=
   Fappli_IEEE_bits.b64_mult Fappli_IEEE.mode_NE.
@@ -105,9 +106,19 @@ Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
 
 Parameter modulo_32 : int -> int.
 
-(** Implements int32 bitwise not operation *)
+(** Implements int32 operation *)
 
 Parameter int32_bitwise_not : int -> int.
+
+Parameter int32_bitwise_and : int -> int -> int.
+Parameter int32_bitwise_or : int -> int -> int.
+Parameter int32_bitwise_xor : int -> int -> int.
+
+Parameter int32_left_shift : int -> int -> int.
+Parameter int32_right_shift : int -> int -> int.
+Parameter uint32_right_shift : int -> int -> int.
+
+
 
 
 (**************************************************************)
