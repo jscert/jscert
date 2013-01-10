@@ -627,11 +627,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_delete_1_value : forall S0 S C v,
       red_expr S0 C (expr_delete_1 (out_ter S (ret_value v))) (out_ter S true)
 
-  | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
-      ref_is_unresolvable r ->
-      red_expr S C (spec_error_or_cst (ref_strict r) builtin_syntax_error true) o -> 
-      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
-
   | red_expr_delete_1_ref_property : forall S0 S C r v o1 o,
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
@@ -648,13 +643,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_delete_3 r L (ref_strict r)) o ->
       red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
 
-  | red_expr_delete_3_strict : forall S C r L o,
-      red_expr S C (spec_error builtin_syntax_error) o -> 
-      red_expr S C (expr_delete_3 r L true) o 
-
   | red_expr_delete_3_nonstrict : forall S C r L o,
       red_expr S C (spec_env_record_delete_binding L (ref_name r)) o ->
-      red_expr S C (expr_delete_3 r L (ref_strict r)) o 
+      red_expr S C (expr_delete_3 r L false) o 
     
   (** Unary op : void *)
 
@@ -689,12 +680,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_prepost_1 op o1) o ->
       red_expr S C (expr_unary_op op e) o
 
-  | red_expr_prepost_1_invalid : forall S0 S C op R,
-      ~ valid_lhs_for_assign R ->
-      red_expr S0 C (expr_prepost_1 op (out_ter S R)) (out_syntax_error S)
-
   | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
-      valid_lhs_for_assign R ->
       red_expr S C (spec_get_value R) o1 ->
       red_expr S C (expr_prepost_2 op R o1) o ->
       red_expr S0 C (expr_prepost_1 op (out_ter S R)) o
@@ -966,16 +952,44 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_binary_op_coma : forall S C v1 v2,
       red_expr S C (expr_binary_op_3 binary_op_coma v1 v2) (out_ter S v2)
 
+  (** Assignment *)
+  
+  | red_expr_assign : forall S C opo e1 e2 o o1,
+      red_expr S C e1 o1 ->
+      red_expr S C (expr_assign_1 o1 opo e2) o ->
+      red_expr S C (expr_assign e1 opo e2) o
+ 
+  | red_expr_assign_1_simple : forall S0 S C R e2 o o1,
+      red_expr S C (spec_expr_get_value e2) o1 ->
+      red_expr S C (expr_assign_4 R o1) o ->
+      red_expr S0 C (expr_assign_1 (out_ter S R) None e2) o
+
+  | red_expr_assign_1_compound : forall S0 S C R op e2 o o1,
+      red_expr S C (spec_get_value R) o1 ->
+      red_expr S C (expr_assign_2 R o1 op e2) o ->
+      red_expr S0 C (expr_assign_1 (out_ter S R) (Some op) e2) o
+
+  | red_expr_assign_2 : forall S0 S C R op v1 o2 e2 o,
+      red_expr S C (spec_expr_get_value e2) o2 ->
+      red_expr S C (expr_assign_3 R v1 op o2) o ->
+      red_expr S0 C (expr_assign_2 R (out_ter S v1) op e2) o
+
+  | red_expr_assign_3 : forall S0 S C R op v1 v2 o1 o,
+      red_expr S C (expr_binary_op_3 op v1 v2) o1 ->
+      red_expr S C (expr_assign_4 R o1) o ->
+      red_expr S0 C (expr_assign_3 R v1 op (out_ter S v2)) o
+
+  | red_expr_assign_4 : forall S0 S C R v o1 o,
+      red_expr S C (spec_put_value R v) o1 ->
+      red_expr S C (expr_assign_5 v o1) o ->
+      red_expr S0 C (expr_assign_4 R (out_ter S v)) o
+
+  | red_expr_assign_5 : forall S0 S C R' v,
+      red_expr S0 C (expr_assign_5 v (out_ter S R')) (out_ter S v)
 
 
 (* --begin clean---
 
-  (** Assignment *)
-
-  | red_expr_assign : forall S0 C op e1 e2 o o1,
-      red_expr S0 C (expr_basic e1) o1 ->
-      red_expr S0 C (ext_expr_assign_1 o1 op e2) o ->
-      red_expr S0 C (expr_assign e1 op e2) o
 
   | red_expr_ext_expr_assign_1 : forall S0 S1 C e2 re o o2,
       red_expr S1 C (expr_basic e2) o2 ->
@@ -1942,3 +1956,32 @@ END OF TO CLEAN----*)
 .
 
 (* TODO: spec_object_put_special *)
+
+
+
+
+
+
+
+
+
+(*--------------------------------*)
+(* deprecated, but to keep around for wf invariants:
+
+  | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
+      ref_is_unresolvable r ->
+      red_expr S C (spec_error_or_cst (ref_strict r) builtin_syntax_error true) o -> 
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
+
+  | red_expr_delete_3_strict : forall S C r L o,
+      red_expr S C (spec_error builtin_syntax_error) o -> 
+      red_expr S C (expr_delete_3 r L true) o 
+
+  | red_expr_prepost_1_invalid : forall S0 S C op R,
+      ~ valid_lhs_for_assign R ->
+      red_expr S0 C (expr_prepost_1 op (out_ter S R)) (out_syntax_error S)
+
+  | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
+      valid_lhs_for_assign R ->
+
+*)
