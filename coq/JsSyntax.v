@@ -538,4 +538,3 @@ Coercion ret_value : value >-> ret.
 Coercion ret_ref : ref >-> ret.
 Coercion res_normal : ret_or_empty >-> res.
 
-

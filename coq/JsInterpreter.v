@@ -73,7 +73,7 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
 Definition extract_from_option {B : Type} `{Inhab B} :=
   morph_option arbitrary id.
 
-Definition if_success (o : out_interp) (k : state -> ret -> out_interp) : out_interp :=
+Definition if_success (o : out_interp) (k : state -> ret_or_empty -> out_interp) : out_interp :=
   match o with
   | out_ter S0 (res_normal re) => k S0 re
   | _ => o
@@ -421,11 +421,15 @@ Definition ref_get_value S (re : ret) : out_interp :=
 
 Definition if_success_value (o : out_interp) (k : state -> value -> out_interp) : out_interp :=
   if_success o (fun S1 re1 =>
-    if_success (ref_get_value S1 re1) (fun S2 re2 =>
-      match re2 with
-      | ret_value v => k S2 v
-      | _ => out_ref_error S1
-      end)).
+    match re1 with
+    | ret_or_empty_ret rer1 =>
+        if_success (ref_get_value S1 rer1) (fun S2 re2 =>
+          match re2 with
+          | ret_value v => k S2 v
+          | _ => out_ref_error S1
+          end)
+    | _ => out_ref_error S1
+    end).
 
 Definition run_callable S v :=
   match v with
@@ -458,7 +462,7 @@ Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_inte
             end)
         | None => K True
         end
-      | ret_ref _ => out_interp_stuck
+      | _ => out_interp_stuck
       end) in
   sub1 gmeth (fun _ =>
     let lmeth := method_of_preftype lpref in
