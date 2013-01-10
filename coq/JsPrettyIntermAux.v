@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export Syntax SyntaxAux Preliminary PrettyInterm.
+Require Export JsSyntax JsSyntaxAux JsPreliminary JsPrettyInterm.
 
 (**************************************************************)
 (** ** Implicit Types *)
