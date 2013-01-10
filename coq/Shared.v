@@ -441,3 +441,14 @@ Global Instance binds_functionnal : forall (H K : Type) (h : heap H K) k,
 Proof. introv C I. applys functionalpred_make. apply binds_func. Qed.
 (* End of this little test. *)
 
+
+(**************************************************************)
+(** ** LATER: move to LibReflect *)
+
+Global Instance eq_prop_dec : forall P Q : Prop,
+  Decidable P -> Decidable Q ->
+  Decidable (P = Q).
+Proof.
+  introv [p Hp] [q Hq]. applys decidable_make (decide (p = q)).
+  skip. (* TODO *)
+Qed.
