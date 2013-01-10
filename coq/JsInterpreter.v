@@ -52,10 +52,30 @@ Inductive out_interp :=
 
 Coercion out_interp_normal : out >-> out_interp.
 
+(* Inhabited *)
 
 Global Instance out_interp_inhab : Inhab out_interp.
 Proof. applys prove_Inhab out_interp_stuck. Qed.
 
+
+Section TODO.
+
+Definition out_type_error S :=
+  arbitrary (* TODO:  Replace all its occurences by a `throw_syntax_error' *).
+
+Definition out_ref_error S :=
+  arbitrary (* TODO:  Replace all its occurences by the right thing *).
+
+Definition out_void S :=
+  arbitrary (* TODO:  Replace all its occurences by the right thing *).
+
+Definition out_ref_error_or_undef S (strict : bool) :=
+  arbitrary (* TODO:  Replace all its occurences by the right thing *).
+
+Definition out_reject S (throw : bool) :=
+  arbitrary (* TODO:  Replace all its occurences by the right thing *).
+
+End TODO.
 
 (**************************************************************)
 (** ** Helper functions for the interpreter *)
@@ -425,17 +445,17 @@ Definition if_success_value (o : out_interp) (k : state -> value -> out_interp) 
       | _ => out_ref_error S1
       end)).
 
-Definition run_is_callable S v :=
+Definition run_callable S v :=
   match v with
   | value_prim w => None
   | value_object l =>
     run_object_call S l
   end.
 
-Global Instance is_callable_pickable : forall S v,
-  Pickable (is_callable S v).
+Global Instance callable_pickable : forall S v,
+  Pickable (callable S v).
 Proof.
-  introv. applys pickable_make (run_is_callable S v).
+  introv. applys pickable_make (run_callable S v).
   intros [a Ha]. destruct v; simpls~.
   skip. (* TODO *)
 Qed.
@@ -447,7 +467,7 @@ Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_inte
     if_success (object_get S l x) (fun S1 re1 =>
       match re1 with
       | ret_value lf =>
-        match pick (is_callable S lf) with
+        match pick (callable S lf) with
         | Some fc =>
           if_success_value (call S C lf nil l) (fun S2 v =>
             match v with
@@ -827,6 +847,9 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
                   let l := obj_of_value v3 l4 in
                   out_return h8 (value_loc l)))))))
       *)
+
+    | expr_conditional e1 e2 e3 =>
+      arbitrary (* TODO *)
 
     end
   end

@@ -36,17 +36,17 @@ Implicit Type t : stat.
 (**************************************************************)
 (** ** Auxiliary functions on values and types *)
 
-(** Convert a literal into a primitive *) 
+(** Convert a literal into a primitive *)
 
 Definition convert_literal_to_prim (i:literal) :=
   match i with
   | literal_null => prim_null
   | literal_bool b => prim_bool b
-  | literal_number n => prim_number n 
+  | literal_number n => prim_number n
   | literal_string s => prim_string s
   end.
 
-(** Convert a literal into a value *) 
+(** Convert a literal into a value *)
 
 Definition convert_literal_to_value (i:literal) :=
   value_prim (convert_literal_to_prim i).
@@ -80,18 +80,18 @@ Definition value_same v1 v2 :=
   | type_undef => True
   | type_null => True
   | type_number =>
-      If    v1 = (prim_number JsNumber.nan) 
+      If    v1 = (prim_number JsNumber.nan)
          /\ v2 = (prim_number JsNumber.nan) then True
-      else If    v1 = (prim_number JsNumber.zero) 
+      else If    v1 = (prim_number JsNumber.zero)
               /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else If    v1 = (prim_number JsNumber.neg_zero) 
+      else If    v1 = (prim_number JsNumber.neg_zero)
               /\ v2 = (prim_number JsNumber.zero) then False
       else (v1 = v2)
-  | type_string => 
+  | type_string =>
       v1 = v2
-  | type_bool => 
+  | type_bool =>
       v1 = v2
-  | type_object => 
+  | type_object =>
       v1 = v2
   end.
 
@@ -216,11 +216,11 @@ Definition state_map_object_heap S F :=
 
 Definition object_write S l O :=
   state_map_object_heap S (fun H => Heap.write H l O).
-  
+
 (** [object_alloc S O] returns a pair [(L,S')]
     made of a fresh object location [L],
     and an updated state [S'] in which [L] is bound
-    to the object [O]. *) 
+    to the object [O]. *)
 
 Definition object_alloc S O :=
    match S with state_intro cells bindings (n:::alloc) =>
@@ -603,14 +603,14 @@ Definition ref_create_env_loc L x strict :=
      ref_strict := strict |}.
 
 (** [valid_lhs_for_assign R] asserts that [R] will not satisfy
-    the condition under which a SyntaxError gets triggered 
+    the condition under which a SyntaxError gets triggered
     (see the semantics of simple assignement in the spec). *)
 
 Open Scope string_scope. (* todo: move *)
 
 Definition valid_lhs_for_assign R :=
-  ~ (exists r, 
-         R = ret_ref r 
+  ~ (exists r,
+         R = ret_ref r
       /\ ref_strict r = true
       /\ ref_kind_of r = ref_kind_env_record
       /\ let s := ref_name r in
@@ -813,6 +813,23 @@ Implicit Type pref : preftype.
 Parameter function_declarations : function_code -> list function_declaration.
 Parameter variable_declarations : function_code -> list string.
 
+(* It seems the lines below have been lost while merging?  There seems to be something weird that happened with Git there -- Martin. *)
+(** Definition of aborting programs --
+      TODO: define [abort] as "not a normal behavior",
+         by taking the negation of being of the form [ter (normal ...)]. *)
+
+Inductive abort : out -> Prop :=
+  | abort_div :
+    abort out_div
+  | abort_break : forall S la,
+    abort (out_ter S (res_break la))
+  | abort_continue : forall S la,
+    abort (out_ter S (res_continue la))
+  | abort_return : forall S la,
+    abort (out_ter S (res_return la))
+  | abort_throw : forall S v,
+    abort (out_ter S (res_throw v)).
+
 
 (**************************************************************)
 (** Constants used for tracing the use of [throw]/[strict] flags. *)
@@ -972,9 +989,9 @@ Definition other_preftypes pref :=
 
 Definition equality_test_for_same_type T v1 v2 :=
   match T with
-  | type_undef => true 
+  | type_undef => true
   | type_null => true
-  | type_number => 
+  | type_number =>
      match v1,v2 with
      | value_prim (prim_number n1), value_prim (prim_number n2) =>
        ifb n1 = JsNumber.nan then false
@@ -984,8 +1001,8 @@ Definition equality_test_for_same_type T v1 v2 :=
        else decide (n1 = n2)
      | _,_ => false (* this case never happens, by assumption *)
      end
-  | type_string => decide (v1 = v2) 
-  | type_bool => decide (v1 = v2) 
+  | type_string => decide (v1 = v2)
+  | type_bool => decide (v1 = v2)
   | type_object => decide (v1 = v2)
   end.
 
@@ -995,10 +1012,10 @@ Definition equality_test_for_same_type T v1 v2 :=
 Axiom type_dec : Comparable type.
 
 Definition strict_equality_test v1 v2 :=
-  let T1 := type_of v1 in 
-  let T2 := type_of v2 in 
+  let T1 := type_of v1 in
+  let T2 := type_of v2 in
   ifb T1 = T2
-    then equality_test_for_same_type T1 v1 v2 
+    then equality_test_for_same_type T1 v1 v2
     else false.
 
 (** Inequality comparison for numbers *)
@@ -1008,10 +1025,10 @@ Definition inequality_test_number n1 n2 : value :=
   else ifb n1 = n2 then false
   else ifb n1 = JsNumber.zero /\ n2 = JsNumber.neg_zero then false
   else ifb n1 = JsNumber.neg_zero /\ n2 = JsNumber.zero then false
-  else ifb n1 = JsNumber.infinity then false 
-  else ifb n2 = JsNumber.infinity then true 
-  else ifb n2 = JsNumber.neg_infinity then false 
-  else ifb n1 = JsNumber.neg_infinity then true 
+  else ifb n1 = JsNumber.infinity then false
+  else ifb n2 = JsNumber.infinity then true
+  else ifb n2 = JsNumber.neg_infinity then false
+  else ifb n1 = JsNumber.neg_infinity then true
   else JsNumber.lt_bool n1 n2.
 
 (** Inequality comparison for strings *)
@@ -1054,19 +1071,19 @@ Definition prepost_unary_op op :=
   | _ => False
   end.
 
-(** Characterization of unary operators that start by 
+(** Characterization of unary operators that start by
     evaluating and calling get_value on their argument. *)
 
 Definition regular_unary_op op :=
   match op with
   | unary_op_typeof => False
   | _ => If prepost_unary_op op
-           then False 
+           then False
            else True
   end.
 
-(** Characterization of binary operators that start by 
-    evaluating and calling get_value on both of their 
+(** Characterization of binary operators that start by
+    evaluating and calling get_value on both of their
     arguments. *)
 
 Definition regular_binary_op op :=
@@ -1093,7 +1110,7 @@ Definition sub_one n :=
     operator is prefix (in which case the updated value should
     be returned by the semantics). *)
 
-Inductive prepost_op : unary_op -> (number -> number) -> bool -> Prop := 
+Inductive prepost_op : unary_op -> (number -> number) -> bool -> Prop :=
   | prepost_op_pre_incr : prepost_op unary_op_pre_incr add_one true
   | prepost_op_pre_decr : prepost_op unary_op_pre_decr sub_one true
   | prepost_op_post_incr : prepost_op unary_op_post_incr add_one false
@@ -1114,7 +1131,7 @@ Definition callable S v fco :=
   | value_object l => object_call S l fco
   end.
 
-(** [is_callable S v] asserts that the object [v] is a location 
+(** [is_callable S v] asserts that the object [v] is a location
     describing an object with a Call method. *)
 
 Definition is_callable S v :=
@@ -1142,7 +1159,7 @@ Definition typeof_prim w :=
 Definition typeof_value S v :=
   match v with
   | value_prim w => typeof_prim w
-  | value_object l => If is_callable S l then "function" else "object" 
+  | value_object l => If is_callable S l then "function" else "object"
   end.
 
 
