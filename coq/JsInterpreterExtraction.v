@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import Syntax Interpreter Init.
+Require Import JsSyntax JsInterpreter JsInit.
 Require Import LibFix LibList.
 
 Require Export Shared.

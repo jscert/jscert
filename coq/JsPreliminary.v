@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export Syntax SyntaxAux.
+Require Export JsSyntax JsSyntaxAux.
 
 (**************************************************************)
 (** ** Implicit Types *)
@@ -36,33 +36,37 @@ Implicit Type t : stat.
 (**************************************************************)
 (** ** Auxiliary functions on values and types *)
 
-(** Convert a literal into a primitive *)
+(** Convert a literal into a primitive *) 
 
 Definition convert_literal_to_prim (i:literal) :=
   match i with
   | literal_null => prim_null
   | literal_bool b => prim_bool b
-  | literal_number n => prim_number n
+  | literal_number n => prim_number n 
   | literal_string s => prim_string s
   end.
 
-(** Convert a literal into a value *)
+(** Convert a literal into a value *) 
 
 Definition convert_literal_to_value (i:literal) :=
   value_prim (convert_literal_to_prim i).
+
+(** Specification method that returns the type of a primitive *)
+
+Definition type_of_prim w :=
+   match w with
+   | prim_undef => type_undef
+   | prim_null => type_null
+   | prim_bool _ => type_bool
+   | prim_number _ => type_number
+   | prim_string _ => type_string
+   end.
 
 (** Specification method that returns the type of a value *)
 
 Definition type_of v :=
   match v with
-  | value_prim w =>
-     match w with
-     | prim_undef => type_undef
-     | prim_null => type_null
-     | prim_bool _ => type_bool
-     | prim_number _ => type_number
-     | prim_string _ => type_string
-     end
+  | value_prim w => type_of_prim w
   | value_object _ => type_object
   end.
 
@@ -76,19 +80,18 @@ Definition value_same v1 v2 :=
   | type_undef => True
   | type_null => True
   | type_number =>
-      If    v1 = (prim_number JsNumber.nan)
+      If    v1 = (prim_number JsNumber.nan) 
          /\ v2 = (prim_number JsNumber.nan) then True
-      else If    v1 = (prim_number JsNumber.zero)
+      else If    v1 = (prim_number JsNumber.zero) 
               /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else If    v1 = (prim_number JsNumber.neg_zero)
+      else If    v1 = (prim_number JsNumber.neg_zero) 
               /\ v2 = (prim_number JsNumber.zero) then False
       else (v1 = v2)
-  | type_string =>
-
+  | type_string => 
       v1 = v2
-  | type_bool =>
+  | type_bool => 
       v1 = v2
-  | type_object =>
+  | type_object => 
       v1 = v2
   end.
 
@@ -869,69 +872,6 @@ Fixpoint defs_prog (lx:list string) p :=
 *)
 
 (**************************************************************)
-(** ** Auxiliary functions on values and types *)
-
-(** Convert a literal into a primitive *) 
-
-Definition convert_literal_to_prim (i:literal) :=
-  match i with
-  | literal_null => prim_null
-  | literal_bool b => prim_bool b
-  | literal_number n => prim_number n 
-  | literal_string s => prim_string s
-  end.
-
-(** Convert a literal into a value *) 
-
-Definition convert_literal_to_value (i:literal) :=
-  value_prim (convert_literal_to_prim i).
-
-(** Specification method that returns the type of a primitive *)
-
-Definition type_of_prim w :=
-   match w with
-   | prim_undef => type_undef
-   | prim_null => type_null
-   | prim_bool _ => type_bool
-   | prim_number _ => type_number
-   | prim_string _ => type_string
-   end.
-
-(** Specification method that returns the type of a value *)
-
-Definition type_of v :=
-  match v with
-  | value_prim w => type_of_prim w
-  | value_object _ => type_object
-  end.
-
-(** Definition of the "SameValue" algorithm *)
-
-Definition value_same v1 v2 :=
-  let T1 := type_of v1 in
-  let T2 := type_of v2 in
-  If T1 <> T2 then False else
-  match T1 with
-  | type_undef => True
-  | type_null => True
-  | type_number =>
-      If    v1 = (prim_number JsNumber.nan) 
-         /\ v2 = (prim_number JsNumber.nan) then True
-      else If    v1 = (prim_number JsNumber.zero) 
-              /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else If    v1 = (prim_number JsNumber.neg_zero) 
-              /\ v2 = (prim_number JsNumber.zero) then False
-      else (v1 = v2)
-  | type_string => 
-      v1 = v2
-  | type_bool => 
-      v1 = v2
-  | type_object => 
-      v1 = v2
-  end.
-
-
-(**************************************************************)
 (** ** Auxiliary definitions used for type conversions *)
 
 (** Converts a number to a boolean *)
@@ -1209,7 +1149,7 @@ Definition typeof_value S v :=
 (**************************************************************)
 (** ** Auxiliary definition used in the reduction of [get_own_property] *)
 
-(** [object_get_own_property_builder A] is an auxilialry definition
+(** [object_get_own_property_builder A] is an auxiliary definition
     used by [object_get_own_property_impl os  l x An]. *)
 
 Definition object_get_own_property_builder A :=
