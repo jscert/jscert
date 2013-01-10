@@ -19,7 +19,7 @@ Implicit Type m : mutability.
 Implicit Type A : prop_attributes.
 Implicit Type An : prop_descriptor.
 Implicit Type L : env_loc.
-Implicit Type E : env_record. (* suggested R *)
+Implicit Type E : env_record. 
 Implicit Type D : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
@@ -30,6 +30,10 @@ Implicit Type P : object_properties_type.
 Implicit Type e : expr.
 Implicit Type p : prog.
 Implicit Type t : stat.
+
+Implicit Type res : res.
+Implicit Type R : ret.
+Implicit Type o : out.
 
 
 
@@ -69,12 +73,39 @@ Inductive ext_expr :=
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
-  | expr_binary_op_1 : out -> binary_op -> expr -> ext_expr (* The right argument have been executed. *)
-  | expr_binary_op_2 : option out -> value -> binary_op -> expr -> ext_expr (* The execution checks if this value matches the lazy evaluation rules. *)
-  | expr_binary_op_3 : value -> binary_op -> ext_expr -> ext_expr (* It does not:  the right expression is executed. *)
-  | expr_binary_op_4 : value -> binary_op -> out -> ext_expr
-  | expr_binary_op_5 : value -> binary_op -> value -> ext_expr
+  | expr_delete_1 : out -> ext_expr
+  | expr_delete_2 : string -> bool -> out -> ext_expr
+  | expr_delete_3 : ref -> env_loc -> bool -> ext_expr
+  | expr_typeof_1 : out -> ext_expr
+  | expr_typeof_2 : out -> ext_expr
+  | expr_prepost_1 : unary_op -> out -> ext_expr
+  | expr_prepost_2 : unary_op -> ret -> out -> ext_expr
+  | expr_prepost_3 : unary_op -> ret -> out -> ext_expr
+  | expr_prepost_4 : value -> out -> ext_expr
+  | expr_unary_op_neg_1 : out -> ext_expr
+  | expr_unary_op_bitwise_not_1 : int -> ext_expr
+  | expr_unary_op_not_1 : out -> ext_expr
+
+  | expr_binary_op_1 : binary_op -> out -> expr -> ext_expr
+  | expr_binary_op_2 : binary_op -> value -> out -> ext_expr
+  | expr_binary_op_3 : binary_op -> value -> value -> ext_expr
   | expr_binary_op_add_1 : value -> value -> ext_expr
+  | expr_binary_op_add_string_1 : value -> value -> ext_expr
+  | expr_puremath_op_1 : (number -> number -> number) -> value -> value -> ext_expr
+  | expr_shift_op_1 : (int -> int -> int) -> value -> int -> ext_expr
+  | expr_shift_op_2 : (int -> int -> int) -> int -> int -> ext_expr
+  | expr_inequality_op_1 : bool -> bool -> value -> value -> ext_expr
+  | expr_inequality_op_2 : bool -> bool -> prim -> prim -> ext_expr
+  | expr_binary_op_in_1 : object_loc -> out -> ext_expr
+  | expr_binary_op_strict_disequal_1 : out -> ext_expr
+  | spec_equal : value -> value -> ext_expr
+  | spec_equal_1 : type -> type -> value -> value -> ext_expr
+  | spec_equal_2 : bool -> ext_expr
+  | spec_equal_3 : value -> (value -> ext_expr) -> value -> ext_expr
+  | spec_equal_4 : value -> out -> ext_expr
+  | expr_bitwise_op_1 : (int -> int -> int) -> value -> int -> ext_expr
+  | expr_lazy_op_1 : bool -> out -> expr -> ext_expr
+  | expr_lazy_op_2 : bool -> value -> out -> expr -> ext_expr
 
   | expr_assign_1 : out -> option binary_op -> expr -> ext_expr (* The left expression has been executed *)
   | expr_assign_2 : ref -> out -> ext_expr (* The right expression has been executed *)
@@ -86,7 +117,7 @@ Inductive ext_expr :=
 
   (** Extended expressions for conversions *)
 
-  | spec_to_primitive : value -> preftype -> ext_expr
+  | spec_to_primitive_pref : value -> option preftype -> ext_expr
   | spec_to_boolean : value -> ext_expr
   | spec_to_number : value -> ext_expr
   | spec_to_number_1 : out -> ext_expr
@@ -95,9 +126,12 @@ Inductive ext_expr :=
   | spec_to_string : value -> ext_expr
   | spec_to_string_1 : out -> ext_expr
   | spec_to_object : value -> ext_expr
+
+  | spec_to_int32 : value -> (int -> ext_expr) -> ext_expr
+  | spec_to_uint32 : value -> (int -> ext_expr) -> ext_expr
   | spec_check_object_coercible : value -> ext_expr
 
-  | spec_to_default : object_loc -> preftype -> ext_expr
+  | spec_to_default : object_loc -> option preftype -> ext_expr
   | spec_to_default_1 : object_loc -> preftype -> preftype -> ext_expr
   | spec_to_default_2 : object_loc -> preftype -> ext_expr
   | spec_to_default_3 : ext_expr
@@ -150,13 +184,15 @@ Inductive ext_expr :=
 
   (** Extended expressions for operations on references *)
 
-  | spec_ref_get_value : ret -> ext_expr
-  | spec_ref_put_value : ret -> value -> ext_expr
+  | spec_get_value : ret -> ext_expr
+  | spec_put_value : ret -> value -> ext_expr
 
   (** Shorthand for calling [red_expr] then [ref_get_value] *)
 
-  | spec_expr_get_value : expr -> ext_expr
+  | spec_expr_get_value : expr -> ext_expr 
   | spec_expr_get_value_1 : out -> ext_expr
+  | spec_expr_get_value_conv : (value -> ext_expr) -> expr -> ext_expr 
+  | spec_expr_get_value_conv_1 : (value -> ext_expr) -> out -> ext_expr 
 
   (** Extended expressions for operations on environment records *)
 
@@ -209,6 +245,17 @@ Inductive ext_expr :=
   | spec_execution_ctx_binding_instantiation_12 : type -> option object_loc -> function_code -> list value -> env_loc -> ext_expr
   | spec_execution_ctx_binding_instantiation_13 : type -> option object_loc -> function_code -> list value -> env_loc -> list string -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation_14 : type -> option object_loc -> function_code -> list value -> env_loc -> string -> list string -> out -> ext_expr
+  
+  (* Execution of "has_instance" *)
+
+  | spec_has_instance : object_loc -> value -> ext_expr (* todo: reduction rules *)
+
+  (* Throwing of errors *)
+
+  | spec_error : builtin -> ext_expr (* todo: reduction rules *)
+  | spec_error_or_cst : bool -> builtin -> value -> ext_expr (* todo: reduction rules *)
+
+  (* Function creation *)
 
   | spec_creating_function_object : list string -> function_code -> lexical_env -> strictness_flag -> ext_expr
   | spec_creating_function_object_1 : list string -> function_code -> lexical_env -> strictness_flag -> object_loc -> out -> ext_expr
@@ -219,6 +266,7 @@ Inductive ext_expr :=
   | spec_creating_function_object_6 : list string -> function_code -> lexical_env -> object_loc -> out -> ext_expr
 
   | spec_builtin_object_new : option value -> ext_expr
+
 
 (** Grammar of extended statements *)
 
@@ -261,9 +309,10 @@ with ext_stat :=
 
   (* Auxiliary forms for performing [red_expr] then [ref_get_value] and a conversion *)
 
-  | spec_expr_get_value_conv : expr -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
-  | spec_expr_get_value_conv_1 : out -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
-  | spec_expr_get_value_conv_2 : out -> (value -> ext_stat) -> ext_stat
+  | spec_expr_get_value_conv_stat : expr -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
+  | spec_expr_get_value_conv_stat_1 : out -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
+  | spec_expr_get_value_conv_stat_2 : out -> (value -> ext_stat) -> ext_stat
+ 
 
 (** Grammar of extended programs *)
 
@@ -284,6 +333,12 @@ with ext_prog :=
 Coercion expr_basic : expr >-> ext_expr.
 Coercion stat_basic : stat >-> ext_stat.
 Coercion prog_basic : prog >-> ext_prog.
+
+
+(** Shorthand for calling toPrimitive without prefered type *)
+
+Definition spec_to_primitive v :=
+  spec_to_primitive_pref v None.
 
 
 (**************************************************************)
@@ -317,8 +372,10 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
      (* TODO (Arthur does not understand this comment:
         If the `option out' is not `None' then the `out' is returned anyway,
         independently of wheither it aborts or not. *)
+        (*
   | expr_binary_op_3 _ _ _ => None
   | expr_binary_op_add_1 _ _ => None
+  *)
   | expr_assign_1 o _ _ => Some o
   | expr_assign_2 _ o => Some o
   | expr_assign_2_op _ _ _ o => Some o
@@ -339,6 +396,79 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   (* TODO: remove the line above to ensure that nothing forgotten *)
   end.
 
+Definition out_of_ext_stat (p : ext_stat) : option out :=
+  match p with
+  (* TODO: update later
+  | stat_basic _ => None
+  | stat_seq_1 o _ => Some o
+  | stat_var_decl_1 o => Some o
+  | stat_if_1 o _ _ => Some o
+  | stat_if_2 o _ _ => out_some_out o
+  | stat_if_3 o _ _ => out_some_out o
+  | stat_while_1 _ o _ => Some o
+  | stat_while_2 _ _ _ => None
+  | stat_while_3 _ _ o => Some o
+  | stat_throw_1 o => Some o
+  | stat_try_1 o _ _=> Some o
+  | stat_try_2 _ _ _ => None
+  | stat_try_3 o _ => Some o
+  | stat_try_4 _ o => Some o
+  | stat_with_1 o _ => Some o
+  *)
+  | _ => None
+  end.
+
+Definition out_of_ext_prog (p : ext_prog) : option out :=
+  match p with
+  | prog_basic _ => None
+  | prog_seq_1 o _ => Some o
+  end.
+
+
+
+
+
+(**************************************************************)
+(** ** Rules for propagating aborting expressions *)
+
+(** Definition of aborting programs --
+   TODO: define [abort] as "not a normal behavior",
+   by taking the negation of being of the form [ter (normal ...)]. *)
+
+Inductive abort : out -> Prop :=
+  | abort_div :
+      abort out_div
+  | abort_break : forall S la,
+      abort (out_ter S (res_break la))
+  | abort_continue : forall S la,
+      abort (out_ter S (res_continue la))
+  | abort_return : forall S la,
+      abort (out_ter S (res_return la))
+  | abort_throw : forall S v,
+      abort (out_ter S (res_throw v)).
+
+(** Definition of normal results -- TODO: not used ? *)
+
+Inductive is_res_normal : res -> Prop :=
+  | is_res_normal_intro : forall v,
+      is_res_normal (res_normal v).
+
+(** Definition of exception results, used in the
+    semantics of try-catch blocks. *)
+
+Inductive is_res_throw : res -> Prop :=
+  | is_res_throw_intro : forall v,
+      is_res_throw (res_throw v).
+
+Inductive is_res_break : res -> Prop :=
+  | is_res_break_intro : forall label,
+      is_res_break (res_break label).
+
+Inductive is_res_continue : res -> Prop :=
+  | is_res_continue_intro: forall label,
+      is_res_continue (res_continue label).
+
+
 
 (**************************************************************)
 (** ** Other rules for propagating aborting expressions *)
@@ -355,6 +485,57 @@ Inductive abort_intercepted : ext_stat -> out -> Prop :=
 
 (**************************************************************)
 (** ** Auxiliary definition used in identifier resolution *)
+
+
+(**************************************************************)
+(** Macros for exceptional behaviors in reduction rules *)
+
+(* TODO: change to proper transitions into allocated errors *)
+
+(** "Syntax error" behavior *)
+
+Definition out_syntax_error S :=
+  out_ter S (res_throw builtin_syntax_error).
+
+(** "Type error" behavior *)
+
+Definition out_type_error S :=
+  out_ter S (res_throw builtin_type_error).
+
+(** "Reference error" behavior *)
+
+Definition out_ref_error S :=
+  out_ter S (res_throw builtin_ref_error).
+
+
+(* TODO: needed? *)
+
+Definition out_ref_error_or_undef S (bthrow:bool) :=
+  if bthrow
+    then (out_ref_error S)
+    else (out_ter S undef).
+
+
+(** The "void" result is used by specification-level functions
+    which do not produce any javascript value, but only perform
+    side effects. (We return the value [undef] in the implementation.)
+    -- TODO : sometimes we used false instead  -- where? fix it.. *)
+
+Definition out_void S :=
+  out_ter S undef.
+
+(** [out_reject S bthrow] throws a type error if
+    [bthrow] is true, else returns the value [false] *)
+
+Definition out_reject S bthrow :=
+  ifb bthrow = true
+    then (out_type_error S)
+    else (out_ter S false).
+
+(** [out_ref_error_or_undef S bthrow] throws a type error if
+    [bthrow] is true, else returns the value [undef] *)
+
+
 
 (* [identifier_resolution C x] returns the extended expression
    which needs to be evaluated in order to perform the lookup

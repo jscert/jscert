@@ -1011,8 +1011,8 @@ Definition strict_equality_test v1 v2 :=
 
 (** Inequality comparison for numbers *)
 
-Definition inequality_test_number n1 n2 : value :=
-  ifb n1 = JsNumber.nan \/ n2 = JsNumber.nan then undef
+Definition inequality_test_number n1 n2 : prim :=
+  ifb n1 = JsNumber.nan \/ n2 = JsNumber.nan then prim_undef
   else ifb n1 = n2 then false
   else ifb n1 = JsNumber.zero /\ n2 = JsNumber.neg_zero then false
   else ifb n1 = JsNumber.neg_zero /\ n2 = JsNumber.zero then false
@@ -1041,7 +1041,7 @@ Fixpoint inequality_test_string s1 s2 : bool :=
 
 (** Inequality comparison *)
 
-Definition inequality_test w1 w2 : value :=
+Definition inequality_test_primitive w1 w2 : prim :=
   match w1, w2 with
   | prim_string s1, prim_string s2 => inequality_test_string s1 s2
   | _, _ => inequality_test_number (convert_prim_to_number w1) (convert_prim_to_number w2)
@@ -1053,38 +1053,7 @@ Definition inequality_test w1 w2 : value :=
 
 (* todo: move to js_pretty_inter *)
 
-(** Characterization of unary operators that start by 
-    evaluating and calling get_value on their argument. *)
-
-Definition regular_unary_op op :=
-  match op with
-  | unary_op_typeof => False
-  | _ => If prepost_unary_op op
-           then False 
-           else True
-  end.
-
 (** Characterization of unary "prepost" operators. *)
-
-Definition prepost_unary_op op :=
-  match op with
-  | unary_op_post_incr
-  | unary_op_post_decr
-  | unary_op_pre_incr
-  | unary_op_pre_decr => True
-  | _ => False
-  end.
-
-
-(** Operations increment and decrement *)
-
-Definition add_one n :=
-  JsNumber.add n JsNumber.one.
-
-Definition sub_one n :=
-  JsNumber.sub n JsNumber.one.
-
-(** Characterization of binary "shift" operators. *)
 
 (* TODO: change def below into 
    prepost_unary_op op := exists f b, prepost_op op f b. 
@@ -1098,6 +1067,25 @@ Definition prepost_unary_op op :=
   | unary_op_pre_decr => True
   | _ => False
   end.
+
+(** Characterization of unary operators that start by 
+    evaluating and calling get_value on their argument. *)
+
+Definition regular_unary_op op :=
+  match op with
+  | unary_op_typeof => False
+  | _ => If prepost_unary_op op
+           then False 
+           else True
+  end.
+
+(** Operations increment and decrement *)
+
+Definition add_one n :=
+  JsNumber.add n JsNumber.one.
+
+Definition sub_one n :=
+  JsNumber.sub n JsNumber.one.
 
 (** Relates a binary operator [++] or [--] with the value
     +1 or -1 and with a boolean that indicates whether the
@@ -1113,10 +1101,10 @@ Inductive prepost_op : unary_op -> (number -> number) -> bool -> Prop :=
 (** Characterizes pure mathematical operators, which always call toNumber
     before applying a mathematical function *)
 
-Inductive puremath_op : binary_op -> (int -> int -> int) -> Prop := 
+Inductive puremath_op : binary_op -> (number -> number -> number) -> Prop := 
   | puremath_op_mult : puremath_op binary_op_mult JsNumber.mult
   | puremath_op_div : puremath_op binary_op_div JsNumber.div
-  | puremath_op_mod : puremath_op binary_op_mod JsNumber.mod.
+  | puremath_op_mod : puremath_op binary_op_mod JsNumber.fmod
   | puremath_op_sub : puremath_op binary_op_sub JsNumber.sub.
 
 (** Characterizes bitwise operators, which always call toInt32
@@ -1134,6 +1122,16 @@ Inductive shift_op : binary_op -> bool -> (int -> int -> int) -> Prop :=
   | shift_op_left_shift : shift_op binary_op_left_shift false JsNumber.int32_left_shift
   | shift_op_right_shift : shift_op binary_op_right_shift false JsNumber.int32_right_shift
   | shift_op_unsigned_right_shift : shift_op binary_op_unsigned_right_shift true JsNumber.uint32_right_shift.
+
+(** Characterizes inequality operators, which are all similar to [lt], 
+    up to two parameters: (1) whether arguments should be swapped
+    and (2) whether the result should be negated. *)
+
+Inductive inequality_op : binary_op -> bool -> bool -> Prop := 
+  | inequality_op_lt : inequality_op binary_op_lt false false 
+  | inequality_op_gt : inequality_op binary_op_lt true false  
+  | inequality_op_le : inequality_op binary_op_lt true true 
+  | inequality_op_ge : inequality_op binary_op_lt false true.
 
 (** Characterizes lazy binary operators (&& and ||),
     and the boolean value for which the first operand triggers 
