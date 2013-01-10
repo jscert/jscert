@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export Preliminary PreliminaryAux.
+Require Export JsPreliminary JsPreliminaryAux.
 
 (* TODO: move *)
 

@@ -389,6 +389,19 @@ Proof. applys decidable_make false. rew_refl~. Qed.
 
 
 (**************************************************************)
+
+(** ** LATER: move to LibString *)
+
+Parameter is_substring : string -> string -> Prop.
+
+(* todo : implement a string comparison algorithm *)
+Parameter is_substring_dec : forall s1 s2, Decidable (is_substring s1 s2).
+
+
+(* todo: extract in a more clever way ! *)
+Parameter int_of_char : Ascii.ascii -> int.
+
+(**************************************************************)
 (** ** LATER: move to LibReflect *)
 
 Global Instance If_dec : forall P Q R,

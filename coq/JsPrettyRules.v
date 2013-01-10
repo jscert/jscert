@@ -1,10 +1,11 @@
-Require Import Preliminary PreliminaryAux PrettyInterm PrettyIntermAux.
+Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux.
 
 (**************************************************************)
 (** ** Implicit Types, same as in JsSemanticsDefs *)
 
 Implicit Type b : bool.
 Implicit Type n : number.
+Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l : object_loc.
@@ -32,8 +33,8 @@ Implicit Type t : stat.
 
 
 (* added *)
-Implicit Type re : res.
-Implicit Type rt : ret.
+Implicit Type res : res.
+Implicit Type R : ret.
 Implicit Type o : out.
 
 
@@ -47,6 +48,8 @@ Parameter alloc_primitive_value :
 Parameter basic_value_convertible_to_object : value -> Prop.
 
 
+(*todo: *)
+Axiom expr_unary_op_bitwise_not_1 : int -> ext_expr.
 
 (**************************************************************)
 (** ** Reduction rules for programs *)
@@ -106,9 +109,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_seq_1 o1 t2) o ->
       red_stat S C (stat_seq t1 t2) o
 
-  | red_stat_seq_1 : forall S0 S r C t2 o,
+  | red_stat_seq_1 : forall S0 S R C t2 o,
       red_stat S C (stat_basic t2) o ->
-      red_stat S0 C (stat_seq_1 (out_ter S r) t2) o
+      red_stat S0 C (stat_seq_1 (out_ter S R) t2) o
 
   (** Variable declaration *)
 
@@ -159,6 +162,43 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while e1 t2) o ->
       red_stat S0 C (stat_while_2 e1 t2 (out_ter S re)) o
     (* TODO: handle break and continue in while loops *)
+    
+(**------ begin under dvpt --------*)
+
+(* --which version to keep ??
+
+  (** For-in statement *)
+  
+  | red_stat_for_in : forall o1 S C e1 e2 t o,
+      red_expr S C e2 o1 ->
+      red_stat S C (stat_for_in_1 e1 t o1) o ->
+      red_stat S C (stat_for_in e1 e2 t) o
+      
+  | red_stat_for_in_1 : forall o1 S0 S C e1 t R o,
+      red_expr S C (spec_get_value R) o1 ->
+      red_stat S C (stat_for_in_2 e1 t o1) o ->
+      red_stat S0 C (stat_for_in_1 e1 t (out_ter S R)) o
+   (* todo: use spec_expr_get_value to factorize first two rules *)
+
+  | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      (* todo: replace premise with   [is_null_or_undef v1] *)
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S undef)
+      
+  | red_stat_for_in_2_else : forall o1 S0 S C e1 t v1 o,
+      v1 <> null /\ v1 <> undef ->
+      (* todo: replace premise with  [~ is_null_or_undef v1] *)
+      red_expr S C (spec_to_object v1) o1 ->
+      red_stat S C (stat_for_in_3 e1 t o1) o ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) o  
+      
+      (* todo: rename rules below *)
+
+      (* todo: use notations : 
+        Open Scope set_scope.
+        x \in E   \{}  \{x}  E \u F    E = F \u \{x}   *)
+
+*)
 
   (** For-in statement *)
 
@@ -195,7 +235,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (* allow possibility to skip new added property in for-in loop *)
   | red_stat_for_in_6a_skip_added_property : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
       object_all_enumerable_properties S (value_object l) currentProps ->
-      in_impl x (remove_impl (remove_impl currentProps visitedProps) initProps) ->
+      x \in (remove_impl (remove_impl currentProps visitedProps) initProps) ->
       let newVisitedProps := union_impl (single_impl x) visitedProps in
       red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps newVisitedProps) o ->
       red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
@@ -219,7 +259,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_for_in_5 e1 t l vret (Some lhdRef) initProps visitedProps x) o
 
   | red_stat_for_in_6c : forall S0 S C e1 t l vret lhdRef initProps visitedProps x o1 o,
-      red_expr S C (spec_ref_put_value lhdRef x) o1 ->
+      red_expr S C (spec_put_value lhdRef x) o1 ->
       red_stat S C (stat_for_in_7 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps o1) o ->
       red_stat S0 C (stat_for_in_6 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps x) o
 
@@ -230,7 +270,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_for_in_6e : forall S0 S C e1 t l vret lhdRef initProps visitedProps res o,
       let vnew := match res with
-        | res_normal ret => Some ret
+        | res_normal R => Some R
         | _ => vret end
       in
       red_stat S C (stat_for_in_9 e1 t l vnew lhdRef initProps visitedProps res) o ->
@@ -249,7 +289,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
      (* TODO: check continue label is in current label set *)
       ~ (is_res_break res) /\ ((is_res_continue res) \/ (is_res_normal res)) ->
       red_stat S C (stat_for_in_4 e1 t l vret lhdRef initProps visitedProps) o ->
-      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) o
+      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) o  
+ 
+(**------ end under dvpt --------*)
 
   (** With statement *)
 
@@ -324,9 +366,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_skip : forall S C,
       red_stat S C stat_skip (out_ter S undef)
 
-  (* Auxiliary forms *)
+  (* Auxiliary forms : [spec_expr_get_value] plus a type conversion *)
 
-  | red_spec_expr_get_value_conv : forall S C r e sc K o o1,
+  | red_spec_expr_get_value_conv : forall S C e sc K o o1, 
       red_expr S C (spec_expr_get_value e) o1 ->
       red_stat S C (spec_expr_get_value_conv_1 o1 sc K) o ->
       red_stat S C (spec_expr_get_value_conv e sc K) o
@@ -368,9 +410,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_list_then_2 K vs o1 es) o ->
       red_expr S C (expr_list_then_1 K vs (e::es)) o
 
-  | red_expr_list_then_2 : forall S0 S C k r v vs es o,
-      red_expr S C (expr_list_then_1 k (vs&v) es) o ->
-      red_expr S0 C (expr_list_then_2 k vs (out_ter S v) es) o
+  | red_expr_list_then_2 : forall S0 S C K v vs es o,
+      red_expr S C (expr_list_then_1 K (vs&v) es) o ->
+      red_expr S0 C (expr_list_then_2 K vs (out_ter S v) es) o
 
   (** This construct *)
 
@@ -390,7 +432,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
 
-(*----- TOCLEAN
+(*---begin to clean ---*)
+
+  (*----- TOCLEAN---
 
   (** Array initializer [TODO] *)
 
@@ -550,90 +594,150 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       getvalue S1 r v ->
       red_expr S0 C (expr_call_4 (out_ter S1 r)) (out_ter S1 v)*)
 
+---end to clean ---*)
 
-  (** Unary op *)
+  (** Unary op (regular rules) *)
 
-  | red_expr_unary_op : forall S0 C op e o1 o,
-      red_expr S0 C (expr_basic e) o1 ->
-      red_expr S0 C (expr_unary_op_1 op o1) o ->
-      red_expr S0 C (expr_unary_op op e) o
+  | red_expr_unary_op : forall S C op e o1 o,
+      regular_unary_op op ->
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_expr S C (expr_unary_op_1 op o1) o ->
+      red_expr S C (expr_unary_op op e) o
 
-  (*| red_expr_unary_op_1 : forall S0 S1 C op r1 v1 v,
-      getvalue S1 r1 v1 ->
-      unary_op_red op S1 v1 v ->
-      red_expr S0 C (expr_unary_op_1 op (out_ter S1 r1)) (out_ter S1 v)*)
+  | red_expr_unary_op_1 : forall S0 S C op v o,
+      red_expr S C (expr_unary_op_2 op v) o ->
+      red_expr S0 C (expr_unary_op_1 op (out_ter S v)) o
 
-  | red_expr_unary_op_2_void_1 : forall S C v,
+  (** Unary op : delete *)
+
+  | red_expr_delete : forall S C e o1 o,
+      red_expr S C e o1 ->
+      red_expr S C (expr_delete_1 o1) o ->
+      red_expr S C (expr_unary_op unary_op_delete e) o
+
+  | red_expr_delete_1_value : forall S0 S C v,
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_value v))) (out_ter S true)
+
+  | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
+      ref_is_unresolvable r ->
+      (* TODO uncomment: red_expr s C (spec_syntax_error_or_cst (ref_strict r) true) o -> *)
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
+
+  | red_expr_delete_1_ref_property : forall S0 S C r v o1 o,
+      ref_is_property r ->
+      ref_base r = ref_base_type_value v ->
+      red_expr S C (spec_to_object v) o1 ->
+      red_expr S C (expr_delete_2 (ref_name r) (ref_strict r) o1) o ->
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
+
+  | red_expr_delete_2 : forall S0 S C x l bstrict o,
+      red_expr S C (spec_object_delete l x bstrict) o ->
+      red_expr S0 C (expr_delete_2 x bstrict (out_ter S l)) o
+
+  | red_expr_delete_1_ref_env_record : forall S0 S C r L o,
+      ref_is_env_record r L ->
+      red_expr S C (expr_delete_3 r L (ref_strict r)) o ->
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
+
+  | red_expr_delete_3_strict : forall S C r L o,
+      (* TODO uncomment: red_expr s C spec_syntax_error o -> *)
+      red_expr S C (expr_delete_3 r L true) o 
+
+  | red_expr_delete_3_nonstrict : forall S C r L o,
+      red_expr S C (spec_env_record_delete_binding L (ref_name r)) o ->
+      red_expr S C (expr_delete_3 r L (ref_strict r)) o 
+    
+  (** Unary op : void *)
+
+  | red_expr_unary_op_void : forall S C v,
       red_expr S C (expr_unary_op_2 unary_op_void v) (out_ter S undef)
 
-  (*| red_expr_unary_op_2_void_2 : forall S C op v,
-      red_expr S C (expr_unary_op_2 unary_op_not v) (out_ter S (prim_bool (neg (convert_prim_to_boolean v))))*)
+  (** Unary op : typeof *)
 
-  (*| red_expr_unary_op_1_typeof_value : forall S0 S1 C r v str,
-      getvalue S1 r v ->
-      typeof_red S1 v str ->
-      red_expr S0 C (expr_unary_op_1 unary_op_typeof (out_ter S1 r)) (out_ter S1 str)*)
+  | red_expr_typeof : forall S C e o1 o,
+      red_expr S C e o1 ->
+      red_expr S C (expr_typeof_1 o1) o ->
+      red_expr S C (expr_unary_op unary_op_typeof e) o
+
+  | red_expr_typeof_1_unresolvable : forall S0 S r C,
+      ref_is_unresolvable r ->
+      red_expr S0 C (expr_typeof_1 (out_ter S (ret_ref r))) (out_ter S "undefined")
+
+  | red_expr_typeof_1_resolvable : forall S0 S C R o1 o,
+      red_expr S C (spec_get_value R) o1 ->
+      red_expr S C (expr_typeof_2 o1) o ->
+      red_expr S0 C (expr_typeof_1 (out_ter S R)) o
+
+  | red_expr_typeof_2 : forall S0 S s C v o,
+      s = typeof_value S v ->
+      red_expr S0 C (expr_typeof_2 (out_ter S v)) (out_ter S s)
+
+  (** Unary op : pre/post incr/decr *)
+
+  | red_expr_prepost : forall S C op e o1 o,
+      prepost_unary_op op ->
+      red_expr S C e o1 ->
+      red_expr S C (expr_prepost_1 op o1) o ->
+      red_expr S C (expr_unary_op op e) o
+
+  | red_expr_prepost_1_invalid : forall S0 S C op R,
+      ~ valid_lhs_for_assign R ->
+      red_expr S0 C (expr_prepost_1 op (out_ter S R)) (out_syntax_error S)
+
+  | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
+      valid_lhs_for_assign R ->
+      red_expr S C (spec_get_value R) o1 ->
+      red_expr S C (expr_prepost_2 op R o1) o ->
+      red_expr S0 C (expr_prepost_1 op (out_ter S R)) o
+ 
+  | red_expr_prepost_2 : forall S0 S C R op v o1 o,    
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (expr_prepost_3 op R o1) o ->
+      red_expr S0 C (expr_prepost_2 op R (out_ter S v)) o
+ 
+  | red_expr_prepost_3 : forall S0 S C R op number_op is_pre v n1 n2 o1 o,  
+      prepost_op op number_op is_pre ->
+      n2 = number_op n1 ->
+      v = prim_number (if is_pre then n2 else n1) ->
+      red_expr S C (spec_put_value R n2) o1 ->
+      red_expr S C (expr_prepost_4 v o1) o ->
+      red_expr S0 C (expr_prepost_3 op R (out_ter S n1)) o
+ 
+  | red_expr_prepost_4 : forall S0 S C v R',  
+      red_expr S0 C (expr_prepost_4 v (out_ter S R')) (out_ter S v)  (* todo: do we ignore R' ? is it out_void ? *) 
+
+  (** Unary op : neg *)
+
+  | red_expr_unary_op_neg : forall S C v o1 o,
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (expr_unary_op_neg_1 o1) o ->
+      red_expr S C (expr_unary_op_2 unary_op_neg v) o
+
+  | red_expr_unary_op_neg_1 : forall S0 S C n,
+      red_expr S0 C (expr_unary_op_neg_1 (out_ter S n)) (out_ter S (JsNumber.neg n))
+
+  (** Unary op : bitwise not *)
+
+  | red_expr_unary_op_bitwise_not : forall S C v o,
+      red_expr S C (spec_to_int32 v expr_unary_op_bitwise_not_1) o ->
+      red_expr S C (expr_unary_op_2 unary_op_bitwise_not v) o
+
+  | red_expr_unary_op_bitwise_not_1 : forall S C k n,
+      n = JsNumber.of_int (JsNumber.int32_bitwise_not k) ->
+      red_expr S C (expr_unary_op_bitwise_not_1 k) (out_ter S n)
+
+  (** Unary op : not *)
+
+  | red_expr_unary_op_not : forall S C v o1 o,
+      red_expr S C (spec_to_boolean v) o1 ->
+      red_expr S C (expr_unary_op_not_1 o1) o ->
+      red_expr S C (expr_unary_op_2 unary_op_not v) o
+
+  | red_expr_unary_op_not_1 : forall S0 S C b,
+      red_expr S0 C (expr_unary_op_not_1 (out_ter S b)) (out_ter S (neg b))
 
 
-   (* ---todo merge::
-   typeof_prim
-
-  | typeof_red_function : forall S l,
-      indom_scope_or_body S l ->
-      (* TODO: change to test [binds S l O] /\ [object_function O <> None],
-         which should be named as a predicate [is_function S l] *)
-      typeof_red S (value_loc l) "function"
-
-  | typeof_red_object : forall S l,
-      ~ indom_scope_or_body S l ->
-        (* TODO: change to test [binds S l O] /\ [object_function O = None],
-           which should be named as a predicate [is_not_function S l] *)
-      typeof_red S (value_loc l) "object"
-      *).
-
-
-
-
-  (*| red_expr_unary_op_1_typeof_undef : forall S0 S1 s x,
-      red_expr S0 C (expr_unary_op_1 unary_op_typeof (out_ter S1 (Ref loc_null x))) (out_ter S1 (prim_string "undefined"))*)
-
-  (* todo: handle ++ and -- pre and post *)
-  (* Martin:  You mean the errors they can throw if they are not given a reference? *)
-
-  (*| red_expr_unary_op_1_pre_incr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int 1) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_pre_incr (out_ter S1 (Ref l x))) (out_ter S2 va)*)
-
-  (*| red_expr_unary_op_1_pre_decr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int (-1)%Z) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_pre_decr (out_ter S1 (Ref l x))) (out_ter S2 va)*)
-
-  (*| red_expr_unary_op_1_post_incr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int 1) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_post_incr (out_ter S1 (Ref l x))) (out_ter S2 v)*)
-
-  (*| red_expr_unary_op_1_post_decr : forall S0 S1 S2 s l x v va,
-      getvalue S1 (Ref l x) v ->
-      binary_op_red binary_op_add S1 (number_of_int (-1)%Z) v va ->
-      S2 = update S1 l x va ->
-      red_expr S0 C (expr_unary_op_1 unary_op_post_decr (out_ter S1 (Ref l x))) (out_ter S2 v)*)
-
-  (*| red_expr_unary_op_1_delete_true : forall S0 S1 S2 C r,
-      ~ dont_delete r ->
-      S2 = dealloc S1 r ->
-      (* LATER: will raise an exception if r is loc_null *)
-      red_expr S0 C (expr_unary_op_1 unary_op_delete (out_ter S1 r)) (out_ter S2 (prim_bool true))*)
-
-  (*| red_expr_unary_op_1_delete_false : forall S0 S1 C r,
-      dont_delete r ->
-      red_expr S0 C (expr_unary_op_1 unary_op_delete (out_ter S1 r)) (out_ter S1 (prim_bool false))*)
-
+(* --begin clean---
 
   (** Binary op *)
 
@@ -842,6 +946,7 @@ END OF TO CLEAN----*)
 (*
  | spec_eq_same_type :
      (type_of v1 = type_of v2) ->
+     red_expr S C (eq v1 v2) (out_ter (equality_test_for_same_type v1 v2))
      T = type_of v1 ->
      red_expr S C (spec_eq v1 v2) (out_ter (value_equality_test_same_type T v1 v2))
 
@@ -884,6 +989,9 @@ END OF TO CLEAN----*)
      b = value_strict_equality_test v1 v2 ->
      red_expr S C (spec_strict_eq v1 v2) (out_ter S b)
 *)
+
+(* --end clean--- *)
+
 
 (**************************************************************)
 (** ** Reduction rules for specification functions *)
@@ -999,12 +1107,12 @@ END OF TO CLEAN----*)
       red_expr S C (spec_to_default_sub_1 l x K) o
 
   | red_spec_to_default_sub_2_not_callable : forall S0 S C l lf K o,
-      is_callable S lf None ->
+      callable S lf None ->
       red_expr S C (expr_basic K) o ->
       red_expr S0 C (spec_to_default_sub_2 l (out_ter S lf) K) o
 
   | red_spec_to_default_sub_2_callable : forall S C l lf K o fc o1,
-      is_callable S lf (Some fc) ->
+      callable S lf (Some fc) ->
       red_call S C lf nil l o1 ->
       red_expr S C (spec_to_default_sub_3 o1 (expr_basic K)) o ->
       red_expr S C (spec_to_default_sub_2 l (out_ter S lf) K) o
@@ -1301,11 +1409,11 @@ END OF TO CLEAN----*)
   (** Get value on a reference *)
 
   | red_expr_ref_get_value_value : forall S C v, (* Step 1. *)
-      red_expr S C (spec_ref_get_value (ret_value v)) (out_ter S v)
+      red_expr S C (spec_get_value (ret_value v)) (out_ter S v)
 
   | red_expr_ref_get_value_ref_a : forall S C r, (* Steps 2 and 3. *)
       ref_is_unresolvable r ->
-      red_expr S C (spec_ref_get_value (ret_ref r)) (out_ref_error S)
+      red_expr S C (spec_get_value (ret_ref r)) (out_ref_error S)
 
   | red_expr_ref_get_value_ref_b: forall ext_get v S C r o, (* Step 4. *)
       ref_is_property r ->
@@ -1314,12 +1422,12 @@ END OF TO CLEAN----*)
         then spec_object_get_special
         else spec_object_get) ->
       red_expr S C (ext_get v (ref_name r)) o ->
-      red_expr S C (spec_ref_get_value (ret_ref r)) o
+      red_expr S C (spec_get_value (ret_ref r)) o
 
   | red_expr_ref_get_value_ref_c : forall L S C r o, (* Step 5. *)
       ref_base r = ref_base_type_env_loc L ->
       red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o ->
-      red_expr S C (spec_ref_get_value (ret_ref r)) o
+      red_expr S C (spec_get_value (ret_ref r)) o
 
   | red_expr_object_get_special : forall o1 S C v x o,
       red_expr S C (spec_to_object v) o1 ->
@@ -1337,25 +1445,25 @@ END OF TO CLEAN----*)
       red_expr S C (spec_expr_get_value_1 o1) o ->
       red_expr S C (spec_expr_get_value e) o
 
-  | red_spec_expr_get_value_1 : forall S0 S C r o,
-      red_expr S C (spec_ref_get_value r) o ->
-      red_expr S0 C (spec_expr_get_value_1 (out_ter S r)) o
+  | red_spec_expr_get_value_1 : forall S0 S C R o,
+      red_expr S C (spec_get_value R) o ->
+      red_expr S0 C (spec_expr_get_value_1 (out_ter S R)) o
 
   (** Put value on a reference *)
 
   | red_expr_ref_put_value_value : forall S C v vnew, (* Step 1. *)
-      red_expr S C (spec_ref_put_value (ret_value v) vnew) (out_ref_error S)
-
+      red_expr S C (spec_put_value (ret_value v) vnew) (out_ref_error S) 
+    
   | red_expr_ref_put_value_ref_a_1 : forall S C r vnew, (* Steps 2 and 3a. *)
       ref_is_unresolvable r ->
       ref_strict r = true ->
-      red_expr S C (spec_ref_put_value (ret_ref r) vnew) (out_ref_error S)
+      red_expr S C (spec_put_value (ret_ref r) vnew) (out_ref_error S) 
 
   | red_expr_ref_put_value_ref_a_2 : forall o S C r vnew, (* Steps 2 and 3b. *)
       ref_is_unresolvable r ->
       ref_strict r = false ->
       red_expr S C (spec_object_put builtin_global (ref_name r) vnew throw_false) o ->
-      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
+      red_expr S C (spec_put_value (ret_ref r) vnew) o 
 
   (* ARTHUR::
   | red_expr_ref_put_value_ref_b : forall v ext_put S C r vnew o, (* Step 4. *)
@@ -1365,7 +1473,7 @@ END OF TO CLEAN----*)
         then spec_object_put_special
         else spec_object_put) ->
       red_expr S C (ext_put v (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
+      red_expr S C (spec_put_value (ret_ref r) vnew) o
   *)
 
   (* Can we do with just one rule? *)
@@ -1374,20 +1482,20 @@ END OF TO CLEAN----*)
       ref_base r = ref_base_type_value v ->
       ref_has_primitive_base r  ->
       red_expr S C (spec_object_put_special v (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
+      red_expr S C (spec_put_value (ret_ref r) vnew) o
 
   | red_expr_ref_put_value_ref_b : forall l S C r vnew o, (* Step 4. *)
       ref_is_property r ->
       ref_base r = ref_base_type_value (value_object l) ->
       ~ ref_has_primitive_base r ->
       red_expr S C (spec_object_put l (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
-
-  | red_expr_ref_put_value_ref_c : forall L S C r vnew o, (* Step 5. *)
+      red_expr S C (spec_put_value (ret_ref r) vnew) o
+      
+  | red_expr_ref_put_value_ref_c : forall L S C r vnew o, (* Step 5. *)     
       ref_base r = ref_base_type_env_loc L ->
       red_expr S C (spec_env_record_set_binding_value L (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
-
+      red_expr S C (spec_put_value (ret_ref r) vnew) o  
+  
   (*------------------------------------------------------------*)
   (** ** Operations on environment records *)
 
@@ -1604,8 +1712,9 @@ END OF TO CLEAN----*)
       let names := unsome_default nil names_option in
       red_expr S C (spec_execution_ctx_binding_instantiation_2 K func code args L names) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 K (Some func) code args L) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_names_empty : forall S C K func code args L o,  (* Loop ends in Step 4d *)
+      
+      (* todo: isolate substeps of (d) into a different group of rules, with more precise name *)
+  | red_expr_execution_ctx_binding_instantiation_function_names_empty : forall S C K func code args L o,  (* Loop ends in Step 4d *)  
       red_expr S C (spec_execution_ctx_binding_instantiation_6 K (Some func) code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_2 K func code args L nil) o
 
@@ -1670,7 +1779,7 @@ END OF TO CLEAN----*)
       red_expr S0 C (spec_execution_ctx_binding_instantiation_9 K func code args env_loc_global_env_record fd fds strict fo (out_ter S true)) o
 
   | red_expr_execution_ctx_binding_instantiation_function_decls_5eiii : forall o1 L S C K func code args fd fds strict fo o, (* Step 5e iii *)
-      let A := prop_attributes_create_data undef true true false in
+      let A := prop_attributes_create_data undef true true false in (* todo: fix configurable *)
       red_expr S C (spec_object_define_own_prop builtin_global (fd_name fd) A true) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_11 K func code args env_loc_global_env_record fd fds strict fo o1) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_10 K func code args fd fds strict fo A (Some true)) o

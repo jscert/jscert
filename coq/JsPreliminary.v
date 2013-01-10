@@ -6,6 +6,7 @@ Require Export Syntax SyntaxAux.
 
 Implicit Type b : bool.
 Implicit Type n : number.
+Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l : object_loc.
@@ -83,6 +84,7 @@ Definition value_same v1 v2 :=
               /\ v2 = (prim_number JsNumber.zero) then False
       else (v1 = v2)
   | type_string =>
+
       v1 = v2
   | type_bool =>
       v1 = v2
@@ -569,6 +571,12 @@ Definition ref_is_property r :=
      k = ref_kind_primitive_base
   \/ k = ref_kind_object.
 
+(** [ref_is_env_record r L] asserts that the reference [r]
+    either has the environment record L as base. *)
+
+Definition ref_is_env_record r L :=
+  ref_base r = ref_base_type_env_loc L.
+
 (** [ref_is_unresolvable r] asserts that the reference [r]
     as either [undef] for base. *)
 
@@ -590,6 +598,20 @@ Definition ref_create_env_loc L x strict :=
   {| ref_base := ref_base_type_env_loc L;
      ref_name := x;
      ref_strict := strict |}.
+
+(** [valid_lhs_for_assign R] asserts that [R] will not satisfy
+    the condition under which a SyntaxError gets triggered 
+    (see the semantics of simple assignement in the spec). *)
+
+Open Scope string_scope. (* todo: move *)
+
+Definition valid_lhs_for_assign R :=
+  ~ (exists r, 
+         R = ret_ref r 
+      /\ ref_strict r = true
+      /\ ref_kind_of r = ref_kind_env_record
+      /\ let s := ref_name r in
+         (s = "eval" \/ s = "arguments")).
 
 
 (**************************************************************)
@@ -790,90 +812,6 @@ Parameter variable_declarations : function_code -> list string.
 
 
 (**************************************************************)
-(** ** Rules for propagating aborting expressions *)
-
-(** Definition of aborting programs --
-   TODO: define [abort] as "not a normal behavior",
-   by taking the negation of being of the form [ter (normal ...)]. *)
-
-Inductive abort : out -> Prop :=
-  | abort_div :
-      abort out_div
-  | abort_break : forall S la,
-      abort (out_ter S (res_break la))
-  | abort_continue : forall S la,
-      abort (out_ter S (res_continue la))
-  | abort_return : forall S la,
-      abort (out_ter S (res_return la))
-  | abort_throw : forall S v,
-      abort (out_ter S (res_throw v)).
-
-(** Definition of normal results -- TODO: not used ? *)
-
-Inductive is_res_normal : res -> Prop :=
-  | is_res_normal_intro : forall v,
-      is_res_normal (res_normal v).
-
-(** Definition of exception results, used in the
-    semantics of try-catch blocks. *)
-
-Inductive is_res_throw : res -> Prop :=
-  | is_res_throw_intro : forall v,
-      is_res_throw (res_throw v).
-
-Inductive is_res_break : res -> Prop :=
-  | is_res_break_intro : forall label,
-      is_res_break (res_break label).
-
-Inductive is_res_continue : res -> Prop :=
-  | is_res_continue_intro: forall label,
-      is_res_continue (res_continue label).
-
-
-(**************************************************************)
-(** Macros for exceptional behaviors in reduction rules *)
-
-(** "Syntax error" behavior *)
-
-Definition out_basic_error S :=
-  out_ter S (res_throw builtin_syntax_error).
-
-(** "Type error" behavior *)
-
-Definition out_type_error S :=
-  out_ter S (res_throw builtin_type_error).
-
-(** "Reference error" behavior *)
-
-Definition out_ref_error S :=
-  out_ter S (res_throw builtin_ref_error).
-
-(** The "void" result is used by specification-level functions
-    which do not produce any javascript value, but only perform
-    side effects. (We return the value [undef] in the implementation.)
-    -- TODO : sometimes we used false instead  -- where? fix it.. *)
-
-Definition out_void S :=
-  out_ter S undef.
-
-(** [out_reject S bthrow] throws a type error if
-    [bthrow] is true, else returns the value [false] *)
-
-Definition out_reject S bthrow :=
-  ifb bthrow = true
-    then (out_type_error S)
-    else (out_ter S false).
-
-(** [out_ref_error_or_undef S bthrow] throws a type error if
-    [bthrow] is true, else returns the value [undef] *)
-
-Definition out_ref_error_or_undef S (bthrow:bool) :=
-  if bthrow
-    then (out_ref_error S)
-    else (out_ter S undef).
-
-
-(**************************************************************)
 (** Constants used for tracing the use of [throw]/[strict] flags. *)
 
 Definition throw_true : strictness_flag := true.
@@ -888,6 +826,8 @@ Definition throw_irrelevant : strictness_flag := false.
 
 (**************************************************************)
 (** ** Auxiliary definition for the evaluation of a program code *)
+
+(* TODO: fix
 
 (** Computing local variables of a statement or a program *)
 
@@ -926,19 +866,68 @@ Fixpoint defs_prog (lx:list string) p :=
 
 (* TODO: the same thing for function declarations. *)
 
+*)
 
 (**************************************************************)
-(** ** Auxiliary definitions for reduction of [typeof] *)
+(** ** Auxiliary functions on values and types *)
 
-Open Scope string_scope.
+(** Convert a literal into a primitive *) 
 
-Definition typeof_prim w :=
-  match w with
-  | prim_undef => "undefined"
-  | prim_null => "object"
-  | prim_bool b => "boolean"
-  | prim_number n => "number"
-  | prim_string s => "string"
+Definition convert_literal_to_prim (i:literal) :=
+  match i with
+  | literal_null => prim_null
+  | literal_bool b => prim_bool b
+  | literal_number n => prim_number n 
+  | literal_string s => prim_string s
+  end.
+
+(** Convert a literal into a value *) 
+
+Definition convert_literal_to_value (i:literal) :=
+  value_prim (convert_literal_to_prim i).
+
+(** Specification method that returns the type of a primitive *)
+
+Definition type_of_prim w :=
+   match w with
+   | prim_undef => type_undef
+   | prim_null => type_null
+   | prim_bool _ => type_bool
+   | prim_number _ => type_number
+   | prim_string _ => type_string
+   end.
+
+(** Specification method that returns the type of a value *)
+
+Definition type_of v :=
+  match v with
+  | value_prim w => type_of_prim w
+  | value_object _ => type_object
+  end.
+
+(** Definition of the "SameValue" algorithm *)
+
+Definition value_same v1 v2 :=
+  let T1 := type_of v1 in
+  let T2 := type_of v2 in
+  If T1 <> T2 then False else
+  match T1 with
+  | type_undef => True
+  | type_null => True
+  | type_number =>
+      If    v1 = (prim_number JsNumber.nan) 
+         /\ v2 = (prim_number JsNumber.nan) then True
+      else If    v1 = (prim_number JsNumber.zero) 
+              /\ v2 = (prim_number JsNumber.neg_zero) then False
+      else If    v1 = (prim_number JsNumber.neg_zero) 
+              /\ v2 = (prim_number JsNumber.zero) then False
+      else (v1 = v2)
+  | type_string => 
+      v1 = v2
+  | type_bool => 
+      v1 = v2
+  | type_object => 
+      v1 = v2
   end.
 
 
@@ -1038,58 +1027,182 @@ Definition other_preftypes pref :=
 (**************************************************************)
 (** ** Auxiliary functions for comparisons *)
 
- (** Abstract equality comparison for values of the same type *)
+(** Abstract equality comparison for values of the same type.
+    (the code assumes [v1] and [v2] to both have type [T].) *)
 
-(*
-Fixpoint value_equality_test_same_type T v1 v2 : bool :=
- let aux := value_equality_test in
-   match T with
-   | type_undef => true (* 1-a *)
-   | type_null => true (* 1-b *)
-   | type_number => (* 1-c *)
-       match (v1, v2) with
-       | (number_nan, _) => false
-       | (_, number_nan) => false
-       | (number_pos, number_neg_zero) => true
-       | (number_neg_zero, number_pos_zero) => true
-       | (_, _) => decide (v1 = v2)
-       end
-   | type_string => decide (v1 = v2)
-   | type_bool => decide (v1 = v2)
-   | type_object => decide (v1 = v2).
-*)
-(** Strict Equality Operator *)
-(*
-Fixpoint value_strict_equality_test v1 v2 : bool :=
-  let T1 := type_of v1 in
-  let T2 := type_of v2 in
-  if decide (T1 = T2)
-            value_equality_test_same_type T1 v1 v2
- else
-   false.
-*)
-(** Definition of symCases *)
-(*
-Fixpoint sym_cases v1 v2 P1 P2 eq_n K :=
-  let T1 := type_of v1 in
-  let T2 := type_of v2 in
-  if P1 T1 /\ P2 T2 eq_n v1 v2 else
-    if P1 T2 /\ P2 T1 eq_n v2 v1 else K.
-*)
+Definition equality_test_for_same_type T v1 v2 :=
+  match T with
+  | type_undef => true 
+  | type_null => true
+  | type_number => 
+     match v1,v2 with
+     | value_prim (prim_number n1), value_prim (prim_number n2) =>
+       ifb n1 = JsNumber.nan then false
+       else ifb n2 = JsNumber.nan then false
+       else ifb n1 = JsNumber.zero /\ n2 = JsNumber.neg_zero then true
+       else ifb n1 = JsNumber.neg_zero /\ n2 = JsNumber.zero then true
+       else decide (n1 = n2)
+     | _,_ => false (* this case never happens, by assumption *)
+     end
+  | type_string => decide (v1 = v2) 
+  | type_bool => decide (v1 = v2) 
+  | type_object => decide (v1 = v2)
+  end.
+
+(** Strict equality comparison *)
+
+(* todo: move *)
+Axiom type_dec : Comparable type.
+
+Definition strict_equality_test v1 v2 :=
+  let T1 := type_of v1 in 
+  let T2 := type_of v2 in 
+  ifb T1 = T2
+    then equality_test_for_same_type T1 v1 v2 
+    else false.
+
+(** Inequality comparison for numbers *)
+
+Definition inequality_test_number n1 n2 : value :=
+  ifb n1 = JsNumber.nan \/ n2 = JsNumber.nan then undef
+  else ifb n1 = n2 then false
+  else ifb n1 = JsNumber.zero /\ n2 = JsNumber.neg_zero then false
+  else ifb n1 = JsNumber.neg_zero /\ n2 = JsNumber.zero then false
+  else ifb n1 = JsNumber.infinity then false 
+  else ifb n2 = JsNumber.infinity then true 
+  else ifb n2 = JsNumber.neg_infinity then false 
+  else ifb n1 = JsNumber.neg_infinity then true 
+  else JsNumber.lt_bool n1 n2.
+
+(** Inequality comparison for strings *)
+
+(* todo: move *)
+Axiom ascii_dec : Comparable ascii.
+Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
+
+(* TODO: extract in more efficient way *)
+Fixpoint inequality_test_string s1 s2 : bool :=
+  match s1, s2 with
+  | _, EmptyString => false
+  | EmptyString, String _ _ => true
+  | String c1 s1', String c2 s2' =>
+     ifb c1 = c2
+       then inequality_test_string s1' s2'
+       else decide (int_of_char c1 < int_of_char c2)
+  end.
+
+(** Inequality comparison *)
+
+Definition inequality_test w1 w2 : value :=
+  match w1, w2 with
+  | prim_string s1, prim_string s2 => inequality_test_string s1 s2
+  | _, _ => inequality_test_number (convert_prim_to_number w1) (convert_prim_to_number w2)
+  end.
 
 
 (**************************************************************)
-(** ** Implementation of [is_callable] *)
+(** ** Factorization of reductions unary and binary operators *)
 
-(** [is_callable S v fco] ensures that [fco] is [None]
+(** Characterization of unary "prepost" operators. *)
+
+Definition prepost_unary_op op :=
+  match op with
+  | unary_op_post_incr
+  | unary_op_post_decr
+  | unary_op_pre_incr
+  | unary_op_pre_decr => True
+  | _ => False
+  end.
+
+(** Characterization of unary operators that start by 
+    evaluating and calling get_value on their argument. *)
+
+Definition regular_unary_op op :=
+  match op with
+  | unary_op_typeof => False
+  | _ => If prepost_unary_op op
+           then False 
+           else True
+  end.
+
+(** Characterization of binary operators that start by 
+    evaluating and calling get_value on both of their 
+    arguments. *)
+
+Definition regular_binary_op op :=
+  match op with
+  | binary_op_and
+  | binary_op_or => False
+  | _ => True
+  end.
+
+
+(**************************************************************)
+(** ** Factorization of pre/post incr/decr unary operators *)
+
+(** Operations increment and decrement *)
+
+Definition add_one n :=
+  JsNumber.add n JsNumber.one.
+
+Definition sub_one n :=
+  JsNumber.sub n JsNumber.one.
+
+(** Relates a binary operator [++] or [--] with the value
+    +1 or -1 and with a boolean that indicates whether the
+    operator is prefix (in which case the updated value should
+    be returned by the semantics). *)
+
+Inductive prepost_op : unary_op -> (number -> number) -> bool -> Prop := 
+  | prepost_op_pre_incr : prepost_op unary_op_pre_incr add_one true
+  | prepost_op_pre_decr : prepost_op unary_op_pre_decr sub_one true
+  | prepost_op_post_incr : prepost_op unary_op_post_incr add_one false
+  | prepost_op_post_decr : prepost_op unary_op_post_decr sub_one false.
+
+
+(**************************************************************)
+(** ** Implementation of [callable] *)
+
+(** [callable S v fco] ensures that [fco] is [None]
     when [v] is not an object and, that [fco] is equal
     to the content of the call field of the object [v]
     otherwise. *)
 
-Definition is_callable S v fco :=
+Definition callable S v fco :=
   match v with
   | value_prim w => (fco = None)
   | value_object l => object_call S l fco
+  end.
+
+(** [is_callable S v] asserts that the object [v] is a location 
+    describing an object with a Call method. *)
+
+Definition is_callable S v :=
+  exists fct, callable S v (Some fct).
+
+
+(**************************************************************)
+(** ** Auxiliary definitions for reduction of [typeof] *)
+
+Open Scope string_scope.
+
+(** [typeof] for a primitive *)
+
+Definition typeof_prim w :=
+  match w with
+  | prim_undef => "undefined"
+  | prim_null => "object"
+  | prim_bool b => "boolean"
+  | prim_number n => "number"
+  | prim_string s => "string"
+  end.
+
+(** [typeof] for a value *)
+
+Definition typeof_value S v :=
+  match v with
+  | value_prim w => typeof_prim w
+  | value_object l => If is_callable S l then "function" else "object" 
   end.
 
 

@@ -12,8 +12,8 @@
 # Default paths for TLC and COQBIN are as follows:
 
 COQBIN=
-TLC=tlc
-FLOCQ=flocq
+TLC=coq/tlc
+FLOCQ=coq/flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
 # Alternative definition for FLOCQ_INC: 
@@ -44,17 +44,17 @@ OCAMLOPT=ocamlopt
 JS_SRC=\
 	coq/Shared.v \
 	coq/JsNumber.v \
-	coq/Syntax.v \
-	coq/SyntaxAux.v \
-	coq/Preliminary.v \
-	coq/PreliminaryAux.v \
-	coq/Interpreter.v \
-	coq/InterpreterExtraction.v \
-	coq/PrettyInterm.v \
-	coq/PrettyIntermAux.v \
-	coq/PrettyRules.v \
-	coq/Correctness.v \
-	coq/Init.v
+	coq/JsSyntax.v \
+	coq/JsSyntaxAux.v \
+	coq/JsPreliminary.v \
+	coq/JsPreliminaryAux.v \
+	coq/JsInterpreter.v \
+	coq/JsInterpreterExtraction.v \
+	coq/JsPrettyInterm.v \
+	coq/JsPrettyIntermAux.v \
+	coq/JsPrettyRules.v \
+	coq/JsCorrectness.v \
+	coq/JsInit.v
 
 JS_VO=$(JS_SRC:.v=.vo)
 
@@ -100,7 +100,7 @@ init:
 
 interpreter:  interp/src/interpreter.ml
 
-interp/src/interpreter.ml: coq/InterpreterExtraction.vo
+interp/src/interpreter.ml: coq/JsInterpreterExtraction.vo
 
 PARSER_INC=-I $(shell ocamlfind query xml-light) -I interp/src
 

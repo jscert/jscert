@@ -21,6 +21,8 @@ Definition execution_ctx_initial :=
 (**************************************************************)
 (** ** Numerical values *)
 
+(* TODO: remove duplication with JsNumber *)
+
 Definition number_of_int : int -> number :=
   Fappli_IEEE_bits.b64_of_bits.
 

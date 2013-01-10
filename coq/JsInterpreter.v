@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix.
-Require Import Syntax SyntaxAux Preliminary PreliminaryAux.
+Require Import Syntax SyntaxAux JsPreliminary PreliminaryAux.
 
 
 (**************************************************************)
