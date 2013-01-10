@@ -109,10 +109,11 @@ Inductive ext_expr :=
   | expr_lazy_op_1 : bool -> out -> expr -> ext_expr
   | expr_lazy_op_2 : bool -> value -> out -> expr -> ext_expr
 
-  | expr_assign_1 : out -> option binary_op -> expr -> ext_expr (* The left expression has been executed *)
-  | expr_assign_2 : ref -> out -> ext_expr (* The right expression has been executed *)
-  | expr_assign_3 : ref -> value -> ext_expr
-  | expr_assign_2_op : ref -> value -> binary_op -> out -> ext_expr (* The right expression has been executed and there was an operator.  *)
+  | expr_assign_1 : out -> option binary_op -> expr -> ext_expr
+  | expr_assign_2 : ret -> out -> binary_op -> expr -> ext_expr
+  | expr_assign_3 : ret -> value -> binary_op -> out -> ext_expr
+  | expr_assign_4 : ret -> out -> ext_expr
+  | expr_assign_5 : value -> out -> ext_expr
 
 (* TODO: we could separate ext_spec from ext_expr,
    and separate red_spec from red_expr *)
@@ -287,6 +288,7 @@ with ext_stat :=
   (** Extended statements associated with primitive statements *)
 
   | stat_seq_1 : out -> stat -> ext_stat (* The first statement has been executed. *)
+  | stat_seq_2 : ret_or_empty -> out -> ext_stat
 
   | stat_var_decl_1 : out -> ext_stat (* Ignore its argument and returns [undef] *)
 

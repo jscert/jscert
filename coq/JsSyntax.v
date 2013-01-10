@@ -498,8 +498,6 @@ Inductive ret_or_empty :=
   | ret_or_empty_empty : ret_or_empty
   | ret_or_empty_ret : ret -> ret_or_empty.
 
-Coercion ret_or_empty_ret : ret >-> ret_or_empty.
-
 (** Result of an evaluation:
 
     In the specification, these are triples of the form
@@ -532,9 +530,12 @@ Inductive out :=
   | out_div : out
   | out_ter : state -> res -> out.
 
-(** Coercions *)
+(** Coercions and shortnames *)
+
+Notation "'ret_empty'" := ret_or_empty_empty.
 
 Coercion ret_value : value >-> ret.
 Coercion ret_ref : ref >-> ret.
+Coercion ret_or_empty_ret : ret >-> ret_or_empty.
 Coercion res_normal : ret_or_empty >-> res.
 

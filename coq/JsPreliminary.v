@@ -1083,9 +1083,6 @@ Definition equality_test_for_same_type T v1 v2 :=
 
 (** Strict equality comparison *)
 
-(* todo: move *)
-Axiom type_dec : Comparable type.
-
 Definition strict_equality_test v1 v2 :=
   let T1 := type_of v1 in
   let T2 := type_of v2 in
