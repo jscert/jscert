@@ -360,6 +360,7 @@ Proof.
   applys prove_Inhab (a, b).
 Qed.
 
+
 (**************************************************************)
 (** ** LATER: move to LibInt *)
 
@@ -376,6 +377,7 @@ Proof.
   introv. apply (prove_Inhab empty).
 Qed.
 
+
 (**************************************************************)
 (** ** LATER: move to LibLogic *)
 
@@ -387,6 +389,7 @@ Proof. applys decidable_make false. rew_refl~. Qed.
 
 
 (**************************************************************)
+
 (** ** LATER: move to LibString *)
 
 Parameter is_substring : string -> string -> Prop.
@@ -398,4 +401,43 @@ Parameter is_substring_dec : forall s1 s2, Decidable (is_substring s1 s2).
 (* todo: extract in a more clever way ! *)
 Parameter int_of_char : Ascii.ascii -> int.
 
+(**************************************************************)
+(** ** LATER: move to LibReflect *)
+
+Global Instance If_dec : forall P Q R,
+  Decidable P -> Decidable Q -> Decidable R ->
+  Decidable (If P then Q else R).
+Proof.
+  introv [p Hp] [q Hq] [r Hr]. applys decidable_make (if p then q else r).
+  repeat cases_if~; false.
+   rewrite~ isTrue_false in Hp; false.
+   rewrite~ isTrue_true in Hp; false.
+Qed.
+
+
+(* The following lines are just a test with typeclasses. *)
+(**************************************************************)
+(** ** LATER: move to LibReflect *)
+
+Class FunctionalPred A (P:A->Prop) := functionalpred_make {
+    functional_pred : forall x y, P x -> P y -> x = y }.
+
+Global Instance apply_if_exists_pickable : (* Is hat a good idea? -- Martin *)
+  forall (A B : Type) (P : A -> Prop) (f : A -> B),
+  Pickable P -> FunctionalPred P ->
+  Pickable (fun v => exists x, P x /\ f x = v).
+Proof.
+  introv [p Hp] [F]. applys pickable_make (f p).
+  intros (a & x & (Hx & Ha)). exists x. splits~.
+  forwards*: F Hx Hp. substs~.
+Qed.
+
+(**************************************************************)
+(** ** LATER: move to LibHeap *)
+
+Global Instance binds_functionnal : forall (H K : Type) (h : heap H K) k,
+  Comparable H -> Inhab K ->
+  FunctionalPred (binds h k).
+Proof. introv C I. applys functionalpred_make. apply binds_func. Qed.
+(* End of this little test. *)
 

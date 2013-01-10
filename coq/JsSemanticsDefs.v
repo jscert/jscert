@@ -731,6 +731,13 @@ Inductive ext_expr :=
   | spec_convert_twice_1 : out -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
   | spec_convert_twice_2 : out -> (value -> ext_expr) -> ext_expr
 
+
+  (** Extended expressions for conversions *)
+  | spec_eq : value -> value -> ext_expr
+  | spec_eq0 : value -> value -> ext_expr
+  | spec_eq1 : value -> value -> ext_expr
+  | spec_eq2 : ext_expr -> value -> value -> ext_expr
+
   (** Extended expressions for operations on objects *)
 
   | spec_object_get : value -> prop_name -> ext_expr 
@@ -1056,7 +1063,7 @@ Definition out_void S :=
     [bthrow] is true, else returns the value [false] *)
 
 Definition out_reject S bthrow :=
-  If bthrow = true 
+  ifb bthrow = true 
     then (out_type_error S) 
     else (out_ter S false).
 
@@ -1465,105 +1472,6 @@ Definition typeof_value S v :=
 
 
 (**************************************************************)
-(** ** Auxiliary definitions for reduction of [get_own_property]  *)
-
-(** The 4 following definitions are used to define when
-    a property descriptor contains another one. *)
-
-Definition if_some_then_same (A:Type) F (oldf newf : option A) :=
-  match newf, oldf with
-  | Some v1, Some v2 => F v1 v2
-  | Some v1, None => False
-  | None, _ => True
-  end.
-
-Definition if_some_value_then_same :=
-  if_some_then_same value_same.
-
-Definition if_some_bool_then_same :=
-  if_some_then_same (A := bool)eq.
-
-Definition prop_attributes_contains oldpf newpf := 
-  match oldpf, newpf with 
-  | prop_attributes_intro ov ow og os oe oc, 
-    prop_attributes_intro nv nw ng ns ne nc =>
-       if_some_value_then_same ov nv
-    /\ if_some_bool_then_same ow nw
-    /\ if_some_value_then_same og ng
-    /\ if_some_value_then_same os ns
-    /\ if_some_bool_then_same oe ne
-    /\ if_some_bool_then_same oc nc
-  end.
-
-(** The 2 following definitions are used to define what
-    it means to copy the defined attributes of a property 
-    descriptors into another descriptor. *)
-
-Definition option_transfer (A:Type) (oldopt newopt : option A) :=
-  match newopt with
-  | None => oldopt
-  | _ => newopt
-  end.
-
-  (* TEMP: Alternative definition:
-  match newopt,oldopt with
-  | Some v, _ => Some v
-  | _, _ => oldopt
-  end.*)
-
-Definition prop_attributes_transfer oldpf newpf := 
-  match oldpf, newpf with 
-  | prop_attributes_intro ov ow og os oe oc, 
-    prop_attributes_intro nv nw ng ns ne nc =>
-    prop_attributes_intro 
-      (option_transfer ov nv)
-      (option_transfer ow nw)
-      (option_transfer og ng)
-      (option_transfer os ns)
-      (option_transfer oe ne)
-      (option_transfer oc nc)
-  end.
-
-(** The 8 following definitions are used to describe the
-    cases in which the define_own_property specification method 
-    performs an illegal operation. *)
-
-Definition some_compare (A:Type) F (o1 o2 : option A) :=
-  match o1, o2 with
-  | Some v1, Some v2 => F v1 v2
-  | _, _ => False
-  end.
-  
-Definition some_not_same_value :=
-   some_compare (fun v1 v2 => ~ value_same v1 v2).
-   
-Definition some_not_same_bool :=
-   some_compare (fun b1 b2 => b1 <> b2).   
-  
-Definition change_enumerable_attributes_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_configurable oldpf = Some false 
-  /\ (   prop_attributes_configurable newpf = Some true 
-      \/ some_not_same_bool (prop_attributes_enumerable newpf) (prop_attributes_enumerable oldpf)).
-
-Definition change_writable_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_writable oldpf = Some false 
-  /\ prop_attributes_writable newpf = Some true.
-    
-Definition change_value_on_non_writable oldpf newpf : Prop :=
-     prop_attributes_writable oldpf = Some false
-  /\ some_not_same_value (prop_attributes_value newpf) (prop_attributes_value oldpf).
-  
-Definition change_data_attributes_on_non_configurable oldpf newpf : Prop :=
-     change_writable_on_non_configurable oldpf newpf
-  \/ change_value_on_non_writable oldpf newpf.
-
-Definition change_accessor_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_configurable oldpf = Some false 
-  /\ (   some_not_same_value (prop_attributes_set newpf) (prop_attributes_set oldpf)
-      \/ some_not_same_value (prop_attributes_get newpf) (prop_attributes_get oldpf)).
-
-
-(**************************************************************)
 (** ** Auxiliary definition used in the reduction of [get_own_property] *)
 
 (** [object_get_own_property_builder A] is an auxilialry definition
@@ -1706,3 +1614,15 @@ Definition identifier_resolution C x :=
 (** Axiomatized parsing relation for eval *)
 
 Axiom parse : string -> prog -> Prop.
+
+
+(* TODO:  To be put in the Aux file. *)
+
+Global Instance object_binds_pickable : forall S l,
+  Pickable (object_binds S l).
+Proof. typeclass. Qed.
+
+Global Instance env_record_binds_pickable : forall S L,
+  Pickable (env_record_binds S L).
+Proof. typeclass. Qed.
+

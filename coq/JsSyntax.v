@@ -502,3 +502,163 @@ Coercion res_normal : ret >-> res.
 
 (* <informal> Implicit Type o : out_*  *)
 
+
+(**************************************************************)
+(** ** TODO:  Move those functions to Preliminary once the file defined. *)
+
+(**************************************************************)
+(** ** Auxiliary functions on values and types *)
+
+(** Convert a literal into a primitive *) 
+
+Definition convert_literal_to_prim (i:literal) :=
+  match i with
+  | literal_null => prim_null
+  | literal_bool b => prim_bool b
+  | literal_number n => prim_number n 
+  | literal_string s => prim_string s
+  end.
+
+(** Convert a literal into a value *) 
+
+Definition convert_literal_to_value (i:literal) :=
+  value_prim (convert_literal_to_prim i).
+
+(** Specification method that returns the type of a value *)
+
+Definition type_of v :=
+  match v with
+  | value_prim w =>
+     match w with
+     | prim_undef => type_undef
+     | prim_null => type_null
+     | prim_bool _ => type_bool
+     | prim_number _ => type_number
+     | prim_string _ => type_string
+     end
+  | value_object _ => type_object
+  end.
+
+(** Definition of the "SameValue" algorithm *)
+
+Definition value_same v1 v2 :=
+  let T1 := type_of v1 in
+  let T2 := type_of v2 in
+  If T1 <> T2 then False else
+  match T1 with
+  | type_undef => True
+  | type_null => True
+  | type_number =>
+      If    v1 = (prim_number JsNumber.nan) 
+         /\ v2 = (prim_number JsNumber.nan) then True
+      else If    v1 = (prim_number JsNumber.zero) 
+              /\ v2 = (prim_number JsNumber.neg_zero) then False
+      else If    v1 = (prim_number JsNumber.neg_zero) 
+              /\ v2 = (prim_number JsNumber.zero) then False
+      else (v1 = v2)
+  | type_string => 
+      v1 = v2
+  | type_bool => 
+      v1 = v2
+  | type_object => 
+      v1 = v2
+  end.
+
+(**************************************************************)
+(** ** Auxiliary definitions for reduction of [get_own_property]  *)
+
+(** The 4 following definitions are used to define when
+    a property descriptor contains another one. *)
+
+Definition if_some_then_same (A:Type) F (oldf newf : option A) :=
+  match newf, oldf with
+  | Some v1, Some v2 => F v1 v2
+  | Some v1, None => False
+  | None, _ => True
+  end.
+
+Definition if_some_value_then_same :=
+  if_some_then_same value_same.
+
+Definition if_some_bool_then_same :=
+  if_some_then_same (A := bool)eq.
+
+Definition prop_attributes_contains oldpf newpf := 
+  match oldpf, newpf with 
+  | prop_attributes_intro ov ow og os oe oc, 
+    prop_attributes_intro nv nw ng ns ne nc =>
+       if_some_value_then_same ov nv
+    /\ if_some_bool_then_same ow nw
+    /\ if_some_value_then_same og ng
+    /\ if_some_value_then_same os ns
+    /\ if_some_bool_then_same oe ne
+    /\ if_some_bool_then_same oc nc
+  end.
+
+(** The 2 following definitions are used to define what
+    it means to copy the defined attributes of a property 
+    descriptors into another descriptor. *)
+
+Definition option_transfer (A:Type) (oldopt newopt : option A) :=
+  match newopt with
+  | None => oldopt
+  | _ => newopt
+  end.
+
+  (* TEMP: Alternative definition:
+  match newopt,oldopt with
+  | Some v, _ => Some v
+  | _, _ => oldopt
+  end.*)
+
+Definition prop_attributes_transfer oldpf newpf := 
+  match oldpf, newpf with 
+  | prop_attributes_intro ov ow og os oe oc, 
+    prop_attributes_intro nv nw ng ns ne nc =>
+    prop_attributes_intro 
+      (option_transfer ov nv)
+      (option_transfer ow nw)
+      (option_transfer og ng)
+      (option_transfer os ns)
+      (option_transfer oe ne)
+      (option_transfer oc nc)
+  end.
+
+(** The 8 following definitions are used to describe the
+    cases in which the define_own_property specification method 
+    performs an illegal operation. *)
+
+Definition some_compare (A:Type) F (o1 o2 : option A) :=
+  match o1, o2 with
+  | Some v1, Some v2 => F v1 v2
+  | _, _ => False
+  end.
+  
+Definition some_not_same_value :=
+   some_compare (fun v1 v2 => ~ value_same v1 v2).
+   
+Definition some_not_same_bool :=
+   some_compare (fun b1 b2 : bool (* TODO:  Remove this type annotation (once moved in the file Preliminary) *) => b1 <> b2).   
+  
+Definition change_enumerable_attributes_on_non_configurable oldpf newpf : Prop :=
+     prop_attributes_configurable oldpf = Some false 
+  /\ (   prop_attributes_configurable newpf = Some true 
+      \/ some_not_same_bool (prop_attributes_enumerable newpf) (prop_attributes_enumerable oldpf)).
+
+Definition change_writable_on_non_configurable oldpf newpf : Prop :=
+     prop_attributes_writable oldpf = Some false 
+  /\ prop_attributes_writable newpf = Some true.
+    
+Definition change_value_on_non_writable oldpf newpf : Prop :=
+     prop_attributes_writable oldpf = Some false
+  /\ some_not_same_value (prop_attributes_value newpf) (prop_attributes_value oldpf).
+  
+Definition change_data_attributes_on_non_configurable oldpf newpf : Prop :=
+     change_writable_on_non_configurable oldpf newpf
+  \/ change_value_on_non_writable oldpf newpf.
+
+Definition change_accessor_on_non_configurable oldpf newpf : Prop :=
+     prop_attributes_configurable oldpf = Some false 
+  /\ (   some_not_same_value (prop_attributes_set newpf) (prop_attributes_set oldpf)
+      \/ some_not_same_value (prop_attributes_get newpf) (prop_attributes_get oldpf)).
+
