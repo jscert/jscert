@@ -860,7 +860,7 @@ Inductive is_res_continue : res -> Prop :=
 
 (** "Syntax error" behavior *)
 
-Definition out_basic_error S :=
+Definition out_syntax_error S :=
   out_ter S (res_throw builtin_syntax_error).
 
 (** "Type error" behavior *)

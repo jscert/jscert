@@ -259,7 +259,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_for_in_5 e1 t l vret (Some lhdRef) initProps visitedProps x) o
 
   | red_stat_for_in_6c : forall S0 S C e1 t l vret lhdRef initProps visitedProps x o1 o,
-      red_expr S C (spec_put_value lhdRef x) o1 ->
+      red_expr S C (spec_ref_put_value lhdRef x) o1 ->
       red_stat S C (stat_for_in_7 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps o1) o ->
       red_stat S0 C (stat_for_in_6 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps x) o
 
@@ -664,7 +664,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_typeof_1 (out_ter S (ret_ref r))) (out_ter S "undefined")
 
   | red_expr_typeof_1_resolvable : forall S0 S C R o1 o,
-      red_expr S C (spec_get_value R) o1 ->
+      red_expr S C (spec_ref_get_value R) o1 ->
       red_expr S C (expr_typeof_2 o1) o ->
       red_expr S0 C (expr_typeof_1 (out_ter S R)) o
 
@@ -686,7 +686,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
       valid_lhs_for_assign R ->
-      red_expr S C (spec_get_value R) o1 ->
+      red_expr S C (spec_ref_get_value R) o1 ->
       red_expr S C (expr_prepost_2 op R o1) o ->
       red_expr S0 C (expr_prepost_1 op (out_ter S R)) o
  
@@ -699,7 +699,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       prepost_op op number_op is_pre ->
       n2 = number_op n1 ->
       v = prim_number (if is_pre then n2 else n1) ->
-      red_expr S C (spec_put_value R n2) o1 ->
+      red_expr S C (spec_ref_put_value R n2) o1 ->
       red_expr S C (expr_prepost_4 v o1) o ->
       red_expr S0 C (expr_prepost_3 op R (out_ter S n1)) o
  
@@ -1409,11 +1409,11 @@ END OF TO CLEAN----*)
   (** Get value on a reference *)
 
   | red_expr_ref_get_value_value : forall S C v, (* Step 1. *)
-      red_expr S C (spec_get_value (ret_value v)) (out_ter S v)
+      red_expr S C (spec_ref_get_value (ret_value v)) (out_ter S v)
 
   | red_expr_ref_get_value_ref_a : forall S C r, (* Steps 2 and 3. *)
       ref_is_unresolvable r ->
-      red_expr S C (spec_get_value (ret_ref r)) (out_ref_error S)
+      red_expr S C (spec_ref_get_value (ret_ref r)) (out_ref_error S)
 
   | red_expr_ref_get_value_ref_b: forall ext_get v S C r o, (* Step 4. *)
       ref_is_property r ->
@@ -1422,12 +1422,12 @@ END OF TO CLEAN----*)
         then spec_object_get_special
         else spec_object_get) ->
       red_expr S C (ext_get v (ref_name r)) o ->
-      red_expr S C (spec_get_value (ret_ref r)) o
+      red_expr S C (spec_ref_get_value (ret_ref r)) o
 
   | red_expr_ref_get_value_ref_c : forall L S C r o, (* Step 5. *)
       ref_base r = ref_base_type_env_loc L ->
       red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o ->
-      red_expr S C (spec_get_value (ret_ref r)) o
+      red_expr S C (spec_ref_get_value (ret_ref r)) o
 
   | red_expr_object_get_special : forall o1 S C v x o,
       red_expr S C (spec_to_object v) o1 ->
@@ -1446,24 +1446,24 @@ END OF TO CLEAN----*)
       red_expr S C (spec_expr_get_value e) o
 
   | red_spec_expr_get_value_1 : forall S0 S C R o,
-      red_expr S C (spec_get_value R) o ->
+      red_expr S C (spec_ref_get_value R) o ->
       red_expr S0 C (spec_expr_get_value_1 (out_ter S R)) o
 
   (** Put value on a reference *)
 
   | red_expr_ref_put_value_value : forall S C v vnew, (* Step 1. *)
-      red_expr S C (spec_put_value (ret_value v) vnew) (out_ref_error S) 
+      red_expr S C (spec_ref_put_value (ret_value v) vnew) (out_ref_error S) 
     
   | red_expr_ref_put_value_ref_a_1 : forall S C r vnew, (* Steps 2 and 3a. *)
       ref_is_unresolvable r ->
       ref_strict r = true ->
-      red_expr S C (spec_put_value (ret_ref r) vnew) (out_ref_error S) 
+      red_expr S C (spec_ref_put_value (ret_ref r) vnew) (out_ref_error S) 
 
   | red_expr_ref_put_value_ref_a_2 : forall o S C r vnew, (* Steps 2 and 3b. *)
       ref_is_unresolvable r ->
       ref_strict r = false ->
       red_expr S C (spec_object_put builtin_global (ref_name r) vnew throw_false) o ->
-      red_expr S C (spec_put_value (ret_ref r) vnew) o 
+      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o 
 
   (* ARTHUR::
   | red_expr_ref_put_value_ref_b : forall v ext_put S C r vnew o, (* Step 4. *)
@@ -1473,7 +1473,7 @@ END OF TO CLEAN----*)
         then spec_object_put_special
         else spec_object_put) ->
       red_expr S C (ext_put v (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_put_value (ret_ref r) vnew) o
+      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
   *)
 
   (* Can we do with just one rule? *)
@@ -1482,19 +1482,19 @@ END OF TO CLEAN----*)
       ref_base r = ref_base_type_value v ->
       ref_has_primitive_base r  ->
       red_expr S C (spec_object_put_special v (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_put_value (ret_ref r) vnew) o
+      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
 
   | red_expr_ref_put_value_ref_b : forall l S C r vnew o, (* Step 4. *)
       ref_is_property r ->
       ref_base r = ref_base_type_value (value_object l) ->
       ~ ref_has_primitive_base r ->
       red_expr S C (spec_object_put l (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_put_value (ret_ref r) vnew) o
+      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o
       
   | red_expr_ref_put_value_ref_c : forall L S C r vnew o, (* Step 5. *)     
       ref_base r = ref_base_type_env_loc L ->
       red_expr S C (spec_env_record_set_binding_value L (ref_name r) vnew (ref_strict r)) o ->
-      red_expr S C (spec_put_value (ret_ref r) vnew) o  
+      red_expr S C (spec_ref_put_value (ret_ref r) vnew) o  
   
   (*------------------------------------------------------------*)
   (** ** Operations on environment records *)

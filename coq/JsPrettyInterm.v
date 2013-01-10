@@ -69,6 +69,20 @@ Inductive ext_expr :=
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
+
+  | expr_delete_1 : out -> ext_expr
+  | expr_delete_2 : string -> bool -> out -> ext_expr
+  | expr_delete_3 : ref -> env_loc -> bool -> ext_expr
+  | expr_typeof_1 : out -> ext_expr
+  | expr_typeof_2 : out -> ext_expr
+  | expr_prepost_1 : unary_op -> out -> ext_expr
+  | expr_prepost_2 : unary_op -> ret -> out -> ext_expr
+  | expr_prepost_3 : unary_op -> ret -> out -> ext_expr
+  | expr_prepost_4 : value -> out -> ext_expr
+  | expr_unary_op_neg_1 : out -> ext_expr
+  | expr_unary_op_bitwise_not_1 : int -> ext_expr
+  | expr_unary_op_not_1 : out -> ext_expr
+
   | expr_binary_op_1 : out -> binary_op -> expr -> ext_expr (* The right argument have been executed. *)
   | expr_binary_op_2 : option out -> value -> binary_op -> expr -> ext_expr (* The execution checks if this value matches the lazy evaluation rules. *)
   | expr_binary_op_3 : value -> binary_op -> ext_expr -> ext_expr (* It does not:  the right expression is executed. *)
@@ -95,6 +109,8 @@ Inductive ext_expr :=
   | spec_to_string : value -> ext_expr
   | spec_to_string_1 : out -> ext_expr
   | spec_to_object : value -> ext_expr
+
+  | spec_to_int32 : value -> (int -> ext_expr) -> ext_expr
   | spec_check_object_coercible : value -> ext_expr
 
   | spec_to_default : object_loc -> preftype -> ext_expr
