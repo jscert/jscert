@@ -1,7 +1,6 @@
 Set Implicit Arguments.
-Require Import JsSyntax JsInterpreter JsSemanticsInit.
+Require Import Syntax Interpreter Init.
 Require Import LibFix LibList.
-
 
 Require Export Shared.
 Require Export Ascii String.
@@ -24,7 +23,7 @@ Definition execution_ctx_initial :=
 
 (* TODO: remove duplication with JsNumber *)
 
-Definition number_of_int : int -> number := 
+Definition number_of_int : int -> number :=
   Fappli_IEEE_bits.b64_of_bits.
 
 Definition number_add : number -> number -> number :=
@@ -88,4 +87,4 @@ Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
 Set Extraction AccessOpaque.
 Extract Constant Pos.succ => "Pervasives.succ". (* Martin:  Because of a bug of the extraction printer, we are forced to precise the way we want such objects to be extracted... *)
 
-Extraction "interp/src/interpreter.ml" state_initial execution_ctx_initial run_prog. 
+Extraction "interp/src/interpreter.ml" state_initial execution_ctx_initial run_prog.

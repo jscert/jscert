@@ -38,19 +38,19 @@ Hint Resolve extends_proto_refl.
 
 Lemma init_heap_wf : ok_heap init_heap.
 Proof.
-  constructors.  
+  constructors.
     introv H. binds_cases H.
-      protochain_step. protochain_end. 
+      protochain_step. protochain_end.
       protochain_step. protochain_end.
       protochain_step. protochain_step. protochain_end.
       protochain_step. protochain_end.
       protochain_step. protochain_step. protochain_end.
-    introv B N. binds_cases* B; apply ok_value_loc; indom_simpl.    
-    introv H. exists loc_global. binds_cases H. splits. 
+    introv B N. binds_cases* B; apply ok_value_loc; indom_simpl.
+    introv H. exists loc_global. binds_cases H. splits.
       auto.
       binds_simpl.
       indom_simpl.
-    introv [H|H]; binds_cases H. 
+    introv [H|H]; binds_cases H.
     introv H. binds_cases H.
     constructors; try (indom_simpl). binds_simpl.
 Qed.
@@ -70,8 +70,8 @@ Qed.
     --same as [ok_heap_proto_def] but using [indom] instead of [bound] *)
 
 Lemma ok_heap_protochain_def_indom : forall h l f,
-  indom h l f -> 
-  ok_heap_protochain_def h -> 
+  indom h l f ->
+  ok_heap_protochain_def h ->
   protochain h l.
 Proof. introv I O. lets (?&?): indom_binds I. apply* O. Qed.
 
@@ -89,12 +89,12 @@ Lemma ok_heap_protochain_bound : forall h l,
   protochain h l.
 Proof. introv (f&I) O. apply* ok_heap_protochain_indom. Qed.
 
-(** If a non-null location has a [protochain] then 
+(** If a non-null location has a [protochain] then
     it [has_some_proto] *)
 
 Lemma protochain_has_some_proto : forall h l,
-  protochain h l -> 
-  l <> loc_null -> 
+  protochain h l ->
+  l <> loc_null ->
   has_some_proto h l.
 Proof. introv H N. inverts H. false. apply* binds_indom. Qed.
 
@@ -102,7 +102,7 @@ Proof. introv H N. inverts H. false. apply* binds_indom. Qed.
 
 Lemma ok_scope_extends : forall h1 h2 s,
   ok_scope h1 s ->
-  extends_proto h1 h2 -> 
+  extends_proto h1 h2 ->
   ok_scope h2 s.
 Proof. introv O E. induction O; constructors*. Qed.
 
@@ -110,9 +110,9 @@ Proof. introv O E. induction O; constructors*. Qed.
 
 Lemma ok_heap_scope : forall h l f s,
   ok_heap h ->
-  binds h l f (value_scope s) -> 
-  f = field_scope. 
-Proof. 
+  binds h l f (value_scope s) ->
+  f = field_scope.
+Proof.
   introv O B. tests C: (not_scope_or_body f).
     forwards* OV: ok_heap_ok_value C. inverts OV as M. inverts* M.
     unfolds not_scope_or_body. rew_logic in C. destruct* C.
@@ -124,9 +124,9 @@ Qed.
 
 Lemma ok_heap_body : forall h l f x e,
   ok_heap h ->
-  binds h l f (value_body x e) -> 
+  binds h l f (value_body x e) ->
   f = field_body.
-Proof. 
+Proof.
   introv O B. tests C: (not_scope_or_body f).
     forwards* OV: ok_heap_ok_value C. inverts OV as M. inverts* M.
     unfolds not_scope_or_body. rew_logic in C. destruct* C.
@@ -139,10 +139,10 @@ Qed.
 
 Lemma ok_heap_scope_inv : forall h l v,
   ok_heap h ->
-  binds h l field_scope v -> 
+  binds h l field_scope v ->
   exists s, v = value_scope s.
 Proof.
-  introv O B. forwards* (s&x&e&v'&Bs&_&_&_): ok_heap_function O. 
+  introv O B. forwards* (s&x&e&v'&Bs&_&_&_): ok_heap_function O.
   exists s. applys binds_func B Bs.
 Qed.
 
@@ -151,22 +151,22 @@ Qed.
 
 Lemma ok_heap_body_inv : forall h l v ,
   ok_heap h ->
-  binds h l field_body v -> 
+  binds h l field_body v ->
   exists x e, v = value_body x e.
 Proof.
-  introv O B. forwards* (s&x&e&v'&_&Bb&_&_): ok_heap_function O. 
+  introv O B. forwards* (s&x&e&v'&_&Bb&_&_): ok_heap_function O.
   exists x e. applys binds_func B Bb.
 Qed.
 
-(** Non-null locations found in the store at regular fields 
+(** Non-null locations found in the store at regular fields
     correspond to objects that have a prototype *)
 
-Lemma ok_heap_binds_loc_has_proto : forall h l l' f, 
+Lemma ok_heap_binds_loc_has_proto : forall h l l' f,
   ok_heap h ->
-  binds h l f (value_loc l') -> 
+  binds h l f (value_loc l') ->
   f <> field_body ->
   f <> field_scope ->
-  l' <> loc_null -> 
+  l' <> loc_null ->
   has_some_proto h l'.
 Proof.
   introv O B H1 H2 N. forwards~ M: ok_heap_ok_value B.
@@ -175,13 +175,13 @@ Qed.
 
 (** Scopes stored in a well-formed heap are well-formed *)
 
-Lemma ok_heap_binds_ok_scope : forall h l n s, 
-  ok_heap h -> 
-  binds h l n (value_scope s) -> 
+Lemma ok_heap_binds_ok_scope : forall h l n s,
+  ok_heap h ->
+  binds h l n (value_scope s) ->
   ok_scope h s.
 Proof.
   introv O B. forwards* E: ok_heap_scope B. subst.
-  forwards* (s'&x'&e'&v'&Bs&_&_&Os): ok_heap_function O. 
+  forwards* (s'&x'&e'&v'&Bs&_&_&Os): ok_heap_function O.
   lets E: (binds_func B Bs). inverts* E.
 Qed.
 
@@ -190,7 +190,7 @@ Qed.
 Lemma ok_heap_null_indom : forall h f,
   ok_heap h -> indom h loc_null f -> False.
 Proof.
-  introv O I. forwards (v&B): indom_binds I. 
+  introv O I. forwards (v&B): indom_binds I.
   applys* ok_heap_null.
 Qed.
 
@@ -211,7 +211,7 @@ Proof. introv S O D. induction* S. Qed.
 
 (** If prototype resolution succeeds for [(f,l)],
     with [l] not null, then [l] has a prototype field *)
- 
+
 Lemma proto_has_some_proto : forall h l l' f,
   proto h f l l' ->
   ok_heap h ->

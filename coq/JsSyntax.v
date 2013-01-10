@@ -2,7 +2,7 @@ Set Implicit Arguments.
 Require Export Shared.
 Require Export Ascii String.
 Require Export LibTactics LibLogic LibReflect LibList
-  LibOperation LibStruct LibNat LibEpsilon LibFunc 
+  LibOperation LibStruct LibNat LibEpsilon LibFunc
   LibHeap LibStream.
 Module Heap := LibHeap.HeapList.
 Require JsNumber.
@@ -110,7 +110,7 @@ Inductive expr :=
 with stat :=
 (* -->TODO: var x,y;  is it equivalent to var x; var y ? *)
   | stat_expr : expr -> stat
-  | stat_seq : stat -> stat -> stat 
+  | stat_seq : stat -> stat -> stat
   | stat_var_decl : string -> option expr -> stat
   | stat_if : expr -> stat -> option stat -> stat
   | stat_while : (* TODO: option loop_label -> *) expr -> stat -> stat
@@ -119,7 +119,7 @@ with stat :=
   | stat_return : option expr -> stat
   | stat_break : (* TODO: option loop_label -> *) stat
   | stat_continue : (* TODO: option loop_label -> *) stat
-  | stat_try : stat -> option (string * stat) -> option stat -> stat  
+  | stat_try : stat -> option (string * stat) -> option stat -> stat
                (* try s1 [catch (x) s2] [finally s3] *)
   | stat_skip (* for semi-column *)
   | stat_for_in : expr -> expr -> stat -> stat (* for (e1 in e2) stat *)
@@ -137,7 +137,7 @@ with stat :=
 
 with prog :=
   | prog_stat : stat -> prog
-  | prog_seq : prog -> prog -> prog 
+  | prog_seq : prog -> prog -> prog
   (* TODO: use function_declaration type *)
   | prog_function_decl : string -> list string -> prog -> prog.
   (* TODO:  Add prog_use_strict : prog -> prog. *)
@@ -152,7 +152,7 @@ Record function_declaration := function_declaration_intro {
    fd_name : string;
    fd_parameters : list string;
    fd_code : prog }.
-   
+
 (* TODO *)
 Parameter function_body_is_strict : prog -> bool.
 
@@ -169,7 +169,7 @@ Inductive math_op :=
 
 (** Identifiers for builtin functions and objects *)
 
-Inductive builtin := 
+Inductive builtin :=
 
   | builtin_error
   | builtin_range_error
@@ -192,7 +192,7 @@ Inductive builtin :=
   | builtin_object_new
   | builtin_object_call
   | builtin_object_get_prototype_of
-  (* LATER: 
+  (* LATER:
     builtin_object_get_own_property_descriptor
     builtin_object_get_own_property_name
     builtin_object_create
@@ -206,7 +206,7 @@ Inductive builtin :=
   | builtin_object_is_frozen
   | builtin_object_is_extensible
   *)
-  (* LATER: 
+  (* LATER:
     builtin_object_keys *)
 
   | builtin_object_proto
@@ -220,6 +220,8 @@ Inductive builtin :=
   | builtin_function_call
   | builtin_function_new
   | builtin_function_proto
+  (* 13.2.3 Unique function object *)
+  | builtin_function_throw_type_error
   (*
   | builtin_function_proto_apply
   | builtin_function_proto_call
@@ -249,13 +251,13 @@ Inductive builtin :=
   | builtin_bool_call
   | builtin_bool_new
   | builtin_bool_proto_to_string
-  | builtin_bool_proto_value_of  
+  | builtin_bool_proto_value_of
 
-  | builtin_number_call  
+  | builtin_number_call
   | builtin_number_new
   | builtin_number_proto
   | builtin_number_proto_to_string
-  | builtin_number_proto_value_of  
+  | builtin_number_proto_value_of
   (* LATER:
   | builtin_number_proto_to_fixed
   | builtin_number_proto_to_exponential
@@ -263,7 +265,7 @@ Inductive builtin :=
    *)
 
   | builtin_math
-  | builtin_math_function : math_op -> builtin 
+  | builtin_math_function : math_op -> builtin
   .
 
 
@@ -278,11 +280,11 @@ Inductive object_loc :=
 
 (** Grammar of primitive values *)
 
-Inductive prim := 
-  | prim_undef : prim 
+Inductive prim :=
+  | prim_undef : prim
   | prim_null : prim
   | prim_bool : bool -> prim
-  | prim_number : number -> prim 
+  | prim_number : number -> prim
   | prim_string : string -> prim.
 
 (** Grammar of values *)
@@ -301,7 +303,7 @@ Notation "'undef'" := (value_prim prim_undef).
 Inductive type :=
   | type_undef : type
   | type_null : type
-  | type_bool : type  
+  | type_bool : type
   | type_number : type
   | type_string : type
   | type_object : type.
@@ -335,7 +337,7 @@ Record prop_attributes := prop_attributes_intro {
 
 (** Possibly-null property descriptor *)
 
-Inductive prop_descriptor := 
+Inductive prop_descriptor :=
   | prop_descriptor_undef : prop_descriptor
   | prop_descriptor_some : prop_attributes -> prop_descriptor.
 
@@ -345,7 +347,7 @@ Coercion prop_descriptor_some : prop_attributes >-> prop_descriptor.
 
 (** Mutability flags used by declarative environment records *)
 
-Inductive mutability := 
+Inductive mutability :=
   | mutability_uninitialized_immutable
   | mutability_immutable
   | mutability_nondeletable
@@ -362,9 +364,9 @@ Definition provide_this_flag := bool.
 
 (** Representation of environment records *)
 
-Inductive env_record := 
+Inductive env_record :=
   | env_record_decl : decl_env_record -> env_record
-  | env_record_object : object_loc -> provide_this_flag -> env_record. 
+  | env_record_object : object_loc -> provide_this_flag -> env_record.
 
 (** Coercion for declarative environment records *)
 
@@ -418,12 +420,12 @@ Definition class_name := string.
 (** Representation of function code *)
 
 Inductive function_code :=
-  | function_code_code : prog -> strictness_flag -> function_code
+  | function_code_code : prog -> function_code
   | function_code_builtin : builtin -> function_code.
 
 (** Representation of the map from properties to attributes *)
 
-Definition object_properties_type := 
+Definition object_properties_type :=
   Heap.heap prop_name prop_attributes.
 
 (** Representation of objects *)
@@ -439,18 +441,18 @@ Record object := object_intro {
    object_has_instance_ : option builtin;
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
-   object_code_ : option string;
-   object_target_function_ : option object_loc; 
-   object_bound_this_ : option value; 
-   object_bound_args_ : option (list value); 
-   object_parameter_map_ : option object_loc 
-   (* LATER: match for regular expression matching *)   
+   object_code_ : option function_code;
+   object_target_function_ : option object_loc;
+   object_bound_this_ : option value;
+   object_bound_args_ : option (list value);
+   object_parameter_map_ : option object_loc
+   (* LATER: match for regular expression matching *)
    }.
 
 (** Special modes for [get_own_property] and [set_own_property] *)
 
 Inductive object_special :=
-  | object_special_default 
+  | object_special_default
   | object_special_string
   | object_special_array.
 
@@ -463,7 +465,7 @@ Inductive object_special :=
     -- TODO: store the fresh locations into a wrapper around LibHeap *)
 
 Record state := state_intro {
-   state_object_heap : Heap.heap object_loc object; 
+   state_object_heap : Heap.heap object_loc object;
    state_env_record_heap : Heap.heap env_loc env_record;
    state_fresh_locations : stream nat }.
 
@@ -501,164 +503,4 @@ Coercion ret_ref : ref >-> ret.
 Coercion res_normal : ret >-> res.
 
 (* <informal> Implicit Type o : out_*  *)
-
-
-(**************************************************************)
-(** ** TODO:  Move those functions to Preliminary once the file defined. *)
-
-(**************************************************************)
-(** ** Auxiliary functions on values and types *)
-
-(** Convert a literal into a primitive *) 
-
-Definition convert_literal_to_prim (i:literal) :=
-  match i with
-  | literal_null => prim_null
-  | literal_bool b => prim_bool b
-  | literal_number n => prim_number n 
-  | literal_string s => prim_string s
-  end.
-
-(** Convert a literal into a value *) 
-
-Definition convert_literal_to_value (i:literal) :=
-  value_prim (convert_literal_to_prim i).
-
-(** Specification method that returns the type of a value *)
-
-Definition type_of v :=
-  match v with
-  | value_prim w =>
-     match w with
-     | prim_undef => type_undef
-     | prim_null => type_null
-     | prim_bool _ => type_bool
-     | prim_number _ => type_number
-     | prim_string _ => type_string
-     end
-  | value_object _ => type_object
-  end.
-
-(** Definition of the "SameValue" algorithm *)
-
-Definition value_same v1 v2 :=
-  let T1 := type_of v1 in
-  let T2 := type_of v2 in
-  If T1 <> T2 then False else
-  match T1 with
-  | type_undef => True
-  | type_null => True
-  | type_number =>
-      If    v1 = (prim_number JsNumber.nan) 
-         /\ v2 = (prim_number JsNumber.nan) then True
-      else If    v1 = (prim_number JsNumber.zero) 
-              /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else If    v1 = (prim_number JsNumber.neg_zero) 
-              /\ v2 = (prim_number JsNumber.zero) then False
-      else (v1 = v2)
-  | type_string => 
-      v1 = v2
-  | type_bool => 
-      v1 = v2
-  | type_object => 
-      v1 = v2
-  end.
-
-(**************************************************************)
-(** ** Auxiliary definitions for reduction of [get_own_property]  *)
-
-(** The 4 following definitions are used to define when
-    a property descriptor contains another one. *)
-
-Definition if_some_then_same (A:Type) F (oldf newf : option A) :=
-  match newf, oldf with
-  | Some v1, Some v2 => F v1 v2
-  | Some v1, None => False
-  | None, _ => True
-  end.
-
-Definition if_some_value_then_same :=
-  if_some_then_same value_same.
-
-Definition if_some_bool_then_same :=
-  if_some_then_same (A := bool)eq.
-
-Definition prop_attributes_contains oldpf newpf := 
-  match oldpf, newpf with 
-  | prop_attributes_intro ov ow og os oe oc, 
-    prop_attributes_intro nv nw ng ns ne nc =>
-       if_some_value_then_same ov nv
-    /\ if_some_bool_then_same ow nw
-    /\ if_some_value_then_same og ng
-    /\ if_some_value_then_same os ns
-    /\ if_some_bool_then_same oe ne
-    /\ if_some_bool_then_same oc nc
-  end.
-
-(** The 2 following definitions are used to define what
-    it means to copy the defined attributes of a property 
-    descriptors into another descriptor. *)
-
-Definition option_transfer (A:Type) (oldopt newopt : option A) :=
-  match newopt with
-  | None => oldopt
-  | _ => newopt
-  end.
-
-  (* TEMP: Alternative definition:
-  match newopt,oldopt with
-  | Some v, _ => Some v
-  | _, _ => oldopt
-  end.*)
-
-Definition prop_attributes_transfer oldpf newpf := 
-  match oldpf, newpf with 
-  | prop_attributes_intro ov ow og os oe oc, 
-    prop_attributes_intro nv nw ng ns ne nc =>
-    prop_attributes_intro 
-      (option_transfer ov nv)
-      (option_transfer ow nw)
-      (option_transfer og ng)
-      (option_transfer os ns)
-      (option_transfer oe ne)
-      (option_transfer oc nc)
-  end.
-
-(** The 8 following definitions are used to describe the
-    cases in which the define_own_property specification method 
-    performs an illegal operation. *)
-
-Definition some_compare (A:Type) F (o1 o2 : option A) :=
-  match o1, o2 with
-  | Some v1, Some v2 => F v1 v2
-  | _, _ => False
-  end.
-  
-Definition some_not_same_value :=
-   some_compare (fun v1 v2 => ~ value_same v1 v2).
-   
-Definition some_not_same_bool :=
-   some_compare (fun b1 b2 : bool (* TODO:  Remove this type annotation (once moved in the file Preliminary) *) => b1 <> b2).   
-  
-Definition change_enumerable_attributes_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_configurable oldpf = Some false 
-  /\ (   prop_attributes_configurable newpf = Some true 
-      \/ some_not_same_bool (prop_attributes_enumerable newpf) (prop_attributes_enumerable oldpf)).
-
-Definition change_writable_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_writable oldpf = Some false 
-  /\ prop_attributes_writable newpf = Some true.
-    
-Definition change_value_on_non_writable oldpf newpf : Prop :=
-     prop_attributes_writable oldpf = Some false
-  /\ some_not_same_value (prop_attributes_value newpf) (prop_attributes_value oldpf).
-  
-Definition change_data_attributes_on_non_configurable oldpf newpf : Prop :=
-     change_writable_on_non_configurable oldpf newpf
-  \/ change_value_on_non_writable oldpf newpf.
-
-Definition change_accessor_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_configurable oldpf = Some false 
-  /\ (   some_not_same_value (prop_attributes_set newpf) (prop_attributes_set oldpf)
-      \/ some_not_same_value (prop_attributes_get newpf) (prop_attributes_get oldpf)).
 

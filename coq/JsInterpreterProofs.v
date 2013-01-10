@@ -31,7 +31,7 @@ false. forwards*: ok_heap_null.
 forwards E: binds_func_loc H H8. subst*.
 Qed.
 
-Lemma proto_comp_fix : forall h f l, 
+Lemma proto_comp_fix : forall h f l,
   ok_heap h ->
   proto_comp h f l = proto_comp_body proto_comp h f l.
 Proof.
@@ -49,7 +49,7 @@ Hint Constructors proto.
 Lemma proto_comp_correct : forall h f l l',
 ok_heap h ->
 bound h l ->
-proto_comp h f l = l' -> 
+proto_comp h f l = l' ->
 proto h f l l'.
 Proof.
 introv OK B E. forwards~ PC: ok_heap_protochain_bound B.
@@ -80,12 +80,12 @@ bound h l ->
 proto h f l l' ->
 proto_comp h f l = l'.
 Proof.
-introv OK B P. induction P; 
+introv OK B P. induction P;
  rewrite~ proto_comp_fix; unfold proto_comp_body; case_if~.
 case_if*.
   subst. lets (f'&B'): B. rewrite~ indom_equiv_binds in B'.
    lets (v&B''): B'. forwards*: ok_heap_null B''.
-  case_if~. case_if~. 
+  case_if~. case_if~.
     rewrite (binds_read H0).
      tests: (l' = loc_null).
        asserts: (l'' = loc_null).
@@ -116,7 +116,7 @@ Proof.
   introv E OK OKL.
   lets~ FOK: ok_scope_all_bound (rm OKL) OK.
   gen h f L l'. induction L; introv OKL E.
-  inverts E. constructor*. 
+  inverts E. constructor*.
   simpls. inverts OKL as (Ba & BL).
   lets~ (l&Hl): proto_defined h f a. apply* indom_bound.
   assert (forall l', proto_comp h f a = l' -> l = l').
@@ -165,7 +165,7 @@ Lemma getvalue_comp_correct_ref : forall h l f v,
 Proof.
   introv E OK B. unfolds in E. case_if~.
   asserts [l' Hl']: (exists l', proto_comp h (field_normal f) l = l').
-    destruct* proto_comp. 
+    destruct* proto_comp.
   rewrite Hl' in E. case_if~; inverts~ E.
     apply~ getvalue_ref_null. subst. apply* proto_comp_correct.
     lets~ M: proto_comp_correct Hl'. apply* getvalue_ref_not_null.
@@ -273,7 +273,7 @@ Proof.
     eexists. splits~. constructor~.
      introv. apply~ red_stat_ext_res_expr_res_prog_throw.
 Qed.
-  
+
 Lemma ret_not_wrong_expr : forall h h' r re,
   ret_res_expr r re ->
   out_return h' r <> wrong h.
@@ -675,7 +675,7 @@ Proof.
   (* equal *)
   case_if in E as B; tryfalse. lets (B1&B2): a. inverts~ E.
   rewrite~ value_compare_correct. constructor~.
-  
+
   (* instanceof *)
   destruct v1; simpls; tryfalse.
   apply~ binary_op_red_instanceof.
@@ -698,7 +698,7 @@ Proof.
       destruct v; simpls; tryfalse.
       asserts: (l2 = l').
         applys~ binds_func_loc H.
-        rewrite* binds_equiv_read.       
+        rewrite* binds_equiv_read.
       subst l'. case_if in E.
        inverts E. subst. apply* instanceof_red_true.
          rewrite* binds_equiv_read.
@@ -1015,10 +1015,10 @@ Proof.
   name_heap_sub_write_in EQh5 h4.
   name_heap_alloc_obj_in EQh4 h3.
   (* The following lines are nearly a copy/paste of the corresponding proof in JsSafety. *)
-  asserts O3: (ok_heap h3). subst h3. apply~ ok_heap_alloc_obj. 
+  asserts O3: (ok_heap h3). subst h3. apply~ ok_heap_alloc_obj.
     applys* obj_or_glob_of_value_protochain h1 l1 field_normal_prototype v'.
     right. forwards~: ok_heap_special_obj_proto h1. apply* OK1.
-     forwards [(l3&El3)|?]: (value_loc_or_not v'). 
+     forwards [(l3&El3)|?]: (value_loc_or_not v').
        subst v'. simpl. forwards OV: ok_heap_ok_value OK1.
         unfolds in OV. forwards~: OV Bv'. case_if*.
        rewrite~ obj_or_glob_of_value_not_loc.
@@ -1143,14 +1143,14 @@ Proof.
       (* This part is very closed to the corresponding one in JsSafety:
          maybe it can be factorized? *)
       asserts: (has_some_proto h3 (fresh_for h0)). subst h3. indom_simpl.
-       subst h6. 
+       subst h6.
        apply~ ok_heap_write_fields_user_undef.
          subst h5 h4 h3. apply~ indom_write_fields. indom_simpl.
          apply* fresh_for_spec.
        subst h5. apply~ ok_heap_write_fields_user.
          subst h4 h3. indom_simpl.
          apply* fresh_for_spec.
-       subst h4. applys ok_heap_write_this h3 (fresh_for h0) (get_this h1 r1) (@eq_refl). 
+       subst h4. applys ok_heap_write_this h3 (fresh_for h0) (get_this h1 r1) (@eq_refl).
          subst h3. apply* ok_heap_alloc_obj. constructor.
          apply* fresh_for_spec.
          subst h3. apply* binds_write_neq. apply* binds_write_eq.
@@ -1159,10 +1159,10 @@ Proof.
          applys~ ok_heap_special_global_this. apply* O0.
          auto.
        destruct r1 as [v1|[l0 f0]].
-         subst h3. do 2 apply* indom_write. 
+         subst h3. do 2 apply* indom_write.
           apply* ok_heap_special_global_proto. apply* O0.
          unfold get_this. case_if.
-           subst h3. do 2 apply* indom_write. 
+           subst h3. do 2 apply* indom_write.
             apply* ok_heap_special_global_proto. apply* O0.
            subst h3.
             do 2 apply~ has_some_proto_write. inverts H2 as [N|P].
@@ -1676,7 +1676,7 @@ Proof.
   forwards* Re: run_expr_correct R.
   apply~ red_stat_stat_expr.
   apply* red_stat_ext_stat_expr.
- 
+
   (* seq *)
   forwards [(eq1&nV) | (r1&h1&eq1)]: elim_if_success R; tryfalse.
     forwards* R1: run_stat_correct eq1.
@@ -1842,7 +1842,7 @@ Proof.
     forwards~ (re'&OR'&SOR): stat_ret_res_expr_to_prog OR.
      lets (h'0&eqr'): eqr. forwards*: wrong_not_ret_expr eqr'.
   rewrite eqo in R. simpl in R.
-  case_if in R. 
+  case_if in R.
   forwards* R1: run_expr_correct eq1.
     constructors*.
   forwards* (OK1&OKL1&OKr1): sub_safety_expr R1.

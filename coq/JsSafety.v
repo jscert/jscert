@@ -1766,7 +1766,7 @@ Proof.
        inverts* H0.
     inverts~ H0.
       applys~ ok_value_extends h0.
-    
+
 
   (* red_stat_stat_skip *)
   constructors~.

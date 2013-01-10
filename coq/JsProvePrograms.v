@@ -183,7 +183,7 @@ subst~.
 Qed.
 
 Tactic Notation "clean_refl" :=
-  rew_refl in *; fold_bool; rew_refl in *. 
+  rew_refl in *; fold_bool; rew_refl in *.
 
 (* TODO:  Use an optimal fixpoint there. *)
 Function protochain_length (H : {h | ok_heap h}) (f : field) (l : loc)
@@ -241,7 +241,7 @@ destruct H as [h ok]; simpls.
 gen n; induction H1; intros.
 assert (n = 0%nat); [idtac | clear H0; subst; constructor].
  rewrite protochain_length_equation in H0; simpl in H0.
- case_if*. 
+ case_if*.
 
 rewrite protochain_length_equation in H0; simpl in H0.
 case_if*.
@@ -400,7 +400,7 @@ Qed.
 
 Lemma proto_write (h : heap) nx ny lx ly l' vx :
   nx <> ny ->
-  (field_proto <> nx \/ ~ in_protochain h ny ly lx) -> proto h ny ly l' -> 
+  (field_proto <> nx \/ ~ in_protochain h ny ly lx) -> proto h ny ly l' ->
     proto (write h lx nx vx) ny ly l'.
 Proof.
 intros D nxpODl Hl'.
@@ -750,7 +750,7 @@ assert (AllBefore (fun l => proto h f l loc_null /\ ~in_protochain h f l l') l L
 
 induction AB.
   applys~ scopes_here l'.
-  unfold update; case_if*. 
+  unfold update; case_if*.
   apply~ proto_write_change.
 apply~ scopes_next.
   lets (P & NIP): H0.
@@ -828,9 +828,9 @@ End LemmaForTactics.
 
 Section Defining_expressions.
 
-Definition expr_var_assign s e := 
+Definition expr_var_assign s e :=
   expr_var_decl s (Some e).
-Definition assign_variable x e := 
+Definition assign_variable x e :=
   expr_assign (expr_variable x) None e.
 Definition expr_undefined := expr_skip. (* NEWSYNTAX: use skip instead of value_undef *)
 Definition expr_bool b := expr_literal (literal_bool b).
@@ -1082,7 +1082,7 @@ Existential 1 := ret_expr_value (value_loc loc_null).
 
 Qed.*)
 Admitted.
-  
+
 End Example.
 
 *)

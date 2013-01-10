@@ -44,22 +44,17 @@ OCAMLOPT=ocamlopt
 JS_SRC=\
 	coq/Shared.v \
 	coq/JsNumber.v \
-	coq/JsSyntax.v \
-	coq/JsSyntaxAux.v \
-	coq/JsSemanticsDefs.v \
-	coq/JsSemanticsInit.v \
-	coq/JsSemanticsRules.v \
-	coq/JsSemanticsAux.v \
-	coq/JsInterpreter.v \
-	coq/JsWf.v \
-	coq/JsWfAux.v \
-	coq/JsExtra.v \
-	coq/JsSafety.v \
-	coq/JsScopes.v \
-	coq/JsInterpreterProofs.v \
-	coq/JsInterpreterExtraction.v \
-	coq/JsProvePrograms.v \
-	coq/JsExtraction.v
+	coq/Syntax.v \
+	coq/SyntaxAux.v \
+	coq/Preliminary.v \
+	coq/PreliminaryAux.v \
+	coq/Interpreter.v \
+	coq/InterpreterExtraction.v \
+	coq/PrettyInterm.v \
+	coq/PrettyIntermAux.v \
+	coq/PrettyRules.v \
+	coq/Correctness.v \
+	coq/Init.v
 
 JS_VO=$(JS_SRC:.v=.vo)
 
@@ -103,7 +98,9 @@ init:
 #######################################################
 # INTERPRETER
 
-interp/src/interpreter.ml: coq/JsInterpreterExtraction.vo
+interpreter:  interp/src/interpreter.ml
+
+interp/src/interpreter.ml: coq/InterpreterExtraction.vo
 
 PARSER_INC=-I $(shell ocamlfind query xml-light) -I interp/src
 
@@ -164,3 +161,4 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
+

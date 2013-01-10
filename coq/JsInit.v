@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export JsSemanticsDefs.
+Require Export JsPreliminary JsPreliminaryAux.
 
 (* TODO: move *)
 
@@ -8,7 +8,7 @@ Coercion function_code_builtin : builtin >-> function_code.
 (* TODO:*)
 
 Coercion JsNumber.of_int : Z >-> JsNumber.number.
-  
+
 
 
 
@@ -25,13 +25,13 @@ Implicit Type r : ref.
 Implicit Type T : type.
 
 Implicit Type x : prop_name.
-Implicit Type m : mutability. 
+Implicit Type m : mutability.
 Implicit Type A : prop_attributes.
 Implicit Type An : prop_descriptor.
-Implicit Type L : env_loc. 
-Implicit Type E : env_record. 
+Implicit Type L : env_loc.
+Implicit Type E : env_record.
 Implicit Type D : decl_env_record.
-Implicit Type X : lexical_env. 
+Implicit Type X : lexical_env.
 Implicit Type O : object.
 Implicit Type S : state.
 Implicit Type C : execution_ctx.
@@ -46,18 +46,18 @@ Implicit Type t : stat.
 (** Common shorthands *)
 
 
-(** Shorthand notation for building a property attributes 
+(** Shorthand notation for building a property attributes
     that is non writable, non configurable and non enumerable. *)
 
 Definition prop_attributes_for_global_object v :=
    prop_attributes_create_data v true false true.
 
-(** Shorthand notation for building a property attributes 
+(** Shorthand notation for building a property attributes
     that is non writable, non configurable and non enumerable. *)
 
 Notation "'attrib_constant'" := prop_attributes_create_data_constant.
 
-(** Shorthand notation for building a property attributes 
+(** Shorthand notation for building a property attributes
     that is non writable, non configurable and non enumerable. *)
 
 Notation "'attrib_native'" := prop_attributes_for_global_object.
@@ -124,7 +124,7 @@ Definition object_builtin_global_properties :=
   (* TODO: many other functions to insert here *)
   let P := write_native P "Object" builtin_object in
   let P := write_native P "Function" builtin_function in
-  (* TODO: let P := write_native P "Array" builtin_array in 
+  (* TODO: let P := write_native P "Array" builtin_array in
   let P := write_native P "String" builtin_string in
   let P := write_native P "Boolean" builtin_boolean in
   let P := write_native P "Number" builtin_number in *)
@@ -134,13 +134,13 @@ Definition object_builtin_global_properties :=
   let P := write_native P "ReferenceError" builtin_ref_error in
   let P := write_native P "SyntaxError" builtin_syntax_error in
   let P := write_native P "TypeError" builtin_type_error in
-  P.  
+  P.
 
 (** Definition of the global object *)
 
 Definition object_builtin_global :=
-  object_create_builtin 
-    object_builtin_global_proto 
+  object_create_builtin
+    object_builtin_global_proto
     object_builtin_global_class
     object_builtin_global_properties.
 
@@ -156,7 +156,7 @@ Definition object_builtin_object_proto :=
   let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in
   (* TODO: complete list *)
   object_create_builtin null "Object" P.
-    
+
 
 (**************************************************************)
 (** Object object *)
@@ -224,14 +224,14 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_type_error object_builtin_type_error in
   ...etc
   *)
-  h.  
+  h.
 
 
 (**************************************************************)
 (** Initial environment record heap *)
 
 Definition env_record_heap_initial :=
-  Heap.write Heap.empty 
+  Heap.write Heap.empty
              env_loc_global_env_record
              (env_record_object_default builtin_global).
 
@@ -239,7 +239,7 @@ Definition env_record_heap_initial :=
 (**************************************************************)
 (** TODO: remove this once Heap representation is fixed *)
 
-CoFixpoint all_locations (k:nat) : stream nat := 
+CoFixpoint all_locations (k:nat) : stream nat :=
   stream_intro k (all_locations (S k)).
 Definition dummy_fresh_locations := all_locations 0%nat.
 
@@ -247,8 +247,8 @@ Definition dummy_fresh_locations := all_locations 0%nat.
 (**************************************************************)
 (** Initial state *)
 
-Definition state_initial := 
-  {| state_object_heap := object_heap_initial; 
+Definition state_initial :=
+  {| state_object_heap := object_heap_initial;
      state_env_record_heap := env_record_heap_initial;
      state_fresh_locations := dummy_fresh_locations |}.
 
