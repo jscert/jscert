@@ -120,6 +120,18 @@ Definition if_value_object (o : out_interp) (k : state -> object_loc -> out_inte
   | o => o
   end.
 
+Definition prop_attributes_is_generic_or_data A :=
+  prop_attributes_is_generic A \/ prop_attributes_is_data A.
+
+Global Instance prop_attributes_is_generic_or_data_dec : forall A,
+  Decidable (prop_attributes_is_generic_or_data A).
+Proof.
+  introv. apply or_decidable.
+   apply and_decidable; apply neg_decidable;
+     apply neg_decidable; apply and_decidable; typeclass.
+  apply neg_decidable; apply and_decidable; typeclass.
+Qed.
+
 End InterpreterEliminations.
 
 Section LexicalEnvironments.
@@ -156,6 +168,14 @@ Definition run_object_heap_map_properties S l F : state :=
   let O := pick (object_binds S l) in
   object_write S l (object_map_properties O F).
 
+Global Instance object_heap_map_properties_pickable : forall S l F,
+  Pickable (object_heap_map_properties S l F).
+Proof.
+  introv. applys pickable_make (run_object_heap_map_properties S l F).
+  introv [a [O [B E]]]. exists O. splits~.
+  unfolds run_object_heap_map_properties.
+  skip. (* binds is a functionnal construction. *)
+Qed.
 
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
@@ -275,8 +295,8 @@ Definition object_can_put S l x : out_interp :=
   match An with
   | prop_descriptor_some A =>
     ifb prop_attributes_is_accessor A then
-      out_ter S (decide (prop_attributes_set A = Some undef)
-        || decide (prop_attributes_set A = None))
+      out_ter S (decide (prop_attributes_set A = Some undef
+        \/ prop_attributes_set A = None))
     else ifb prop_attributes_is_data A then
       out_ter S (morph_option undef prim_bool (prop_attributes_writable A))
     else out_interp_stuck
@@ -289,7 +309,7 @@ Definition object_can_put S l x : out_interp :=
       | prop_descriptor_undef => out_ter S oe
       | prop_descriptor_some A =>
         ifb prop_attributes_is_accessor A then
-          out_ter S (decide (prop_attributes_set A = Some undef) || decide (prop_attributes_set A = None))
+          out_ter S (decide (prop_attributes_set A = Some undef \/ prop_attributes_set A = None))
         else ifb prop_attributes_is_data A then
           out_ter S (if oe then false else morph_option undef prim_bool (prop_attributes_writable A))
         else out_interp_stuck
@@ -297,24 +317,22 @@ Definition object_can_put S l x : out_interp :=
     )
   end.
 
-Definition run_object_set_property S l x A : state :=
-  arbitrary (* TODO *).
-
 Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool) : out_interp :=
   let oldpd := run_object_get_own_property S l x in
   let extensible := run_object_extensible S l in
   match oldpd with
   | prop_descriptor_undef =>
     if extensible then (
-      let S' := run_object_set_property S l x
-        (if decide (prop_attributes_is_generic newpf) || decide (prop_attributes_is_data newpf) then
+      let S' := pick (object_set_property S l x
+        (if @decide (prop_attributes_is_generic_or_data newpf)
+          (prop_attributes_is_generic_or_data_dec newpf) then (* Why Coq is not able to infer this?!? *)
           prop_attributes_convert_to_data newpf
-        else prop_attributes_convert_to_accessor newpf) in
+        else prop_attributes_convert_to_accessor newpf)) in
       out_ter S' true
     ) else out_reject S throw
   | prop_descriptor_some oldpf =>
     let fman S' :=
-      let S'' := run_object_set_property S' l x (prop_attributes_transfer oldpf newpf) in
+      let S'' := pick (object_set_property S' l x (prop_attributes_transfer oldpf newpf)) in
       out_ter S'' true in
     if extensible then (
       ifb prop_attributes_contains oldpf newpf then
@@ -323,19 +341,19 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
         out_reject S throw
       else ifb prop_attributes_is_generic newpf then (
         fman S
-      ) else ifb decide (prop_attributes_is_data oldpf) <> decide (prop_attributes_is_data newpf) then (
+      ) else ifb prop_attributes_is_data oldpf <> prop_attributes_is_data newpf then (
        ifb prop_attributes_configurable oldpf = Some false then
          out_reject S throw
-       else let S' := run_object_set_property S l x
+       else let S' := pick (object_set_property S l x
         (ifb prop_attributes_is_data oldpf then
           prop_attributes_convert_to_accessor oldpf
-        else prop_attributes_convert_to_data oldpf) in
+        else prop_attributes_convert_to_data oldpf)) in
         fman S'
-     ) else if decide (prop_attributes_is_data oldpf) && decide (prop_attributes_is_data newpf) then (
-       if decide (prop_attributes_configurable oldpf = Some false) && decide (change_data_attributes_on_non_configurable oldpf newpf) then
+     ) else ifb prop_attributes_is_data oldpf /\ prop_attributes_is_data newpf then (
+       ifb prop_attributes_configurable oldpf = Some false /\ change_data_attributes_on_non_configurable oldpf newpf then
          out_reject S throw
        else fman S
-     ) else if decide (prop_attributes_is_accessor oldpf) && decide (prop_attributes_is_accessor newpf) then
+     ) else ifb prop_attributes_is_accessor oldpf /\ prop_attributes_is_accessor newpf then
        ifb change_accessor_on_non_configurable oldpf newpf then
          out_reject S throw
        else fman S
