@@ -6,6 +6,7 @@ Require Export JsSyntax JsSyntaxAux JsPreliminary JsPrettyInterm.
 
 Implicit Type b : bool.
 Implicit Type n : number.
+Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l : object_loc.

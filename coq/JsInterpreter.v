@@ -9,6 +9,7 @@ Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 
 Implicit Type b : bool.
 Implicit Type n : number.
+Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type l : object_loc.
 Implicit Type w : prim.
