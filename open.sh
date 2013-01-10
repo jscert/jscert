@@ -1,5 +1,5 @@
-TLC=coq/tlc
-FLOCQ=coq/flocq
+TLC=tlc
+FLOCQ=flocq
 COQBIN=
 if [ -f settings.sh ]
 then
@@ -7,11 +7,17 @@ then
 fi
 if [ "${*}" != "" ]
 then
-   ARGS="${*}"
+   if [ -f settings.sh ]
+	then
+		ARGS="${*}"
+	else
+		ARGS="coq/${*}"
+	fi
 else
-   ARGS="coq/Shared.v coq/JsSyntax.v coq/JsSemanticsDefs.v coq/JsSemanticsRules.v"
+   ARGS="coq/JsSyntax.v	coq/JsPreliminary.v coq/JsPrettyInterm.v	coq/JsPrettyRules.v coq/JsCorrectness.v coq/JsInit.v"
 fi
 #FLOCQ_INC="-I ${FLOCQ}/src/Appli -I ${FLOCQ}/src/Calc -I ${FLOCQ}/src/Core -I ${FLOCQ}/src/Prop"
 FLOCQ_INC="-R ${FLOCQ}/src Flocq"
 ${COQBIN}coqide -I . -I ${TLC} ${FLOCQ_INC} ${ARGS} &
+
 

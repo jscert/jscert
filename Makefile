@@ -12,7 +12,7 @@
 # Default paths for TLC and COQBIN are as follows:
 
 COQBIN=
-TLC=tlc # "make init" puts it on the root directory and not inside "coq/".
+TLC=tlc 
 FLOCQ=flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
@@ -40,6 +40,8 @@ OCAMLOPT=ocamlopt
 
 #######################################################
 # MAIN SOURCE FILES
+
+# TODO: rename coq into jscoq
 
 JS_SRC=\
 	coq/Shared.v \
