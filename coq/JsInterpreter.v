@@ -58,25 +58,6 @@ Global Instance out_interp_inhab : Inhab out_interp.
 Proof. applys prove_Inhab out_interp_stuck. Qed.
 
 
-Section TODO.
-
-Definition out_type_error S :=
-  arbitrary (* TODO:  Replace all its occurences by a `throw_syntax_error' *).
-
-Definition out_ref_error S :=
-  arbitrary (* TODO:  Replace all its occurences by the right thing *).
-
-Definition out_void S :=
-  arbitrary (* TODO:  Replace all its occurences by the right thing *).
-
-Definition out_ref_error_or_undef S (strict : bool) :=
-  arbitrary (* TODO:  Replace all its occurences by the right thing *).
-
-Definition out_reject S (throw : bool) :=
-  arbitrary (* TODO:  Replace all its occurences by the right thing *).
-
-End TODO.
-
 (**************************************************************)
 (** ** Helper functions for the interpreter *)
 

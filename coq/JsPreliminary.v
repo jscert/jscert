@@ -813,22 +813,89 @@ Implicit Type pref : preftype.
 Parameter function_declarations : function_code -> list function_declaration.
 Parameter variable_declarations : function_code -> list string.
 
-(* It seems the lines below have been lost while merging?  There seems to be something weird that happened with Git there -- Martin. *)
+
+(**************************************************************)
+(** ** Rules for propagating aborting expressions *)
+
 (** Definition of aborting programs --
-      TODO: define [abort] as "not a normal behavior",
-         by taking the negation of being of the form [ter (normal ...)]. *)
+   TODO: define [abort] as "not a normal behavior",
+   by taking the negation of being of the form [ter (normal ...)]. *)
 
 Inductive abort : out -> Prop :=
   | abort_div :
-    abort out_div
+      abort out_div
   | abort_break : forall S la,
-    abort (out_ter S (res_break la))
+      abort (out_ter S (res_break la))
   | abort_continue : forall S la,
-    abort (out_ter S (res_continue la))
+      abort (out_ter S (res_continue la))
   | abort_return : forall S la,
-    abort (out_ter S (res_return la))
+      abort (out_ter S (res_return la))
   | abort_throw : forall S v,
-    abort (out_ter S (res_throw v)).
+      abort (out_ter S (res_throw v)).
+
+(** Definition of normal results -- TODO: not used ? *)
+
+Inductive is_res_normal : res -> Prop :=
+  | is_res_normal_intro : forall v,
+      is_res_normal (res_normal v).
+
+(** Definition of exception results, used in the
+    semantics of try-catch blocks. *)
+
+Inductive is_res_throw : res -> Prop :=
+  | is_res_throw_intro : forall v,
+      is_res_throw (res_throw v).
+
+Inductive is_res_break : res -> Prop :=
+  | is_res_break_intro : forall label,
+      is_res_break (res_break label).
+
+Inductive is_res_continue : res -> Prop :=
+  | is_res_continue_intro: forall label,
+      is_res_continue (res_continue label).
+
+
+(**************************************************************)
+(** Macros for exceptional behaviors in reduction rules *)
+
+(** "Syntax error" behavior *)
+
+Definition out_basic_error S :=
+  out_ter S (res_throw builtin_syntax_error).
+
+(** "Type error" behavior *)
+
+Definition out_type_error S :=
+  out_ter S (res_throw builtin_type_error).
+
+(** "Reference error" behavior *)
+
+Definition out_ref_error S :=
+  out_ter S (res_throw builtin_ref_error).
+
+(** The "void" result is used by specification-level functions
+    which do not produce any javascript value, but only perform
+    side effects. (We return the value [undef] in the implementation.)
+    -- TODO : sometimes we used false instead  -- where? fix it.. *)
+
+Definition out_void S :=
+  out_ter S undef.
+
+(** [out_reject S bthrow] throws a type error if
+    [bthrow] is true, else returns the value [false] *)
+
+Definition out_reject S bthrow :=
+  ifb bthrow = true
+    then (out_type_error S)
+    else (out_ter S false).
+
+(** [out_ref_error_or_undef S bthrow] throws a type error if
+    [bthrow] is true, else returns the value [undef] *)
+
+Definition out_ref_error_or_undef S (bthrow:bool) :=
+  if bthrow
+    then (out_ref_error S)
+    else (out_ter S undef).
 
 
 (**************************************************************)
