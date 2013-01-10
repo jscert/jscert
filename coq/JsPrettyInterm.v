@@ -288,6 +288,7 @@ with ext_stat :=
   (** Extended statements associated with primitive statements *)
 
   | stat_seq_1 : out -> stat -> ext_stat (* The first statement has been executed. *)
+  | stat_seq_2 : ret_or_empty -> out -> ext_stat
 
   | stat_var_decl_1 : out -> ext_stat (* Ignore its argument and returns [undef] *)
 

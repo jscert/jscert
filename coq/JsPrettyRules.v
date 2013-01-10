@@ -113,9 +113,14 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_seq_1 o1 t2) o ->
       red_stat S C (stat_seq t1 t2) o
 
-  | red_stat_seq_1 : forall S0 S R C t2 o,
-      red_stat S C (stat_basic t2) o ->
-      red_stat S0 C (stat_seq_1 (out_ter S R) t2) o
+  | red_stat_seq_1 : forall S0 S C (R1:ret_or_empty) t2 o2 o,
+      red_stat S C t2 o2 ->
+      red_stat S0 C (stat_seq_2 R1 o2) o ->
+      red_stat S0 C (stat_seq_1 (out_ter S R1) t2) o
+
+  | red_stat_seq_2 : forall S0 S C (R1 R2 R:ret_or_empty),
+      R = (If R2 = ret_empty then R1 else R2) ->
+      red_stat S0 C (stat_seq_2 R1 (out_ter S R2)) (out_ter S R)
 
   (** Variable declaration *)
 
@@ -372,7 +377,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** Skip statement *)
 
   | red_stat_skip : forall S C,
-      red_stat S C stat_skip (out_ter S undef)
+      red_stat S C stat_skip (out_ter S ret_empty)
 
   (* Auxiliary forms : [spec_expr_get_value] plus a type conversion 
      for statements *)
