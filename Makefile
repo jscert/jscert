@@ -12,8 +12,8 @@
 # Default paths for TLC and COQBIN are as follows:
 
 COQBIN=
-TLC=coq/tlc
-FLOCQ=coq/flocq
+TLC=tlc # "make init" puts it on the root directory and not inside "coq/".
+FLOCQ=flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
 # Alternative definition for FLOCQ_INC: 

@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 Require Import LibLogic LibHeap.
-Require Export Syntax.
+Require Export JsSyntax.
 Implicit Type l : object_loc.
 
 
