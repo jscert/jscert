@@ -1135,7 +1135,7 @@ END OF TO CLEAN----*)
 
   | red_spec_to_default_sub_2_callable : forall S C l lf K o fc o1,
       callable S lf (Some fc) ->
-      (* TODO : red (spec_call ... S C lf nil l o1 -> *)
+      red_expr S C (spec_call fc (Some lf) nil) o1 ->
       red_expr S C (spec_to_default_sub_3 o1 (expr_basic K)) o ->
       red_expr S C (spec_to_default_sub_2 l (out_ter S lf) K) o
 
@@ -1222,10 +1222,10 @@ END OF TO CLEAN----*)
   | red_expr_object_get_2_undef : forall S C l,
       red_expr S C (spec_object_get_2 l (Some undef)) (out_ter S undef)
 
-  | red_expr_object_get_2_getter : forall S C l f o,
-      f <> undef ->
-      (* TODO: red spec_call??? S C f nil (value_object l) o -> *)
-      red_expr S C (spec_object_get_2 l (Some f)) o
+  | red_expr_object_get_2_getter : forall fc S C l f o,
+      object_call S f (Some fc) ->
+      red_expr S C (spec_call fc (Some (value_object l)) nil) o ->
+      red_expr S C (spec_object_get_2 l (Some (value_object f))) o
 
       (* TODO: what should we do for [spec_object_get_2 l None] ? *)
 
@@ -1314,11 +1314,13 @@ END OF TO CLEAN----*)
       red_expr S C (spec_object_put_3 l x v throw An) o ->
       red_expr S C (spec_object_put_2 l x v throw AnOwn) o
 
-  | red_expr_object_put_3_accessor : forall fsetter S C l x v throw A o,
+  | red_expr_object_put_3_accessor : forall fsetter fsettero fc S C l x v throw A o,
       prop_attributes_is_accessor A ->
       Some fsetter = prop_attributes_set A ->
       (* optional thanks to the canput test: fsetter <> undef --- Arthur: I don't understand... *)
-      (* TODO: red (spec_call ... S C fsetter (v::nil) (value_object l) o -> *)
+      fsetter = value_object fsettero ->
+      object_call S fsettero (Some fc) ->
+      red_expr S C (spec_call fc (Some (value_object l)) (v::nil)) o ->
       red_expr S C (spec_object_put_3 l x v throw A) o
 
   | red_expr_object_put_3_not_accessor : forall A' S C l x v throw A o,
