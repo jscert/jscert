@@ -282,6 +282,13 @@ Definition object_call S l fco :=
 
 Definition object_has_instance S l b :=
   exists O, object_binds S l O /\ object_has_instance_ O = b.
+  
+(** [object_scope S l scope] asserts that the [[Scope]]
+    field of the object stored at address [l] in [S] contains
+    an option [scope] which may contain lexical environment. *)
+
+Definition object_scope S l scope :=
+  exists O, object_binds S l O /\ object_scope_ O = scope.
 
 (** [object_formal_parameters S l fp] asserts that the [[FormalParameters]]
     field of the object stored at address [l] in [S] contains
