@@ -145,12 +145,6 @@ End InterpreterEliminations.
 
 Section LexicalEnvironments.
 
-Definition run_prog_type : Type :=
-  state -> execution_ctx -> prog -> out_interp.
-
-Definition call (run : run_prog_type) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
-  arbitrary (* TODO *).
-
 Definition run_object_proto S l : value :=
   object_proto_ (pick (object_binds S l)).
 
@@ -165,6 +159,12 @@ Definition run_object_prim_value S l : value :=
 
 Definition run_object_call S l : option function_code :=
   object_call_ (pick (object_binds S l)).
+
+Definition run_object_has_instance S l : bool :=
+  object_has_instance_ (pick (object_binds S l)).
+
+Definition run_object_scope S l : option lexical_env :=
+  object_scope_ (pick (object_binds S l)).
 
 Definition run_object_formal_parameters S l : option (list string) :=
   object_formal_parameters_ (pick (object_binds S l)).
@@ -371,6 +371,40 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
        else fman S
      else out_interp_stuck
     ) else out_interp_stuck
+  end.
+
+Definition run_prog_type : Type := (* The funcion taking this as an argument can call any arbitrary code *)
+  state -> execution_ctx -> prog -> out_interp.
+
+Definition execution_ctx_binding_instantiation S C (funco : option object_loc) (code : function_code) (args : list value) : out_interp :=
+  let L := hd (execution_ctx_variable_env C) in
+  (* let names_option := run_object_formal_parameters S func in
+  let names := unsome_default nil names_option in *) (* TODO *)
+  arbitrary (* TODO *).
+
+Definition execution_ctx_function_call S C (K : state -> execution_ctx -> out_interp) (lf : object_loc) (this : value) (args : list value) :=
+  let strict : bool := arbitrary (* TODO *) in
+  if_success (if strict then out_ter S this
+    else ifb this = null \/ this = undef then out_ter S builtin_global
+    else ifb type_of this = type_object then out_ter S this
+    else to_object S this) (fun S1 newthis =>
+      let scope := extract_from_option (run_object_scope S1 lf) in
+      let fc := extract_from_option (run_object_call S1 lf) in
+      let (lex', S2) := lexical_env_alloc_decl S1 scope in
+      let strict' := execution_ctx_strict C (* TODO *) in
+      let C' := execution_ctx_intro_same lex' this strict' in
+      if_success (execution_ctx_binding_instantiation S2 C' (Some lf) fc args) (fun S3 re =>
+        K S3 C')).
+      
+
+Definition call (run : run_prog_type) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
+  match fc with
+  | function_code_code p =>
+    let lf := extract_from_option lfo in
+    let this := extract_from_option vo in
+    arbitrary (* TODO *)
+  | function_code_builtin id =>
+    arbitrary (* TODO *)
   end.
 
 Definition object_put (run : run_prog_type) S C l x v (throw : bool) : out_interp :=
@@ -990,14 +1024,15 @@ with run_stat (max_step : nat) S C t : out_interp :=
 
     (* Daniele: after I defined continue in JsPrettyRules this one gave
        an error. I put this 's' here, but I don't know if it's what you want. *)
+    (* Martin:  That's nice, thanks :) *)
 
-    | stat_break s =>
-      arbitrary (* TODO *)
+    | stat_break so =>
+      out_ter S (res_break so)
 
     (* Daniele: same as previous one *)
 
-    | stat_continue s =>
-      arbitrary (* TODO *)
+    | stat_continue so =>
+      out_ter S (res_continue so)
 
     | stat_for_in e1 e2 s =>
       arbitrary (* TODO *)
