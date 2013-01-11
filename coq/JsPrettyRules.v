@@ -352,19 +352,13 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Break statement *)
 
-  | red_stat_break_none : forall S C,
-      red_stat S C (stat_break None) (out_ter S (res_break None))
-
-  | red_stat_break_some : forall S C s,
-      red_stat S C (stat_break (Some s)) (out_ter S (res_break (Some s)))
+  | red_stat_break : forall S C labopt,
+      red_stat S C (stat_break labopt) (out_ter S (res_break labopt))
 
   (** Continue statement *)
 
-  | red_stat_continue_none : forall S C,
-      red_stat S C (stat_continue None) (out_ter S (res_continue None))
-
-  | red_stat_continue_some : forall S C s,
-      red_stat S C (stat_continue (Some s)) (out_ter S (res_continue (Some s)))
+  | red_stat_continue : forall S C labopt,
+      red_stat S C (stat_continue labopt) (out_ter S (res_continue labopt))
 
   (** Try statement *)
 
@@ -1034,11 +1028,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_conditional_1 o1 e2 e3) o ->
       red_expr S C (expr_conditional e1 e2 e3) o
 
-  | red_expr_conditional_1' : forall S C e b e2 e3 o,
+  | red_expr_conditional_1 : forall S0 S C e b e2 e3 o,
       e = (If b = true then e2 else e3) ->
       red_expr S C (spec_expr_get_value e) o ->
-      red_expr S C (expr_conditional_1' (out_ter S b) e2 e3) o
-
+      red_expr S0 C (expr_conditional_1 (out_ter S b) e2 e3) o
 
 
 (**************************************************************)
