@@ -1152,9 +1152,10 @@ END OF TO CLEAN----*)
       red_expr S C (expr_basic K) o ->
       red_expr S0 C (spec_to_default_sub_2 l (out_ter S lf) K) o
 
-  | red_spec_to_default_sub_2_callable : forall S C l lf K o fc o1,
+  | red_spec_to_default_sub_2_callable : forall lfo S C l lf K o fc o1,
       callable S lf (Some fc) ->
-      red_expr S C (spec_call fc (Some lf) nil) o1 ->
+      value_object lfo = lf ->
+      red_expr S C (spec_call fc (Some lfo) (Some lf) nil) o1 ->
       red_expr S C (spec_to_default_sub_3 o1 (expr_basic K)) o ->
       red_expr S C (spec_to_default_sub_2 l (out_ter S lf) K) o
 
@@ -1243,7 +1244,7 @@ END OF TO CLEAN----*)
 
   | red_expr_object_get_2_getter : forall fc S C l f o,
       object_call S f (Some fc) ->
-      red_expr S C (spec_call fc (Some (value_object l)) nil) o ->
+      red_expr S C (spec_call fc (Some f) (Some (value_object l)) nil) o ->
       red_expr S C (spec_object_get_2 l (Some (value_object f))) o
 
       (* TODO: what should we do for [spec_object_get_2 l None] ? *)
@@ -1339,7 +1340,7 @@ END OF TO CLEAN----*)
       (* optional thanks to the canput test: fsetter <> undef --- Arthur: I don't understand... *)
       fsetter = value_object fsettero ->
       object_call S fsettero (Some fc) ->
-      red_expr S C (spec_call fc (Some (value_object l)) (v::nil)) o ->
+      red_expr S C (spec_call fc (Some fsettero) (Some (value_object l)) (v::nil)) o ->
       red_expr S C (spec_object_put_3 l x v throw A) o
 
   | red_expr_object_put_3_not_accessor : forall A' S C l x v throw A o,
@@ -1755,24 +1756,24 @@ END OF TO CLEAN----*)
 
   (** Function call --- TODO: check this section*)
 
-  | red_expr_execution_ctx_function_call_direct : forall strict newthis S C func this args o,
+  | red_expr_execution_ctx_function_call_direct : forall strict newthis S C K func this args o,
       (* TODO: set strict according to function code *)
       (If (strict = true) then newthis = this
       else If this = null \/ this = undef then newthis = builtin_global
       else If type_of this = type_object then newthis = this
       else False) (* ~ function_call_should_call_to_object this strict *)
       ->
-      red_expr S C (spec_execution_ctx_function_call_1 func args (out_ter S newthis)) o ->
-      red_expr S C (spec_execution_ctx_function_call func this args) o
+      red_expr S C (spec_execution_ctx_function_call_1 K func args (out_ter S newthis)) o ->
+      red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_convert : forall strict o1 S C func this args o,
+  | red_expr_execution_ctx_function_call_convert : forall strict o1 S C K func this args o,
       (* TODO: set strict according to function code *)
       (~ (strict = true) /\ this <> null /\ this <> undef /\ type_of this <> type_object) ->
       red_expr S C (spec_to_object this) o1 ->
-      red_expr S C (spec_execution_ctx_function_call_1 func args o1) o ->
-      red_expr S C (spec_execution_ctx_function_call func this args) o
+      red_expr S C (spec_execution_ctx_function_call_1 K func args o1) o ->
+      red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_1 : forall scope fc S' lex' C' strict' S0 C func args S this o,
+  | red_expr_execution_ctx_function_call_1 : forall scope fc S' lex' C' strict' o1 S0 C K func args S this o,
       object_scope S func (Some scope) ->
       object_call S func (Some fc) ->
       (lex', S') = lexical_env_alloc_decl S scope ->
@@ -1780,8 +1781,13 @@ END OF TO CLEAN----*)
       strict' = (* TODO: set strict according to function code (function_code_is_strict (function_code func) ||*) execution_ctx_strict C ->
         (* todo this line may change; note that in the spec this is in done in binding instantiation *)
       C' = execution_ctx_intro_same lex' this strict' ->
-      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) fc args) o ->
-      red_expr S0 C (spec_execution_ctx_function_call_1 func args (out_ter S this)) o 
+      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) fc args) o1 ->
+      red_expr S' C' (spec_execution_ctx_function_call_2 K o1) o ->
+      red_expr S0 C (spec_execution_ctx_function_call_1 K func args (out_ter S this)) o 
+      
+  | red_expr_execution_ctx_function_call_2 : forall S0 S C K o,
+      red_expr S C K o ->
+      red_expr S0 C (spec_execution_ctx_function_call_2 K (out_void S)) o
 
   (** Binding instantiation --- TODO: check this section *)
 
@@ -1969,19 +1975,38 @@ END OF TO CLEAN----*)
       
   | red_expr_spec_call_builtin: forall S C builtinid args o,
       red_expr S C (spec_call_builtin builtinid args) o -> 
-      red_expr S C (spec_call (function_code_builtin builtinid) None args) o
+      red_expr S C (spec_call (function_code_builtin builtinid) None None args) o
       
-  | red_expr_spec_call_prog: forall S C p this args o,
-      red_expr S C (spec_call_prog p this args) o -> 
-      red_expr S C (spec_call (function_code_code p) (Some this) args) o
+  | red_expr_spec_call_p: forall S C p l this args o,
+      red_expr S C (spec_call_prog p l this args) o -> 
+      red_expr S C (spec_call (function_code_code p) (Some l) (Some this) args) o
+      
+  | red_expr_spec_call_prog: forall S C p l this args o,
+      red_expr S C (spec_execution_ctx_function_call (spec_call_prog_1 p) l this args) o ->
+      red_expr S C (spec_call_prog p l this args) o
+      
+  | red_expr_spec_call_prog_1: forall o1 S C p o,
+      red_prog S C p o1 ->
+      (* TODO: 13.2.1. [[Call]] Step 2 ? *)
+      red_expr S C (spec_call_prog_2 o1) o ->
+      red_expr S C (spec_call_prog_1 p) o
+      
+  | red_expr_spec_call_prog_2_throw: forall S C v,
+      red_expr S C (spec_call_prog_2 (out_ter S (res_throw v))) (out_ter S (res_throw v))
+      
+  | red_expr_spec_call_prog_2_return: forall S C v,
+      red_expr S C (spec_call_prog_2 (out_ter S (res_return v))) (out_ter S (res_normal v))
+      
+  | red_expr_spec_call_prog_2_normal: forall S C v,
+      red_expr S C (spec_call_prog_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))
       
   | red_expr_spec_constructor_builtin: forall S C builtinid args o,
       red_expr S C (spec_constructor_builtin builtinid args) o -> 
-      red_expr S C (spec_constructor (function_code_builtin builtinid) args) o
+      red_expr S C (spec_constructor (function_code_builtin builtinid) None args) o
       
-  | red_expr_spec_constructor_prog: forall S C p args o,
-      red_expr S C (spec_constructor_prog p args) o -> 
-      red_expr S C (spec_constructor (function_code_code p) args) o
+  | red_expr_spec_constructor_prog: forall S C p l args o,
+      red_expr S C (spec_constructor_prog p l args) o -> 
+      red_expr S C (spec_constructor (function_code_code p) (Some l) args) o
 .
 
 (* TODO: spec_object_put_special *)
