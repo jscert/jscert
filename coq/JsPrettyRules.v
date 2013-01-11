@@ -992,63 +992,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_assign_5 : forall S0 S C R' v,
       red_expr S0 C (expr_assign_5 v (out_ter S R')) (out_ter S v)
 
+  (** Conditional operator *)
 
-(* --begin clean---
-
-
-  | red_expr_ext_expr_assign_1 : forall S0 S1 C e2 re o o2,
-      red_expr S1 C (expr_basic e2) o2 ->
-      red_expr S1 C (ext_expr_assign_2 re o2) o ->
-      red_expr S0 C (ext_expr_assign_1 (out_ter S1 re) None e2) o
-
-  (* Daniele *)
-  (*| red_expr_ext_expr_assign_2 : forall v S0 C re S1 r o,
-      getvalue S1 r v ->
-      red_expr S1 C (ext_expr_assign_3 re v) o ->
-      red_expr S0 C (ext_expr_assign_2 re (out_ter S1 r)) o*)
-
-  (* Daniele: assign_ok *)
-  (*| red_expr_ext_expr_assign_3_ok : forall S0 S1 S2 s r l x v,
-      S2 = update S1 l x v ->
-      red_expr S0 C (ext_expr_assign_3 (Ref l x) v) (out_ter S2 v)*)
-
-  (* Daniele: assign_error, see 11.13.1 ECMA 5 *)
-  (*| red_expr_ext_expr_assign_3_error : forall S0 C re l x v,
-      (ERROR_CONDITIONS re) -> (* TODO *)
-      red_expr S0 C (ext_expr_assign_3 re v) (out_basic_error S0)*)
-
-  (*| red_expr_ext_expr_assign_1_op : forall S0 S1 C op (r : reference) v e2 o o2,
-      getvalue S1 r v ->
-      red_expr S1 C e2 o2 ->
-      red_expr S1 C (ext_expr_assign_2_op r v op o2) o ->
-      red_expr S0 C (ext_expr_assign_1 (out_ter S1 r) (Some op) e2) o*)
-
-  (*| red_expr_ext_expr_assign_2_op : forall S0 S1 S2 s op r2 l x v1 v2 v,
-      getvalue S1 r2 v2 ->
-      binary_op_red op S1 v1 v2 v ->
-      S2 = update S1 l x v ->
-      red_expr S0 C (ext_expr_assign_2_op (Ref l x) v1 op (out_ter S1 r2)) (out_ter S2 v)*)
-
-END OF TO CLEAN----*)
-
-(** Conditional operator *)
-
-(* Daniele: non factorised version
-  | red_expr_conditional : forall S C e1 e2 e3 o o1,
-      red_expr S C (spec_expr_get_value_conv spec_to_boolean e1) o1 ->
-      red_expr S C (expr_conditional_1 o1 e2 e3) o -> 
-      red_expr S C (expr_conditional e1 e2 e3) o
-
-  | red_expr_conditional_1_true : forall S S1 S2 C e1 e2 e3 o,
-      red_expr S C (spec_expr_get_value e2) o ->
-      red_expr S C (expr_conditional_1 (out_ter S1 true) e2 e3) o
-
-  | red_expr_conditional_1_false : forall S S1 S2 C e1 e2 e3 o,
-      red_expr S C (spec_expr_get_value e3) o ->
-      red_expr S C (expr_conditional_1 (out_ter S2 false) e2 e3) o
-*)
-
- 
   | red_expr_conditional : forall S C e1 e2 e3 o o1,
       red_expr S C (spec_expr_get_value_conv spec_to_boolean e1) o1 ->
       red_expr S C (expr_conditional_1 o1 e2 e3) o ->
@@ -1277,6 +1222,9 @@ END OF TO CLEAN----*)
       red_expr S C (spec_object_get_2 l (Some (value_object f))) o
 
       (* TODO: what should we do for [spec_object_get_2 l None] ? *)
+
+     (* TODO: see 15.3.5.4 for a special get method for functions;
+         also arrays & string have special stuff *)
 
   (** Can put *)
 
