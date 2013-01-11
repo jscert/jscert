@@ -85,8 +85,22 @@ Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bit
 Extraction Inline Fappli_IEEE.Bmult Fappli_IEEE.Bmult_FF Fappli_IEEE_bits.b64_mult.
 Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
 
+
 (* New options for the interpreter to work in Coq 8.4 *)
 Set Extraction AccessOpaque.
 Extract Constant Pos.succ => "Pervasives.succ". (* Martin:  Because of a bug of the extraction printer, we are forced to precise the way we want such objects to be extracted... *)
 
+(* These parameters are implementation-dependant according to the spec.
+   I've chosed some very simple values, but we could choose another thing for them. *)
+Extract Constant object_builtin_global_proto => "(Value_prim Prim_null)".
+Extract Constant object_builtin_global_class => "(
+  let rec aux s = function
+  | 0 -> []
+  | n -> let n' = n - 1 in
+    s.[n'] :: aux s n'
+  in let aux2 s =
+    List.rev (aux s (String.length s))
+  in aux2 ""GlobalClass"")".
+
 Extraction "interp/src/interpreter.ml" state_initial execution_ctx_initial run_prog.
+

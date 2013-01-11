@@ -122,6 +122,7 @@ Definition object_builtin_global_properties :=
   let P := write_constant P "undefined" undef in
   let P := write_native P "eval" builtin_global_eval in
   let P := write_native P "isNan" builtin_global_is_nan in
+  let P := write_native P "isFinite" builtin_global_is_finite in
   (* TODO: many other functions to insert here *)
   let P := write_native P "Object" builtin_object in
   let P := write_native P "Function" builtin_function in

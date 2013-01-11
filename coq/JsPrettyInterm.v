@@ -285,6 +285,10 @@ Inductive ext_expr :=
   
   | spec_constructor_prog : prog -> object_loc -> list value -> ext_expr
 
+  (** Extended expressions for calling global object builtin functions *)
+  | spec_call_global_is_nan_1 : out -> ext_expr
+  | spec_call_global_is_finite_1 : out -> ext_expr
+  | spec_call_global_is_finite_2 : out -> ext_expr
 
 (** Grammar of extended statements *)
 
