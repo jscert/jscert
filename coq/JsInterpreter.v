@@ -87,6 +87,13 @@ Definition if_success_throw (o : out_interp) (k1 : state -> res -> out_interp) (
   | _ => o
   end.
 
+Definition if_success_return (o : out_interp) (k1 : state -> res -> out_interp) (k2 : state -> value -> out_interp) : out_interp :=
+  match o with
+  | out_ter S0 (res_normal re) => k1 S0 re
+  | out_ter S0 (res_return v) => k2 S0 v
+  | _ => o
+  end.
+
 Definition if_success_bool (o : out_interp) (k1 k2 : state -> out_interp) : out_interp :=
   if_success o (fun S re =>
     match re with
@@ -244,7 +251,7 @@ Definition object_has_prop S l x : bool :=
   let An := run_object_get_property S (value_object l) x in
   decide (An <> prop_descriptor_undef).
 
-Definition env_record_has_binding S L x (strict : bool) : option bool :=
+Definition env_record_has_binding S L x : option bool :=
   env_record_lookup None S L (fun er =>
     match er with
     | env_record_decl D =>
@@ -255,9 +262,10 @@ Definition env_record_has_binding S L x (strict : bool) : option bool :=
 
 Fixpoint lexical_env_get_identifier_ref S X x (strict : bool) : ref :=
   match X with
-  | nil => ref_create_value undef x strict
+  | nil =>
+    ref_create_value undef x strict
   | L :: X' =>
-    if env_record_has_binding S L x strict then
+    if env_record_has_binding S L x then
       ref_create_env_loc L x strict
     else lexical_env_get_identifier_ref S X' x strict
   end.
@@ -373,41 +381,14 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
     ) else out_interp_stuck
   end.
 
-Definition run_prog_type : Type := (* The funcion taking this as an argument can call any arbitrary code *)
+
+Definition run_prog_type : Type := (* The functions taking such an argument can call any arbitrary code *)
   state -> execution_ctx -> prog -> out_interp.
 
-Definition execution_ctx_binding_instantiation S C (funco : option object_loc) (code : function_code) (args : list value) : out_interp :=
-  let L := hd (execution_ctx_variable_env C) in
-  (* let names_option := run_object_formal_parameters S func in
-  let names := unsome_default nil names_option in *) (* TODO *)
-  arbitrary (* TODO *).
+Definition run_call_type : Type :=
+  state -> execution_ctx -> function_code -> option object_loc -> option value -> list value -> out_interp.
 
-Definition execution_ctx_function_call S C (K : state -> execution_ctx -> out_interp) (lf : object_loc) (this : value) (args : list value) :=
-  let strict : bool := arbitrary (* TODO *) in
-  if_success (if strict then out_ter S this
-    else ifb this = null \/ this = undef then out_ter S builtin_global
-    else ifb type_of this = type_object then out_ter S this
-    else to_object S this) (fun S1 newthis =>
-      let scope := extract_from_option (run_object_scope S1 lf) in
-      let fc := extract_from_option (run_object_call S1 lf) in
-      let (lex', S2) := lexical_env_alloc_decl S1 scope in
-      let strict' := execution_ctx_strict C (* TODO *) in
-      let C' := execution_ctx_intro_same lex' this strict' in
-      if_success (execution_ctx_binding_instantiation S2 C' (Some lf) fc args) (fun S3 re =>
-        K S3 C')).
-      
-
-Definition call (run : run_prog_type) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
-  match fc with
-  | function_code_code p =>
-    let lf := extract_from_option lfo in
-    let this := extract_from_option vo in
-    arbitrary (* TODO *)
-  | function_code_builtin id =>
-    arbitrary (* TODO *)
-  end.
-
-Definition object_put (run : run_prog_type) S C l x v (throw : bool) : out_interp :=
+Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_interp :=
   if_success_bool (object_can_put S l x) (fun S =>
     let AnOwn := run_object_get_own_property S l x in
     match AnOwn with
@@ -424,7 +405,7 @@ Definition object_put (run : run_prog_type) S C l x v (throw : bool) : out_inter
             match extract_from_option (prop_attributes_set A) with
             | value_object fsetter =>
               let fc := extract_from_option (run_object_call S fsetter) in
-              call run S C fc (Some fsetter) (Some (value_object l)) (v :: nil)
+              call S C fc (Some fsetter) (Some (value_object l)) (v :: nil)
             | _ => out_interp_stuck
             end) else (
               let A' := prop_attributes_create_data v true true true in
@@ -434,17 +415,17 @@ Definition object_put (run : run_prog_type) S C l x v (throw : bool) : out_inter
       )
     end) (fun S => out_reject S throw).
 
-Definition env_record_set_mutable_binding (run : run_prog_type) S C L x v (strict : bool) : out_interp :=
+Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : bool) : out_interp :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
     let (mu, v) := read D x in
     ifb mutability_is_mutable mu then
-      arbitrary (* TODO:  This expression should be correct once [heap_set_environment_decl] will be declared:  out_ter (heap_set_environment_decl S L x mu v) prim_undef *)
+      out_void (env_record_write_decl_env S L x mu v)
     else if strict then
       out_type_error S
     else out_ter S prim_undef
   | env_record_object l pt =>
-    object_put run S C l x v strict
+    object_put call S C l x v strict
   end.
 
 Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : out_interp :=
@@ -453,7 +434,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
   | env_record_decl D =>
     ifb decl_env_record_indom D x then out_interp_stuck
     else
-      let S' := arbitrary (* TODO:  heap_set_environment_decl S L x (mutability_of_bool deletable) undef *) in
+      let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
       out_void S'
   | env_record_object l pt =>
     if object_has_prop S l x then out_interp_stuck
@@ -461,13 +442,50 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
       object_define_own_prop S l x An throw_true
   end.
 
-Definition env_record_create_set_mutable_binding (run : run_prog_type) S C L x (deletable_opt : option bool) v (strict : bool) : out_interp :=
+Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x (deletable_opt : option bool) v (strict : bool) : out_interp :=
   if_success (env_record_create_mutable_binding S L x deletable_opt) (fun S re =>
     match re with
     | prim_undef =>
-      env_record_set_mutable_binding run S C L x v strict
+      env_record_set_mutable_binding call S C L x v strict
     | _ => out_interp_stuck
     end).
+
+Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) (code : function_code) (args : list value) : out_interp :=
+  let L := hd arbitrary (execution_ctx_variable_env C) in
+  if_success
+    match funco with
+    | Some func =>
+      let names_option := run_object_formal_parameters S func in
+      let names := unsome_default nil names_option in
+      (fix setArgs S0 (args : list value) (names : list string) : out_interp :=
+        match names with
+        | nil => out_void S0
+        | argname :: names' =>
+          let v := hd undef args in
+          if_success (if_defined (env_record_has_binding S L argname) (fun hb =>
+            if hb then out_void S0
+            else env_record_create_mutable_binding S0 L argname None)) (fun S1 re1 =>
+              if_success (env_record_set_mutable_binding call S1 C L argname v (execution_ctx_strict C))
+              (fun S2 re2 =>
+                setArgs S2 (tl args) names'))
+        end) S args names
+    | None => out_void S
+    end (fun S1 re0 =>
+      arbitrary (* TODO *)).
+
+Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> out_interp) :=
+  let strict : bool := arbitrary (* TODO *) in
+  if_success (if strict then out_ter S this
+    else ifb this = null \/ this = undef then out_ter S builtin_global
+    else ifb type_of this = type_object then out_ter S this
+    else to_object S this) (fun S1 newthis =>
+      let scope := extract_from_option (run_object_scope S1 lf) in
+      let fc := extract_from_option (run_object_call S1 lf) in
+      let (lex', S2) := lexical_env_alloc_decl S1 scope in
+      let strict' := execution_ctx_strict C (* TODO *) in
+      let C' := execution_ctx_intro_same lex' this strict' in
+      if_success (execution_ctx_binding_instantiation call S2 C' (Some lf) fc args) (fun S3 re =>
+        K S3 C')).
 
 
 Definition ref_get_value S (re : ret) : out_interp :=
@@ -520,7 +538,7 @@ Proof.
   skip. (* TODO *)
 Qed.
 
-Definition to_default (run : run_prog_type) S C l (prefo : option preftype) : out_interp :=
+Definition to_default (call : run_call_type) S C l (prefo : option preftype) : out_interp :=
   let gpref := unsome_default preftype_number prefo in
   let lpref := other_preftypes gpref in
   let gmeth := method_of_preftype gpref in
@@ -531,7 +549,7 @@ Definition to_default (run : run_prog_type) S C l (prefo : option preftype) : ou
         let lf := value_object lfo in
         match pick (callable S lf) with
         | Some fc =>
-          if_success_value (call run S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
+          if_success_value (call S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
             match v with
             | value_prim w => out_ter S w
             | value_object l => K True
@@ -544,35 +562,35 @@ Definition to_default (run : run_prog_type) S C l (prefo : option preftype) : ou
     let lmeth := method_of_preftype lpref in
     sub lmeth (fun _ => out_type_error S)).
 
-Definition to_primitive (run : run_prog_type) S C v (prefo : option preftype) : out_interp :=
+Definition to_primitive (call : run_call_type) S C v (prefo : option preftype) : out_interp :=
   match v with
   | value_prim w => out_ter S w
-  | value_object l => to_default run S C l prefo
+  | value_object l => to_default call S C l prefo
   end.
 
-Definition to_number (run : run_prog_type) S C v : out_interp :=
+Definition to_number (call : run_call_type) S C v : out_interp :=
   match v with
   | value_prim w =>
     out_ter S (convert_prim_to_number w)
   | value_object l =>
-    if_success_primitive (to_primitive run S C (value_object l) (Some preftype_number)) (fun S1 w =>
+    if_success_primitive (to_primitive call S C (value_object l) (Some preftype_number)) (fun S1 w =>
       out_ter S (convert_prim_to_number w))
   end.
 
-Definition to_integer (run : run_prog_type) S C v : out_interp :=
-  if_success (to_number run S C v) (fun S1 re1 =>
+Definition to_integer (call : run_call_type) S C v : out_interp :=
+  if_success (to_number call S C v) (fun S1 re1 =>
     match re1 with
     | prim_number n =>
       out_ter S (convert_number_to_integer n)
     | _ => out_interp_stuck
     end).
 
-Definition to_string (run : run_prog_type) S C v : out_interp :=
+Definition to_string (call : run_call_type) S C v : out_interp :=
   match v with
   | value_prim w =>
     out_ter S (convert_prim_to_string w)
   | value_object l =>
-    if_success_primitive (to_primitive run S C (value_object l) (Some preftype_string)) (fun S1 w =>
+    if_success_primitive (to_primitive call S C (value_object l) (Some preftype_string)) (fun S1 w =>
       out_ter S (convert_prim_to_string w))
   end.
 
@@ -914,9 +932,10 @@ with run_stat (max_step : nat) S C t : out_interp :=
   match max_step with
   | O => out_interp_bottom
   | S max_step' =>
-    let run_stat' := run_stat max_step' in
     let run_expr' := run_expr max_step' in
+    let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
+    let run_call' := run_call max_step' in
     match t with
 
     | stat_expr e =>
@@ -1001,7 +1020,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
           match lex' with
           | L :: oldlex =>
             if_success
-            (env_record_create_set_mutable_binding run_prog' S C L x None v throw_irrelevant)
+            (env_record_create_set_mutable_binding run_call' S C L x None v throw_irrelevant)
             (fun S2 re2 =>
               match re2 with
               | prim_undef =>
@@ -1022,14 +1041,8 @@ with run_stat (max_step : nat) S C t : out_interp :=
           out_ter S (res_return v1))
       end
 
-    (* Daniele: after I defined continue in JsPrettyRules this one gave
-       an error. I put this 's' here, but I don't know if it's what you want. *)
-    (* Martin:  That's nice, thanks :) *)
-
     | stat_break so =>
       out_ter S (res_break so)
-
-    (* Daniele: same as previous one *)
 
     | stat_continue so =>
       out_ter S (res_continue so)
@@ -1041,7 +1054,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
       arbitrary (* TODO *)
   
     | stat_debugger =>
-      arbitrary (* TODO *)
+      out_ter S ret_empty
 
     end
   end
@@ -1050,8 +1063,8 @@ with run_prog (max_step : nat) S C p : out_interp :=
   match max_step with
   | O => out_interp_bottom
   | S max_step' =>
-    let run_prog' := run_prog max_step' in
     let run_stat' := run_stat max_step' in
+    let run_prog' := run_prog max_step' in
     match p with
 
     | prog_stat t =>
@@ -1063,6 +1076,28 @@ with run_prog (max_step : nat) S C p : out_interp :=
           out_ter S2 re2))
 
     | prog_function_decl f lx P =>
+      arbitrary (* TODO *)
+
+    end
+  end
+
+with run_call (max_step : nat) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
+  match max_step with
+  | O => out_interp_bottom
+  | S max_step' =>
+    let run_prog' := run_prog max_step' in
+    let run_call' := run_call max_step' in
+    match fc with
+
+    | function_code_code p =>
+      let lf := extract_from_option lfo in
+      let this := extract_from_option vo in
+      execution_ctx_function_call run_call' S C lf this args (fun S1 C1 =>
+        if_success_return (run_prog' S1 C1 p) (fun S2 re =>
+          out_ter S (res_normal undef)) (fun S2 v =>
+          out_ter S (res_normal v)))
+
+    | function_code_builtin id =>
       arbitrary (* TODO *)
 
     end
