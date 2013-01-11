@@ -11,15 +11,12 @@ Implicit Type b : bool.
 Implicit Type n : number.
 Implicit Type k : int.
 Implicit Type s : string.
+Implicit Type i : literal.
 Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
 Implicit Type T : type.
-
-Implicit Type e : expr.
-Implicit Type p : prog.
-Implicit Type t : stat.
 
 Implicit Type x : prop_name.
 Implicit Type m : mutability.
@@ -33,6 +30,10 @@ Implicit Type O : object.
 Implicit Type S : state.
 Implicit Type C : execution_ctx.
 Implicit Type P : object_properties_type.
+
+Implicit Type e : expr.
+Implicit Type p : prog.
+Implicit Type t : stat.
 
 
 (**************************************************************)
@@ -94,6 +95,14 @@ Definition if_success_bool (o : out_interp) (k1 k2 : state -> out_interp) : out_
     | _ => out_interp_stuck
     end).
 
+Definition if_success_primitive (o : out_interp) (k : state -> prim -> out_interp) : out_interp :=
+  if_success o (fun S re =>
+    match re with
+    | value_prim w =>
+      k S w
+    | _ => out_interp_stuck
+    end).
+
 Definition if_defined {B : Type} (op : option B) (k : B -> out_interp) : out_interp :=
   match op with
   | None => out_interp_stuck
@@ -136,8 +145,8 @@ End InterpreterEliminations.
 
 Section LexicalEnvironments.
 
-Definition run_call_type : Type := (* Type of run_call *)
-  state -> execution_ctx -> value -> list value -> value -> out_interp.
+Definition run_prog_type : Type :=
+  state -> execution_ctx -> prog -> out_interp.
 
 Definition run_object_proto S l : value :=
   object_proto_ (pick (object_binds S l)).
@@ -464,16 +473,21 @@ Proof.
   skip. (* TODO *)
 Qed.
 
-Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_interp :=
+Definition call (run : run_prog_type) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
+  arbitrary (* TODO *).
+
+Definition to_default (run : run_prog_type) S C l (prefo : option preftype) : out_interp :=
+  let gpref := unsome_default preftype_number prefo in
   let lpref := other_preftypes gpref in
   let gmeth := method_of_preftype gpref in
-  let sub1 x K :=
+  let sub x K :=
     if_success (object_get S l x) (fun S1 re1 =>
       match re1 with
-      | ret_value lf =>
+      | ret_value (value_object lfo) =>
+        let lf := value_object lfo in
         match pick (callable S lf) with
         | Some fc =>
-          if_success_value (call S C lf nil l) (fun S2 v =>
+          if_success_value (call run S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
             match v with
             | value_prim w => out_ter S w
             | value_object l => K True
@@ -482,46 +496,40 @@ Definition to_default (call : run_call_type) C S l (gpref : preftype) : out_inte
         end
       | _ => out_interp_stuck
       end) in
-  sub1 gmeth (fun _ =>
+  sub gmeth (fun _ =>
     let lmeth := method_of_preftype lpref in
-    sub1 lmeth (fun _ => out_type_error S)).
+    sub lmeth (fun _ => out_type_error S)).
 
-Definition to_primitive (call : run_call_type) C S v (gpref : preftype) : out_interp :=
+Definition to_primitive (run : run_prog_type) S C v (prefo : option preftype) : out_interp :=
   match v with
   | value_prim w => out_ter S w
-  | value_object l => to_default call C S l gpref
+  | value_object l => to_default run S C l prefo
   end.
 
-Definition to_number (call : run_call_type) C S v : out_interp :=
+Definition to_number (run : run_prog_type) S C v : out_interp :=
   match v with
-  | value_prim w => out_ter S (prim_number (convert_prim_to_number w))
+  | value_prim w =>
+    out_ter S (convert_prim_to_number w)
   | value_object l =>
-    if_success (to_primitive call C S (value_object l) preftype_number) (fun S1 re1 =>
-      match re1 with
-      | value_prim w =>
-        out_ter S (prim_number (convert_prim_to_number w))
-      | _ => out_interp_stuck
-      end)
+    if_success_primitive (to_primitive run S C (value_object l) (Some preftype_number)) (fun S1 w =>
+      out_ter S (convert_prim_to_number w))
   end.
 
-Definition to_integer (call : run_call_type) C S v : out_interp :=
-  if_success (to_number call C S v) (fun S1 re1 =>
+Definition to_integer (run : run_prog_type) S C v : out_interp :=
+  if_success (to_number run S C v) (fun S1 re1 =>
     match re1 with
-    | prim_number m =>
-      out_ter S (prim_number (convert_number_to_integer m))
+    | prim_number n =>
+      out_ter S (convert_number_to_integer n)
     | _ => out_interp_stuck
     end).
 
-Definition to_string (call : run_call_type) C S v : out_interp :=
+Definition to_string (run : run_prog_type) S C v : out_interp :=
   match v with
-  | value_prim w => out_ter S (convert_prim_to_string w)
+  | value_prim w =>
+    out_ter S (convert_prim_to_string w)
   | value_object l =>
-    if_success (to_primitive call C S (value_object l) preftype_string) (fun S1 re1 => (* TODO:  Define an “if_success_primitive” *)
-      match re1 with
-      | value_prim w =>
-        out_ter S (convert_prim_to_string w)
-      | _ => out_interp_stuck
-      end)
+    if_success_primitive (to_primitive run S C (value_object l) (Some preftype_string)) (fun S1 w =>
+      out_ter S (convert_prim_to_string w))
   end.
 
 
@@ -870,7 +878,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
       run_expr' S C e
 
     | stat_skip =>
-      out_ter S undef
+      out_ter S ret_empty
 
     | stat_var_decl x eo =>
       match eo with
@@ -879,6 +887,15 @@ with run_stat (max_step : nat) S C t : out_interp :=
         if_success (run_expr' S C e) (fun S1 re1 =>
           out_ter S1 undef)
       end
+
+    | stat_seq t1 t2 =>
+      if_success (run_stat' S C t1) (fun S1 re1 =>
+        if_success (run_stat' S1 C t2) (fun S2 re2 =>
+          out_ter S2
+            match re2 with
+            | ret_empty => re1
+            | _ => re2
+            end))
 
     | stat_with e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
@@ -891,11 +908,6 @@ with run_stat (max_step : nat) S C t : out_interp :=
             run_stat' S3 C' t2
           | _ => arbitrary (* TODO:  Reread *)
           end))
-
-    | stat_seq t1 t2 =>
-      if_success (run_stat' S C t1) (fun S1 re1 =>
-        if_success (run_stat' S1 C t2) (fun S2 re2 =>
-          out_ter S2 re2))
 
     | stat_if e1 t2 to =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
@@ -998,10 +1010,7 @@ with run_prog (max_step : nat) S C p : out_interp :=
       arbitrary (* TODO *)
 
     end
-  end
-
-with run_call (max_step : nat) S C (f : value) (ls : list value) v : out_interp :=
-  arbitrary (* TODO *).
+  end.
 
 End Interpreter.
 
