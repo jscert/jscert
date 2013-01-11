@@ -331,6 +331,19 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_throw_1 : forall S0 S C v,
       red_stat S0 C (stat_throw_1 (out_ter S v)) (out_ter S (res_throw v))
 
+ (** Return statement *)
+  
+  | red_stat_return_none : forall S C,
+      red_stat S C (stat_return None) (out_ter S (res_return undef))
+
+  | red_stat_return_some : forall S C e o o1,
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_stat S C (stat_return_1 o1) o ->
+      red_stat S C (stat_return (Some e)) o
+
+  | red_stat_return_some_1 : forall S0 S C v,
+      red_stat S0 C (stat_throw_1 (out_ter S v)) (out_ter S (res_return v))
+
   (** Try statement *)
 
   | red_stat_try : forall S C t co fio o o1, (* TODO: rename co and fio *)
