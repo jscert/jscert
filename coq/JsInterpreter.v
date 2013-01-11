@@ -260,7 +260,7 @@ Definition env_record_has_binding S L x : option bool :=
       Some (object_has_prop S l x)
     end).
 
-Fixpoint lexical_env_get_identifier_ref S X x (strict : bool) : ref :=
+Fixpoint lexical_env_get_identifier_ref S X x (strict : strictness_flag) : ref :=
   match X with
   | nil =>
     ref_create_value undef x strict
@@ -295,7 +295,7 @@ Definition object_get_special S v x : out_interp :=
   if_value_object (to_object S v) (fun S' l =>
     object_get S' l x).
 
-Definition env_record_get_binding_value S L x (strict : bool) : out_interp :=
+Definition env_record_get_binding_value S L x (strict : strictness_flag) : out_interp :=
   env_record_lookup out_interp_stuck S L (fun er =>
     match er with
     | env_record_decl D =>
@@ -415,7 +415,7 @@ Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_inte
       )
     end) (fun S => out_reject S throw).
 
-Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : bool) : out_interp :=
+Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : strictness_flag) : out_interp :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
     let (mu, v) := read D x in
@@ -442,7 +442,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
       object_define_own_prop S l x An throw_true
   end.
 
-Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x (deletable_opt : option bool) v (strict : bool) : out_interp :=
+Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x (deletable_opt : option bool) v (strict : strictness_flag) : out_interp :=
   if_success (env_record_create_mutable_binding S L x deletable_opt) (fun S re =>
     match re with
     | prim_undef =>
@@ -450,8 +450,12 @@ Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x 
     | _ => out_interp_stuck
     end).
 
+Definition creating_fuction_object S (names : list string) (fb : string) (fc : function_code) X (strict : strictness_flag) :=
+  arbitrary (* TODO *).
+
 Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) (code : function_code) (args : list value) : out_interp :=
   let L := hd arbitrary (execution_ctx_variable_env C) in
+  let strict := execution_ctx_strict C in
   if_success
     match funco with
     | Some func =>
@@ -465,16 +469,56 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
           if_success (if_defined (env_record_has_binding S L argname) (fun hb =>
             if hb then out_void S0
             else env_record_create_mutable_binding S0 L argname None)) (fun S1 re1 =>
-              if_success (env_record_set_mutable_binding call S1 C L argname v (execution_ctx_strict C))
+              if_success (env_record_set_mutable_binding call S1 C L argname v strict)
               (fun S2 re2 =>
                 setArgs S2 (tl args) names'))
         end) S args names
     | None => out_void S
     end (fun S1 re0 =>
-      arbitrary (* TODO *)).
+      let fds := function_declarations code in
+      if_success
+      ((fix createExecutionContext S0 (fds : list function_declaration) : out_interp :=
+        match fds with
+        | nil => out_void S0
+        | fd :: fds' =>
+          let p := fd_code fd in
+          let strictp := execution_ctx_strict C || function_body_is_strict p in (* To be reread. *)
+          let f_code := function_code_code (fd_code fd) in
+          let f_string := fd_string fd in
+          if_success (creating_fuction_object S0 (fd_parameters fd) f_string f_code (execution_ctx_variable_env C) strictp) (fun S1 re1 =>
+            match re1 with
+            | value_object fo =>
+              let hb := env_record_has_binding S0 L (fd_name fd) in
+              if_success (if hb then
+                match run_object_get_property S builtin_global (fd_name fd) with
+                | prop_descriptor_undef => out_interp_stuck
+                | prop_descriptor_some A =>
+                  ifb prop_attributes_configurable A = Some true then (
+                    let A' := prop_attributes_create_data undef true true false in (* To be reread *)
+                    object_define_own_prop S1 builtin_global (fd_name fd) A' true
+                  ) else ifb prop_descriptor_is_accessor A \/ prop_attributes_writable A <> Some true \/ prop_attributes_enumerable A <> Some true then
+                  out_type_error S1
+                  else out_void S1
+                end else env_record_create_mutable_binding S1 L (fd_name fd) (Some false)) (fun S2 re2 =>
+                  if_success (env_record_set_mutable_binding call S2 C L (fd_name fd) (value_object fo) strictp) (fun S3 re3 =>
+                    createExecutionContext S3 fds'))
+            | _ => out_interp_stuck
+            end)
+        end) S1 fds) (fun S2 re =>
+        let vds := variable_declarations code in
+        (fix initVariables S0 (vds : list string) : out_interp :=
+          match vds with
+          | nil => out_void S0
+          | vd :: vds' =>
+            if extract_from_option (env_record_has_binding S0 L vd) then
+              initVariables S0 vds'
+            else (if_success
+              (env_record_create_set_mutable_binding call S0 C L vd (Some false) undef strict) (fun S1 re1 =>
+                initVariables S1 vds'))
+          end) S2 vds)).
 
 Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> out_interp) :=
-  let strict : bool := arbitrary (* TODO *) in
+  let strict : strictness_flag := arbitrary (* TODO *) in
   if_success (if strict then out_ter S this
     else ifb this = null \/ this = undef then out_ter S builtin_global
     else ifb type_of this = type_object then out_ter S this
