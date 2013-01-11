@@ -1031,6 +1031,35 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 END OF TO CLEAN----*)
 
+(** Conditional operator *)
+
+(* Daniele: non factorised version
+  | red_expr_conditional : forall S C e1 e2 e3 o o1,
+      red_expr S C (spec_expr_get_value_conv spec_to_boolean e1) o1 ->
+      red_expr S C (expr_conditional_1 o1 e2 e3) o -> 
+      red_expr S C (expr_conditional e1 e2 e3) o
+
+  | red_expr_conditional_1_true : forall S S1 S2 C e1 e2 e3 o,
+      red_expr S C (spec_expr_get_value e2) o ->
+      red_expr S C (expr_conditional_1 (out_ter S1 true) e2 e3) o
+
+  | red_expr_conditional_1_false : forall S S1 S2 C e1 e2 e3 o,
+      red_expr S C (spec_expr_get_value e3) o ->
+      red_expr S C (expr_conditional_1 (out_ter S2 false) e2 e3) o
+*)
+
+ 
+  | red_expr_conditional : forall S C e1 e2 e3 o o1,
+      red_expr S C (spec_expr_get_value_conv spec_to_boolean e1) o1 ->
+      red_expr S C (expr_conditional_1 o1 e2 e3) o ->
+      red_expr S C (expr_conditional e1 e2 e3) o
+
+  | red_expr_conditional_1' : forall S C e b e2 e3 o,
+      e = (If b = true then e2 else e3) ->
+      red_expr S C (spec_expr_get_value e) o ->
+      red_expr S C (expr_conditional_1' (out_ter S b) e2 e3) o
+
+
 
 (**************************************************************)
 (** ** Reduction rules for specification functions *)
@@ -1522,8 +1551,9 @@ END OF TO CLEAN----*)
   (** Auxiliary: combine [red_expr] and [get_value] and a conversion *)
 
   | red_spec_expr_get_value_conv : forall S C e conv o o1,
-      red_expr S C e o1 ->
-      red_expr S C (spec_expr_get_value_conv_1 conv o1) o ->
+      (* red_expr S C e o1 -> *) (* Daniele: it didn't really call get_value before so I changed it. Is it ok? *)                               
+      red_expr S C (spec_expr_get_value e) o1 -> 
+      red_expr S C (spec_expr_get_value_conv_1 conv o1) o -> 
       red_expr S C (spec_expr_get_value_conv conv e) o
 
   | red_spec_expr_get_value_conv_1 : forall S0 S C conv v o,

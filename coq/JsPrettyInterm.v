@@ -86,6 +86,9 @@ Inductive ext_expr :=
   | expr_unary_op_neg_1 : out -> ext_expr
   | expr_unary_op_bitwise_not_1 : int -> ext_expr
   | expr_unary_op_not_1 : out -> ext_expr
+(*  | expr_conditional_1 : value -> expr -> expr -> ext_expr *) (* Daniele *)
+  | expr_conditional_1 : out -> expr -> expr -> ext_expr
+  | expr_conditional_1': out -> expr -> expr -> ext_expr
 
   | expr_binary_op_1 : binary_op -> out -> expr -> ext_expr
   | expr_binary_op_2 : binary_op -> value -> out -> ext_expr
@@ -317,6 +320,7 @@ with ext_stat :=
   | stat_try_3 : out -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
   | stat_try_4 : res -> out -> ext_stat (* The finally has been executed. *)
 
+  
   (* Auxiliary forms for performing [red_expr] then [ref_get_value] and a conversion *)
 
   | spec_expr_get_value_conv_stat : expr -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
