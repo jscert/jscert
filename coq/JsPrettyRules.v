@@ -11,6 +11,7 @@ Implicit Type i : literal.
 Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
+Implicit Type Vs : list value.
 Implicit Type r : ref.
 Implicit Type T : type.
 
@@ -53,6 +54,18 @@ Parameter alloc_primitive_value :
   state -> value -> state -> object_loc -> Prop.
 Parameter basic_value_convertible_to_object : value -> Prop.
 
+(**************************************************************)
+(** ** arguments_from. TODO: move! *)
+
+Inductive arguments_from : list value -> list value -> Prop :=
+ | arguments_from_nil : forall Vs,
+      arguments_from Vs nil
+ | arguments_from_undef : forall Vs: list value,
+      arguments_from nil Vs ->
+      arguments_from nil (undef::Vs)
+ | arguments_from_cons : forall Vs1 Vs2 v,
+      arguments_from Vs1 Vs2 ->
+      arguments_from (v::Vs1) (v::Vs2).
 
 
 (**************************************************************)
@@ -2072,16 +2085,46 @@ END OF TO CLEAN----*)
   | red_expr_spec_constructor_prog: forall S C p l args o,
       red_expr S C (spec_constructor_prog p l args) o -> 
       red_expr S C (spec_constructor (function_code_code p) (Some l) args) o
-.
 
 (* TODO: spec_object_put_special *)
 
+(*------------------------------------------------------------*)
+(** ** Calling global object builtin functions *)
 
+  (** IsNan *)
 
+  | red_spec_call_global_is_nan : forall S C v o o1 args, 
+      arguments_from (v::nil) args ->
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (spec_call_global_is_nan_1 o1) o ->
+      red_expr S C (spec_call_builtin builtin_global_is_nan args) o
 
+  | red_spec_call_global_is_nan_1 : forall S S0 C b n,
+      b = (if decide (n = JsNumber.nan) then true else false) ->
+      red_expr S0 C (spec_call_global_is_nan_1 (out_ter S n)) (out_ter S b)
 
+  (** IsFinite *)
 
+  | red_spec_call_global_is_finite_not_nan : forall S C o o1 args, 
+      red_expr S C (spec_call_builtin builtin_global_is_nan args) o1 ->
+      red_expr S C (spec_call_global_is_finite_1 o1) o ->
+      red_expr S C (spec_call_builtin builtin_global_is_finite args) o
 
+  | red_spec_call_global_is_finite_not_nan_1 : forall S C b b1,
+      b = (if decide (b1 = true) then false else true) ->
+      red_expr S C (spec_call_global_is_finite_1 (out_ter S b1)) (out_ter S b)  
+
+  | red_spec_call_global_is_finite_not_infinity : forall S C v o o1 args, 
+      arguments_from (v::nil) args ->
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (spec_call_global_is_finite_2 o1) o ->
+      red_expr S C (spec_call_builtin builtin_global_is_finite args) o
+
+  | red_spec_call_global_is_finite_not_infinity_1 : forall S S0 C b n,
+      b = (if decide (n = JsNumber.infinity \/ n = JsNumber.neg_infinity ) then false else true) ->
+      red_expr S0 C (spec_call_global_is_finite_2 (out_ter S n)) (out_ter S b)               
+
+  .
 
 
 (*--------------------------------*)

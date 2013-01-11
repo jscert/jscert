@@ -196,10 +196,8 @@ Inductive builtin :=
   | builtin_global_parse_float
   *)
   | builtin_global_is_nan
-  (*
   | builtin_global_is_finite
-  *)
-
+  
   | builtin_object
   | builtin_object_new
   | builtin_object_call
