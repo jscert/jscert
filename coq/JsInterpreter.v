@@ -148,6 +148,9 @@ Section LexicalEnvironments.
 Definition run_prog_type : Type :=
   state -> execution_ctx -> prog -> out_interp.
 
+Definition call (run : run_prog_type) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
+  arbitrary (* TODO *).
+
 Definition run_object_proto S l : value :=
   object_proto_ (pick (object_binds S l)).
 
@@ -264,7 +267,7 @@ Definition object_get S v x : out_interp :=
   | prop_descriptor_undef => out_ter S undef
   | prop_descriptor_some A =>
     ifb prop_attributes_is_data A then
-      @morph_option value _ out_interp_stuck (out_ter S) (prop_attributes_value A)
+      morph_option out_interp_stuck (out_ter S : value -> _) (prop_attributes_value A)
     else out_interp_stuck
   end.
 
@@ -370,7 +373,7 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
     ) else out_interp_stuck
   end.
 
-Definition object_put S l x v (throw : bool) : out_interp :=
+Definition object_put (run : run_prog_type) S C l x v (throw : bool) : out_interp :=
   if_success_bool (object_can_put S l x) (fun S =>
     let AnOwn := run_object_get_own_property S l x in
     match AnOwn with
@@ -383,12 +386,21 @@ Definition object_put S l x v (throw : bool) : out_interp :=
         match An with
         | prop_descriptor_undef => out_interp_stuck
         | prop_descriptor_some A =>
-          arbitrary (* TODO *)
+          ifb prop_attributes_is_accessor A then (
+            match extract_from_option (prop_attributes_set A) with
+            | value_object fsetter =>
+              let fc := extract_from_option (run_object_call S fsetter) in
+              call run S C fc (Some fsetter) (Some (value_object l)) (v :: nil)
+            | _ => out_interp_stuck
+            end) else (
+              let A' := prop_attributes_create_data v true true true in
+              object_define_own_prop S l x A' throw
+            )
         end
       )
     end) (fun S => out_reject S throw).
 
-Definition env_record_set_mutable_binding S L x v (strict : bool) : out_interp :=
+Definition env_record_set_mutable_binding (run : run_prog_type) S C L x v (strict : bool) : out_interp :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
     let (mu, v) := read D x in
@@ -398,7 +410,7 @@ Definition env_record_set_mutable_binding S L x v (strict : bool) : out_interp :
       out_type_error S
     else out_ter S prim_undef
   | env_record_object l pt =>
-    object_put S l x v strict
+    object_put run S C l x v strict
   end.
 
 Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : out_interp :=
@@ -415,10 +427,11 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
       object_define_own_prop S l x An throw_true
   end.
 
-Definition env_record_create_set_mutable_binding S L x (deletable_opt : option bool) v (strict : bool) : out_interp :=
+Definition env_record_create_set_mutable_binding (run : run_prog_type) S C L x (deletable_opt : option bool) v (strict : bool) : out_interp :=
   if_success (env_record_create_mutable_binding S L x deletable_opt) (fun S re =>
     match re with
-    | prim_undef => env_record_set_mutable_binding S L x v strict
+    | prim_undef =>
+      env_record_set_mutable_binding run S C L x v strict
     | _ => out_interp_stuck
     end).
 
@@ -472,9 +485,6 @@ Proof.
   intros [a Ha]. destruct v; simpls~.
   skip. (* TODO *)
 Qed.
-
-Definition call (run : run_prog_type) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
-  arbitrary (* TODO *).
 
 Definition to_default (run : run_prog_type) S C l (prefo : option preftype) : out_interp :=
   let gpref := unsome_default preftype_number prefo in
@@ -872,6 +882,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
   | S max_step' =>
     let run_stat' := run_stat max_step' in
     let run_expr' := run_expr max_step' in
+    let run_prog' := run_prog max_step' in
     match t with
 
     | stat_expr e =>
@@ -955,7 +966,9 @@ with run_stat (max_step : nat) S C t : out_interp :=
           let (lex', S') := lexical_env_alloc_decl S lex in
           match lex' with
           | L :: oldlex =>
-            if_success (env_record_create_set_mutable_binding S L x None v throw_irrelevant) (fun S2 re2 =>
+            if_success
+            (env_record_create_set_mutable_binding run_prog' S C L x None v throw_irrelevant)
+            (fun S2 re2 =>
               match re2 with
               | prim_undef =>
                 let C' := execution_ctx_with_lex C lex' in

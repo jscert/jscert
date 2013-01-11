@@ -292,10 +292,17 @@ Qed.
 (** Inhabitants **)
 
 Global Instance res_inhab : Inhab res.
-Proof.
-  destruct value_inhab. destruct inhabited as [r _].
-  apply prove_Inhab. apply res_normal. apply~ ret_value.
-Qed.
+Proof. apply prove_Inhab. apply* (ret_value arbitrary). Qed.
+
+
+(**************************************************************)
+(** ** Type [function_code] *)
+
+(** Inhabitants **)
+
+Global Instance function_code_inhab : Inhab function_code.
+Proof. apply prove_Inhab. apply function_code_code. apply* stat_skip. Qed.
+
 
 (**************************************************************)
 (** TODO: complete this file *)
