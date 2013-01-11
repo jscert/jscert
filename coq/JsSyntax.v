@@ -128,14 +128,15 @@ with stat :=
   | stat_with : expr -> stat -> stat
   | stat_throw : expr -> stat
   | stat_return : option expr -> stat
-  | stat_break : (* TODO: label_opt -> *) stat
-  | stat_continue : (* TODO: label_opt -> *) stat
+  | stat_break : label_opt -> stat
+  | stat_continue : label_opt ->  stat
   | stat_try : stat -> option (string * stat) -> option stat -> stat
                (* try s1 [catch (x) s2] [finally s3] *)
   | stat_skip (* for semi-column *)
   | stat_for_in : (* TODO: label_set -> *) expr -> expr -> stat -> stat (* for (e1 in e2) stat *)
   | stat_for_in_var : (* TODO: label_set -> *) string -> option expr -> expr -> stat -> stat (* for (var x [= e1] in e2) stat *)
-  (* todo: factorize the two *)
+  | stat_debugger : stat  
+(* todo: factorize the two *)
 (* TODO: missing do_while and for *)
 (* TODO: missing switch *)
 
@@ -512,7 +513,7 @@ Inductive ret_or_empty :=
     - (normal,value,empty) as [res_normal (ret_or_empty_ret value)] 
     - (break,empty,labelopt) as [res_break labelopt] 
     - (continue,empty,labelopt) as [res_continue labelopt] 
-    - (return,empty,empty) as [res_return None] 
+    - (return,empty,empty) as [res_return None] (* Daniele: do we use this case? And: below res_return is not defined as an option anyway... *)
     - (return,value,empty) as [res_return (Some value)] 
     - (throw,value,empty) as [res_throw value] 
     
