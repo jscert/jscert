@@ -287,6 +287,8 @@ Inductive ext_expr :=
 
   (** Extended expressions for calling global object builtin functions *)
   | spec_call_global_is_nan_1 : out -> ext_expr
+  | spec_call_global_is_finite_1 : out -> ext_expr
+  | spec_call_global_is_finite_2 : out -> ext_expr
 
 (** Grammar of extended statements *)
 

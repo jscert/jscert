@@ -2091,6 +2091,8 @@ END OF TO CLEAN----*)
 (*------------------------------------------------------------*)
 (** ** Calling global object builtin functions *)
 
+  (** IsNan *)
+
   | red_spec_call_global_is_nan : forall S C v o o1 args, 
       arguments_from (v::nil) args ->
       red_expr S C (spec_to_number v) o1 ->
@@ -2100,8 +2102,29 @@ END OF TO CLEAN----*)
   | red_spec_call_global_is_nan_1 : forall S S0 C b n,
       b = (if decide (n = JsNumber.nan) then true else false) ->
       red_expr S0 C (spec_call_global_is_nan_1 (out_ter S n)) (out_ter S b)
-.
 
+  (** IsFinite *)
+
+  | red_spec_call_global_is_finite_not_nan : forall S C o o1 args, 
+      red_expr S C (spec_call_builtin builtin_global_is_nan args) o1 ->
+      red_expr S C (spec_call_global_is_finite_1 o1) o ->
+      red_expr S C (spec_call_builtin builtin_global_is_finite args) o
+
+  | red_spec_call_global_is_finite_not_nan_1 : forall S C b b1,
+      b = (if decide (b1 = true) then false else true) ->
+      red_expr S C (spec_call_global_is_finite_1 (out_ter S b1)) (out_ter S b)  
+
+  | red_spec_call_global_is_finite_not_infinity : forall S C v o o1 args, 
+      arguments_from (v::nil) args ->
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (spec_call_global_is_finite_2 o1) o ->
+      red_expr S C (spec_call_builtin builtin_global_is_finite args) o
+
+  | red_spec_call_global_is_finite_not_infinity_1 : forall S S0 C b n,
+      b = (if decide (n = JsNumber.infinity \/ n = JsNumber.neg_infinity ) then false else true) ->
+      red_expr S0 C (spec_call_global_is_finite_2 (out_ter S n)) (out_ter S b)               
+
+  .
 
 
 (*--------------------------------*)
