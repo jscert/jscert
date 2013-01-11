@@ -1921,10 +1921,10 @@ END OF TO CLEAN----*)
   | red_expr_creating_function_object : forall l S' o1 S C names fb fc X strict o,
       (* TODO: formalize Function prototype object as in 15.3.3.1 *)
       let O := object_create builtin_function_proto "Function" true Heap.empty in
-      let O1 := object_with_details O (Some X) (Some names) (Some fb) None None None None in
-      (* TODO : set [[Call]] *)
-      (* TODO: create internals for [[Get]] [[Call]] [[Construct]] [[HasInstance]] *)
-      (l, S') = object_alloc S O1 ->
+      let O1 := object_with_invokation O (Some fc) (Some fc) true in
+      let O2 := object_with_details O1 (Some X) (Some names) (Some fb) None None None None in
+      (* TODO: create internals for [[Get]] *)
+      (l, S') = object_alloc S O2 ->
       let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
       red_expr S' C (spec_creating_function_object_1 strict l o1) o ->
