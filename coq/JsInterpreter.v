@@ -975,16 +975,24 @@ with run_stat (max_step : nat) S C t : out_interp :=
           out_ter S (res_return v1))
       end
 
-    | stat_break =>
+    (* Daniele: after I defined continue in JsPrettyRules this one gave
+       an error. I put this 's' here, but I don't know if it's what you want. *)
+
+    | stat_break s =>
       arbitrary (* TODO *)
 
-    | stat_continue =>
+    (* Daniele: same as previous one *)
+
+    | stat_continue s =>
       arbitrary (* TODO *)
 
     | stat_for_in e1 e2 s =>
       arbitrary (* TODO *)
 
     | stat_for_in_var x e1o e2 s =>
+      arbitrary (* TODO *)
+  
+    | stat_debugger =>
       arbitrary (* TODO *)
 
     end

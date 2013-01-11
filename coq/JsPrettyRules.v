@@ -277,6 +277,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps o1) o ->
       red_stat S0 C (stat_for_in_7 e1 t l vret lhdRef initProps visitedProps (out_void S)) o
 
+  (** Debugger statement *)
+  
+  | res_stat_debugger : forall S C,
+      red_stat S C stat_debugger (out_ter S ret_empty)
+
+
 (*-- todo: make compile following introduction of ret_or_empty (see JsSyntax) 
 
   | red_stat_for_in_6e : forall S0 S C e1 t l vret lhdRef initProps visitedProps res o,
@@ -343,6 +349,22 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_return_some_1 : forall S0 S C v,
       red_stat S0 C (stat_return_1 (out_ter S v)) (out_ter S (res_return v))
+
+  (** Break statement *)
+
+  | red_stat_break_none : forall S C,
+      red_stat S C (stat_break None) (out_ter S (res_break None))
+
+  | red_stat_break_some : forall S C s,
+      red_stat S C (stat_break (Some s)) (out_ter S (res_break (Some s)))
+
+  (** Continue statement *)
+
+  | red_stat_continue_none : forall S C,
+      red_stat S C (stat_continue None) (out_ter S (res_continue None))
+
+  | red_stat_continue_some : forall S C s,
+      red_stat S C (stat_continue (Some s)) (out_ter S (res_continue (Some s)))
 
   (** Try statement *)
 
