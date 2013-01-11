@@ -86,7 +86,6 @@ Inductive ext_expr :=
   | expr_unary_op_neg_1 : out -> ext_expr
   | expr_unary_op_bitwise_not_1 : int -> ext_expr
   | expr_unary_op_not_1 : out -> ext_expr
-(*  | expr_conditional_1 : value -> expr -> expr -> ext_expr *) (* Daniele *)
   | expr_conditional_1 : out -> expr -> expr -> ext_expr
   | expr_conditional_1': out -> expr -> expr -> ext_expr
 
@@ -321,6 +320,8 @@ with ext_stat :=
   | stat_with_1 : stat -> value -> ext_stat (* The expression have been executed. *)
 
   | stat_throw_1 : out -> ext_stat (* The expression have been executed. *)
+
+  | stat_return_1 : out -> ext_stat (* The expression have been executed. *)
 
   | stat_try_1 : out -> option (string*stat) -> option stat -> ext_stat (* The try block has been executed. *)
   | stat_try_2 : out -> lexical_env -> stat -> option stat -> ext_stat (* The catch block is actived and will be executed. *)
