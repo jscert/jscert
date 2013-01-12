@@ -2075,9 +2075,10 @@ END OF TO CLEAN----*)
   | red_expr_creating_function_object_3 : forall o1 S0 S C l b o, 
       red_expr S0 C (spec_creating_function_object_3 l (out_ter S b)) (out_ter S l)
       
-  | red_expr_spec_call_builtin: forall S C builtinid args o,
+  | red_expr_spec_call_builtin: forall S C builtinid lo this args o,
+      builtinid <> builtin_spec_op_function_call /\ builtinid <> builtin_spec_op_function_bind_call ->
       red_expr S C (spec_call_builtin builtinid args) o -> 
-      red_expr S C (spec_call builtinid None None args) o
+      red_expr S C (spec_call builtinid lo this args) o
       
   | red_expr_spec_call_p: forall S C l this args o,
       red_expr S C (spec_op_function_call l this args) o -> 
@@ -2107,9 +2108,10 @@ END OF TO CLEAN----*)
   | red_expr_spec_call_prog_2_normal: forall S C v,
       red_expr S C (spec_op_function_call_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))
       
-  | red_expr_spec_constructor_builtin: forall S C builtinid args o,
+  | red_expr_spec_constructor_builtin: forall S C builtinid lo args o,
+      builtinid <> builtin_spec_op_function_constructor /\ builtinid <> builtin_spec_op_function_bind_constructor ->
       red_expr S C (spec_constructor_builtin builtinid args) o -> 
-      red_expr S C (spec_constructor builtinid None args) o
+      red_expr S C (spec_constructor builtinid lo args) o
       
   | red_expr_spec_constructor_function: forall S C l args o,
       red_expr S C (spec_function_constructor l args) o -> 

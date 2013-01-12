@@ -285,6 +285,7 @@ Inductive builtin :=
   
   (* [[Constructor]] *)
   | builtin_spec_op_function_constructor (* 13.2.2 *)
+  | builtin_spec_op_function_bind_constructor (* 15.3.4.5.2 *) 
   
   (* [[HasInstance]] *)
   | builtin_spec_op_function_has_instance      (* 15.3.5.3 *)

@@ -275,6 +275,7 @@ Inductive ext_expr :=
   | spec_creating_function_object_2 : object_loc -> out -> ext_expr
   | spec_creating_function_object_3 : object_loc -> out -> ext_expr
   
+  (* TODO: Check if object_loc or value could be None *)
   | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr
   
   | spec_call_builtin : builtin -> list value -> ext_expr
