@@ -882,7 +882,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_binary_op_instanceof_normal : forall spec_has_instance_id S C v1 l o,
       object_has_instance S l (Some spec_has_instance_id) ->
-      red_expr S C (spec_has_instance spec_has_instance_id l v1) o ->
+      red_expr S C (spec_object_has_instance spec_has_instance_id l v1) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
   (** Binary op : in *)
@@ -1577,6 +1577,37 @@ END OF TO CLEAN----*)
       changedpf = prop_attributes_transfer oldpf newpf ->
       object_set_property S l x changedpf h' ->
       red_expr S C (spec_object_define_own_prop_5 l x oldpf newpf throw) (out_ter h' true)
+      
+  (** Has Instance *)
+  | red_expr_object_has_instance_prim : forall S C l w o,
+      red_expr S C (spec_object_has_instance builtin_spec_op_function_has_instance l (value_prim w)) (out_ter S false)
+  
+  | red_expr_object_has_instance_obj : forall o1 S C l lv o,
+      red_expr S C (spec_object_get l "prototype") o1 ->
+      red_expr S C (spec_object_has_instance_1 lv o1) o ->
+      red_expr S C (spec_object_has_instance builtin_spec_op_function_has_instance l (value_object lv)) o
+      
+  | red_expr_object_has_instance_1_prim : forall S0 S C lv v o,
+      type_of v <> type_object ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S v)) o
+      
+  | red_expr_object_has_instance_1_false : forall S0 S C lv lo,
+      object_proto S lv null ->     
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) (out_ter S false)
+      
+  | red_expr_object_has_instance_1_true : forall proto lo S0 S C lv,
+      object_proto S lv (value_object proto) ->
+      proto = lo ->     
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) (out_ter S true)
+      
+   | red_expr_object_has_instance_1 : forall proto lo S0 S C lv v o,
+      object_proto S lv (value_object proto) ->
+      proto <> lo ->     
+      red_expr S C (spec_object_has_instance_1 proto (out_ter S (value_object lo))) o ->
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) o
+  
+   
 
   (*------------------------------------------------------------*)
   (** ** Operations on references *)

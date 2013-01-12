@@ -256,7 +256,8 @@ Inductive ext_expr :=
   
   (* Execution of "has_instance" *)
 
-  | spec_has_instance : builtin -> object_loc -> value -> ext_expr (* todo: reduction rules *)
+  | spec_object_has_instance : builtin -> object_loc -> value -> ext_expr
+  | spec_object_has_instance_1 : object_loc -> out -> ext_expr
 
   (* Throwing of errors *)
 

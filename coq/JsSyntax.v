@@ -281,15 +281,15 @@ Inductive builtin :=
     
   (* [[Call]] *)
   | builtin_spec_op_function_call      (* 13.2.1 *)  
-  | builtin_spec_op_function_bind_call (* 15.3.4.5.1 *)
+  | builtin_spec_op_function_bind_call (* 15.3.4.5.1 *) (* TODO *)
   
   (* [[Constructor]] *)
   | builtin_spec_op_function_constructor (* 13.2.2 *)
-  | builtin_spec_op_function_bind_constructor (* 15.3.4.5.2 *) 
+  | builtin_spec_op_function_bind_constructor (* 15.3.4.5.2 *) (* TODO *)
   
   (* [[HasInstance]] *)
   | builtin_spec_op_function_has_instance      (* 15.3.5.3 *)
-  | builtin_spec_op_function_bind_has_instance (* 15.3.4.5.3 *) 
+  | builtin_spec_op_function_bind_has_instance (* 15.3.4.5.3 *) (* TODO *)
   
   (* [[Get]] *) 
   | builtin_spec_op_object_get (* 8.12.3 *)
