@@ -2043,7 +2043,6 @@ END OF TO CLEAN----*)
       red_expr S0 C (spec_creating_function_object_proto_2 K l lproto (out_ter S b)) o
   
   | red_expr_creating_function_object : forall l S' o1 S C names fb p X strict o,
-      (* TODO: formalize Function prototype object as in 15.3.3.1 *)
       let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
       let O1 := object_with_invokation O 
         (Some builtin_spec_op_function_call) 
@@ -2110,11 +2109,39 @@ END OF TO CLEAN----*)
       
   | red_expr_spec_constructor_builtin: forall S C builtinid args o,
       red_expr S C (spec_constructor_builtin builtinid args) o -> 
-      red_expr S C (spec_constructor (function_code_builtin builtinid) None args) o
+      red_expr S C (spec_constructor builtinid None args) o
       
-  | red_expr_spec_constructor_prog: forall S C p l args o,
-      red_expr S C (spec_constructor_prog p l args) o -> 
-      red_expr S C (spec_constructor (function_code_code p) (Some l) args) o
+  | red_expr_spec_constructor_function: forall S C l args o,
+      red_expr S C (spec_function_constructor l args) o -> 
+      red_expr S C (spec_constructor builtin_spec_op_function_constructor (Some l) args) o
+      
+  | red_expr_spec_function_constructor : forall o1 S C l args o,
+      red_expr S C (spec_object_get (value_object l) "prototype") o1 ->
+      red_expr S C (spec_function_constructor_1 l args o1) o ->
+      red_expr S C (spec_function_constructor l args) o
+      
+  | red_expr_spec_function_constructor_1 : forall l' proto O S' builtinid o1 S0 S C l args v o,
+      proto = (If (type_of v) = type_object then v
+               else builtin_object_proto) ->
+      O = object_create proto "Object" true builtin_spec_op_object_get Heap.empty ->
+      (l', S') = object_alloc S O ->
+      object_call S' l (Some builtinid) ->
+      red_expr S' C (spec_call builtinid (Some l) (Some (value_object l')) args) o1 ->
+      red_expr S' C (spec_function_constructor_2 l' o1) o ->
+      red_expr S0 C (spec_function_constructor_1 l args (out_ter S v)) o
+      
+  | red_expr_spec_function_constructor_2 : forall S0 S C l' v vr o,
+      vr = (If (type_of v = type_object) then v else l') ->
+      red_expr S0 C (spec_function_constructor_2 l' (out_ter S v)) (out_ter S vr)
+      
+(*      
+
+      
+      
+      let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
+      red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
+      red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 strict l) l o1) o ->
+*)
 
 (* TODO: spec_object_put_special *)
 

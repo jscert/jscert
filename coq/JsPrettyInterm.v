@@ -283,11 +283,13 @@ Inductive ext_expr :=
   | spec_op_function_call_1 : object_loc -> ext_expr
   | spec_op_function_call_2 : out -> ext_expr
   
-  | spec_constructor : function_code -> option object_loc -> list value -> ext_expr
+  | spec_constructor : builtin -> option object_loc -> list value -> ext_expr
   
   | spec_constructor_builtin : builtin -> list value -> ext_expr
   
-  | spec_constructor_prog : prog -> object_loc -> list value -> ext_expr
+  | spec_function_constructor : object_loc -> list value -> ext_expr
+  | spec_function_constructor_1 : object_loc -> list value -> out -> ext_expr
+  | spec_function_constructor_2 : object_loc -> out -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
   | spec_call_global_is_nan_1 : out -> ext_expr
