@@ -283,6 +283,9 @@ Inductive builtin :=
   | builtin_spec_op_function_bind_call (* [[Call]] 15.3.4.5.1 *)
   
   | builtin_spec_op_function_constructor (* [[Constructor]] 13.2.2 *)
+  
+  | builtin_spec_op_function_has_instance      (* [[HasInstance]] 15.3.5.3 *)
+  | builtin_spec_op_function_bind_has_instance (* [[HasInstance]] 15.3.4.5.3 *) 
   .
 
 
@@ -455,7 +458,7 @@ Record object := object_intro {
    object_prim_value_ : option value;
    object_construct_ : option builtin;
    object_call_ : option builtin;
-   object_has_instance_ : bool; (* indicates whether the object has an has_instance method *)
+   object_has_instance_ : option builtin;
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
    object_code_ : option (string * prog);

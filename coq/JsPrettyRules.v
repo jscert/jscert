@@ -876,13 +876,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_3 binary_op_in v1 v2) o
 
   | red_expr_binary_op_instanceof_non_instance : forall S C v1 l o,
-      object_has_instance S l false ->
+      object_has_instance S l None ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
-  | red_expr_binary_op_instanceof_normal : forall S C v1 l o,
-      object_has_instance S l true ->
-      red_expr S C (spec_has_instance l v1) o ->
+  | red_expr_binary_op_instanceof_normal : forall spec_has_instance_id S C v1 l o,
+      object_has_instance S l (Some spec_has_instance_id) ->
+      red_expr S C (spec_has_instance spec_has_instance_id l v1) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
   (** Binary op : in *)
@@ -2004,7 +2004,10 @@ END OF TO CLEAN----*)
   | red_expr_creating_function_object : forall l S' o1 S C names fb p X strict o,
       (* TODO: formalize Function prototype object as in 15.3.3.1 *)
       let O := object_create builtin_function_proto "Function" true Heap.empty in
-      let O1 := object_with_invokation O (Some builtin_spec_op_function_call) (Some builtin_spec_op_function_constructor) true in
+      let O1 := object_with_invokation O 
+        (Some builtin_spec_op_function_call) 
+        (Some builtin_spec_op_function_constructor) 
+        (Some builtin_spec_op_function_has_instance) in
       let O2 := object_with_details O1 (Some X) (Some names) (Some (fb, p)) None None None None in
       (* TODO: create internals for [[Get]] *)
       (l, S') = object_alloc S O2 ->

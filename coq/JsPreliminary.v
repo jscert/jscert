@@ -276,12 +276,12 @@ Definition object_prim_value S l v :=
 Definition object_call S l fco :=
   exists O, object_binds S l O /\ object_call_ O = fco.
 
-(** [object_has_instance S l b] asserts that the existance of
-    the "has instance" method for the object stored at address [l] 
-    is described by the boolean [b]. *)
+(** [object_has_instance S l builtinid] asserts that the
+    [[has instance]] method for the object stored at address [l] 
+    is described by specification function with identifier builtinid. *)
 
-Definition object_has_instance S l b :=
-  exists O, object_binds S l O /\ object_has_instance_ O = b.
+Definition object_has_instance S l builtinid :=
+  exists O, object_binds S l O /\ object_has_instance_ O = builtinid.
   
 (** [object_scope S l scope] asserts that the [[Scope]]
     field of the object stored at address [l] in [S] contains
