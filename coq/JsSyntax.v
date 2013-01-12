@@ -276,6 +276,13 @@ Inductive builtin :=
 
   | builtin_math
   | builtin_math_function : math_op -> builtin
+  
+  (* Spec operation ids *)
+    
+  | builtin_spec_op_function_call      (* [[Call]] 13.2.1 *)  
+  | builtin_spec_op_function_bind_call (* [[Call]] 15.3.4.5.1 *)
+  
+  | builtin_spec_op_function_constructor (* [[Constructor]] 13.2.2 *)
   .
 
 
@@ -446,12 +453,12 @@ Record object := object_intro {
    object_extensible_ : bool;
    object_properties_ : object_properties_type;
    object_prim_value_ : option value;
-   object_construct_ : option function_code;
-   object_call_ : option function_code;
+   object_construct_ : option builtin;
+   object_call_ : option builtin;
    object_has_instance_ : bool; (* indicates whether the object has an has_instance method *)
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
-   object_code_ : option string;
+   object_code_ : option (string * prog);
    object_target_function_ : option object_loc;
    object_bound_this_ : option value;
    object_bound_args_ : option (list value);

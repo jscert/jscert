@@ -296,6 +296,20 @@ Definition object_scope S l scope :=
 
 Definition object_formal_parameters S l fp :=
   exists O, object_binds S l O /\ object_formal_parameters_ O = fp.
+  
+(** [object_code S l p] asserts that the [[Code]]
+    field of the object stored at address [l] in [S] contains
+    an option [s, p] which may contain function code. *)
+
+Definition object_code S l p :=
+  exists O s, object_binds S l O /\ object_code_ O = Some (s, p).
+  
+(** [object_code_string S l s] asserts that the [[Code]]
+    field of the object stored at address [l] in [S] contains
+    an option [s, p] which may contain function code. *)
+
+Definition object_code_string S l s :=
+  exists O p, object_binds S l O /\ object_code_ O = Some (s, p).
 
 (** [object_properties S l P] asserts that [P]
     is the content of the properties field of the object
@@ -825,8 +839,8 @@ Implicit Type pref : preftype.
 
 
 (* TODO : retrieve function and variable declarations from code *)
-Parameter function_declarations : function_code -> list function_declaration.
-Parameter variable_declarations : function_code -> list string.
+Parameter function_declarations : prog -> list function_declaration.
+Parameter variable_declarations : prog -> list string.
 
 
 (**************************************************************)
@@ -1252,22 +1266,22 @@ Definition regular_binary_op op :=
 (**************************************************************)
 (** ** Implementation of [callable] *)
 
-(** [callable S v fco] ensures that [fco] is [None]
-    when [v] is not an object and, that [fco] is equal
+(** [callable S v builtinido] ensures that [builtinido] is [None]
+    when [v] is not an object and, that [builtinido] is equal
     to the content of the call field of the object [v]
     otherwise. *)
 
-Definition callable S v fco :=
+Definition callable S v builtinido :=
   match v with
-  | value_prim w => (fco = None)
-  | value_object l => object_call S l fco
+  | value_prim w => (builtinido = None)
+  | value_object l => object_call S l builtinido
   end.
 
 (** [is_callable S v] asserts that the object [v] is a location
     describing an object with a Call method. *)
 
 Definition is_callable S v :=
-  exists fct, callable S v (Some fct).
+  exists builtinid, callable S v (Some builtinid).
 
 
 (**************************************************************)
