@@ -165,7 +165,7 @@ Record function_declaration := function_declaration_intro {
    fd_code : prog;
    fd_string : string }.
 
-(* TODO *)
+(* We assume that function declarations know about their strictness in terms of 10.1.1 *)
 Parameter function_body_is_strict : prog -> bool.
 
 

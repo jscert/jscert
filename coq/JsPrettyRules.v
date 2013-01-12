@@ -1859,34 +1859,33 @@ END OF TO CLEAN----*)
 
   (** Function call --- TODO: check this section*)
 
-  | red_expr_execution_ctx_function_call_direct : forall strict newthis S C K func this args o,
-      (* TODO: set strict according to function code *)
+  | red_expr_execution_ctx_function_call_direct : forall p strict newthis S C K func this args o,
+      object_code S func p ->
+      strict = function_body_is_strict p ->
       (If (strict = true) then newthis = this
       else If this = null \/ this = undef then newthis = builtin_global
       else If type_of this = type_object then newthis = this
       else False) (* ~ function_call_should_call_to_object this strict *)
       ->
-      red_expr S C (spec_execution_ctx_function_call_1 K func args (out_ter S newthis)) o ->
+      red_expr S C (spec_execution_ctx_function_call_1 K func args strict (out_ter S newthis)) o ->
       red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_convert : forall strict o1 S C K func this args o,
-      (* TODO: set strict according to function code *)
+  | red_expr_execution_ctx_function_call_convert : forall p strict o1 S C K func this args o,
+      object_code S func p ->
+      strict = function_body_is_strict p ->
       (~ (strict = true) /\ this <> null /\ this <> undef /\ type_of this <> type_object) ->
       red_expr S C (spec_to_object this) o1 ->
-      red_expr S C (spec_execution_ctx_function_call_1 K func args o1) o ->
+      red_expr S C (spec_execution_ctx_function_call_1 K func args strict o1) o ->
       red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_1 : forall scope p S' lex' C' strict' o1 S0 C K func args S this o,
+  | red_expr_execution_ctx_function_call_1 : forall scope p S' lex' C' strict o1 S0 C K func args S this o,
       object_scope S func (Some scope) ->
       object_code S func p ->
       (lex', S') = lexical_env_alloc_decl S scope ->
-      (* TODO: Do we want to take the old execution context's strict value? *)
-      strict' = (* TODO: set strict according to function code (function_code_is_strict (function_code func) ||*) execution_ctx_strict C ->
-        (* todo this line may change; note that in the spec this is in done in binding instantiation *)
-      C' = execution_ctx_intro_same lex' this strict' ->
+      C' = execution_ctx_intro_same lex' this strict ->
       red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) p args) o1 ->
       red_expr S' C' (spec_execution_ctx_function_call_2 K o1) o ->
-      red_expr S0 C (spec_execution_ctx_function_call_1 K func args (out_ter S this)) o 
+      red_expr S0 C (spec_execution_ctx_function_call_1 K func args strict (out_ter S this)) o 
       
   | red_expr_execution_ctx_function_call_2 : forall S0 S C K o,
       red_expr S C K o ->
@@ -1954,7 +1953,7 @@ END OF TO CLEAN----*)
 
   | red_expr_execution_ctx_binding_instantiation_function_decls_cons : forall o1 L S0 S C func code args fd fds o, (* Step 5b *)
       let p := fd_code fd in
-      let strict := (execution_ctx_strict C) || (function_body_is_strict p) in
+      let strict := function_body_is_strict p in
       let f_string := fd_string fd in
       red_expr S C (spec_creating_function_object (fd_parameters fd) f_string p (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_8 func code args L fd fds strict o1) o ->
@@ -2051,7 +2050,6 @@ END OF TO CLEAN----*)
         (Some builtin_spec_op_function_constructor) 
         (Some builtin_spec_op_function_has_instance) in
       let O2 := object_with_details O1 (Some X) (Some names) (Some (fb, p)) None None None None in
-      (* TODO: create internals for [[Get]] *)
       (l, S') = object_alloc S O2 ->
       let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
