@@ -2065,10 +2065,14 @@ END OF TO CLEAN----*)
       red_expr S C (spec_execution_ctx_function_call (spec_op_function_call_1 l) l this args) o ->
       red_expr S C (spec_op_function_call l this args) o
       
-  | red_expr_spec_call_prog_1: forall p o1 S C l o,
+  | red_expr_spec_call_prog_1_empty: forall p o1 S C l o,
+      (* TODO: check if red_prog return (normal, undef, empty) if function body is empty *)
+      object_code_empty S l ->
+      red_expr S C (spec_op_function_call_1 l) (out_ter S (res_normal undef))
+      
+  | red_expr_spec_call_prog_1_prog: forall p o1 S C l o,
       object_code S l p ->
       red_prog S C p o1 ->
-      (* TODO: 13.2.1. [[Call]] Step 2 : when code is empty *)
       red_expr S C (spec_op_function_call_2 o1) o ->
       red_expr S C (spec_op_function_call_1 l) o
       

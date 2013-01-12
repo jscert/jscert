@@ -310,6 +310,12 @@ Definition object_code S l p :=
 
 Definition object_code_string S l s :=
   exists O p, object_binds S l O /\ object_code_ O = Some (s, p).
+  
+(** [object_code_empty S l p] asserts that the [[Code]]
+    field of the object stored at address [l] in [S] is empty. *)
+
+Definition object_code_empty S l :=
+  exists O, object_binds S l O /\ object_code_ O = None.
 
 (** [object_properties S l P] asserts that [P]
     is the content of the properties field of the object
