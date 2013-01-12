@@ -27,6 +27,14 @@ Definition object_create vproto sclass bextens builtinget P :=
      object_bound_args_ := None;
      object_parameter_map_ := None |}.
 
+(** Sets extensible to false to an object. *)
+
+Definition object_set_extensible_false O :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
+    object_intro x1 x2 false x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
+  end.
+
 (** Modifies the property field of an object. *)
 
 Definition object_with_properties O properties :=

@@ -2217,18 +2217,22 @@ END OF TO CLEAN----*)
   (** Throw Type Error Function Object Initialisation *)           
   
   (* Could we have this not a a reduction, but as simple function in JsInit? *)
-  | red_spec_init_throw_type_error : forall O O1 code O2 S' A S C o,
-      O = object_create builtin_function_proto "Function" false builtin_spec_op_function_get Heap.empty ->
+  | red_spec_init_throw_type_error : forall O O1 code O2 S' A o1 S C o,
+      O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
       O1 = object_with_invokation O (Some builtin_spec_op_function_call) None None ->
       (* TODO : Is this ok? *)
       code = ("throw TypeError()", prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) -> 
       O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
       S' = object_write S builtin_function_throw_type_error O2 ->
       A = prop_attributes_create_data JsNumber.zero false false false ->
-      red_expr S' C (spec_object_define_own_prop builtin_function_throw_type_error "length" A false) o ->
+      red_expr S' C (spec_object_define_own_prop builtin_function_throw_type_error "length" A false) o1 ->
+      red_expr S C (spec_init_throw_type_error_1 o1) o ->
       red_expr S C spec_init_throw_type_error o
   
-  
+  | red_spec_init_throw_type_error_1 : forall O S' S0 S C v o,
+      object_binds S builtin_function_throw_type_error O ->
+      S' = object_write S builtin_function_throw_type_error (object_set_extensible_false O) ->
+      red_expr S0 C (spec_init_throw_type_error_1 (out_ter S v)) (out_void S')   
   .
 
 

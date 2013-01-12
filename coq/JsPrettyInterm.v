@@ -265,6 +265,7 @@ Inductive ext_expr :=
   | spec_error_or_cst : bool -> builtin -> value -> ext_expr (* todo: reduction rules *)
   
   | spec_init_throw_type_error : ext_expr
+  | spec_init_throw_type_error_1 : out -> ext_expr
 
   (* Function creation *)
   
