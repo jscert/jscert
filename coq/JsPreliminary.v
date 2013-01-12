@@ -261,6 +261,13 @@ Definition object_class S l s :=
 
 Definition object_extensible S l b :=
   exists O, object_binds S l O /\ object_extensible_ O = b.
+  
+(** [object_get S l builtinid] asserts that the
+    [[get]] method for the object stored at address [l] 
+    is described by specification function with identifier builtinid. *)
+
+Definition object_get S l builtinid :=
+  exists O, object_binds S l O /\ object_get_ O = builtinid.  
 
 (** [object_prim_value S l v] asserts that the primitive value
     field of the object stored at address [l] in [S] contains the

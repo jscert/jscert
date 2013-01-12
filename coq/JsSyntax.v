@@ -279,13 +279,20 @@ Inductive builtin :=
   
   (* Spec operation ids *)
     
-  | builtin_spec_op_function_call      (* [[Call]] 13.2.1 *)  
-  | builtin_spec_op_function_bind_call (* [[Call]] 15.3.4.5.1 *)
+  (* [[Call]] *)
+  | builtin_spec_op_function_call      (* 13.2.1 *)  
+  | builtin_spec_op_function_bind_call (* 15.3.4.5.1 *)
   
-  | builtin_spec_op_function_constructor (* [[Constructor]] 13.2.2 *)
+  (* [[Constructor]] *)
+  | builtin_spec_op_function_constructor (* 13.2.2 *)
   
-  | builtin_spec_op_function_has_instance      (* [[HasInstance]] 15.3.5.3 *)
-  | builtin_spec_op_function_bind_has_instance (* [[HasInstance]] 15.3.4.5.3 *) 
+  (* [[HasInstance]] *)
+  | builtin_spec_op_function_has_instance      (* 15.3.5.3 *)
+  | builtin_spec_op_function_bind_has_instance (* 15.3.4.5.3 *) 
+  
+  (* [[Get]] *) 
+  | builtin_spec_op_object_get (* 8.12.3 *)
+  | builtin_spec_op_function_get (* 15.3.5.4 *)
   .
 
 
@@ -454,6 +461,7 @@ Record object := object_intro {
    object_proto_ : value;
    object_class_ : class_name;
    object_extensible_ : bool;
+   object_get_ : builtin;
    object_properties_ : object_properties_type;
    object_prim_value_ : option value;
    object_construct_ : option builtin;

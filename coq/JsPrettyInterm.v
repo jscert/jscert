@@ -159,8 +159,11 @@ Inductive ext_expr :=
   (** Extended expressions for operations on objects *)
 
   | spec_object_get : value -> prop_name -> ext_expr
-  | spec_object_get_1 : object_loc -> prop_descriptor -> ext_expr
-  | spec_object_get_2 : object_loc -> option value -> ext_expr
+  | spec_object_object_get : object_loc -> prop_name -> ext_expr
+  | spec_object_object_get_1 : object_loc -> prop_descriptor -> ext_expr
+  | spec_object_object_get_2 : object_loc -> option value -> ext_expr
+  | spec_object_function_get : object_loc -> prop_name -> ext_expr
+  | spec_object_function_get_1 : object_loc -> prop_name -> out -> ext_expr
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
   | spec_object_can_put_1 : object_loc -> prop_name -> prop_descriptor -> ext_expr
   | spec_object_can_put_2 : object_loc -> prop_name -> bool -> ext_expr

@@ -1297,34 +1297,59 @@ END OF TO CLEAN----*)
   (** ** Operations on objects *)
 
   (** Get *)
+  
+  | red_expr_object_get_object : forall S C l x o,
+      object_get S l builtin_spec_op_object_get ->
+      red_expr S C (spec_object_object_get l x) o ->
+      red_expr S C (spec_object_get l x) o  
+      
+  | red_expr_object_get_function : forall S C l x o,
+      object_get S l builtin_spec_op_function_get ->
+      red_expr S C (spec_object_function_get l x) o ->
+      red_expr S C (spec_object_get l x) o 
 
-  | red_expr_object_get : forall An S C l x o,
+  | red_expr_object_object_get : forall An S C l x o,
       object_get_property S (value_object l) x An ->
-      red_expr S C (spec_object_get_1 l An) o ->
-      red_expr S C (spec_object_get l x) o
+      red_expr S C (spec_object_object_get_1 l An) o ->
+      red_expr S C (spec_object_object_get l x) o
 
-  | red_expr_object_get_1_undef : forall S C l,
-      red_expr S C (spec_object_get_1 l prop_descriptor_undef) (out_ter S undef)
+  | red_expr_object_object_get_1_undef : forall S C l,
+      red_expr S C (spec_object_object_get_1 l prop_descriptor_undef) (out_ter S undef)
 
-  | red_expr_object_get_1_some_data : forall S C l A v,
+  | red_expr_object_object_get_1_some_data : forall S C l A v,
       prop_attributes_is_data A ->
       prop_attributes_value A = Some v ->
-      red_expr S C (spec_object_get_1 l (prop_descriptor_some A)) (out_ter S v)
+      red_expr S C (spec_object_object_get_1 l (prop_descriptor_some A)) (out_ter S v)
 
-  | red_expr_object_get_1_some_accessor : forall S C l A o,
+  | red_expr_object_object_get_1_some_accessor : forall S C l A o,
       prop_attributes_is_accessor A ->
-      red_expr S C (spec_object_get_2 l (prop_attributes_get A)) o ->
-      red_expr S C (spec_object_get_1 l (prop_descriptor_some A)) o
+      red_expr S C (spec_object_object_get_2 l (prop_attributes_get A)) o ->
+      red_expr S C (spec_object_object_get_1 l (prop_descriptor_some A)) o
 
-  | red_expr_object_get_2_undef : forall S C l,
-      red_expr S C (spec_object_get_2 l (Some undef)) (out_ter S undef)
+  | red_expr_object_object_get_2_undef : forall S C l,
+      red_expr S C (spec_object_object_get_2 l (Some undef)) (out_ter S undef)
 
-  | red_expr_object_get_2_getter : forall builtinid S C l f o,
+  | red_expr_object_object_get_2_getter : forall builtinid S C l f o,
       object_call S f (Some builtinid) ->
       red_expr S C (spec_call builtinid (Some f) (Some (value_object l)) nil) o ->
-      red_expr S C (spec_object_get_2 l (Some (value_object f))) o
+      red_expr S C (spec_object_object_get_2 l (Some (value_object f))) o
 
       (* TODO: what should we do for [spec_object_get_2 l None] ? *)
+      
+  | red_expr_object_function_get : forall o1 S C l x o,
+      red_expr S C (spec_object_object_get l x) o1 ->
+      red_expr S C (spec_object_function_get_1 l x o1) o ->
+      red_expr S C (spec_object_function_get l x) o
+      
+  | red_expr_object_function_get_1_error : forall p S0 S C l v o,
+      object_code S l p ->
+      function_body_is_strict p = true ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S0 C (spec_object_function_get_1 l "caller" (out_ter S v)) o
+      
+  | red_expr_object_function_get_1 : forall p S0 S C l x v o,
+      (object_code S l p /\ function_body_is_strict p = false) \/ (x <> "caller") \/ (object_code_empty S l) ->
+      red_expr S0 C (spec_object_function_get_1 l x (out_ter S v)) (out_ter S v)
 
   (** Can put *)
 
@@ -2020,7 +2045,7 @@ END OF TO CLEAN----*)
   
   | red_expr_creating_function_object : forall l S' o1 S C names fb p X strict o,
       (* TODO: formalize Function prototype object as in 15.3.3.1 *)
-      let O := object_create builtin_function_proto "Function" true Heap.empty in
+      let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
       let O1 := object_with_invokation O 
         (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_constructor) 
