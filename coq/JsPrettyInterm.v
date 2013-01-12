@@ -262,14 +262,16 @@ Inductive ext_expr :=
   | spec_error_or_cst : bool -> builtin -> value -> ext_expr (* todo: reduction rules *)
 
   (* Function creation *)
+  
+  (* Auxiliary reduction for creating function object steps 16 - 18 *) 
+  | spec_creating_function_object_proto : (out -> ext_expr) -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_proto_1 : (out -> ext_expr) -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_proto_2 : (out -> ext_expr) -> object_loc -> object_loc -> out -> ext_expr
 
   | spec_creating_function_object : list string -> string -> prog -> lexical_env -> strictness_flag -> ext_expr
   | spec_creating_function_object_1 : strictness_flag -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_2 : strictness_flag -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_3 : strictness_flag -> object_loc -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_4 : strictness_flag -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_5 : object_loc -> out -> ext_expr
-  | spec_creating_function_object_6 : object_loc -> out -> ext_expr
+  | spec_creating_function_object_2 : object_loc -> out -> ext_expr
+  | spec_creating_function_object_3 : object_loc -> out -> ext_expr
   
   | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr
   
