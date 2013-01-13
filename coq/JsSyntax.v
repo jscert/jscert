@@ -122,7 +122,8 @@ with stat :=
   (* TODO | stat_label : label -> expr -> stat *)
   | stat_expr : expr -> stat
   | stat_seq : stat -> stat -> stat
-  | stat_var_decl : string -> option expr -> stat
+(*| stat_var_decl : string -> option expr -> stat*)      (* Old def *)
+  | stat_var_decl : list (string * option expr) -> stat  (* New def *)
   | stat_if : expr -> stat -> option stat -> stat
   | stat_while : (* TODO: label_set -> *) expr -> stat -> stat
   | stat_with : expr -> stat -> stat

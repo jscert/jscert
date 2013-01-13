@@ -286,9 +286,8 @@ Inductive ext_expr :=
   | spec_constructor_prog : prog -> object_loc -> list value -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
-  | spec_call_global_is_nan_1 : out -> ext_expr
-  | spec_call_global_is_finite_1 : out -> ext_expr
-  | spec_call_global_is_finite_2 : out -> ext_expr
+  | spec_call_global_is_nan : out -> ext_expr
+  | spec_call_global_is_finite : out -> ext_expr
 
 (** Grammar of extended statements *)
 
@@ -303,7 +302,16 @@ with ext_stat :=
   | stat_seq_1 : out -> stat -> ext_stat (* The first statement has been executed. *)
   | stat_seq_2 : ret_or_empty -> out -> ext_stat
 
+  (* Old def *)
+  (*
   | stat_var_decl_1 : out -> ext_stat (* Ignore its argument and returns [undef] *)
+  *)
+  (* New def *)
+  | stat_var_decl_1 : out -> list (string * option expr) -> ext_stat
+  | stat_var_decl_item : (string * option expr) -> ext_stat
+  | stat_var_decl_item_1 : string -> out -> expr -> ext_stat
+  | stat_var_decl_item_2 : string -> ref -> out -> ext_stat
+  | stat_var_decl_item_3 : string -> out -> ext_stat
 
   | stat_if_1 : value -> stat -> option stat -> ext_stat
 

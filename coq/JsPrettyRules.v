@@ -137,10 +137,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Variable declaration *)
 
+  (* Old def *)
+  (* 
   | red_stat_var_decl_none : forall S C x,
       red_stat S C (stat_var_decl x None) (out_ter S undef)
 
-    (* TODO: red_stat_var_decl_some: can we justify that this is equivalent to the spec ?*)
+  (* TODO: red_stat_var_decl_some: can we justify that this is equivalent to the spec ?*)
   | red_stat_var_decl_some : forall S C x e o1 o,
       red_expr S C (expr_assign (expr_variable x) None e) o1 ->
       red_stat S C (stat_var_decl_1 o1) o ->
@@ -148,6 +150,42 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_var_decl_1 : forall S0 S r1 C,
       red_stat S0 C (stat_var_decl_1 (out_ter S r1)) (out_ter S undef)
+  *)
+
+  | red_stat_var_decl_nil : forall S C, 
+      red_stat S C (stat_var_decl nil) (out_ter S ret_empty)
+
+  | red_stat_var_decl_cons : forall S C o o1 d ds, 
+      red_stat S C (stat_var_decl_item d) o1 ->
+      red_stat S C (stat_var_decl_1 o1 ds) o ->
+      red_stat S C (stat_var_decl (d::ds)) o
+
+  | red_stat_var_decl_1 : forall S S0 C ds o R, 
+      red_stat S C (stat_var_decl ds) o ->
+      red_stat S0 C (stat_var_decl_1 (out_ter S R) ds) o
+
+  (* Daniele: should return undefined instead of x? *)
+  | red_stat_var_decl_item_none : forall S C x, 
+      red_stat S C (stat_var_decl_item (x,None)) (out_ter S (*x*) undef)
+
+  | red_stat_var_decl_item_some : forall S C x e o o1, 
+      red_expr S C (identifier_resolution C x) o1 ->
+      red_stat S C (stat_var_decl_item_1 x o1 e) o ->
+      red_stat S C (stat_var_decl_item (x,Some e)) o
+
+  | red_stat_var_decl_item_1 : forall S S0 C x e o o1 r, 
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_stat S C (stat_var_decl_item_2 x r o1) o ->
+      red_stat S0 C (stat_var_decl_item_1 x (out_ter S r) e) o
+
+  | red_stat_var_decl_item_2 : forall S S0 C r v o o1 x,  
+      red_expr S C (spec_put_value r v) o1 ->
+      red_stat S C (stat_var_decl_item_3 x o1) o ->
+      red_stat S0 C (stat_var_decl_item_2 x r (out_ter S v)) o
+  
+  (* Daniele: should return undefined instead of x? *)
+  | red_stat_var_decl_item_3 : forall S S0 C x r R, 
+      red_stat S0 C (stat_var_decl_item_3 x (out_ter S R)) (out_ter S (*x*) undef)
 
   (** If statement *)
 
@@ -2089,42 +2127,44 @@ END OF TO CLEAN----*)
 (* TODO: spec_object_put_special *)
 
 (*------------------------------------------------------------*)
-(** ** Calling global object builtin functions *)
+(** ** Global object builtin functions *)
 
   (** IsNan *)
 
   | red_spec_call_global_is_nan : forall S C v o o1 args, 
       arguments_from (v::nil) args ->
       red_expr S C (spec_to_number v) o1 ->
-      red_expr S C (spec_call_global_is_nan_1 o1) o ->
+      red_expr S C (spec_call_global_is_nan o1) o ->
       red_expr S C (spec_call_builtin builtin_global_is_nan args) o
 
   | red_spec_call_global_is_nan_1 : forall S S0 C b n,
       b = (if decide (n = JsNumber.nan) then true else false) ->
-      red_expr S0 C (spec_call_global_is_nan_1 (out_ter S n)) (out_ter S b)
+      red_expr S0 C (spec_call_global_is_nan (out_ter S n)) (out_ter S b)
 
   (** IsFinite *)
 
-  | red_spec_call_global_is_finite_not_nan : forall S C o o1 args, 
-      red_expr S C (spec_call_builtin builtin_global_is_nan args) o1 ->
-      red_expr S C (spec_call_global_is_finite_1 o1) o ->
-      red_expr S C (spec_call_builtin builtin_global_is_finite args) o
-
-  | red_spec_call_global_is_finite_not_nan_1 : forall S C b b1,
-      b = (if decide (b1 = true) then false else true) ->
-      red_expr S C (spec_call_global_is_finite_1 (out_ter S b1)) (out_ter S b)  
-
-  | red_spec_call_global_is_finite_not_infinity : forall S C v o o1 args, 
+  | red_spec_call_global_is_finite : forall S C v o o1 args, 
       arguments_from (v::nil) args ->
       red_expr S C (spec_to_number v) o1 ->
-      red_expr S C (spec_call_global_is_finite_2 o1) o ->
+      red_expr S C (spec_call_global_is_finite o1) o ->
       red_expr S C (spec_call_builtin builtin_global_is_finite args) o
 
-  | red_spec_call_global_is_finite_not_infinity_1 : forall S S0 C b n,
-      b = (if decide (n = JsNumber.infinity \/ n = JsNumber.neg_infinity ) then false else true) ->
-      red_expr S0 C (spec_call_global_is_finite_2 (out_ter S n)) (out_ter S b)               
+  | red_spec_call_global_is_finite_1 : forall S S0 C b n,
+      b = (if decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity) then false else true) ->
+      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)               
 
-  .
+(*------------------------------------------------------------*)
+(** ** Object builtin functions *)
+
+  (** getPrototypeOf *)
+  
+  | red_spec_call_object_get_prototype_of : forall S C v r args, 
+      arguments_from (v::nil) args ->
+      type_of v = type_object ->
+      r = (ref_create_value v "prototype" false) ->
+      red_expr S C (spec_call_builtin builtin_object_get_prototype_of args) (out_ter S (ret_ref r))
+  
+.
 
 
 (*--------------------------------*)
