@@ -166,7 +166,7 @@ Record function_declaration := function_declaration_intro {
    fd_code : prog;
    fd_string : string }.
 
-(* TODO *)
+(* We assume that function declarations know about their strictness in terms of 10.1.1 *)
 Parameter function_body_is_strict : prog -> bool.
 
 
@@ -277,6 +277,24 @@ Inductive builtin :=
 
   | builtin_math
   | builtin_math_function : math_op -> builtin
+  
+  (* Spec operation ids *)
+    
+  (* [[Call]] *)
+  | builtin_spec_op_function_call      (* 13.2.1 *)  
+  | builtin_spec_op_function_bind_call (* 15.3.4.5.1 *) (* TODO *)
+  
+  (* [[Constructor]] *)
+  | builtin_spec_op_function_constructor (* 13.2.2 *)
+  | builtin_spec_op_function_bind_constructor (* 15.3.4.5.2 *) (* TODO *)
+  
+  (* [[HasInstance]] *)
+  | builtin_spec_op_function_has_instance      (* 15.3.5.3 *)
+  | builtin_spec_op_function_bind_has_instance (* 15.3.4.5.3 *) (* TODO *)
+  
+  (* [[Get]] *) 
+  | builtin_spec_op_object_get (* 8.12.3 *)
+  | builtin_spec_op_function_get (* 15.3.5.4 *)
   .
 
 
@@ -445,14 +463,15 @@ Record object := object_intro {
    object_proto_ : value;
    object_class_ : class_name;
    object_extensible_ : bool;
+   object_get_ : builtin;
    object_properties_ : object_properties_type;
    object_prim_value_ : option value;
-   object_construct_ : option function_code;
-   object_call_ : option function_code;
-   object_has_instance_ : bool; (* indicates whether the object has an has_instance method *)
+   object_construct_ : option builtin;
+   object_call_ : option builtin;
+   object_has_instance_ : option builtin;
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
-   object_code_ : option string;
+   object_code_ : option (string * prog);
    object_target_function_ : option object_loc;
    object_bound_this_ : option value;
    object_bound_args_ : option (list value);

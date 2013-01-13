@@ -68,8 +68,8 @@ Notation "'attrib_native'" := prop_attributes_for_global_object.
 (** Builds an object with all optional fields to None
     and with extensible set to true *)
 
-Definition object_create_builtin vproto sclass P :=
-  object_create vproto sclass true P.
+Definition object_create_builtin vproto sclass builtinget P :=
+  object_create vproto sclass true builtinget P.
 
 (** Builds a native object, with [builtin_function_proto]
     as prototype, and a length property. *)
@@ -77,21 +77,22 @@ Definition object_create_builtin vproto sclass P :=
 Definition object_create_builtin_common length P :=
   let sclass := "Function" in
   let P' := Heap.write P "length" (attrib_constant length) in
-  object_create_builtin builtin_function_proto sclass P'.
+  (* The spec does not say anything special about [[get]] for built-in objects *)
+  object_create_builtin builtin_function_proto sclass builtin_spec_op_function_get P'.
 
 (** Builds a native function object, like in the above function
     but with only a Call method implemented by builtin code. *)
 
 Definition object_create_builtin_function builtin_call length P :=
   let O := object_create_builtin_common length P in
-  object_with_invokation O None (Some builtin_call) false.
+  object_with_invokation O None (Some builtin_call) None.
 
 (** Builds a native constructor object, with a Call method and
     a Construct method implemented by builtin code. *)
 
 Definition object_create_builtin_constructor builtin_call builtin_construct length P :=
   let O := object_create_builtin_common length P in
-  object_with_invokation O (Some builtin_construct) (Some builtin_call) false.
+  object_with_invokation O (Some builtin_construct) (Some builtin_call) None.
 
 (** Shorthand to extend a heap with a native method *)
 
@@ -144,6 +145,7 @@ Definition object_builtin_global :=
   object_create_builtin
     object_builtin_global_proto
     object_builtin_global_class
+    builtin_spec_op_object_get
     object_builtin_global_properties.
 
 
@@ -157,7 +159,7 @@ Definition object_builtin_object_proto :=
   let P := write_constant P "constructor" builtin_object_new in
   let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in
   (* TODO: complete list *)
-  object_create_builtin null "Object" P.
+  object_create_builtin null "Object" builtin_spec_op_object_get P.
 
 
 (**************************************************************)
