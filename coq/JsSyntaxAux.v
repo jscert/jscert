@@ -314,5 +314,14 @@ Proof. apply prove_Inhab. apply function_code_code. apply* stat_skip. Qed.
 
 
 (**************************************************************)
+(** ** Type [prog] *)
+
+(** Inhabitants **)
+
+Global Instance prog_inhab : Inhab prog.
+Proof. apply prove_Inhab. apply* stat_skip. Qed.
+
+
+(**************************************************************)
 (** TODO: complete this file *)
 

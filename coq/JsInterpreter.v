@@ -164,10 +164,10 @@ Definition run_object_extensible S l : bool :=
 Definition run_object_prim_value S l : value :=
   extract_from_option (object_prim_value_ (pick (object_binds S l))).
 
-Definition run_object_call S l : option function_code :=
+Definition run_object_call S l : option builtin :=
   object_call_ (pick (object_binds S l)).
 
-Definition run_object_has_instance S l : bool :=
+Definition run_object_has_instance S l : option builtin :=
   object_has_instance_ (pick (object_binds S l)).
 
 Definition run_object_scope S l : option lexical_env :=
@@ -175,6 +175,16 @@ Definition run_object_scope S l : option lexical_env :=
 
 Definition run_object_formal_parameters S l : option (list string) :=
   object_formal_parameters_ (pick (object_binds S l)).
+
+Definition run_object_code_empty S l : bool :=
+  morph_option true (fun _ => false)
+    (object_code_ (pick (object_binds S l))).
+
+Definition run_object_code S l : prog :=
+  snd (extract_from_option (object_code_ (pick (object_binds S l)))).
+
+Definition run_object_code_string S l : string :=
+  fst (extract_from_option (object_code_ (pick (object_binds S l)))).
 
 Definition run_object_properties S l : object_properties_type :=
   object_properties_ (pick (object_binds S l)).
@@ -269,6 +279,11 @@ Fixpoint lexical_env_get_identifier_ref S X x (strict : strictness_flag) : ref :
       ref_create_env_loc L x strict
     else lexical_env_get_identifier_ref S X' x strict
   end.
+
+Definition identifier_res S C x :=
+  let lex := execution_ctx_lexical_env C in
+  let strict := execution_ctx_strict C in
+  lexical_env_get_identifier_ref S lex x strict.
 
 Definition object_get S v x : out_interp :=
   match run_object_get_property S v x with
@@ -386,7 +401,7 @@ Definition run_prog_type : Type := (* The functions taking such an argument can 
   state -> execution_ctx -> prog -> out_interp.
 
 Definition run_call_type : Type :=
-  state -> execution_ctx -> function_code -> option object_loc -> option value -> list value -> out_interp.
+  state -> execution_ctx -> builtin -> option object_loc -> option value -> list value -> out_interp.
 
 Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_interp :=
   if_success_bool (object_can_put S l x) (fun S =>
@@ -450,10 +465,10 @@ Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x 
     | _ => out_interp_stuck
     end).
 
-Definition creating_fuction_object S (names : list string) (fb : string) (fc : function_code) X (strict : strictness_flag) :=
+Definition creating_function_object S (names : list string) (fb : string) p X (strict : strictness_flag) :=
   arbitrary (* TODO *).
 
-Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) (code : function_code) (args : list value) : out_interp :=
+Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) p (args : list value) : out_interp :=
   let L := hd arbitrary (execution_ctx_variable_env C) in
   let strict := execution_ctx_strict C in
   if_success
@@ -475,17 +490,16 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
         end) S args names
     | None => out_void S
     end (fun S1 re0 =>
-      let fds := function_declarations code in
+      let fds := function_declarations p in
       if_success
       ((fix createExecutionContext S0 (fds : list function_declaration) : out_interp :=
         match fds with
         | nil => out_void S0
         | fd :: fds' =>
-          let p := fd_code fd in
-          let strictp := execution_ctx_strict C || function_body_is_strict p in (* To be reread. *)
-          let f_code := function_code_code (fd_code fd) in
+          let p' := fd_code fd in
+          let strictp := function_body_is_strict p in
           let f_string := fd_string fd in
-          if_success (creating_fuction_object S0 (fd_parameters fd) f_string f_code (execution_ctx_variable_env C) strictp) (fun S1 re1 =>
+          if_success (creating_function_object S0 (fd_parameters fd) f_string p' (execution_ctx_variable_env C) strictp) (fun S1 re1 =>
             match re1 with
             | value_object fo =>
               let hb := env_record_has_binding S0 L (fd_name fd) in
@@ -505,7 +519,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
             | _ => out_interp_stuck
             end)
         end) S1 fds) (fun S2 re =>
-        let vds := variable_declarations code in
+        let vds := variable_declarations p in
         (fix initVariables S0 (vds : list string) : out_interp :=
           match vds with
           | nil => out_void S0
@@ -518,17 +532,16 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
           end) S2 vds)).
 
 Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> out_interp) :=
-  let strict : strictness_flag := arbitrary (* TODO *) in
+  let p := run_object_code S lf in
+  let strict := function_body_is_strict p in
   if_success (if strict then out_ter S this
     else ifb this = null \/ this = undef then out_ter S builtin_global
     else ifb type_of this = type_object then out_ter S this
     else to_object S this) (fun S1 newthis =>
       let scope := extract_from_option (run_object_scope S1 lf) in
-      let fc := extract_from_option (run_object_call S1 lf) in
-      let (lex', S2) := lexical_env_alloc_decl S1 scope in
-      let strict' := execution_ctx_strict C (* TODO *) in
-      let C' := execution_ctx_intro_same lex' this strict' in
-      if_success (execution_ctx_binding_instantiation call S2 C' (Some lf) fc args) (fun S3 re =>
+      let (lex', S') := lexical_env_alloc_decl S1 scope in
+      let C' := execution_ctx_intro_same lex' this strict in
+      if_success (execution_ctx_binding_instantiation call S' C' (Some lf) p args) (fun S3 re =>
         K S3 C')).
 
 
@@ -555,6 +568,33 @@ Definition ref_get_value S (re : ret) : out_interp :=
     end
   end.
 
+Definition ref_put_value (call : run_call_type) S C re v : out_interp :=
+  match re with
+  | ret_value v => out_ref_error S
+  | ret_ref r =>
+    ifb ref_is_unresolvable r then (
+      if ref_strict r then out_ref_error S
+      else object_put call S C builtin_global (ref_name r) v throw_false)
+    else ifb ref_is_property r then
+      match ref_base r with
+      | ref_base_type_value v0 =>
+        ifb ref_has_primitive_base r then (
+          arbitrary (* TODO *))
+        else
+          match v0 with
+          | value_object l =>
+            object_put call S C l (ref_name r) v (ref_strict r)
+          | _ => out_interp_stuck
+          end
+      | ref_base_type_env_loc L => out_interp_stuck
+      end else
+      match ref_base r with
+      | ref_base_type_env_loc L =>
+        arbitrary (* TODO *)
+      | _ => out_interp_stuck
+      end
+  end.
+
 Definition if_success_value (o : out_interp) (k : state -> value -> out_interp) : out_interp :=
   if_success o (fun S1 re1 =>
     match re1 with
@@ -567,7 +607,7 @@ Definition if_success_value (o : out_interp) (k : state -> value -> out_interp) 
     | _ => out_ref_error S1
     end).
 
-Definition run_callable S v :=
+Definition run_callable S v : option builtin :=
   match v with
   | value_prim w => None
   | value_object l =>
@@ -988,13 +1028,21 @@ with run_stat (max_step : nat) S C t : out_interp :=
     | stat_skip =>
       out_ter S ret_empty
 
-    | stat_var_decl x eo =>
-      match eo with
-      | None => out_ter S undef
-      | Some e =>
-        if_success (run_expr' S C e) (fun S1 re1 =>
-          out_ter S1 undef)
-      end
+    | stat_var_decl xeos =>
+      (fix run_var_decl S0 xeos : out_interp :=
+        match xeos with
+        | nil => out_ter S0 ret_empty
+        | (x, eo) :: xeos' =>
+          if_success (match eo with
+            | None => out_ter S0 undef
+            | Some e =>
+              if_success_value (run_expr' S0 C e) (fun S1 v =>
+                let ir := identifier_res S1 C x in
+                if_success (ref_put_value run_call' S1 C ir v) (fun S2 re =>
+                  out_ter S1 undef))
+            end) (fun S1 re =>
+              run_var_decl S1 xeos')
+        end) S xeos
 
     | stat_seq t1 t2 =>
       if_success (run_stat' S C t1) (fun S1 re1 =>
@@ -1125,23 +1173,27 @@ with run_prog (max_step : nat) S C p : out_interp :=
     end
   end
 
-with run_call (max_step : nat) S C (fc : function_code) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
+with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
   match max_step with
   | O => out_interp_bottom
   | S max_step' =>
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    match fc with
+    match builtinid with
 
-    | function_code_code p =>
+    | builtin_spec_op_object_get =>
       let lf := extract_from_option lfo in
       let this := extract_from_option vo in
       execution_ctx_function_call run_call' S C lf this args (fun S1 C1 =>
-        if_success_return (run_prog' S1 C1 p) (fun S2 re =>
-          out_ter S (res_normal undef)) (fun S2 v =>
-          out_ter S (res_normal v)))
+        if run_object_code_empty S1 lf then
+          out_ter S1 (res_normal undef)
+        else (
+          let p := run_object_code S1 lf in
+          if_success_return (run_prog' S1 C1 p) (fun S2 re =>
+            out_ter S (res_normal undef)) (fun S2 v =>
+            out_ter S (res_normal v))))
 
-    | function_code_builtin id =>
+    | _ =>
       arbitrary (* TODO *)
 
     end

@@ -135,6 +135,8 @@ Definition prop_descriptor_compare An1 An2 :=
   | _, _ => false
   end.
 
+(** Decidable comparison *)
+
 Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
 Proof.
   applys (comparable_beq prop_descriptor_compare). intros x y.
@@ -143,6 +145,29 @@ Proof.
 Qed.
 
 
+(**************************************************************)
+(** ** Type [ref_kind] *)
+
+(** Inhabitants **)
+
+Global Instance ref_kind_inhab : Inhab ref_kind.
+Proof. apply (prove_Inhab ref_kind_null). Qed.
+
+(** Decidable comparison *)
+
+Global Instance ref_kind_comparable : Comparable ref_kind.
+Proof.
+  apply make_comparable. introv.
+  destruct x; destruct y;
+    ((rewrite~ prop_eq_True_back; apply true_dec) ||
+      (rewrite~ prop_eq_False_back; [apply false_dec | discriminate])).
+Qed.
+
+
+
+
+(**************************************************************)
+(** ** Some pickable instances *)
 
 Global Instance object_binds_pickable : forall S l,
   Pickable (object_binds S l).
