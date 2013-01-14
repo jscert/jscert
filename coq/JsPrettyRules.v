@@ -2069,7 +2069,7 @@ END OF TO CLEAN----*)
   (* Create bindings for function declarations Step 5 *)
   
   | red_expr_spec_binding_instantiation_function_decls_nil : forall o1 L S0 S C K args o, (* Step 5b *)
-      red_expr S C (K args L) o ->
+      red_expr S C (K L) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls K args L nil (out_void S)) o
 
   | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds o, (* Step 5b *)
@@ -2122,6 +2122,25 @@ END OF TO CLEAN----*)
       red_expr S C (spec_binding_instantiation_function_decls K args L fds o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo (out_void S)) o
       
+  (* Create bindings for variable declarations Step 8 *)
+      
+  | red_expr_spec_binding_instantiation_var_decls_non_empty : forall o1 L S0 S C vd vds o, (* Step 8b *)
+      red_expr S C (spec_env_record_has_binding L vd) o1 ->
+      red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) (out_void S)) o
+
+  | red_expr_spec_binding_instantiation_var_decls_1_true : forall o1 L S0 S C vd vds o, (* Step 8c *)
+      red_expr S C (spec_binding_instantiation_var_decls L vds (out_void S)) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds (out_ter S true)) o
+
+  | red_expr_spec_binding_instantiation_var_decls_1_false : forall o1 L S0 S C vd vds o, (* Step 8c *)
+      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some false) undef (execution_ctx_strict C)) o1 ->
+      red_expr S C (spec_binding_instantiation_var_decls L vds o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds (out_ter S false)) o
+
+  | red_expr_spec_binding_instantiation_var_decls_empty : forall o1 L S0 S C o, (* Step 8 *)
+      red_expr S0 C (spec_binding_instantiation_var_decls L nil (out_void S)) (out_void S)     
+      
   (* Declaration Binding Instantiation Main Part *)    
 
   | red_expr_execution_ctx_binding_instantiation : forall L tail S C func code args o, (* Step 1 *)
@@ -2137,41 +2156,26 @@ END OF TO CLEAN----*)
   | red_expr_execution_ctx_binding_instantiation_1_function : forall names_option S C func code args L o, (* Step 4a *)
       object_formal_parameters S func names_option ->
       let names := unsome_default nil names_option in
-      red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 (Some func) code) args L names) o ->
+      red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 code) args L names) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 (Some func) code args L) o
 
   | red_expr_execution_ctx_binding_instantiation_1_not_function : forall L S C code args o, (* Step 4 *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 None code args L) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 None code args L) o
 
-  | red_expr_execution_ctx_binding_instantiation_function_2 : forall L S C func code args o, (* Step 5 *)
+  | red_expr_execution_ctx_binding_instantiation_function_2 : forall L S C code args o, (* Step 5 *)
       let fds := function_declarations code in
-      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 func code) args L fds (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 func code args L) o
+      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code) args L fds (out_void S)) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
 
   (* TODO steps 6-7 *)
 
-  | red_expr_execution_ctx_binding_instantiation_3 : forall o1 L S C func code args o, (* Step 8 *)
+  | red_expr_execution_ctx_binding_instantiation_3 : forall o1 L S C code o, (* Step 8 *)
       let vds := variable_declarations code in
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 func code args L vds (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_3 func code args L) o
-
-  | red_expr_execution_ctx_binding_instantiation_4_non_empty : forall o1 L S0 S C func code args vd vds o, (* Step 8b *)
-      red_expr S C (spec_env_record_has_binding L vd) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_5 func code args L vd vds o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_4 func code args L (vd::vds) (out_void S)) o
-
-  | red_expr_execution_ctx_binding_instantiation_5_true : forall o1 L S0 S C func code args vd vds o, (* Step 8c *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 func code args L vds (out_void S)) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_5 func code args L vd vds (out_ter S true)) o
-
-  | red_expr_execution_ctx_binding_instantiation_5_false : forall o1 L S0 S C func code args vd vds o, (* Step 8c *)
-      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some false) undef (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 func code args L vds o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_5 func code args L vd vds (out_ter S false)) o
-
-  | red_expr_execution_ctx_binding_instantiation_4_empty : forall o1 L S0 S C func code args o, (* Step 8 *)
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_4 func code args L nil (out_void S)) (out_void S)
+      red_expr S C (spec_binding_instantiation_var_decls L vds (out_void S)) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_3 code L) o
+      
+  (** Creating function object *)
     
   | red_expr_creating_function_object_proto : forall o1 S0 S C K l b o, 
       red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
