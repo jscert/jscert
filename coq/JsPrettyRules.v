@@ -2068,78 +2068,78 @@ END OF TO CLEAN----*)
       
   (* Create bindings for function declarations Step 5 *)
   
-  | red_expr_spec_binding_instantiation_function_decls_nil : forall o1 L S0 S C K args o, (* Step 5b *)
+  | red_expr_spec_binding_instantiation_function_decls_nil : forall o1 L S0 S C K args bconfig o, (* Step 5b *)
       red_expr S C (K L) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls K args L nil (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_function_decls K args L nil bconfig (out_void S)) o
 
-  | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds o, (* Step 5b *)
+  | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds bconfig o, (* Step 5b *)
       let p := fd_code fd in
       let strict := function_body_is_strict p in
       let f_string := fd_string fd in
       red_expr S C (spec_creating_function_object (fd_parameters fd) f_string p (execution_ctx_variable_env C) strict) o1 ->
-      red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict o1) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) (out_void S)) o
+      red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_void S)) o
 
-  | red_expr_spec_binding_instantiation_function_decls_1 : forall o1 L S0 S C K args fd fds strict fo o, (* Step 5c *)
+  | red_expr_spec_binding_instantiation_function_decls_1 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5c *)
       red_expr S C (spec_env_record_has_binding L (fd_name fd)) o1 ->
-      red_expr S C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo o1) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls_1 K args L fd fds strict (out_ter S fo)) o
+      red_expr S C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig (out_ter S fo)) o
 
-  | red_expr_spec_binding_instantiation_function_decls_2_false : forall o1 L S0 S C K args fd fds strict fo o, (* Step 5d *)
-      red_expr S C (spec_env_record_create_mutable_binding L (fd_name fd) (Some false)) o1 ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo o1) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo (out_ter S false)) o
+  | red_expr_spec_binding_instantiation_function_decls_2_false : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5d *)
+      red_expr S C (spec_env_record_create_mutable_binding L (fd_name fd) (Some bconfig)) o1 ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig (out_ter S false)) o
 
-  | red_expr_spec_binding_instantiation_function_decls_2_true_global : forall A o1 L S0 S C K args fd fds strict fo o, (* Step 5e ii *)
+  | red_expr_spec_binding_instantiation_function_decls_2_true_global : forall A o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5e ii *)
       object_get_property S builtin_global (fd_name fd) (prop_descriptor_some A) ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (prop_attributes_configurable A)) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args env_loc_global_env_record fd fds strict fo (out_ter S true)) o
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (prop_attributes_configurable A) bconfig) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args env_loc_global_env_record fd fds strict fo bconfig (out_ter S true)) o
 
-  | red_expr_spec_binding_instantiation_function_decls_3_true : forall o1 L S C K args fd fds strict fo o, (* Step 5e iii *)
-      let A := prop_attributes_create_data undef true true false in (* todo: fix configurable *)
+  | red_expr_spec_binding_instantiation_function_decls_3_true : forall o1 L S C K args fd fds strict fo bconfig o, (* Step 5e iii *)
+      let A := prop_attributes_create_data undef true true bconfig in
       red_expr S C (spec_object_define_own_prop builtin_global (fd_name fd) A true) o1 ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo o1) o ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (Some true)) o
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo bconfig o1) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (Some true) bconfig) o
 
-  | red_expr_spec_binding_instantiation_function_decls_3_false_type_error : forall o1 L S C K args fd fds strict fo A configurable o, (* Step 5e iv *)
+  | red_expr_spec_binding_instantiation_function_decls_3_false_type_error : forall o1 L S C K args fd fds strict fo A configurable bconfig o, (* Step 5e iv *)
       configurable <> Some true ->
       prop_descriptor_is_accessor A \/ (prop_attributes_writable A <> Some true \/ prop_attributes_enumerable A <> Some true) ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A configurable) (out_type_error S)
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A configurable bconfig) (out_type_error S)
 
-  | red_expr_spec_binding_instantiation_function_decls_3_false : forall o1 L S C K args fd fds strict fo A configurable o, (* Step 5e iv *)
+  | red_expr_spec_binding_instantiation_function_decls_3_false : forall o1 L S C K args fd fds strict fo A configurable bconfig o, (* Step 5e iv *)
      configurable <> Some true ->
       ~ (prop_descriptor_is_accessor A) /\ prop_attributes_writable A = Some true /\ prop_attributes_enumerable A = Some true ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo (out_void S)) o ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A configurable) o
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A configurable bconfig) o
 
-  | red_expr_spec_binding_instantiation_function_decls_2_true : forall o1 L S0 S C K args fd fds strict fo o, (* Step 5e *)
+  | red_expr_spec_binding_instantiation_function_decls_2_true : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5e *)
       L <> env_loc_global_env_record ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo (out_void S)) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo (out_ter S true)) o
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_void S)) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig (out_ter S true)) o
 
-  | red_expr_spec_binding_instantiation_function_decls_4 : forall o1 L S0 S C K args fd fds strict fo o, (* Step 5f *)
+  | red_expr_spec_binding_instantiation_function_decls_4 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5f *)
       red_expr S C (spec_env_record_set_mutable_binding L (fd_name fd) (value_object fo) strict) o1 ->
-      red_expr S C (spec_binding_instantiation_function_decls K args L fds o1) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo (out_void S)) o
+      red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_void S)) o
       
   (* Create bindings for variable declarations Step 8 *)
       
-  | red_expr_spec_binding_instantiation_var_decls_non_empty : forall o1 L S0 S C vd vds o, (* Step 8b *)
+  | red_expr_spec_binding_instantiation_var_decls_non_empty : forall o1 L S0 S C vd vds bconfig o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
-      red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds o1) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) (out_void S)) o
+      red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig (out_void S)) o
 
-  | red_expr_spec_binding_instantiation_var_decls_1_true : forall o1 L S0 S C vd vds o, (* Step 8c *)
-      red_expr S C (spec_binding_instantiation_var_decls L vds (out_void S)) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds (out_ter S true)) o
+  | red_expr_spec_binding_instantiation_var_decls_1_true : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S true)) o
 
-  | red_expr_spec_binding_instantiation_var_decls_1_false : forall o1 L S0 S C vd vds o, (* Step 8c *)
-      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some false) undef (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_binding_instantiation_var_decls L vds o1) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds (out_ter S false)) o
+  | red_expr_spec_binding_instantiation_var_decls_1_false : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
+      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some bconfig) undef (execution_ctx_strict C)) o1 ->
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S false)) o
 
-  | red_expr_spec_binding_instantiation_var_decls_empty : forall o1 L S0 S C o, (* Step 8 *)
-      red_expr S0 C (spec_binding_instantiation_var_decls L nil (out_void S)) (out_void S)     
+  | red_expr_spec_binding_instantiation_var_decls_empty : forall o1 L S0 S C bconfig o, (* Step 8 *)
+      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig (out_void S)) (out_void S)     
       
   (* Declaration Binding Instantiation Main Part *)    
 
@@ -2163,17 +2163,18 @@ END OF TO CLEAN----*)
       red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 None code args L) o
 
-  | red_expr_execution_ctx_binding_instantiation_function_2 : forall L S C code args o, (* Step 5 *)
+  | red_expr_execution_ctx_binding_instantiation_function_2 : forall bconfig L S C code args o, (* Step 5 *)
+      bconfig = false (* TODO: configurableBindings with eval *) ->
       let fds := function_declarations code in
-      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code) args L fds (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code bconfig) args L fds bconfig (out_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
 
   (* TODO steps 6-7 *)
 
-  | red_expr_execution_ctx_binding_instantiation_3 : forall o1 L S C code o, (* Step 8 *)
+  | red_expr_execution_ctx_binding_instantiation_3 : forall o1 L S C code bconfig o, (* Step 8 *)
       let vds := variable_declarations code in
-      red_expr S C (spec_binding_instantiation_var_decls L vds (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_3 code L) o
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_3 code bconfig L) o
       
   (** Creating function object *)
     

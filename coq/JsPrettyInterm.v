@@ -253,17 +253,17 @@ Inductive ext_expr :=
   | spec_binding_instantiation_formal_params_1 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
   | spec_binding_instantiation_formal_params_2 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
   | spec_binding_instantiation_formal_params_3 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> list string -> out -> ext_expr
-  | spec_binding_instantiation_function_decls : (env_loc -> ext_expr) -> list value -> env_loc -> list function_declaration -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_1 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_2 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> prop_attributes -> option bool -> ext_expr
-  | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> out -> ext_expr
-  | spec_binding_instantiation_var_decls : env_loc -> list string -> out -> ext_expr
-  | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> out -> ext_expr
+  | spec_binding_instantiation_function_decls : (env_loc -> ext_expr) -> list value -> env_loc -> list function_declaration -> bool -> out -> ext_expr
+  | spec_binding_instantiation_function_decls_1 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> bool -> out -> ext_expr
+  | spec_binding_instantiation_function_decls_2 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> prop_attributes -> option bool -> bool -> ext_expr
+  | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> out -> ext_expr
+  | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation : option object_loc -> prog -> list value -> ext_expr
   | spec_execution_ctx_binding_instantiation_1 : option object_loc -> prog -> list value -> env_loc -> ext_expr 
   | spec_execution_ctx_binding_instantiation_2 : prog -> list value -> env_loc -> ext_expr
-  | spec_execution_ctx_binding_instantiation_3 : prog -> env_loc -> ext_expr
+  | spec_execution_ctx_binding_instantiation_3 : prog -> bool -> env_loc -> ext_expr
   
   (* Execution of "has_instance" *)
 
