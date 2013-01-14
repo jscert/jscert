@@ -282,9 +282,7 @@ Inductive ext_expr :=
   | spec_new_object : (object_loc -> ext_expr) -> ext_expr
   | spec_new_object_1 : out -> (object_loc -> ext_expr) -> ext_expr
   
-  (* Function creation *)
-  (* TODO *)
-  (*| spec_create_new_function_in : *)
+  
   
   (* Auxiliary reduction for creating function object steps 16 - 18 *) 
   | spec_creating_function_object_proto : (out -> ext_expr) -> object_loc -> out -> ext_expr
@@ -296,6 +294,9 @@ Inductive ext_expr :=
   | spec_creating_function_object_2 : object_loc -> out -> ext_expr
   | spec_creating_function_object_3 : object_loc -> out -> ext_expr
   
+  (* Function creation in give execution context*)
+  | spec_create_new_function_in :  execution_ctx -> list string -> prog -> ext_expr
+
   (* TODO: Check if object_loc or value could be None *)
   | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr
   

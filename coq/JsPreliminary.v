@@ -1465,11 +1465,12 @@ Axiom parse : string -> prog -> Prop.
 (**************************************************************)
 (** ** Auxiliary definition used in 'Object Initializer' *)
 
-(* TODO : fix *)
-
+(* Daniele: I understand that the only literal admitted is a string literal.
+   what to do with the other literal cases? I putted something arbitrary but 
+   I'm not sure. Please check! *)
 Definition string_of_propname (p : propname) : string :=
   match p with 
-      | propname_literal l => match l with 
+      | propname_literal l => match l with  
           | literal_null => "?"%string
           | literal_bool b => convert_bool_to_string b
           | literal_string s => s
