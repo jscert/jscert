@@ -56,9 +56,6 @@ Extract Inductive Fappli_IEEE.binary_float => float [
   "nan"
   "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
 ].
-Extract Constant number_add => "(+.)".
-Extract Constant number_mult => "( *. )".
-Extract Constant number_div => "(/.)".
 Extract Constant number_of_int => float_of_int.
 Extract Constant JsNumber.nan => "nan".
 Extract Constant JsNumber.zero => "0.".
@@ -73,8 +70,12 @@ Extract Constant JsNumber.to_string =>
   "(fun f -> let ret = ref [] in (* Ugly, but the API for Ocaml string is not very functionnal... *)
     String.iter (fun c -> ret := c :: !ret) (string_of_float f);
     List.rev !ret)".
-Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
+Extract Constant JsNumber.add => "(+.)".
+Extract Constant JsNumber.sub => "(-.)".
 Extract Constant JsNumber.mult => "( *. )".
+Extract Constant JsNumber.div => "(/.)".
+Extract Constant JsNumber.fmod => "mod_float".
+Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
 Extract Constant JsNumber.number_comparable => "(=)".
 Extract Constant JsNumber_to_int => "(int_of_float)".
 Extract Constant builtin_compare => "(=)".

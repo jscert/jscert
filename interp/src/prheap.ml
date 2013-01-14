@@ -1,14 +1,8 @@
 open Interpreter
 
 let prloc = function
-	| Loc_normal i -> "@" ^ string_of_int i
-	| Loc_null -> "null"
-	| Loc_scope -> "scope"
-	| Loc_global -> "global"
-	| Loc_eval -> "eval"
-	| Loc_obj_proto -> "obj_proto"
-	| Loc_func_proto -> "func_proto"
-	| Loc_eval_proto -> "eval_proto"
+	| Object_loc_normal i -> "@" ^ string_of_int i
+  | Object_loc_builtin _ -> "Object_loc_builtin NIY"
 
 let string_of_char_list cl =
 	let s = String.create (List.length cl) in
@@ -23,13 +17,6 @@ let char_list_of_string s =
 	in
 	acc_ch [] ((String.length s) - 1)
 
-let prfield = function
-	| Field_normal cl -> string_of_char_list cl
-	| Field_proto -> "@proto"
-	| Field_body -> "@body"
-	| Field_scope -> "@scope"
-	| Field_this -> "@this"
-
 let prbinary_op = function
 	| Binary_op_add -> "+"
 	| Binary_op_mult -> "*"
@@ -37,6 +24,7 @@ let prbinary_op = function
 	| Binary_op_equal -> "==="
 	| Binary_op_instanceof -> "instanceof"
 	| Binary_op_in -> "in"
+  | _ -> "Binary Op NIY"
 
 let prliteral = function
 	| Literal_null -> "null"
@@ -44,20 +32,20 @@ let prliteral = function
 	| Literal_number f -> string_of_float f
 	| Literal_string cl -> string_of_char_list cl
 
-let rec prvalue = function
-	| Value_undef -> "undefined"
-	| Value_bool b -> string_of_bool b
-	| Value_number f -> string_of_float f
-	| Value_string cl -> string_of_char_list cl
-	| Value_loc loc -> prloc loc
-	| Value_scope jscope -> String.concat " | " (List.map prloc jscope)
-	| Value_body (cl,p) ->
-     Printf.sprintf
-       "fun (%s) -> {%s}"
-       (String.concat ", " (List.map string_of_char_list cl))
-       (prprog p)
+let prprim = function
+  | Prim_undef -> "undefined"
+  | Prim_null -> "null"
+  | Prim_bool b -> string_of_bool b
+  | Prim_number f -> string_of_float f
+  | Prim_string cl -> string_of_char_list cl
 
-and prexpr = function
+let rec prvalue = function
+  | Value_prim p -> prprim p
+  | Value_object ol -> prloc ol
+
+(*
+
+let rec prexpr = function
   | Expr_this -> "this"
 	| Expr_variable cl -> Printf.sprintf "%s" (string_of_char_list cl)
 	| Expr_literal v -> Printf.sprintf "%s" (prliteral v)
@@ -184,3 +172,4 @@ let print_to_file f h=
 	let oc = open_out f in
 	output_string oc (main h);
 	close_out oc
+ *)
