@@ -467,8 +467,23 @@ Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x 
     | _ => out_interp_stuck
     end).
 
-Definition creating_function_object S (names : list string) (fb : string) p X (strict : strictness_flag) :=
-  arbitrary (* TODO *).
+Definition creating_function_object S (names : list string) (fb : string) p X (strict : strictness_flag) : out_interp :=
+  let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
+  let O1 := object_with_invokation O
+    (Some builtin_spec_op_function_call)
+    (Some builtin_spec_op_function_constructor)
+    (Some builtin_spec_op_function_has_instance) in
+  let O2 := object_with_details O1 (Some X) (Some names) (Some (fb, p)) None None None None in
+  let '(l, S1) := object_alloc S O2 in
+  let A1 := prop_attributes_create_data (JsNumber.of_int (List.length names)) false false false in
+  if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 re1 => (* TODO:  Call to "constructor"? *)
+    if neg strict then out_ter S2 l
+    else (
+      let vthrower := value_object builtin_function_throw_type_error in
+      let A2 := prop_attributes_create_accessor vthrower vthrower false false in
+      if_success (object_define_own_prop S2 l "caller" A2 false) (fun S3 re2 =>
+        if_success (object_define_own_prop S3 l "arguments" A2 false) (fun S3 re2 =>
+          out_ter S3 l)))).
 
 Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) p (args : list value) : out_interp :=
   let L := hd env_loc_default (execution_ctx_variable_env C) in
