@@ -58,8 +58,18 @@ Inductive ext_expr :=
 
   (** Extended expressions associated with primitive expressions *)
 
-  | expr_object_1 : object_loc -> list string -> list value -> ext_expr (* All the expressions of the object have been evaluated. *)
-
+  (*| expr_object_1 : object_loc -> list string -> list value -> ext_expr (* All the expressions of the object have been evaluated. *)*) (* old *)
+ 
+  (* TODO : check *)
+  | expr_object_1 : object_loc -> list (propname * propbody) -> ext_expr
+  | expr_object_2 : object_loc -> string -> propbody -> list (propname * propbody) -> ext_expr (* TODO: check the type! *)
+  | expr_object_3 : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
+  | expr_object_3_val : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
+  | expr_object_3_get : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
+  | expr_object_3_set : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
+  | expr_object_4 : object_loc -> string -> prop_attributes -> list (propname * propbody) -> ext_expr
+  | expr_object_5 : object_loc -> list (propname * propbody) -> out -> ext_expr
+  
   | expr_access_1 : out -> expr -> ext_expr (* The left expression has been executed *)
   | expr_access_2 : object_loc -> out -> ext_expr (* The left expression has been converted to a location and the right expression is executed. *)
   | expr_access_3 : value -> value -> ext_expr
@@ -267,7 +277,13 @@ Inductive ext_expr :=
   | spec_init_throw_type_error : ext_expr
   | spec_init_throw_type_error_1 : out -> ext_expr
 
+  (* Object creation and calling continuation with object address *)
+  | spec_new_object : (object_loc -> ext_expr) -> ext_expr
+  | spec_new_object_1 : out -> (object_loc -> ext_expr) -> ext_expr
+  
   (* Function creation *)
+  (* TODO *)
+  (*| spec_create_new_function_in : *)
   
   (* Auxiliary reduction for creating function object steps 16 - 18 *) 
   | spec_creating_function_object_proto : (out -> ext_expr) -> object_loc -> out -> ext_expr

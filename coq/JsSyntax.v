@@ -89,10 +89,10 @@ Definition strictness_flag := bool.
 
 (** Property name in source code *)
 
-Inductive prop :=
-  | prop_literal : literal -> prop
-  | prop_string : string -> prop
-  | prop_number : number -> prop.
+Inductive propname :=
+  | propname_literal : literal -> propname
+  | propname_string : string -> propname
+  | propname_number : number -> propname.
 
 (** Grammar of expressions *)
 
@@ -100,7 +100,8 @@ Inductive expr :=
   | expr_this : expr
   | expr_variable : string -> expr (* todo: rename to expr_identifier *)
   | expr_literal : literal -> expr
-  | expr_object : list (prop * expr) -> expr
+  (*| expr_object : list (prop * expr) -> expr*) (* Old def *)
+  | expr_object : list (propname * propbody) -> expr (* New def *)
   | expr_function : option string -> list string -> prog -> expr
   | expr_access : expr -> expr -> expr
   | expr_member : expr -> string -> expr
@@ -110,8 +111,12 @@ Inductive expr :=
   | expr_binary_op : expr -> binary_op -> expr -> expr
   | expr_conditional : expr -> expr -> expr -> expr
   | expr_assign : expr -> option binary_op -> expr -> expr
-  
 
+with propbody :=
+  | propbody_val : expr -> propbody
+  | propbody_get : prog -> propbody
+  | propbody_set : list string -> prog -> propbody
+  
 (** Grammar of statements *)
 
 (* -->TODO: general labelled statements *)

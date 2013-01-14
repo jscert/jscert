@@ -439,6 +439,16 @@ Definition prop_attributes_create_accessor vset vget be bc := {|
    prop_attributes_enumerable := Some be;
    prop_attributes_configurable := Some bc |}.
 
+(* LATER: get rid of "prop_attributes_create_accessor" and use everywhere
+   the function below which is slightly more general *)
+Definition prop_attributes_create_accessor_opt vseto vgeto be bc := {|
+   prop_attributes_value := None;
+   prop_attributes_writable := None;
+   prop_attributes_get := vgeto;
+   prop_attributes_set := vseto;
+   prop_attributes_enumerable := Some be;
+   prop_attributes_configurable := Some bc |}.
+
 (** Two auxiliary functions for the subsequently-defined functions *)
 
 Definition prop_attributes_field_or_false F A :=
@@ -1452,3 +1462,19 @@ Inductive object_all_enumerable_properties : state -> value -> set prop_name -> 
 
 Axiom parse : string -> prog -> Prop.
 
+(**************************************************************)
+(** ** Auxiliary definition used in 'Object Initializer' *)
+
+(* TODO : fix *)
+
+Definition string_of_propname (p : propname) : string :=
+  match p with 
+      | propname_literal l => match l with 
+          | literal_null => "?"%string
+          | literal_bool b => convert_bool_to_string b
+          | literal_string s => s
+          | literal_number n => JsNumber.to_string n
+                              end
+      | propname_string s => s
+      | propname_number n => JsNumber.to_string n
+  end.

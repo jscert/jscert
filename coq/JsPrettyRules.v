@@ -188,7 +188,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_var_decl_item_3 x (out_ter S R)) (out_ter S (*x*) undef)
 
   (** If statement *)
-
+ 
   | red_stat_if : forall S C e1 t2 t3opt o,
       red_stat S C (spec_expr_get_value_conv_stat e1 spec_to_boolean (fun v => stat_if_1 v t2 t3opt)) o ->
       red_stat S C (stat_if e1 t2 t3opt) o
@@ -376,8 +376,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S' C' t2 o ->
       red_stat S C (stat_with_1 t2 l) o
 
-  (** TODO:  Rules for the return,  break and continue statements *)
-
  (** Throw statement *)
 
   | red_stat_throw : forall S C e o o1,
@@ -531,6 +529,80 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_literal : forall S C s i v,
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
+
+  (** Object initializer *)
+  
+  (* Allocate a new Object, then pass the adress  
+     and the list of propdef to [expr_object_1] *)
+  | red_expr_object : forall S C o pds, 
+      (*red_expr S C (spec_new_object (expr_object_1 pds)) o ->*)
+      red_expr S C (spec_new_object (fun l => expr_object_1 l pds) ) o ->
+      red_expr S C (expr_object pds) o
+              
+
+  (* No propdefs. Return the empty object *)
+  | red_expr_object_1_nil : forall S C l, 
+      red_expr S C (expr_object_1 l nil) (out_ter S l)
+  
+  (* Propdefs are given. Convert the first propname to
+     string, then call [expr_obj_2] to evaluate the propbody. *)
+  | red_expr_object_1_cons : forall S C x l pn pb pds o, 
+      x = string_of_propname pn ->
+      red_expr S C (expr_object_2 l x pb pds) o ->
+      red_expr S C (expr_object_1 l ((pn,pb)::pds)) o
+
+  (* --- value --- *)
+  (* If the propbody is an expression we evaluate it *)
+  | red_expr_object_2_val : forall S C e o o1 l x pds, 
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_expr S C (expr_object_3_val l x o1 pds) o ->
+      red_expr S C (expr_object_2 l x (propbody_val e) pds) o
+
+  (* If the expression terminates then we create a prop descriptor *)
+  | red_expr_object_3_val : forall S S0 C l x A v o pds,
+      A = prop_attributes_create_data v true true true ->
+      red_expr S C (expr_object_4 l x A pds) o ->
+      red_expr S0 C (expr_object_3_val l x (out_ter S v) pds) o
+
+  (* --- get --- *)
+  (* If the propbody is a getter, we evaluate the function definition *)
+  
+  | red_expr_object_2_get : forall S C p l x o o1 pds,
+      (*red_expr S C (spec_create_new_function_in C nil p) o1 ->*)
+      red_expr S C (expr_object_3_get l x o1 pds) o ->
+      red_expr S C (expr_object_2 l x (propbody_get p) pds) o
+  
+  (* If the function def terminates, we create an accessor *)
+  | red_expr_object_3_get : forall S S0 C A l x v pds o,  
+      A = prop_attributes_create_accessor_opt None (Some v) true true ->
+      red_expr S C (expr_object_4 l x A pds) o ->
+      red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
+
+  (* --- set --- *)
+  (* If the propbody is a setter, we evaluate the function definition *)
+  | red_expr_object_2_set : forall S S0 C A l x v pds o o1 p args,
+      (*red_expr S C (spec_create_new_function_in C args p) o1 ->*)
+      red_expr S C (expr_object_3_set l x o1 pds) o ->
+      red_expr S C (expr_object_2 l x (propbody_set args p) pds) o
+
+  (* If the function def terminates, we create an accessor *)
+  | red_expr_object_3_set : forall S S0 C A l x v pds o,
+      A = prop_attributes_create_accessor_opt (Some v) None true true ->
+      red_expr S C (expr_object_4 l x A pds) o ->
+      red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
+  
+  (* --- Add new property to the object --- *)
+  (* Add the new property into the object *)
+  | red_expr_object_4 : forall S S0 C A l x v pds o o1,
+      red_expr S C (spec_object_define_own_prop l x A false) o1 ->
+      red_expr S C (expr_object_5 l pds o1) o ->
+      red_expr S C (expr_object_4 l x A pds) o
+
+  (* If the property was added succesfully, we continue 
+     to the next one. *)
+  | red_expr_object_5 : forall S S0 R C A l x v pds o,
+      red_expr S C (expr_object_1 l pds) o ->
+      red_expr S0 C (expr_object_5 l pds (out_ter S R)) o   
 
 (*---begin to clean ---*)
 
@@ -2274,7 +2346,21 @@ END OF TO CLEAN----*)
       S' = object_write S builtin_function_throw_type_error (object_set_extensible_false O) ->
       red_expr S0 C (spec_init_throw_type_error_1 (out_ter S v)) (out_void S')
 
+  (** Auxiliary: creates a new object, then pass its address [l] 
+      to a continuation [K]. Used for Object Initialiser expression. *)
+  | red_spec_new_object : forall S C o o1 K, 
+      red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
+      red_expr S C (spec_new_object_1 o1 K) o ->
+      red_expr S C (spec_new_object K) o
+
+  | red_spec_new_object_1 : forall S S0 C l K o, 
+      red_expr S C (K l) o ->
+      red_expr S C (spec_new_object_1 (out_ter S0 l) K) o
 .
+  (* TODO *)
+  (*
+  | red_spec_create_new_function_in :
+  *)
 
 
 (*--------------------------------*)
