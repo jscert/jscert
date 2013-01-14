@@ -851,7 +851,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_add_1 v1 v2) o
 
   | red_expr_binary_op_add_string_1 : forall S C s1 s2 s o,
-      (* TODO: fix this line s = string_concat s1 s2 ->*)
+      (* TODO: fix this line s = string_concat s1 s2 ->*) (* Would [s = s1 ++ s2] be correct? -- Martin *)
       red_expr S C (expr_binary_op_add_string_1 s1 s2) (out_ter S s)
 
   | red_expr_binary_op_add_1_number : forall S C v1 v2 o,
