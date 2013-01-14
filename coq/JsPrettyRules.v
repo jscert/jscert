@@ -535,11 +535,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Allocate a new Object, then pass the adress  
      and the list of propdef to [expr_object_1] *)
   | red_expr_object : forall S C o pds, 
-      (*red_expr S C (spec_new_object (expr_object_1 pds)) o ->*)
       red_expr S C (spec_new_object (fun l => expr_object_1 l pds) ) o ->
       red_expr S C (expr_object pds) o
               
-
   (* No propdefs. Return the empty object *)
   | red_expr_object_1_nil : forall S C l, 
       red_expr S C (expr_object_1 l nil) (out_ter S l)
@@ -568,7 +566,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* If the propbody is a getter, we evaluate the function definition *)
   
   | red_expr_object_2_get : forall S C p l x o o1 pds,
-      (*red_expr S C (spec_create_new_function_in C nil p) o1 ->*)
+      red_expr S C (spec_create_new_function_in C nil p) o1 ->
       red_expr S C (expr_object_3_get l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_get p) pds) o
   
@@ -581,7 +579,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* --- set --- *)
   (* If the propbody is a setter, we evaluate the function definition *)
   | red_expr_object_2_set : forall S S0 C A l x v pds o o1 p args,
-      (*red_expr S C (spec_create_new_function_in C args p) o1 ->*)
+      red_expr S C (spec_create_new_function_in C args p) o1 ->
       red_expr S C (expr_object_3_set l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_set args p) pds) o
 
@@ -2202,7 +2200,9 @@ END OF TO CLEAN----*)
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
       red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 strict l) l o1) o ->
       red_expr S C (spec_creating_function_object names fb p X strict) o
-      
+                     
+
+
    | red_expr_creating_function_object_1_not_strict : forall o1 S0 S C l b, 
       red_expr S0 C (spec_creating_function_object_1 false l (out_ter S b)) (out_ter S l)
       
@@ -2363,12 +2363,14 @@ END OF TO CLEAN----*)
   | red_spec_new_object_1 : forall S S0 C l K o, 
       red_expr S C (K l) o ->
       red_expr S C (spec_new_object_1 (out_ter S0 l) K) o
+  
+  (** Shortcut: creates a new function object in the given execution context *)
+  (* Daniele: [spec_creating_function_object] requires the function body as
+     a string as the 2nd argument, but we don't have it. *)
+  | red_spec_create_new_function_in : forall S C args p o,
+      red_expr S C (spec_creating_function_object args ""%string p (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
+      red_expr S C (spec_create_new_function_in C args p) o
 .
-  (* TODO *)
-  (*
-  | red_spec_create_new_function_in :
-  *)
-
 
 (*--------------------------------*)
 (* deprecated, but to keep around for wf invariants:
