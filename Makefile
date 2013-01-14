@@ -127,8 +127,11 @@ interp/src/interpreter.cmx: interp/src/interpreter.ml interp/src/interpreter.cmi
 interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/interpreter.cmx
 	$(OCAMLOPT) -c -I interp/src -o $@ $<
 
-interp/run_js: interp/src/run_js.ml interp/src/interpreter.cmx interp/src/translate_syntax.cmx
-	$(OCAMLOPT) -I interp/src -o $@ $<
+interp/src/prheap.cmx: interp/src/prheap.ml interp/src/interpreter.cmx
+	$(OCAMLOPT) -c -I interp/src -o $@ $<
+
+interp/run_js: interp/src/parser_syntax.cmx interp/src/parser.cmx interp/src/pretty_print.cmx interp/src/parser_main.cmx interp/src/interpreter.cmx interp/src/translate_syntax.cmx interp/src/prheap.cmx interp/src/run_js.ml
+	$(OCAMLOPT) $(PARSER_INC) -o $@ xml-light.cmxa unix.cmxa str.cmxa $^
 
 #######################################################
 # DEPENDENCIES
