@@ -238,21 +238,21 @@ Inductive ext_expr :=
   | spec_execution_ctx_function_call : ext_expr -> object_loc -> value -> list value -> ext_expr
   | spec_execution_ctx_function_call_1 : ext_expr -> object_loc -> list value -> strictness_flag -> out -> ext_expr
   | spec_execution_ctx_function_call_2 : ext_expr -> out -> ext_expr
+  | spec_binding_instantiation_formal_params : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> list string -> ext_expr
+  | spec_binding_instantiation_formal_params_1 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
+  | spec_binding_instantiation_formal_params_2 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
+  | spec_binding_instantiation_formal_params_3 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> list string -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation : option object_loc -> prog -> list value -> ext_expr
-  | spec_execution_ctx_binding_instantiation_1 : option object_loc -> prog -> list value -> env_loc -> ext_expr
-  | spec_execution_ctx_binding_instantiation_2 : object_loc -> prog -> list value -> env_loc -> list string -> ext_expr
-  | spec_execution_ctx_binding_instantiation_3 : object_loc -> prog -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_4 : object_loc -> prog -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_5 : object_loc -> prog -> list value -> env_loc -> list string -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_6 : option object_loc -> prog -> list value -> env_loc -> ext_expr
-  | spec_execution_ctx_binding_instantiation_7 : option object_loc -> prog -> list value -> env_loc -> list function_declaration -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_8 : option object_loc -> prog -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_9 : option object_loc -> prog -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_10 : option object_loc -> prog -> list value -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> prop_attributes -> option bool -> ext_expr
-  | spec_execution_ctx_binding_instantiation_11 : option object_loc -> prog -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_12 : option object_loc -> prog -> list value -> env_loc -> ext_expr
-  | spec_execution_ctx_binding_instantiation_13 : option object_loc -> prog -> list value -> env_loc -> list string -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_14 : option object_loc -> prog -> list value -> env_loc -> string -> list string -> out -> ext_expr
+  | spec_execution_ctx_binding_instantiation_1 : option object_loc -> prog -> list value -> env_loc -> ext_expr 
+  | spec_execution_ctx_binding_instantiation_2 : option object_loc -> prog -> list value -> env_loc -> ext_expr
+  | spec_execution_ctx_binding_instantiation_3 : option object_loc -> prog -> list value -> env_loc -> list function_declaration -> out -> ext_expr
+  | spec_execution_ctx_binding_instantiation_4 : option object_loc -> prog -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> out -> ext_expr
+  | spec_execution_ctx_binding_instantiation_5 : option object_loc -> prog -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> out -> ext_expr
+  | spec_execution_ctx_binding_instantiation_6 : option object_loc -> prog -> list value -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> prop_attributes -> option bool -> ext_expr
+  | spec_execution_ctx_binding_instantiation_7 : option object_loc -> prog -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> out -> ext_expr
+  | spec_execution_ctx_binding_instantiation_8 : option object_loc -> prog -> list value -> env_loc -> ext_expr
+  | spec_execution_ctx_binding_instantiation_9 : option object_loc -> prog -> list value -> env_loc -> list string -> out -> ext_expr
+  | spec_execution_ctx_binding_instantiation_10 : option object_loc -> prog -> list value -> env_loc -> string -> list string -> out -> ext_expr
   
   (* Execution of "has_instance" *)
 
