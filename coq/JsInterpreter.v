@@ -741,8 +741,17 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
       if_value_number (to_number call S1 C v2) (fun S2 n2 =>
         out_ter S2 (JsNumber.sub n1 n2)))
 
+  | binary_op_and | binary_op_or => arbitrary (* Lazy operators are already dealt with at this point. *)
+
   | _ => arbitrary (* TODO *)
 
+  end.
+
+Definition is_lazy_op (op : binary_op) : option bool :=
+  match op with
+  | binary_op_and => Some false
+  | binary_op_or => Some true
+  | _ => None
   end.
 
 End IntermediaryFunctions.
@@ -816,10 +825,19 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
       *)
 
     | expr_binary_op e1 op e2 =>
-      (* TODO:  Checks lazy operators *)
-      if_success_value (run_expr' S C e1) (fun S1 v1 =>
-        if_success_value (run_expr' S1 C e2) (fun S2 v2 =>
-          run_binary_op run_call' S2 C op v1 v2))
+      match is_lazy_op op with
+      | None =>
+        if_success_value (run_expr' S C e1) (fun S1 v1 =>
+          if_success_value (run_expr' S1 C e2) (fun S2 v2 =>
+            run_binary_op run_call' S2 C op v1 v2))
+      | Some b_ret =>
+        if_success_value (run_expr' S C e1) (fun S1 v1 =>
+          let b1 := convert_value_to_boolean v1 in
+          ifb b1 = b_ret then out_ter S1 v1
+          else
+            if_success_value (run_expr' S1 C e2) (fun S2 v2 =>
+              out_ter S2 v2))
+      end
 
     | expr_object lxe =>
       arbitrary
