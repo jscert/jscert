@@ -71,8 +71,8 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   | Some b => f b
   end.
 
-Definition extract_from_option {B : Type} `{Inhab B} :=
-  morph_option arbitrary id.
+Definition extract_from_option {B : Type} `{Inhab B} (op : option B) :=
+  (morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op) tt.
 
 Definition if_success (o : out_interp) (k : state -> ret_or_empty -> out_interp) : out_interp :=
   match o with
@@ -116,9 +116,9 @@ Definition if_defined {B : Type} (op : option B) (k : B -> out_interp) : out_int
   | Some a => k a
   end.
 
-Definition if_defined_else {B C : Type} (op : option B) (k : B -> C) (k' : True -> C) : C :=
+Definition if_defined_else {B C : Type} (op : option B) (k : B -> C) (k' : unit -> C) : C :=
   match op with
-  | None => k' I
+  | None => k' tt
   | Some a => k a
   end.
 
@@ -147,6 +147,8 @@ Proof.
      apply neg_decidable; apply and_decidable; typeclass.
   apply neg_decidable; apply and_decidable; typeclass.
 Qed.
+
+Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *)
 
 End InterpreterEliminations.
 
@@ -469,7 +471,7 @@ Definition creating_function_object S (names : list string) (fb : string) p X (s
   arbitrary (* TODO *).
 
 Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) p (args : list value) : out_interp :=
-  let L := hd arbitrary (execution_ctx_variable_env C) in
+  let L := hd env_loc_default (execution_ctx_variable_env C) in
   let strict := execution_ctx_strict C in
   if_success
     match funco with
@@ -636,9 +638,9 @@ Definition to_default (call : run_call_type) S C l (prefo : option preftype) : o
           if_success_value (call S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
             match v with
             | value_prim w => out_ter S w
-            | value_object l => K True
+            | value_object l => K tt
             end)
-        | None => K True
+        | None => K tt
         end
       | _ => out_interp_stuck
       end) in

@@ -76,16 +76,16 @@ Definition type_of v :=
 Definition value_same v1 v2 :=
   let T1 := type_of v1 in
   let T2 := type_of v2 in
-  If T1 <> T2 then False else
+  ifb T1 <> T2 then False else
   match T1 with
   | type_undef => True
   | type_null => True
   | type_number =>
-      If    v1 = (prim_number JsNumber.nan)
+      ifb    v1 = (prim_number JsNumber.nan)
          /\ v2 = (prim_number JsNumber.nan) then True
-      else If    v1 = (prim_number JsNumber.zero)
+      else ifb    v1 = (prim_number JsNumber.zero)
               /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else If    v1 = (prim_number JsNumber.neg_zero)
+      else ifb    v1 = (prim_number JsNumber.neg_zero)
               /\ v2 = (prim_number JsNumber.zero) then False
       else (v1 = v2)
   | type_string =>

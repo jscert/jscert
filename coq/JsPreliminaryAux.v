@@ -57,9 +57,9 @@ Global Instance value_same_dec : forall v1 v2,
 Proof.
   introv. unfolds value_same.
   sets_eq T1 E1: (type_of v1). sets_eq T2 E2: (type_of v2).
-  apply If_dec; try typeclass.
+  cases_if; try typeclass.
   destruct T1; try typeclass.
-  repeat apply If_dec; try typeclass.
+  repeat cases_if; try typeclass.
 Qed.
 
 Global Instance prop_attributes_contains_dec : forall oldpf newpf,
