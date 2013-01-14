@@ -2239,7 +2239,6 @@ END OF TO CLEAN----*)
       red_expr S C (spec_call_global_is_finite o1) o ->
       red_expr S C (spec_call_builtin builtin_global_is_finite args) o
 
-<<<<<<< HEAD
   | red_spec_call_global_is_finite_1 : forall S S0 C b n,
       b = (if decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity) then false else true) ->
       red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)               
