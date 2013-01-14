@@ -154,6 +154,9 @@ endif
 clean:
 	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
 	bash -c "rm -f .depend" || echo ok
+	bash -c "rm -f interp/src/*.{cmi,cmx}" || echo ok
+	bash -c "rm -f interp/src/interpreter.{ml,mli}" || echo ok
+	bash -c "rm -f interp/run_js" || echo ok
 
 clean_all: clean
 	find . -iname "*.vo" -exec rm {} \;
