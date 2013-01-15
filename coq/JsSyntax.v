@@ -112,10 +112,20 @@ Inductive expr :=
   | expr_conditional : expr -> expr -> expr -> expr
   | expr_assign : expr -> option binary_op -> expr -> expr
 
+(* Old def. Changing because we also function body as string
 with propbody :=
   | propbody_val : expr -> propbody
   | propbody_get : prog -> propbody
   | propbody_set : list string -> prog -> propbody
+*)
+
+with propbody :=
+ | propbody_val : expr ->  propbody
+ | propbody_get : body ->  propbody
+ | propbody_set : list string ->  body ->  propbody
+
+with body :=
+ | body_intro : prog ->  string ->  body
   
 (** Grammar of statements *)
 
