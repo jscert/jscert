@@ -94,7 +94,7 @@ Extract Constant JsNumber.number_comparable => "(=)".
 Extract Constant JsNumber_to_int => "(int_of_float)".
 Extract Constant builtin_compare => "(=)".
 Extract Constant le_int_decidable => "(<=)".
-Extract Constant env_loc_global_env_record => "(-1)".
+Extract Constant env_loc_global_env_record => "0".
 (* The following functions make pattern matches with floats and shall thus be removed. *)
 Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bits.b64_plus.
 Extraction Inline Fappli_IEEE.Bmult Fappli_IEEE.Bmult_FF Fappli_IEEE_bits.b64_mult.
