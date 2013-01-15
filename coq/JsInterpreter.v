@@ -1032,7 +1032,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
               if_success_value (run_expr' S0 C e) (fun S1 v =>
                 let ir := identifier_res S1 C x in
                 if_success (ref_put_value run_call' S1 C ir v) (fun S2 re =>
-                  out_ter S1 undef))
+                  out_ter S2 undef))
             end) (fun S1 re =>
               run_var_decl S1 xeos')
         end) S xeos
