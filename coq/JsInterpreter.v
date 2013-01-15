@@ -489,9 +489,6 @@ Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x 
     | _ => out_interp_stuck
     end).
 
-Definition env_record_set_binding_value L x v (strict : bool) : out_interp :=
-  arbitrary (* TODO *).
-
 Definition creating_function_object_proto S l (K : state -> out_interp) : out_interp :=
   arbitrary (* TODO *).
 
@@ -629,7 +626,7 @@ Definition ref_put_value (call : run_call_type) S C re v : out_interp :=
           object_put_special (value_prim w) (ref_name r) v (ref_strict r)
         else out_interp_stuck
       | ref_base_type_env_loc L =>
-        env_record_set_binding_value L (ref_name r) v (ref_strict r)
+        env_record_set_mutable_binding call S C L (ref_name r) v (ref_strict r)
       end
   end.
 
