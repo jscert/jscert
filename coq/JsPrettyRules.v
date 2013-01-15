@@ -1819,7 +1819,7 @@ END OF TO CLEAN----*)
       
   | red_expr_ref_put_value_ref_c : forall L S C r vnew o, (* Step 5. *)     
       ref_base r = ref_base_type_env_loc L ->
-      red_expr S C (spec_env_record_set_binding_value L (ref_name r) vnew (ref_strict r)) o ->
+      red_expr S C (spec_env_record_set_mutable_binding L (ref_name r) vnew (ref_strict r)) o ->
       red_expr S C (spec_put_value (ret_ref r) vnew) o  
   
   (*------------------------------------------------------------*)
