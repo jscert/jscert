@@ -437,29 +437,24 @@ Definition run_call_type : Type :=
 Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_interp :=
   if_success_bool (object_can_put S l x) (fun S =>
     let AnOwn := run_object_get_own_property S l x in
-    match AnOwn with
-    | prop_descriptor_undef => out_interp_stuck
-    | prop_descriptor_some AO =>
-      ifb prop_attributes_is_data AO then
-        object_define_own_prop S l x (prop_attributes_create_value v) throw
-      else (
-        let An := run_object_get_property S (value_object l) x in
-        match An with
-        | prop_descriptor_undef => out_interp_stuck
-        | prop_descriptor_some A =>
-          ifb prop_attributes_is_accessor A then (
+    ifb prop_descriptor_is_data AnOwn then
+      object_define_own_prop S l x (prop_attributes_create_value v) throw
+    else (
+      let An := run_object_get_property S (value_object l) x in
+        ifb prop_descriptor_is_accessor An then (
+          match An with
+          | prop_descriptor_undef => arbitrary
+          | prop_descriptor_some A =>
             match extract_from_option (prop_attributes_set A) with
             | value_object fsetter =>
               let fc := extract_from_option (run_object_call S fsetter) in
               call S C fc (Some fsetter) (Some (value_object l)) (v :: nil)
             | _ => out_interp_stuck
-            end) else (
-              let A' := prop_attributes_create_data v true true true in
-              object_define_own_prop S l x A' throw
-            )
-        end
-      )
-    end) (fun S => out_reject S throw).
+            end
+          end) else (
+            let A' := prop_attributes_create_data v true true true in
+            object_define_own_prop S l x A' throw)))
+  (fun S => out_reject S throw).
 
 Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : strictness_flag) : out_interp :=
   match pick (env_record_binds S L) with

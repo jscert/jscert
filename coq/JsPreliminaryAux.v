@@ -144,7 +144,6 @@ Proof.
    tryfalse; auto; try congruence.
 Qed.
 
-
 (**************************************************************)
 (** ** Type [ref_kind] *)
 
@@ -176,4 +175,43 @@ Proof. typeclass. Qed.
 Global Instance env_record_binds_pickable : forall S L,
   Pickable (env_record_binds S L).
 Proof. typeclass. Qed.
+
+
+(**************************************************************)
+(** ** Some decidable instances *)
+
+Global Instance prop_descriptor_is_data_dec : forall An,
+  Decidable (prop_descriptor_is_data An).
+Proof.
+  introv. destruct An; try typeclass.
+  apply neg_decidable. apply and_decidable; typeclass.
+Qed.
+
+Global Instance prop_descriptor_is_accessor_dec : forall An,
+  Decidable (prop_descriptor_is_accessor An).
+Proof.
+  introv. destruct An; try typeclass.
+  apply neg_decidable. apply and_decidable; typeclass.
+Qed.
+
+Global Instance prop_descriptor_is_generic_dec : forall An,
+  Decidable (prop_descriptor_is_generic An).
+Proof.
+  introv. destruct An; try typeclass.
+  repeat (apply and_decidable || apply neg_decidable); try typeclass.
+Qed.
+
+Global Instance prop_descriptor_fully_populated_data_dec : forall An,
+  Decidable (prop_descriptor_fully_populated_data An).
+Proof.
+  introv. destruct An; try typeclass.
+  repeat apply and_decidable; typeclass.
+Qed.
+
+Global Instance prop_descriptor_fully_populated_accessor_dec : forall An,
+  Decidable (prop_descriptor_fully_populated_accessor An).
+Proof.
+  introv. destruct An; try typeclass.
+  repeat apply and_decidable; typeclass.
+Qed.
 
