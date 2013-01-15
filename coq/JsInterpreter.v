@@ -158,6 +158,13 @@ Definition if_value_number (o : out_interp) (K : state -> number -> out_interp) 
     | _ => out_interp_stuck
     end).
 
+Definition if_value_primitive (o : out_interp) (K : state -> prim -> out_interp) : out_interp :=
+  if_value o (fun S v =>
+    match v with
+    | value_prim w => K S w
+    | _ => out_interp_stuck
+    end).
+
 Definition prop_attributes_is_generic_or_data A :=
   prop_attributes_is_generic A \/ prop_attributes_is_data A.
 
@@ -630,6 +637,8 @@ Definition ref_put_value (call : run_call_type) S C re v : out_interp :=
       end
   end.
 
+(* Definition object_has_instance *) (* TODO:  understand the rules [spec_object_has_instance] of the semantics. *)
+
 Definition if_success_value (o : out_interp) (K : state -> value -> out_interp) : out_interp :=
   if_success_ret o (fun S1 re1 =>
       if_success (ref_get_value S1 re1) (fun S2 re2 =>
@@ -703,6 +712,13 @@ End LexicalEnvironments.
 
 Section IntermediaryFunctions.
 
+Definition is_lazy_op (op : binary_op) : option bool :=
+  match op with
+  | binary_op_and => Some false
+  | binary_op_or => Some true
+  | _ => None
+  end.
+
 Definition get_puremath_op (op : binary_op) : number -> number -> number :=
   match op with
   | binary_op_mult => JsNumber.mult
@@ -712,37 +728,73 @@ Definition get_puremath_op (op : binary_op) : number -> number -> number :=
   | _ => arbitrary
   end.
 
-Definition is_lazy_op (op : binary_op) : option bool :=
+Definition get_inequality_op (op : binary_op) : bool * bool :=
   match op with
-  | binary_op_and => Some false
-  | binary_op_or => Some true
-  | _ => None
+  | binary_op_lt => (false, false)
+  | binary_op_gt => (true, false)
+  | binary_op_le => (true, true)
+  | binary_op_ge => (false, true)
+  | _ => arbitrary
   end.
 
+Definition convert_twice {A : Type} (ifv : out_interp -> (state -> A -> out_interp) -> out_interp) (KC : state -> value -> out_interp) S v1 v2 (K : state -> A -> A -> out_interp) :=
+  ifv (KC S v1) (fun S1 vc1 =>
+    ifv (KC S1 v2) (fun S2 vc2 =>
+      K S2 vc1 vc2)).
+
 Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out_interp :=
+  let conv_primitive S v :=
+    to_primitive call S C v None in
+  let convert_twice_primitive :=
+    convert_twice if_value_primitive conv_primitive in
+  let conv_number S v :=
+    to_number call S C v in
+  let convert_twice_number :=
+    convert_twice if_value_number conv_number in
+  let conv_string S v :=
+    to_string call S C v in
+  let convert_twice_string :=
+    convert_twice if_value_string conv_string in
   match op with
 
   | binary_op_add =>
-    if_value (to_primitive call S C v1 None) (fun S1 re1 =>
-      if_value (to_primitive call S1 C v2 None) (fun S2 re2 =>
-        ifb type_of v1 = type_string \/ type_of v2 = type_string then
-          if_value_string (to_string call S2 C v1) (fun S3 s1 =>
-            if_value_string (to_string call S3 C v2) (fun S4 s2 =>
-              out_ter S4 (s1 ++ s2)))
+    convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>
+      ifb type_of w1 = type_string \/ type_of w2 = type_string then
+        convert_twice_string S1 w1 w2 (fun S2 s1 s2 =>
+          out_ter S2 (s1 ++ s2))
         else
-          if_value_number (to_number call S2 C v1) (fun S3 n1 =>
-            if_value_number (to_number call S3 C v2) (fun S4 n2 =>
-              out_ter S4 (JsNumber.add n1 n2)))))
+          convert_twice_number S1 w1 w2 (fun S2 n1 n2 =>
+            out_ter S2 (JsNumber.add n1 n2)))
 
   | binary_op_mult | binary_op_div | binary_op_mod | binary_op_sub =>
     let mop := get_puremath_op op in
-    if_value_number (to_number call S C v1) (fun S1 n1 =>
-      if_value_number (to_number call S1 C v2) (fun S2 n2 =>
-        out_ter S2 (mop n1 n2)))
+    convert_twice_number S v1 v2 (fun S1 n1 n2 =>
+      out_ter S1 (mop n1 n2))
 
   | binary_op_and | binary_op_or => arbitrary (* Lazy operators are already dealt with at this point. *)
 
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift => arbitrary (* TODO *)
+
+  | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
+    let (b_swap, b_neg) := get_inequality_op op in
+    convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>
+      let (wa, wb) := if b_swap then (w2, w1) else (w1, w2) in
+      let wr := inequality_test_primitive wa wb in
+      out_ter S1 (ifb wr = prim_undef then false
+        else ifb b_neg = true /\ wr = true then false
+        else wr))
+
+  | binary_op_in =>
+    match v2 with
+    | value_object l =>
+      match run_object_has_instance S l with
+      | None =>
+        out_type_error S
+      | Some has_instance_id =>
+        arbitrary (* TODO:  object_has_instance has_instance_id l v1 *)
+      end
+    | _ => out_type_error S
+    end
 
   | _ => arbitrary (* TODO *)
 

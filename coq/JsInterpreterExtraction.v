@@ -70,7 +70,10 @@ Extract Inductive Fappli_IEEE.binary_float => float [
   "nan"
   "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
 ].
+
 Extract Constant number_of_int => float_of_int.
+Extract Constant JsNumber_to_int => "(int_of_float)".
+
 Extract Constant JsNumber.nan => "nan".
 Extract Constant JsNumber.zero => "0.".
 Extract Constant JsNumber.neg_zero => "(-0.)".
@@ -91,15 +94,21 @@ Extract Constant JsNumber.div => "(/.)".
 Extract Constant JsNumber.fmod => "mod_float".
 Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
 Extract Constant JsNumber.number_comparable => "(=)".
-Extract Constant JsNumber_to_int => "(int_of_float)".
+Extract Constant JsNumber.lt_bool => "(<)".
+
+Extract Constant int_of_char => "int_of_char".
+
 Extract Constant builtin_compare => "(=)".
+Extract Constant ascii_compare => "(=)".
 Extract Constant le_int_decidable => "(<=)".
+Extract Constant int_lt_dec => "(<)".
+
 Extract Constant env_loc_global_env_record => "0".
+
 (* The following functions make pattern matches with floats and shall thus be removed. *)
 Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bits.b64_plus.
 Extraction Inline Fappli_IEEE.Bmult Fappli_IEEE.Bmult_FF Fappli_IEEE_bits.b64_mult.
 Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
-
 
 (* New options for the interpreter to work in Coq 8.4 *)
 Set Extraction AccessOpaque.
