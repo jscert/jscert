@@ -1533,7 +1533,7 @@ END OF TO CLEAN----*)
       red_expr S C (spec_object_put_1 l x v throw (out_ter S true)) o
 
   | red_expr_object_put_2_data : forall A' S C l x v throw AnOwn o,
-      prop_attributes_is_data AnOwn ->
+      prop_attributes_is_data AnOwn -> (* This seems quite strange.  Isn't it rather [prop_descriptor_is_data]? -- Martin. *)
       A' = prop_attributes_create_value v ->
       red_expr S C (spec_object_define_own_prop l x A' throw) o ->
       red_expr S C (spec_object_put_2 l x v throw AnOwn) o
