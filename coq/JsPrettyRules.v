@@ -565,10 +565,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* --- get --- *)
   (* If the propbody is a getter, we evaluate the function definition *)
   
-  | red_expr_object_2_get : forall S C p l x o o1 pds,
+  | red_expr_object_2_get : forall S C p l x o o1 s pds,
       red_expr S C (spec_create_new_function_in C nil p) o1 ->
       red_expr S C (expr_object_3_get l x o1 pds) o ->
-      red_expr S C (expr_object_2 l x (propbody_get p) pds) o
+      red_expr S C (expr_object_2 l x (propbody_get (body_intro p s)) pds) o
   
   (* If the function def terminates, we create an accessor *)
   | red_expr_object_3_get : forall S S0 C A l x v pds o,  
@@ -578,10 +578,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* --- set --- *)
   (* If the propbody is a setter, we evaluate the function definition *)
-  | red_expr_object_2_set : forall S S0 C A l x v pds o o1 p args,
+  | red_expr_object_2_set : forall S S0 C A l x v pds o o1 p s args,
       red_expr S C (spec_create_new_function_in C args p) o1 ->
       red_expr S C (expr_object_3_set l x o1 pds) o ->
-      red_expr S C (expr_object_2 l x (propbody_set args p) pds) o
+      red_expr S C (expr_object_2 l x (propbody_set args (body_intro p s)) pds) o
 
   (* If the function def terminates, we create an accessor *)
   | red_expr_object_3_set : forall S S0 C A l x v pds o,
