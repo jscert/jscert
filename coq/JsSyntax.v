@@ -89,6 +89,7 @@ Definition strictness_flag := bool.
 
 (** Property name in source code *)
 
+(** TODO: we only accept strings as literals in the first case *)
 Inductive propname :=
   | propname_literal : literal -> propname
   | propname_string : string -> propname
