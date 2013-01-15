@@ -42,6 +42,20 @@ Require Import ExtrOcamlBasic.
 Require Import ExtrOcamlNatInt.
 Require Import ExtrOcamlString.
 
+(* TODO:  These extraction directives are only temporary. *)
+Extract Constant function_body_is_strict => "(fun _ -> raise Not_found)".
+Extract Constant function_declarations => "(fun _ -> raise Not_found)".
+Extract Constant variable_declarations => "(fun _ -> raise Not_found)".
+
+(* number *)
+Require Import ExtrOcamlZInt.
+Extract Inductive Fappli_IEEE.binary_float => float [
+  "(fun s -> if s then (0.) else (-0.))"
+  "(fun s -> if s then infinity else neg_infinity)"
+  "nan"
+  "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
+].
+Extract Constant number_of_int => float_of_int.
 (* Optimal fixpoint. *)
 Extraction Inline FixFun3 FixFun3Mod FixFun4 FixFun4Mod FixFunMod curry3 uncurry3 curry4 uncurry4.
 (* As classical logic statements are now unused, they should not be extracted
