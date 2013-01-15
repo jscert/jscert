@@ -703,6 +703,22 @@ End LexicalEnvironments.
 
 Section IntermediaryFunctions.
 
+Definition get_puremath_op (op : binary_op) : number -> number -> number :=
+  match op with
+  | binary_op_mult => JsNumber.mult
+  | binary_op_div => JsNumber.div
+  | binary_op_mod => JsNumber.fmod
+  | binary_op_sub => JsNumber.sub
+  | _ => arbitrary
+  end.
+
+Definition is_lazy_op (op : binary_op) : option bool :=
+  match op with
+  | binary_op_and => Some false
+  | binary_op_or => Some true
+  | _ => None
+  end.
+
 Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out_interp :=
   match op with
 
@@ -718,37 +734,18 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
             if_value_number (to_number call S3 C v2) (fun S4 n2 =>
               out_ter S4 (JsNumber.add n1 n2)))))
 
-  | binary_op_mult =>
+  | binary_op_mult | binary_op_div | binary_op_mod | binary_op_sub =>
+    let mop := get_puremath_op op in
     if_value_number (to_number call S C v1) (fun S1 n1 =>
       if_value_number (to_number call S1 C v2) (fun S2 n2 =>
-        out_ter S2 (JsNumber.mult n1 n2)))
-
-  | binary_op_div =>
-    if_value_number (to_number call S C v1) (fun S1 n1 =>
-      if_value_number (to_number call S1 C v2) (fun S2 n2 =>
-        out_ter S2 (JsNumber.div n1 n2)))
-
-  | binary_op_mod =>
-    if_value_number (to_number call S C v1) (fun S1 n1 =>
-      if_value_number (to_number call S1 C v2) (fun S2 n2 =>
-        out_ter S2 (JsNumber.fmod n1 n2)))
-
-  | binary_op_sub =>
-    if_value_number (to_number call S C v1) (fun S1 n1 =>
-      if_value_number (to_number call S1 C v2) (fun S2 n2 =>
-        out_ter S2 (JsNumber.sub n1 n2)))
+        out_ter S2 (mop n1 n2)))
 
   | binary_op_and | binary_op_or => arbitrary (* Lazy operators are already dealt with at this point. *)
 
+  | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift => arbitrary (* TODO *)
+
   | _ => arbitrary (* TODO *)
 
-  end.
-
-Definition is_lazy_op (op : binary_op) : option bool :=
-  match op with
-  | binary_op_and => Some false
-  | binary_op_or => Some true
-  | _ => None
   end.
 
 End IntermediaryFunctions.
