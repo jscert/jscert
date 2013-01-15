@@ -245,7 +245,7 @@ Definition env_record_heap_initial :=
 
 CoFixpoint all_locations (k:nat) : stream nat :=
   stream_intro k (all_locations (S k)).
-Definition dummy_fresh_locations := all_locations 0%nat.
+Definition dummy_fresh_locations := all_locations 1%nat. (* Starting at 1 and not 0 because location 0 is already reserved for env_loc_global_env_record. *)
 
 
 (**************************************************************)
@@ -264,3 +264,4 @@ Definition state_initial :=
 
 Definition lexical_env_initial : lexical_env :=
   (env_loc_global_env_record)::nil.
+
