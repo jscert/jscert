@@ -23,15 +23,18 @@ let _ =
   with
   | Interpreter.Out_interp_normal (
       Interpreter.Out_ter (heap,
-                           Interpreter.Res_normal r) ->
+                           Interpreter.Res_normal r)) ->
       begin
         match r with
         | Interpreter.Ret_or_empty_ret (Interpreter.Ret_value v) ->
            print_endline "\n\nResult:\n";
            print_endline (Prheap.prvalue v)
-        | Interpreter.Ret_or_empty_ret (Interpreter.Ref re) ->
+        | Interpreter.Ret_or_empty_ret (Interpreter.Ret_ref re) ->
            print_endline "\n\nResult is a ref\n";
-        | Interpreter.Ret_er_empty_empty -> 
+        | Interpreter.Ret_or_empty_empty -> 
            print_endline "\n\nNo result\n"
       end
+  | Interpreter.Out_interp_stuck ->
+		  print_endline "\n\nFIXME:  stuck!\n"
   | _ -> print_endline "can't print"
+
