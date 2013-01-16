@@ -70,6 +70,10 @@ Inductive ext_expr :=
   | expr_object_4 : object_loc -> string -> prop_attributes -> list (propname * propbody) -> ext_expr
   | expr_object_5 : object_loc -> list (propname * propbody) -> out -> ext_expr
   
+  | expr_function_1 : string -> list string -> body -> env_loc -> lexical_env -> out -> ext_expr
+  | expr_function_2 : string -> env_loc -> out -> ext_expr
+  | expr_function_3 : object_loc -> out -> ext_expr
+  
   | expr_access_1 : out -> expr -> ext_expr (* The left expression has been executed *)
   | expr_access_2 : object_loc -> out -> ext_expr (* The left expression has been converted to a location and the right expression is executed. *)
   | expr_access_3 : value -> value -> ext_expr

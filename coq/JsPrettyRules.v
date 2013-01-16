@@ -622,21 +622,32 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       S1 = write_fields S0 l lfv ->
       red_expr S0 C (expr_object_1 l lx lv) (out_ter S1 l) *)
 
-  (** Function declaration [TODO] *)
+  (** Function expression *)
 
   | red_expr_function_unnamed : forall S C args bd o,
       red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (function_body_is_strict bd)) o ->
       red_expr S C (expr_function None args bd) o 
 
-  (*| red_expr_function_named : forall l l' l1 S0 S1 S2 S3 S4 C y lx P,
-      object_fresh S0 l ->
-      S1 = alloc_obj S0 l loc_obj_proto ->
-      object_fresh S1 l1 ->
-      S2 = alloc_obj S1 l1 loc_obj_proto ->
-      object_fresh S2 l' ->
-      S3 = alloc_fun S2 l' (l1::s) lx P l ->
-      S4 = write S3 l1 (field_normal y) (value_loc l') ->
-      red_expr S0 C (expr_function (Some y) lx P) (out_ter S4 l') *)
+  | red_expr_function_named : forall lex' S' L lextail E o1 S C s args bd o,
+      (lex', S') = lexical_env_alloc_decl S (execution_ctx_lexical_env C) ->
+      lex' = L :: lextail ->
+      env_record_binds S' L E ->
+      red_expr S' C (spec_env_record_create_immutable_binding L s) o1 ->
+      red_expr S' C (expr_function_1 s args bd L lex' o1) o -> 
+      red_expr S C (expr_function (Some s) args bd) o 
+      
+  | red_expr_function_named_1 : forall o1 S0 S C s args bd o,
+      red_expr S C (spec_creating_function_object args bd scope (function_body_is_strict bd)) o1 ->
+      red_expr S C (expr_function_2 s L o1) ->
+      red_expr S0 C (expr_function_1 s args bd L scope (out_void S)) o
+      
+  | red_expr_function_named_2 : forall o1 S0 S C s L l o,
+      red_expr S C (spec_env_record_initialize_immutable_binding L s l) o1 ->
+      red_expr S C (expr_function_3 l o1) ->
+      red_expr S0 C (expr_function_2 s L (out_ter S l)) o  
+      
+  | red_expr_function_named_3 : forall S0 S C l,
+      red_expr S0 C (expr_function_3 l (out_void S)) (out_ter S l) 
 
   (** Access *)
 
