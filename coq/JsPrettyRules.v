@@ -2338,6 +2338,41 @@ END OF TO CLEAN----*)
       r = (ref_create_value v "prototype" false) ->
       red_expr S C (spec_call_builtin builtin_object_get_prototype_of args) (out_ter S (ret_ref r))
   
+(*------------------------------------------------------------*)
+(** ** Object prototype builtin functions *)
+
+  (** Object.prototype.toString *)
+
+  (* Daniele: we can factorize the two rules for undef and null *)
+  | red_spec_call_object_proto_to_string_undef : forall S C v v1 o args, 
+      arguments_from (v1::nil) args -> (* Daniele: since toString takes no args, we discard it here. Is it ok? Same below. *)
+      v = execution_ctx_this_binding C ->
+      v = undef ->
+      red_expr S C (spec_call_builtin builtin_object_proto_to_string args) (out_ter S "[object Undefined]"%string)
+
+  | red_spec_call_object_proto_to_string_null : forall S C v v1 o args, 
+      arguments_from (v1::nil) args ->
+      v = execution_ctx_this_binding C ->
+      v = null ->
+      red_expr S C (spec_call_builtin builtin_object_proto_to_string args) (out_ter S "[object Null]"%string)
+
+  | red_spec_call_object_proto_to_string_other : forall S C v v1 o o1 args, 
+      arguments_from (v1::nil) args ->                                             
+      v = execution_ctx_this_binding C ->
+      not (v = null \/ v = undef) ->
+      red_expr S C (spec_to_object v) o1 ->
+      red_expr S C (spec_call_object_proto_to_string o1) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_to_string args) o
+
+  | red_spec_call_object_proto_to_string : forall S S0 C l s o o1,
+      red_expr S C (spec_object_get l "class") o1 ->
+      red_expr S C (spec_call_object_proto_to_string_1 o1) o ->
+      red_expr S C (spec_call_object_proto_to_string (out_ter S0 l)) o
+
+  | red_spec_call_object_proto_to_string_1 : forall S C S0 s1 s, 
+       s = "[object " ++ s1 ++ "]" -> (* Daniele: is it the right way to concatenate strings? *)
+       red_expr S C (spec_call_object_proto_to_string_1 (out_ter S0 s1)) (out_ter S0 s) 
+
   (** Throw Type Error Function Object Initialisation *)           
   
   (* Could we have this not a a reduction, but as simple function in JsInit? *)

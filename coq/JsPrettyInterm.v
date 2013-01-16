@@ -319,6 +319,10 @@ Inductive ext_expr :=
   | spec_call_global_is_nan : out -> ext_expr
   | spec_call_global_is_finite : out -> ext_expr
 
+  (** Extended expressions for calling object prototype builtin functions *)
+  | spec_call_object_proto_to_string : out -> ext_expr
+  | spec_call_object_proto_to_string_1 : out -> ext_expr
+
 (** Grammar of extended statements *)
 
 with ext_stat :=

@@ -148,20 +148,6 @@ Definition object_builtin_global :=
     builtin_spec_op_object_get
     object_builtin_global_properties.
 
-
-(**************************************************************)
-(** Object prototype object *)
-
-(** Definition of the Object prototype object *)
-
-Definition object_builtin_object_proto :=
-  let P := Heap.empty in
-  let P := write_constant P "constructor" builtin_object_new in
-  let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in
-  (* TODO: complete list *)
-  object_create_builtin null "Object" builtin_spec_op_object_get P.
-
-
 (**************************************************************)
 (** Object object *)
 
@@ -174,6 +160,18 @@ Definition object_builtin_object :=
   (* TODO: complete list *)
   object_create_builtin_constructor builtin_object_call builtin_object_new 1 P.
 
+(**************************************************************)
+(** Object prototype object *)
+
+(** Definition of the Object prototype object *)
+
+Definition object_builtin_object_proto :=
+  let P := Heap.empty in
+  let P := write_constant P "constructor" builtin_object_new in
+  let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in
+  let P := write_native P "toString" builtin_object_proto_to_string in  
+  (* TODO: complete list *)
+  object_create_builtin null "Object" builtin_spec_op_object_get P.
 
 (**************************************************************)
 (** Function object *)
