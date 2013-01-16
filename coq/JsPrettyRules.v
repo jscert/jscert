@@ -2306,25 +2306,25 @@ END OF TO CLEAN----*)
   (** IsNan *)
 
   | red_spec_call_global_is_nan : forall S C v o o1 args, 
-      arguments_from (v::nil) args ->
+      arguments_from (v::nil) args -> (* Isn't that the contrary? [arguments_from args (v::nil)] seems to be closer to Javascript's semantics, given the definition of [arguments_from]. -- Martin *)
       red_expr S C (spec_to_number v) o1 ->
       red_expr S C (spec_call_global_is_nan o1) o ->
       red_expr S C (spec_call_builtin builtin_global_is_nan args) o
 
   | red_spec_call_global_is_nan_1 : forall S S0 C b n,
-      b = (if decide (n = JsNumber.nan) then true else false) ->
+      b = (ifb n = JsNumber.nan then true else false) ->
       red_expr S0 C (spec_call_global_is_nan (out_ter S n)) (out_ter S b)
 
   (** IsFinite *)
 
   | red_spec_call_global_is_finite : forall S C v o o1 args, 
-      arguments_from (v::nil) args ->
+      arguments_from (v::nil) args -> (* idem -- Martin *)
       red_expr S C (spec_to_number v) o1 ->
       red_expr S C (spec_call_global_is_finite o1) o ->
       red_expr S C (spec_call_builtin builtin_global_is_finite args) o
 
   | red_spec_call_global_is_finite_1 : forall S S0 C b n,
-      b = (if decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity) then false else true) ->
+      b = (ifb n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity then false else true) ->
       red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)               
 
 (*------------------------------------------------------------*)
@@ -2333,7 +2333,7 @@ END OF TO CLEAN----*)
   (** getPrototypeOf *)
   
   | red_spec_call_object_get_prototype_of : forall S C v r args, 
-      arguments_from (v::nil) args ->
+      arguments_from (v::nil) args -> (* idem -- Martin *)
       type_of v = type_object ->
       r = (ref_create_value v "prototype" false) ->
       red_expr S C (spec_call_builtin builtin_object_get_prototype_of args) (out_ter S (ret_ref r))
@@ -2345,19 +2345,19 @@ END OF TO CLEAN----*)
 
   (* Daniele: we can factorize the two rules for undef and null *)
   | red_spec_call_object_proto_to_string_undef : forall S C v v1 o args, 
-      arguments_from (v1::nil) args -> (* Daniele: since toString takes no args, we discard it here. Is it ok? Same below. *)
+      arguments_from (v1::nil) args -> (* Daniele: since toString takes no args, we discard it here. Is it ok? Same below. *) (* I think you can actually removes this line, or write [arguments_from args nil] if you want to be very closed to the spec' :) -- Martin *)
       v = execution_ctx_this_binding C ->
       v = undef ->
       red_expr S C (spec_call_builtin builtin_object_proto_to_string args) (out_ter S "[object Undefined]"%string)
 
   | red_spec_call_object_proto_to_string_null : forall S C v v1 o args, 
-      arguments_from (v1::nil) args ->
+      arguments_from (v1::nil) args -> (* idem -- Martin *)
       v = execution_ctx_this_binding C ->
       v = null ->
       red_expr S C (spec_call_builtin builtin_object_proto_to_string args) (out_ter S "[object Null]"%string)
 
   | red_spec_call_object_proto_to_string_other : forall S C v v1 o o1 args, 
-      arguments_from (v1::nil) args ->                                             
+      arguments_from (v1::nil) args -> (* idem -- Martin *)
       v = execution_ctx_this_binding C ->
       not (v = null \/ v = undef) ->
       red_expr S C (spec_to_object v) o1 ->

@@ -165,6 +165,15 @@ Definition if_value_primitive (o : out_interp) (K : state -> prim -> out_interp)
     | _ => out_interp_stuck
     end).
 
+
+Fixpoint get_nth_arg (i : nat) (Vs : list value) : value :=
+  match i, Vs with
+  | O, v :: _ => v
+  | S i', _ :: Vs' => get_nth_arg i' Vs'
+  | _, _ => arbitrary
+  end.
+
+
 Definition prop_attributes_is_generic_or_data A :=
   prop_attributes_is_generic A \/ prop_attributes_is_data A.
 
@@ -176,6 +185,7 @@ Proof.
      apply neg_decidable; apply and_decidable; typeclass.
   apply neg_decidable; apply and_decidable; typeclass.
 Qed.
+
 
 Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *)
 
@@ -499,7 +509,7 @@ Definition creating_function_object_proto S l (K : state -> out_interp) : out_in
     if_success (object_define_own_prop S1 l "prototype" A2 false) (fun S2 re2 =>
       K S2)).
 
-Definition creating_function_object S (names : list string) bd X (strict : strictness_flag) : out_interp :=
+Definition creating_function_object S (names : list string) (bd : body) X (strict : strictness_flag) : out_interp :=
   let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
   let O1 := object_with_invokation O
     (Some builtin_spec_op_function_call)
@@ -1245,7 +1255,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
     let run_call' := run_call max_step' in
     match builtinid with
 
-    | builtin_spec_op_object_get =>
+    | builtin_spec_op_function_call =>
       let lf := extract_from_option lfo in
       let this := extract_from_option vo in
       execution_ctx_function_call run_call' S C lf this args (fun S1 C1 =>
@@ -1256,6 +1266,27 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
           if_success_return (run_prog' S1 C1 p) (fun S2 re =>
             out_ter S (res_normal undef)) (fun S2 v =>
             out_ter S (res_normal v))))
+
+    | builtin_spec_op_function_bind_call =>
+      arbitrary (* TODO *)
+
+
+    | builtin_global_is_nan =>
+      let v := get_nth_arg 0 args in
+      if_value_number (to_number run_call' S C v) (fun S0 n =>
+        out_ter S0 (neg (decide (n = JsNumber.nan))))
+
+    | builtin_global_is_finite =>
+      let v := get_nth_arg 0 args in
+      if_value_number (to_number run_call' S C v) (fun S0 n =>
+        out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
+
+    | builtin_object_get_prototype_of =>
+      let v := get_nth_arg 0 args in
+      ifb type_of v <> type_object then
+        out_interp_stuck
+      else
+        out_ter S (ret_ref (ref_create_value v "prototype" false))
 
     | _ =>
       arbitrary (* TODO *)
