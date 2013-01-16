@@ -89,10 +89,11 @@ Definition strictness_flag := bool.
 
 (** Property name in source code *)
 
-Inductive prop :=
-  | prop_literal : literal -> prop
-  | prop_string : string -> prop
-  | prop_number : number -> prop.
+(** TODO: we only accept strings as literals in the first case *)
+Inductive propname :=
+  | propname_literal : literal -> propname
+  | propname_string : string -> propname
+  | propname_number : number -> propname.
 
 (** Grammar of expressions *)
 
@@ -100,7 +101,8 @@ Inductive expr :=
   | expr_this : expr
   | expr_variable : string -> expr (* todo: rename to expr_identifier *)
   | expr_literal : literal -> expr
-  | expr_object : list (prop * expr) -> expr
+  (*| expr_object : list (prop * expr) -> expr*) (* Old def *)
+  | expr_object : list (propname * propbody) -> expr (* New def *)
   | expr_function : option string -> list string -> prog -> expr
   | expr_access : expr -> expr -> expr
   | expr_member : expr -> string -> expr
@@ -110,8 +112,22 @@ Inductive expr :=
   | expr_binary_op : expr -> binary_op -> expr -> expr
   | expr_conditional : expr -> expr -> expr -> expr
   | expr_assign : expr -> option binary_op -> expr -> expr
-  
 
+(* Old def. Changing because we also function body as string
+with propbody :=
+  | propbody_val : expr -> propbody
+  | propbody_get : prog -> propbody
+  | propbody_set : list string -> prog -> propbody
+*)
+
+with propbody :=
+ | propbody_val : expr ->  propbody
+ | propbody_get : body ->  propbody
+ | propbody_set : list string ->  body ->  propbody
+
+with body :=
+ | body_intro : prog ->  string ->  body
+  
 (** Grammar of statements *)
 
 (* -->TODO: general labelled statements *)
@@ -122,7 +138,8 @@ with stat :=
   (* TODO | stat_label : label -> expr -> stat *)
   | stat_expr : expr -> stat
   | stat_seq : stat -> stat -> stat
-  | stat_var_decl : string -> option expr -> stat
+(*| stat_var_decl : string -> option expr -> stat*)      (* Old def *)
+  | stat_var_decl : list (string * option expr) -> stat  (* New def *)
   | stat_if : expr -> stat -> option stat -> stat
   | stat_while : (* TODO: label_set -> *) expr -> stat -> stat
   | stat_with : expr -> stat -> stat
@@ -165,7 +182,7 @@ Record function_declaration := function_declaration_intro {
    fd_code : prog;
    fd_string : string }.
 
-(* TODO *)
+(* We assume that function declarations know about their strictness in terms of 10.1.1 *)
 Parameter function_body_is_strict : prog -> bool.
 
 
@@ -276,6 +293,24 @@ Inductive builtin :=
 
   | builtin_math
   | builtin_math_function : math_op -> builtin
+  
+  (* Spec operation ids *)
+    
+  (* [[Call]] *)
+  | builtin_spec_op_function_call      (* 13.2.1 *)  
+  | builtin_spec_op_function_bind_call (* 15.3.4.5.1 *) (* TODO *)
+  
+  (* [[Constructor]] *)
+  | builtin_spec_op_function_constructor (* 13.2.2 *)
+  | builtin_spec_op_function_bind_constructor (* 15.3.4.5.2 *) (* TODO *)
+  
+  (* [[HasInstance]] *)
+  | builtin_spec_op_function_has_instance      (* 15.3.5.3 *)
+  | builtin_spec_op_function_bind_has_instance (* 15.3.4.5.3 *) (* TODO *)
+  
+  (* [[Get]] *) 
+  | builtin_spec_op_object_get (* 8.12.3 *)
+  | builtin_spec_op_function_get (* 15.3.5.4 *)
   .
 
 
@@ -444,14 +479,15 @@ Record object := object_intro {
    object_proto_ : value;
    object_class_ : class_name;
    object_extensible_ : bool;
+   object_get_ : builtin;
    object_properties_ : object_properties_type;
    object_prim_value_ : option value;
-   object_construct_ : option function_code;
-   object_call_ : option function_code;
-   object_has_instance_ : bool; (* indicates whether the object has an has_instance method *)
+   object_construct_ : option builtin;
+   object_call_ : option builtin;
+   object_has_instance_ : option builtin;
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
-   object_code_ : option string;
+   object_code_ : option body;
    object_target_function_ : option object_loc;
    object_bound_this_ : option value;
    object_bound_args_ : option (list value);

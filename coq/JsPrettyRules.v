@@ -137,10 +137,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Variable declaration *)
 
+  (* Old def *)
+  (* 
   | red_stat_var_decl_none : forall S C x,
       red_stat S C (stat_var_decl x None) (out_ter S undef)
 
-    (* TODO: red_stat_var_decl_some: can we justify that this is equivalent to the spec ?*)
+  (* TODO: red_stat_var_decl_some: can we justify that this is equivalent to the spec ?*)
   | red_stat_var_decl_some : forall S C x e o1 o,
       red_expr S C (expr_assign (expr_variable x) None e) o1 ->
       red_stat S C (stat_var_decl_1 o1) o ->
@@ -148,9 +150,45 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_var_decl_1 : forall S0 S r1 C,
       red_stat S0 C (stat_var_decl_1 (out_ter S r1)) (out_ter S undef)
+  *)
+
+  | red_stat_var_decl_nil : forall S C, 
+      red_stat S C (stat_var_decl nil) (out_ter S ret_empty)
+
+  | red_stat_var_decl_cons : forall S C o o1 d ds, 
+      red_stat S C (stat_var_decl_item d) o1 ->
+      red_stat S C (stat_var_decl_1 o1 ds) o ->
+      red_stat S C (stat_var_decl (d::ds)) o
+
+  | red_stat_var_decl_1 : forall S S0 C ds o R, 
+      red_stat S C (stat_var_decl ds) o ->
+      red_stat S0 C (stat_var_decl_1 (out_ter S R) ds) o
+
+  (* Daniele: should return undefined instead of x? *)
+  | red_stat_var_decl_item_none : forall S C x, 
+      red_stat S C (stat_var_decl_item (x,None)) (out_ter S (*x*) undef)
+
+  | red_stat_var_decl_item_some : forall S C x e o o1, 
+      red_expr S C (identifier_resolution C x) o1 ->
+      red_stat S C (stat_var_decl_item_1 x o1 e) o ->
+      red_stat S C (stat_var_decl_item (x,Some e)) o
+
+  | red_stat_var_decl_item_1 : forall S S0 C x e o o1 r, 
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_stat S C (stat_var_decl_item_2 x r o1) o ->
+      red_stat S0 C (stat_var_decl_item_1 x (out_ter S r) e) o
+
+  | red_stat_var_decl_item_2 : forall S S0 C r v o o1 x,  
+      red_expr S C (spec_put_value r v) o1 ->
+      red_stat S C (stat_var_decl_item_3 x o1) o ->
+      red_stat S0 C (stat_var_decl_item_2 x r (out_ter S v)) o
+  
+  (* Daniele: should return undefined instead of x? *)
+  | red_stat_var_decl_item_3 : forall S S0 C x r R, 
+      red_stat S0 C (stat_var_decl_item_3 x (out_ter S R)) (out_ter S (*x*) undef)
 
   (** If statement *)
-
+ 
   | red_stat_if : forall S C e1 t2 t3opt o,
       red_stat S C (spec_expr_get_value_conv_stat e1 spec_to_boolean (fun v => stat_if_1 v t2 t3opt)) o ->
       red_stat S C (stat_if e1 t2 t3opt) o
@@ -338,8 +376,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S' C' t2 o ->
       red_stat S C (stat_with_1 t2 l) o
 
-  (** TODO:  Rules for the return,  break and continue statements *)
-
  (** Throw statement *)
 
   | red_stat_throw : forall S C e o o1,
@@ -487,6 +523,78 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_literal : forall S C s i v,
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
+
+  (** Object initializer *)
+  
+  (* Allocate a new Object, then pass the adress  
+     and the list of propdef to [expr_object_1] *)
+  | red_expr_object : forall S C o pds, 
+      red_expr S C (spec_new_object (fun l => expr_object_1 l pds) ) o ->
+      red_expr S C (expr_object pds) o
+              
+  (* No propdefs. Return the empty object *)
+  | red_expr_object_1_nil : forall S C l, 
+      red_expr S C (expr_object_1 l nil) (out_ter S l)
+  
+  (* Propdefs are given. Convert the first propname to
+     string, then call [expr_obj_2] to evaluate the propbody. *)
+  | red_expr_object_1_cons : forall S C x l pn pb pds o, 
+      x = string_of_propname pn ->
+      red_expr S C (expr_object_2 l x pb pds) o ->
+      red_expr S C (expr_object_1 l ((pn,pb)::pds)) o
+
+  (* --- value --- *)
+  (* If the propbody is an expression we evaluate it *)
+  | red_expr_object_2_val : forall S C e o o1 l x pds, 
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_expr S C (expr_object_3_val l x o1 pds) o ->
+      red_expr S C (expr_object_2 l x (propbody_val e) pds) o
+
+  (* If the expression terminates then we create a prop descriptor *)
+  | red_expr_object_3_val : forall S S0 C l x A v o pds,
+      A = prop_attributes_create_data v true true true ->
+      red_expr S C (expr_object_4 l x A pds) o ->
+      red_expr S0 C (expr_object_3_val l x (out_ter S v) pds) o
+
+  (* --- get --- *)
+  (* If the propbody is a getter, we evaluate the function definition *)
+  
+  | red_expr_object_2_get : forall S C bd l x o o1 pds,
+      red_expr S C (spec_create_new_function_in C nil bd) o1 ->
+      red_expr S C (expr_object_3_get l x o1 pds) o ->
+      red_expr S C (expr_object_2 l x (propbody_get bd) pds) o
+  
+  (* If the function def terminates, we create an accessor *)
+  | red_expr_object_3_get : forall S S0 C A l x v pds o,  
+      A = prop_attributes_create_accessor_opt None (Some v) true true ->
+      red_expr S C (expr_object_4 l x A pds) o ->
+      red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
+
+  (* --- set --- *)
+  (* If the propbody is a setter, we evaluate the function definition *)
+  | red_expr_object_2_set : forall S S0 C A l x v pds o o1 bd args,
+      red_expr S C (spec_create_new_function_in C args bd) o1 ->
+      red_expr S C (expr_object_3_set l x o1 pds) o ->
+      red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
+
+  (* If the function def terminates, we create an accessor *)
+  | red_expr_object_3_set : forall S S0 C A l x v pds o,
+      A = prop_attributes_create_accessor_opt (Some v) None true true ->
+      red_expr S C (expr_object_4 l x A pds) o ->
+      red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
+  
+  (* --- Add new property to the object --- *)
+  (* Add the new property into the object *)
+  | red_expr_object_4 : forall S S0 C A l x v pds o o1,
+      red_expr S C (spec_object_define_own_prop l x A false) o1 ->
+      red_expr S C (expr_object_5 l pds o1) o ->
+      red_expr S C (expr_object_4 l x A pds) o
+
+  (* If the property was added succesfully, we continue 
+     to the next one. *)
+  | red_expr_object_5 : forall S S0 R C A l x v pds o,
+      red_expr S C (expr_object_1 l pds) o ->
+      red_expr S0 C (expr_object_5 l pds (out_ter S R)) o   
 
 (*---begin to clean ---*)
 
@@ -807,7 +915,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_add_1 v1 v2) o
 
   | red_expr_binary_op_add_string_1 : forall S C s1 s2 s o,
-      (* TODO: fix this line s = string_concat s1 s2 ->*)
+      (* TODO: fix this line s = string_concat s1 s2 ->*) (* Would [s = s1 ++ s2] be correct? -- Martin *)
       red_expr S C (expr_binary_op_add_string_1 s1 s2) (out_ter S s)
 
   | red_expr_binary_op_add_1_number : forall S C v1 v2 o,
@@ -870,13 +978,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_3 binary_op_in v1 v2) o
 
   | red_expr_binary_op_instanceof_non_instance : forall S C v1 l o,
-      object_has_instance S l false ->
+      object_has_instance S l None ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
-  | red_expr_binary_op_instanceof_normal : forall S C v1 l o,
-      object_has_instance S l true ->
-      red_expr S C (spec_has_instance l v1) o ->
+  | red_expr_binary_op_instanceof_normal : forall spec_has_instance_id S C v1 l o,
+      object_has_instance S l (Some spec_has_instance_id) ->
+      red_expr S C (spec_object_has_instance spec_has_instance_id l v1) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
   (** Binary op : in *)
@@ -1167,10 +1275,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_basic K) o ->
       red_expr S0 C (spec_to_default_sub_2 l (out_ter S lf) K) o
 
-  | red_spec_to_default_sub_2_callable : forall lfo S C l lf K o fc o1,
-      callable S lf (Some fc) ->
+  | red_spec_to_default_sub_2_callable : forall lfo S C l lf K o builtinid o1,
+      callable S lf (Some builtinid) ->
       value_object lfo = lf ->
-      red_expr S C (spec_call fc (Some lfo) (Some lf) nil) o1 ->
+      red_expr S C (spec_call builtinid (Some lfo) (Some lf) nil) o1 ->
       red_expr S C (spec_to_default_sub_3 o1 (expr_basic K)) o ->
       red_expr S C (spec_to_default_sub_2 l (out_ter S lf) K) o
 
@@ -1235,34 +1343,59 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** ** Operations on objects *)
 
   (** Get *)
+  
+  | red_expr_object_get_object : forall S C l x o,
+      object_get S l builtin_spec_op_object_get ->
+      red_expr S C (spec_object_object_get l x) o ->
+      red_expr S C (spec_object_get l x) o  
+      
+  | red_expr_object_get_function : forall S C l x o,
+      object_get S l builtin_spec_op_function_get ->
+      red_expr S C (spec_object_function_get l x) o ->
+      red_expr S C (spec_object_get l x) o 
 
-  | red_expr_object_get : forall An S C l x o,
+  | red_expr_object_object_get : forall An S C l x o,
       object_get_property S (value_object l) x An ->
-      red_expr S C (spec_object_get_1 l An) o ->
-      red_expr S C (spec_object_get l x) o
+      red_expr S C (spec_object_object_get_1 l An) o ->
+      red_expr S C (spec_object_object_get l x) o
 
-  | red_expr_object_get_1_undef : forall S C l,
-      red_expr S C (spec_object_get_1 l prop_descriptor_undef) (out_ter S undef)
+  | red_expr_object_object_get_1_undef : forall S C l,
+      red_expr S C (spec_object_object_get_1 l prop_descriptor_undef) (out_ter S undef)
 
-  | red_expr_object_get_1_some_data : forall S C l A v,
+  | red_expr_object_object_get_1_some_data : forall S C l A v,
       prop_attributes_is_data A ->
       prop_attributes_value A = Some v ->
-      red_expr S C (spec_object_get_1 l (prop_descriptor_some A)) (out_ter S v)
+      red_expr S C (spec_object_object_get_1 l (prop_descriptor_some A)) (out_ter S v)
 
-  | red_expr_object_get_1_some_accessor : forall S C l A o,
+  | red_expr_object_object_get_1_some_accessor : forall S C l A o,
       prop_attributes_is_accessor A ->
-      red_expr S C (spec_object_get_2 l (prop_attributes_get A)) o ->
-      red_expr S C (spec_object_get_1 l (prop_descriptor_some A)) o
+      red_expr S C (spec_object_object_get_2 l (prop_attributes_get A)) o ->
+      red_expr S C (spec_object_object_get_1 l (prop_descriptor_some A)) o
 
-  | red_expr_object_get_2_undef : forall S C l,
-      red_expr S C (spec_object_get_2 l (Some undef)) (out_ter S undef)
+  | red_expr_object_object_get_2_undef : forall S C l,
+      red_expr S C (spec_object_object_get_2 l (Some undef)) (out_ter S undef)
 
-  | red_expr_object_get_2_getter : forall fc S C l f o,
-      object_call S f (Some fc) ->
-      red_expr S C (spec_call fc (Some f) (Some (value_object l)) nil) o ->
-      red_expr S C (spec_object_get_2 l (Some (value_object f))) o
+  | red_expr_object_object_get_2_getter : forall builtinid S C l f o,
+      object_call S f (Some builtinid) ->
+      red_expr S C (spec_call builtinid (Some f) (Some (value_object l)) nil) o ->
+      red_expr S C (spec_object_object_get_2 l (Some (value_object f))) o
 
       (* TODO: what should we do for [spec_object_get_2 l None] ? *)
+      
+  | red_expr_object_function_get : forall o1 S C l x o,
+      red_expr S C (spec_object_object_get l x) o1 ->
+      red_expr S C (spec_object_function_get_1 l x o1) o ->
+      red_expr S C (spec_object_function_get l x) o
+      
+  | red_expr_object_function_get_1_error : forall bd S0 S C l v o,
+      object_code S l (Some bd) ->
+      function_body_is_strict (body_prog bd) = true ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S0 C (spec_object_function_get_1 l "caller" (out_ter S v)) o
+      
+  | red_expr_object_function_get_1 : forall bd S0 S C l x v o,
+      (object_code S l (Some bd) /\ function_body_is_strict (body_prog bd) = false) \/ (x <> "caller") \/ (object_code S l None) ->
+      red_expr S0 C (spec_object_function_get_1 l x (out_ter S v)) (out_ter S v)
 
      (* TODO: see 15.3.5.4 for a special get method for functions;
          also arrays & string have special stuff *)
@@ -1341,24 +1474,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put_1 l x v throw (out_ter S true)) o
 
   | red_expr_object_put_2_data : forall A' S C l x v throw AnOwn o,
-      prop_attributes_is_data AnOwn ->
+      prop_descriptor_is_data AnOwn -> (* Please double check:  I've replaced it from [prop_attributes_is_data]. -- Martin. *)
       A' = prop_attributes_create_value v ->
       red_expr S C (spec_object_define_own_prop l x A' throw) o ->
       red_expr S C (spec_object_put_2 l x v throw AnOwn) o
 
   | red_expr_object_put_2_not_data : forall AnOwn An S C l x v throw o,
-      ~ prop_attributes_is_data AnOwn ->
+      ~ prop_descriptor_is_data AnOwn -> (* Idem -- Martin. *)
       object_get_property S (value_object l) x An ->
       red_expr S C (spec_object_put_3 l x v throw An) o ->
       red_expr S C (spec_object_put_2 l x v throw AnOwn) o
 
-  | red_expr_object_put_3_accessor : forall fsetter fsettero fc S C l x v throw A o,
+  | red_expr_object_put_3_accessor : forall fsetter fsettero builtinid S C l x v throw A o,
       prop_attributes_is_accessor A ->
       Some fsetter = prop_attributes_set A ->
       (* optional thanks to the canput test: fsetter <> undef --- Arthur: I don't understand... *)
       fsetter = value_object fsettero ->
-      object_call S fsettero (Some fc) ->
-      red_expr S C (spec_call fc (Some fsettero) (Some (value_object l)) (v::nil)) o ->
+      object_call S fsettero (Some builtinid) ->
+      red_expr S C (spec_call builtinid (Some fsettero) (Some (value_object l)) (v::nil)) o ->
       red_expr S C (spec_object_put_3 l x v throw A) o
 
   | red_expr_object_put_3_not_accessor : forall A' S C l x v throw A o,
@@ -1493,6 +1626,37 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       changedpf = prop_attributes_transfer oldpf newpf ->
       object_set_property S l x changedpf h' ->
       red_expr S C (spec_object_define_own_prop_5 l x oldpf newpf throw) (out_ter h' true)
+      
+  (** Has Instance *)
+  | red_expr_object_has_instance_prim : forall S C l w o,
+      red_expr S C (spec_object_has_instance builtin_spec_op_function_has_instance l (value_prim w)) (out_ter S false)
+  
+  | red_expr_object_has_instance_obj : forall o1 S C l lv o,
+      red_expr S C (spec_object_get l "prototype") o1 ->
+      red_expr S C (spec_object_has_instance_1 lv o1) o ->
+      red_expr S C (spec_object_has_instance builtin_spec_op_function_has_instance l (value_object lv)) o
+      
+  | red_expr_object_has_instance_1_prim : forall S0 S C lv v o,
+      type_of v <> type_object ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S v)) o
+      
+  | red_expr_object_has_instance_1_false : forall S0 S C lv lo,
+      object_proto S lv null ->     
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) (out_ter S false)
+      
+  | red_expr_object_has_instance_1_true : forall proto lo S0 S C lv,
+      object_proto S lv (value_object proto) ->
+      proto = lo ->     
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) (out_ter S true)
+      
+   | red_expr_object_has_instance_1 : forall proto lo S0 S C lv v o,
+      object_proto S lv (value_object proto) ->
+      proto <> lo ->     
+      red_expr S C (spec_object_has_instance_1 proto (out_ter S (value_object lo))) o ->
+      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) o
+  
+   
 
   (*------------------------------------------------------------*)
   (** ** Operations on references *)
@@ -1596,7 +1760,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_expr_ref_put_value_ref_c : forall L S C r vnew o, (* Step 5. *)     
       ref_base r = ref_base_type_env_loc L ->
-      red_expr S C (spec_env_record_set_binding_value L (ref_name r) vnew (ref_strict r)) o ->
+      red_expr S C (spec_env_record_set_mutable_binding L (ref_name r) vnew (ref_strict r)) o ->
       red_expr S C (spec_put_value (ret_ref r) vnew) o  
   
   (*------------------------------------------------------------*)
@@ -1775,298 +1939,449 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Function call --- TODO: check this section*)
 
-  | red_expr_execution_ctx_function_call_direct : forall strict newthis S C K func this args o,
-      (* TODO: set strict according to function code *)
+  | red_expr_execution_ctx_function_call_direct : forall bd strict newthis S C K func this args o,
+      object_code S func (Some bd) ->
+      strict = function_body_is_strict (body_prog bd) ->
       (If (strict = true) then newthis = this
       else If this = null \/ this = undef then newthis = builtin_global
       else If type_of this = type_object then newthis = this
       else False) (* ~ function_call_should_call_to_object this strict *)
       ->
-      red_expr S C (spec_execution_ctx_function_call_1 K func args (out_ter S newthis)) o ->
+      red_expr S C (spec_execution_ctx_function_call_1 K func args strict (out_ter S newthis)) o ->
       red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_convert : forall strict o1 S C K func this args o,
-      (* TODO: set strict according to function code *)
+  | red_expr_execution_ctx_function_call_convert : forall bd strict o1 S C K func this args o,
+      object_code S func (Some bd) ->
+      strict = function_body_is_strict (body_prog bd) ->
       (~ (strict = true) /\ this <> null /\ this <> undef /\ type_of this <> type_object) ->
       red_expr S C (spec_to_object this) o1 ->
-      red_expr S C (spec_execution_ctx_function_call_1 K func args o1) o ->
+      red_expr S C (spec_execution_ctx_function_call_1 K func args strict o1) o ->
       red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_1 : forall scope fc S' lex' C' strict' o1 S0 C K func args S this o,
+  | red_expr_execution_ctx_function_call_1 : forall scope bd S' lex' C' strict o1 S0 C K func args S this o,
       object_scope S func (Some scope) ->
-      object_call S func (Some fc) ->
+      object_code S func (Some bd) ->
       (lex', S') = lexical_env_alloc_decl S scope ->
-      (* TODO: Do we want to take the old execution context's strict value? *)
-      strict' = (* TODO: set strict according to function code (function_code_is_strict (function_code func) ||*) execution_ctx_strict C ->
-        (* todo this line may change; note that in the spec this is in done in binding instantiation *)
-      C' = execution_ctx_intro_same lex' this strict' ->
-      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) fc args) o1 ->
+      C' = execution_ctx_intro_same lex' this strict ->
+      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) (body_prog bd) args) o1 ->
       red_expr S' C' (spec_execution_ctx_function_call_2 K o1) o ->
-      red_expr S0 C (spec_execution_ctx_function_call_1 K func args (out_ter S this)) o 
+      red_expr S0 C (spec_execution_ctx_function_call_1 K func args strict (out_ter S this)) o 
       
   | red_expr_execution_ctx_function_call_2 : forall S0 S C K o,
       red_expr S C K o ->
       red_expr S0 C (spec_execution_ctx_function_call_2 K (out_void S)) o
 
   (** Binding instantiation --- TODO: check this section *)
+  
+  (* Auxiliary reductions form Binding instantiation *)
+  
+  (* Create bindings for formal parameters Step 4d. *)
+
+  | red_expr_binding_instantiation_formal_params_empty : forall S C K args L o,  (* Loop ends in Step 4d *)  
+      red_expr S C (K args L) o ->
+      red_expr S C (spec_binding_instantiation_formal_params K args L nil) o
+
+  | red_expr_binding_instantiation_formal_params_non_empty : forall o1 S C K args L argname names o, (* Steps 4d i - iii *)
+      let v := hd undef args in
+      red_expr S C (spec_env_record_has_binding L argname) o1 ->
+      red_expr S C (spec_binding_instantiation_formal_params_1 K (tl args) L argname names v o1) o ->
+      red_expr S C (spec_binding_instantiation_formal_params K args L (argname::names)) o
+
+  | red_expr_binding_instantiation_formal_params_1_declared : forall S S0 C K args L argname names v o,  (* Step 4d iv *)
+      red_expr S C (spec_binding_instantiation_formal_params_2 K args L argname names v (out_void S)) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_1 K args L argname names v (out_ter S true)) o
+
+  | red_expr_binding_instantiation_formal_params_1_not_declared : forall o1 S S0 C K args L argname names v o, (* Step 4d iv *)
+      red_expr S C (spec_env_record_create_mutable_binding L argname None) o1 ->
+      red_expr S C (spec_binding_instantiation_formal_params_2 K args L argname names v o1) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_1 K args L argname names v (out_ter S false)) o
+
+  | red_expr_binding_instantiation_formal_params_2 : forall o1 S S0 C K args L argname names v o,  (* Step 4d v *)
+      red_expr S C (spec_env_record_set_mutable_binding L argname v (execution_ctx_strict C)) o1 ->
+      red_expr S C (spec_binding_instantiation_formal_params_3 K args L names o1) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_2 K args L argname names v (out_void S)) o
+
+  | red_expr_binding_instantiation_formal_params_3 : forall o1 S S0 C K args L names o, (* Step 4d loop *)
+      red_expr S C (spec_binding_instantiation_formal_params K args L names) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_3 K args L names (out_void S)) o
+      
+  (* Create bindings for function declarations Step 5 *)
+  
+  | red_expr_spec_binding_instantiation_function_decls_nil : forall o1 L S0 S C K args bconfig o, (* Step 5b *)
+      red_expr S C (K L) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls K args L nil bconfig (out_void S)) o
+
+  | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds bconfig o, (* Step 5b *)
+      let p := fd_code fd in
+      let strict := function_body_is_strict p in
+      let f_string := fd_string fd in
+      red_expr S C (spec_creating_function_object (fd_parameters fd) (body_intro p f_string) (execution_ctx_variable_env C) strict) o1 ->
+      red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_void S)) o
+
+  | red_expr_spec_binding_instantiation_function_decls_1 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5c *)
+      red_expr S C (spec_env_record_has_binding L (fd_name fd)) o1 ->
+      red_expr S C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig (out_ter S fo)) o
+
+  | red_expr_spec_binding_instantiation_function_decls_2_false : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5d *)
+      red_expr S C (spec_env_record_create_mutable_binding L (fd_name fd) (Some bconfig)) o1 ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig (out_ter S false)) o
+
+  | red_expr_spec_binding_instantiation_function_decls_2_true_global : forall A o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5e ii *)
+      object_get_property S builtin_global (fd_name fd) (prop_descriptor_some A) ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (prop_attributes_configurable A) bconfig) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args env_loc_global_env_record fd fds strict fo bconfig (out_ter S true)) o
+
+  | red_expr_spec_binding_instantiation_function_decls_3_true : forall o1 L S C K args fd fds strict fo bconfig o, (* Step 5e iii *)
+      let A := prop_attributes_create_data undef true true bconfig in
+      red_expr S C (spec_object_define_own_prop builtin_global (fd_name fd) A true) o1 ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo bconfig o1) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (Some true) bconfig) o
+
+  | red_expr_spec_binding_instantiation_function_decls_3_false_type_error : forall o1 L S C K args fd fds strict fo A configurable bconfig o, (* Step 5e iv *)
+      configurable <> Some true ->
+      prop_descriptor_is_accessor A \/ (prop_attributes_writable A <> Some true \/ prop_attributes_enumerable A <> Some true) ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A configurable bconfig) (out_type_error S)
+
+  | red_expr_spec_binding_instantiation_function_decls_3_false : forall o1 L S C K args fd fds strict fo A configurable bconfig o, (* Step 5e iv *)
+     configurable <> Some true ->
+      ~ (prop_descriptor_is_accessor A) /\ prop_attributes_writable A = Some true /\ prop_attributes_enumerable A = Some true ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A configurable bconfig) o
+
+  | red_expr_spec_binding_instantiation_function_decls_2_true : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5e *)
+      L <> env_loc_global_env_record ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_void S)) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig (out_ter S true)) o
+
+  | red_expr_spec_binding_instantiation_function_decls_4 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5f *)
+      red_expr S C (spec_env_record_set_mutable_binding L (fd_name fd) (value_object fo) strict) o1 ->
+      red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_void S)) o
+      
+  (* Create bindings for variable declarations Step 8 *)
+      
+  | red_expr_spec_binding_instantiation_var_decls_non_empty : forall o1 L S0 S C vd vds bconfig o, (* Step 8b *)
+      red_expr S C (spec_env_record_has_binding L vd) o1 ->
+      red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig (out_void S)) o
+
+  | red_expr_spec_binding_instantiation_var_decls_1_true : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S true)) o
+
+  | red_expr_spec_binding_instantiation_var_decls_1_false : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
+      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some bconfig) undef (execution_ctx_strict C)) o1 ->
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S false)) o
+
+  | red_expr_spec_binding_instantiation_var_decls_empty : forall o1 L S0 S C bconfig o, (* Step 8 *)
+      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig (out_void S)) (out_void S)     
+      
+  (* Declaration Binding Instantiation Main Part *)    
 
   | red_expr_execution_ctx_binding_instantiation : forall L tail S C func code args o, (* Step 1 *)
       (* todo: handle eval case -- step 2 *)
-      (* todo: [func] needs to contain all the function declarations and the variable declarations *)
+      (* todo: [code] needs to contain all the function declarations and the variable declarations *)
 
-      (* --> need an extended form for:  4.d. entry point, with argument "args" (a list that decreases at every loop) *)
-      (* todo: step 5b ? *)
       execution_ctx_variable_env C = L :: tail ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 func code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation func code args) o
+      (* Assumption made: if func is None, then code is global code or eval code, otherwise it is function code. 
+         TODO: have an enumeration code_type? *)
 
-  | red_expr_execution_ctx_binding_instantiation_function : forall names_option S C func code args L o, (* Step 4a *)
+  | red_expr_execution_ctx_binding_instantiation_1_function : forall names_option S C func code args L o, (* Step 4a *)
       object_formal_parameters S func names_option ->
       let names := unsome_default nil names_option in
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 func code args L names) o ->
+      red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 code) args L names) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 (Some func) code args L) o
-      
-      (* todo: isolate substeps of (d) into a different group of rules, with more precise name *)
-  | red_expr_execution_ctx_binding_instantiation_function_names_empty : forall S C func code args L o,  (* Loop ends in Step 4d *)  
-      red_expr S C (spec_execution_ctx_binding_instantiation_6 (Some func) code args L) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 func code args L nil) o
 
-  | red_expr_execution_ctx_binding_instantiation_function_names_non_empty : forall o1 S C func code args L argname names o, (* Steps 4d i - iii *)
-      let v := hd undef args in
-      red_expr S C (spec_env_record_has_binding L argname) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_3 func code (tl args) L argname names v o1) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 func code args L (argname::names)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_names_declared : forall S S0 C func code args L argname names v o,  (* Step 4d iv *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 func code args L argname names v (out_void S)) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_3 func code args L argname names v (out_ter S true)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_names_not_declared : forall o1 S S0 C func code args L argname names v o, (* Step 4d iv *)
-      red_expr S C (spec_env_record_create_mutable_binding L argname None) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 func code args L argname names v o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_3 func code args L argname names v (out_ter S false)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_names_set : forall o1 S S0 C func code args L argname names v o,  (* Step 4d v *)
-      red_expr S C (spec_env_record_set_mutable_binding L argname v (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_5 func code args L names o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_4 func code args L argname names v (out_void S)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_names_loop : forall o1 S S0 C func code args L names o, (* Step 4d loop *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 func code args L names) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_5 func code args L names (out_void S)) o
-
-  | red_expr_execution_ctx_binding_instantiation_not_function : forall L S C code args o, (* Step 4 *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_6 None code args L) o ->
+  | red_expr_execution_ctx_binding_instantiation_1_not_function : forall L S C code args o, (* Step 4 *)
+      red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 None code args L) o
 
-  | red_expr_execution_ctx_binding_instantiation_function_decls : forall L S C func code args o, (* Step 5 *)
+  | red_expr_execution_ctx_binding_instantiation_function_2 : forall bconfig L S C code args o, (* Step 5 *)
+      bconfig = false (* TODO: configurableBindings with eval *) ->
       let fds := function_declarations code in
-      red_expr S C (spec_execution_ctx_binding_instantiation_7 func code args L fds (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_6 func code args L) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_nil : forall o1 L S0 S C func code args o, (* Step 5b *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_12 func code args L) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_7 func code args L nil (out_void S)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_cons : forall o1 L S0 S C func code args fd fds o, (* Step 5b *)
-      let p := fd_code fd in
-      let strict := (execution_ctx_strict C) || (function_body_is_strict p) in
-      let f_code := function_code_code (fd_code fd) in
-      let f_string := fd_string fd in
-      red_expr S C (spec_creating_function_object (fd_parameters fd) f_string f_code (execution_ctx_variable_env C) strict) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_8 func code args L fd fds strict o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_7 func code args L (fd::fds) (out_void S)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_cons_has_bindings : forall o1 L S0 S C func code args fd fds strict fo o, (* Step 5c *)
-      red_expr S C (spec_env_record_has_binding L (fd_name fd)) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_9 func code args L fd fds strict fo o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_8 func code args L fd fds strict (out_ter S fo)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_5d : forall o1 L S0 S C func code args fd fds strict fo o, (* Step 5d *)
-      red_expr S C (spec_env_record_create_mutable_binding L (fd_name fd) (Some false)) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_11 func code args L fd fds strict fo o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_9 func code args L fd fds strict fo (out_ter S false)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_5eii : forall A o1 L S0 S C func code args fd fds strict fo o, (* Step 5e ii *)
-      object_get_property S builtin_global (fd_name fd) (prop_descriptor_some A) ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_10 func code args fd fds strict fo A (prop_attributes_configurable A)) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_9 func code args env_loc_global_env_record fd fds strict fo (out_ter S true)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_5eiii : forall o1 L S C func code args fd fds strict fo o, (* Step 5e iii *)
-      let A := prop_attributes_create_data undef true true false in (* todo: fix configurable *)
-      red_expr S C (spec_object_define_own_prop builtin_global (fd_name fd) A true) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_11 func code args env_loc_global_env_record fd fds strict fo o1) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_10 func code args fd fds strict fo A (Some true)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_5eiv_type_error : forall o1 L S C func code args fd fds strict fo A configurable o, (* Step 5e iv *)
-      configurable <> Some true ->
-      prop_descriptor_is_accessor A \/ (prop_attributes_writable A <> Some true \/ prop_attributes_enumerable A <> Some true) ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_10 func code args fd fds strict fo A configurable) (out_type_error S)
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_5eiv : forall o1 L S C func code args fd fds strict fo A configurable o, (* Step 5e iv *)
-     configurable <> Some true ->
-      ~ (prop_descriptor_is_accessor A) /\ prop_attributes_writable A = Some true /\ prop_attributes_enumerable A = Some true ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_11 func code args env_loc_global_env_record fd fds strict fo (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_10 func code args fd fds strict fo A configurable) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_5e_false : forall o1 L S0 S C func code args fd fds strict fo o, (* Step 5e *)
-      L <> env_loc_global_env_record ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_11 func code args L fd fds strict fo (out_void S)) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_9 func code args L fd fds strict fo (out_ter S true)) o
-
-  | red_expr_execution_ctx_binding_instantiation_function_decls_5f : forall o1 L S0 S C func code args fd fds strict fo o, (* Step 5f *)
-      red_expr S C (spec_env_record_set_mutable_binding L (fd_name fd) (value_object fo) strict) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_7 func code args L fds o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_11 func code args L fd fds strict fo (out_void S)) o
+      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code bconfig) args L fds bconfig (out_void S)) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
 
   (* TODO steps 6-7 *)
 
-  | red_expr_execution_ctx_binding_instantiation_8 : forall o1 L S C func code args o, (* Step 8 *)
+  | red_expr_execution_ctx_binding_instantiation_3 : forall o1 L S C code bconfig o, (* Step 8 *)
       let vds := variable_declarations code in
-      red_expr S C (spec_execution_ctx_binding_instantiation_13 func code args L vds (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_12 func code args L) o
-
-  | red_expr_execution_ctx_binding_instantiation_8b : forall o1 L S0 S C func code args vd vds o, (* Step 8b *)
-      red_expr S C (spec_env_record_has_binding L vd) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_14 func code args L vd vds o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_13 func code args L (vd::vds) (out_void S)) o
-
-  | red_expr_execution_ctx_binding_instantiation_8c_true : forall o1 L S0 S C func code args vd vds o, (* Step 8c *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_13 func code args L vds (out_void S)) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_14 func code args L vd vds (out_ter S true)) o
-
-  | red_expr_execution_ctx_binding_instantiation_8c_false : forall o1 L S0 S C func code args vd vds o, (* Step 8c *)
-      red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some false) undef (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_13 func code args L vds o1) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_14 func code args L vd vds (out_ter S false)) o
-
-  | red_expr_execution_ctx_binding_instantiation_8_nil : forall o1 L S0 S C func code args o, (* Step 8 *)
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_13 func code args L nil (out_void S)) (out_void S)
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_3 code bconfig L) o
+      
+  (** Creating function object *)
+    
+  | red_expr_creating_function_object_proto : forall o1 S0 S C K l b o, 
+      red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
+      red_expr S C (spec_creating_function_object_proto_1 K l o1) o ->
+      red_expr S0 C (spec_creating_function_object_proto K l (out_ter S b)) o
+    
+  | red_expr_creating_function_object_proto_1 : forall o1 S0 S C K l lproto b o, 
+      let A := prop_attributes_create_data (value_object l) true false true in 
+      red_expr S C (spec_object_define_own_prop lproto "constructor" A false) o1 ->
+      red_expr S C (spec_creating_function_object_proto_2 K l lproto o1) o ->
+      red_expr S0 C (spec_creating_function_object_proto_1 K l (out_ter S lproto)) o
+      
+   | red_expr_creating_function_object_proto_2 : forall o1 S0 S C K l lproto b o, 
+      let A := prop_attributes_create_data (value_object lproto) true false false in 
+      red_expr S C (spec_object_define_own_prop l "prototype" A false) o1 ->
+      red_expr S C (K o1) o ->
+      red_expr S0 C (spec_creating_function_object_proto_2 K l lproto (out_ter S b)) o
   
-  | red_expr_creating_function_object : forall l S' o1 S C names fb fc X strict o,
-      (* TODO: formalize Function prototype object as in 15.3.3.1 *)
-      let O := object_create builtin_function_proto "Function" true Heap.empty in
-      let O1 := object_with_invokation O (Some fc) (Some fc) true in
-      let O2 := object_with_details O1 (Some X) (Some names) (Some fb) None None None None in
-      (* TODO: create internals for [[Get]] *)
+  | red_expr_creating_function_object : forall l S' o1 S C names bd X strict o,
+      let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
+      let O1 := object_with_invokation O 
+        (Some builtin_spec_op_function_call) 
+        (Some builtin_spec_op_function_constructor) 
+        (Some builtin_spec_op_function_has_instance) in
+      let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
       (l, S') = object_alloc S O2 ->
       let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
-      red_expr S' C (spec_creating_function_object_1 strict l o1) o ->
-      red_expr S C (spec_creating_function_object names fb fc X strict) o
-     
-  | red_expr_creating_function_object_1 : forall o1 S0 S C strict l b o, 
-      red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
-      red_expr S C (spec_creating_function_object_2 strict l o1) o ->
-      red_expr S0 C (spec_creating_function_object_1 strict l (out_ter S b)) o
-    
-  | red_expr_creating_function_object_2 : forall o1 S0 S C strict l lproto b o, 
-      let A := prop_attributes_create_data (value_object l) true false true in 
-      red_expr S C (spec_object_define_own_prop lproto "constructor" A false) o1 ->
-      red_expr S C (spec_creating_function_object_3 strict l lproto o1) o ->
-      red_expr S0 C (spec_creating_function_object_2 strict l (out_ter S lproto)) o
+      red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 strict l) l o1) o ->
+      red_expr S C (spec_creating_function_object names bd X strict) o
+                     
+
+
+   | red_expr_creating_function_object_1_not_strict : forall o1 S0 S C l b, 
+      red_expr S0 C (spec_creating_function_object_1 false l (out_ter S b)) (out_ter S l)
       
-   | red_expr_creating_function_object_3 : forall o1 S0 S C strict l lproto b o, 
-      let A := prop_attributes_create_data (value_object lproto) true false false in 
-      red_expr S C (spec_object_define_own_prop l "prototype" A false) o1 ->
-      red_expr S C (spec_creating_function_object_4 strict l o1) o ->
-      red_expr S0 C (spec_creating_function_object_3 strict l lproto (out_ter S b)) o
-      
-   | red_expr_creating_function_object_4_not_strict : forall o1 S0 S C l b, 
-      red_expr S0 C (spec_creating_function_object_4 false l (out_ter S b)) (out_ter S l)
-      
-   | red_expr_creating_function_object_4_strict : forall o1 S0 S C l b o, 
+   | red_expr_creating_function_object_1_strict : forall o1 S0 S C l b o, 
       let vthrower := value_object builtin_function_throw_type_error in
       let A := prop_attributes_create_accessor vthrower vthrower false false in 
       red_expr S C (spec_object_define_own_prop l "caller" A false) o1 ->
-      red_expr S C (spec_creating_function_object_5 l o1) o ->
-      red_expr S0 C (spec_creating_function_object_4 true l (out_ter S b)) o
+      red_expr S C (spec_creating_function_object_2 l o1) o ->
+      red_expr S0 C (spec_creating_function_object_1 true l (out_ter S b)) o
       
-  | red_expr_creating_function_object_5 : forall o1 S0 S C l b o, 
+  | red_expr_creating_function_object_2 : forall o1 S0 S C l b o, 
       let vthrower := value_object builtin_function_throw_type_error in
       let A := prop_attributes_create_accessor vthrower vthrower false false in 
       red_expr S C (spec_object_define_own_prop l "arguments" A false) o1 ->
-      red_expr S C (spec_creating_function_object_6 l o1) o ->
-      red_expr S0 C (spec_creating_function_object_5 l (out_ter S b)) o
+      red_expr S C (spec_creating_function_object_3 l o1) o ->
+      red_expr S0 C (spec_creating_function_object_2 l (out_ter S b)) o
       
-  | red_expr_creating_function_object_6 : forall o1 S0 S C l b o, 
-      red_expr S0 C (spec_creating_function_object_6 l (out_ter S b)) (out_ter S l)
+  | red_expr_creating_function_object_3 : forall o1 S0 S C l b o, 
+      red_expr S0 C (spec_creating_function_object_3 l (out_ter S b)) (out_ter S l)
       
-  | red_expr_spec_call_builtin: forall S C builtinid args o,
+  | red_expr_spec_call_builtin: forall S C builtinid lo this args o,
+      builtinid <> builtin_spec_op_function_call /\ builtinid <> builtin_spec_op_function_bind_call ->
       red_expr S C (spec_call_builtin builtinid args) o -> 
-      red_expr S C (spec_call (function_code_builtin builtinid) None None args) o
+      red_expr S C (spec_call builtinid lo this args) o
       
-  | red_expr_spec_call_p: forall S C p l this args o,
-      red_expr S C (spec_call_prog p l this args) o -> 
-      red_expr S C (spec_call (function_code_code p) (Some l) (Some this) args) o
+  | red_expr_spec_call_p: forall S C l this args o,
+      red_expr S C (spec_op_function_call l this args) o -> 
+      red_expr S C (spec_call builtin_spec_op_function_call (Some l) (Some this) args) o
       
-  | red_expr_spec_call_prog: forall S C p l this args o,
-      red_expr S C (spec_execution_ctx_function_call (spec_call_prog_1 p) l this args) o ->
-      red_expr S C (spec_call_prog p l this args) o
+  | red_expr_spec_call_prog: forall S C l this args o,      
+      red_expr S C (spec_execution_ctx_function_call (spec_op_function_call_1 l) l this args) o ->
+      red_expr S C (spec_op_function_call l this args) o
       
-  | red_expr_spec_call_prog_1: forall o1 S C p o,
-      red_prog S C p o1 ->
-      (* TODO: 13.2.1. [[Call]] Step 2 ? *)
-      red_expr S C (spec_call_prog_2 o1) o ->
-      red_expr S C (spec_call_prog_1 p) o
+  | red_expr_spec_call_prog_1_empty: forall p o1 S C l o,
+      (* TODO: check if red_prog return (normal, undef, empty) if function body is empty *)
+      object_code S l None ->
+      red_expr S C (spec_op_function_call_1 l) (out_ter S (res_normal undef))
+      
+  | red_expr_spec_call_prog_1_prog: forall bd o1 S C l o,
+      object_code S l (Some bd) ->
+      red_prog S C (body_prog bd) o1 ->
+      red_expr S C (spec_op_function_call_2 o1) o ->
+      red_expr S C (spec_op_function_call_1 l) o
       
   | red_expr_spec_call_prog_2_throw: forall S C v,
-      red_expr S C (spec_call_prog_2 (out_ter S (res_throw v))) (out_ter S (res_throw v))
+      red_expr S C (spec_op_function_call_2 (out_ter S (res_throw v))) (out_ter S (res_throw v))
       
   | red_expr_spec_call_prog_2_return: forall S C v,
-      red_expr S C (spec_call_prog_2 (out_ter S (res_return v))) (out_ter S (res_normal v))
+      red_expr S C (spec_op_function_call_2 (out_ter S (res_return v))) (out_ter S (res_normal v))
       
   | red_expr_spec_call_prog_2_normal: forall S C v,
-      red_expr S C (spec_call_prog_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))
+      red_expr S C (spec_op_function_call_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))
       
-  | red_expr_spec_constructor_builtin: forall S C builtinid args o,
+  | red_expr_spec_constructor_builtin: forall S C builtinid lo args o,
+      builtinid <> builtin_spec_op_function_constructor /\ builtinid <> builtin_spec_op_function_bind_constructor ->
       red_expr S C (spec_constructor_builtin builtinid args) o -> 
-      red_expr S C (spec_constructor (function_code_builtin builtinid) None args) o
+      red_expr S C (spec_constructor builtinid lo args) o
       
-  | red_expr_spec_constructor_prog: forall S C p l args o,
-      red_expr S C (spec_constructor_prog p l args) o -> 
-      red_expr S C (spec_constructor (function_code_code p) (Some l) args) o
+  | red_expr_spec_constructor_function: forall S C l args o,
+      red_expr S C (spec_function_constructor l args) o -> 
+      red_expr S C (spec_constructor builtin_spec_op_function_constructor (Some l) args) o
+      
+  | red_expr_spec_function_constructor : forall o1 S C l args o,
+      red_expr S C (spec_object_get (value_object l) "prototype") o1 ->
+      red_expr S C (spec_function_constructor_1 l args o1) o ->
+      red_expr S C (spec_function_constructor l args) o
+      
+  | red_expr_spec_function_constructor_1 : forall l' proto O S' builtinid o1 S0 S C l args v o,
+      proto = (If (type_of v) = type_object then v
+               else builtin_object_proto) ->
+      O = object_create proto "Object" true builtin_spec_op_object_get Heap.empty ->
+      (l', S') = object_alloc S O ->
+      object_call S' l (Some builtinid) ->
+      red_expr S' C (spec_call builtinid (Some l) (Some (value_object l')) args) o1 ->
+      red_expr S' C (spec_function_constructor_2 l' o1) o ->
+      red_expr S0 C (spec_function_constructor_1 l args (out_ter S v)) o
+      
+  | red_expr_spec_function_constructor_2 : forall S0 S C l' v vr o,
+      vr = (If (type_of v = type_object) then v else l') ->
+      red_expr S0 C (spec_function_constructor_2 l' (out_ter S v)) (out_ter S vr)
+      
+(*      
+
+      
+      
+      let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
+      red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
+      red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 strict l) l o1) o ->
+*)
 
 (* TODO: spec_object_put_special *)
 
 (*------------------------------------------------------------*)
-(** ** Calling global object builtin functions *)
+(** ** Global object builtin functions *)
 
   (** IsNan *)
 
   | red_spec_call_global_is_nan : forall S C v o o1 args, 
-      arguments_from (v::nil) args ->
+      arguments_from args (v::nil)  -> 
       red_expr S C (spec_to_number v) o1 ->
-      red_expr S C (spec_call_global_is_nan_1 o1) o ->
+      red_expr S C (spec_call_global_is_nan o1) o ->
       red_expr S C (spec_call_builtin builtin_global_is_nan args) o
 
   | red_spec_call_global_is_nan_1 : forall S S0 C b n,
-      b = (if decide (n = JsNumber.nan) then true else false) ->
-      red_expr S0 C (spec_call_global_is_nan_1 (out_ter S n)) (out_ter S b)
+      b = (ifb n = JsNumber.nan then true else false) ->
+      red_expr S0 C (spec_call_global_is_nan (out_ter S n)) (out_ter S b)
 
   (** IsFinite *)
 
-  | red_spec_call_global_is_finite_not_nan : forall S C o o1 args, 
-      red_expr S C (spec_call_builtin builtin_global_is_nan args) o1 ->
-      red_expr S C (spec_call_global_is_finite_1 o1) o ->
-      red_expr S C (spec_call_builtin builtin_global_is_finite args) o
-
-  | red_spec_call_global_is_finite_not_nan_1 : forall S C b b1,
-      b = (if decide (b1 = true) then false else true) ->
-      red_expr S C (spec_call_global_is_finite_1 (out_ter S b1)) (out_ter S b)  
-
-  | red_spec_call_global_is_finite_not_infinity : forall S C v o o1 args, 
-      arguments_from (v::nil) args ->
+  | red_spec_call_global_is_finite : forall S C v o o1 args, 
+      arguments_from args (v::nil)  ->
       red_expr S C (spec_to_number v) o1 ->
-      red_expr S C (spec_call_global_is_finite_2 o1) o ->
+      red_expr S C (spec_call_global_is_finite o1) o ->
       red_expr S C (spec_call_builtin builtin_global_is_finite args) o
 
-  | red_spec_call_global_is_finite_not_infinity_1 : forall S S0 C b n,
-      b = (if decide (n = JsNumber.infinity \/ n = JsNumber.neg_infinity ) then false else true) ->
-      red_expr S0 C (spec_call_global_is_finite_2 (out_ter S n)) (out_ter S b)               
+  | red_spec_call_global_is_finite_1 : forall S S0 C b n,
+      b = (ifb n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity then false else true) ->
+      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)               
 
-  .
+(*------------------------------------------------------------*)
+(** ** Object builtin functions *)
 
+  (** getPrototypeOf *)
+  
+  | red_spec_call_object_get_prototype_of : forall S C v r args, 
+      arguments_from args (v::nil) ->
+      type_of v = type_object ->
+      r = (ref_create_value v "prototype" false) ->
+      red_expr S C (spec_call_builtin builtin_object_get_prototype_of args) (out_ter S (ret_ref r))
+  
+(*------------------------------------------------------------*)
+(** ** Object prototype builtin functions *)
+
+  (** Object.prototype.toString() *)
+
+  (* Daniele: we can factorize the two rules for undef and null *)
+  | red_spec_call_object_proto_to_string_undef : forall S C v v1 o args, 
+      (* Daniele: since toString takes no args, we discard it here. Is it ok? Same below. *)
+      (* I think you can actually removes this line, or write [arguments_from args nil] if you want to be very closed to the spec' :) -- Martin *)
+      (* Daniele. Ok let's do [arguments_from args nil]. I fixed the order of arguments in [arguments_from] *)
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      v = undef ->
+      red_expr S C (spec_call_builtin builtin_object_proto_to_string args) (out_ter S "[object Undefined]"%string)
+
+  | red_spec_call_object_proto_to_string_null : forall S C v v1 o args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      v = null ->
+      red_expr S C (spec_call_builtin builtin_object_proto_to_string args) (out_ter S "[object Null]"%string)
+
+  | red_spec_call_object_proto_to_string_other : forall S C v v1 o o1 args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      not (v = null \/ v = undef) ->
+      red_expr S C (spec_to_object v) o1 ->
+      red_expr S C (spec_call_object_proto_to_string o1) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_to_string args) o
+
+  | red_spec_call_object_proto_to_string : forall S S0 C l s o o1,
+      red_expr S C (spec_object_get l "class") o1 ->
+      red_expr S C (spec_call_object_proto_to_string_1 o1) o ->
+      red_expr S C (spec_call_object_proto_to_string (out_ter S0 l)) o
+
+  | red_spec_call_object_proto_to_string_1 : forall S C S0 s1 s, 
+       s = "[object " ++ s1 ++ "]" -> (* Daniele: is it the right way to concatenate strings? *)
+       red_expr S C (spec_call_object_proto_to_string_1 (out_ter S0 s1)) (out_ter S0 s) 
+
+   (** Object.prototype.isPrototypeOf() *)
+
+   | red_spec_call_object_proto_is_prototype_of_not_object : forall S C v v1 o args w, 
+      arguments_from args (v::nil)  ->
+      v = value_prim w ->
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) (out_ter S false)
+
+  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 args, 
+      arguments_from args (v::nil) ->                                             
+      v = value_object l ->
+      vt = execution_ctx_this_binding C ->
+      red_expr S C (spec_to_object vt) o1 ->
+      red_expr S C (spec_call_object_proto_is_prototype_of o1 v) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+
+  | spec_call_object_proto_is_prototype_of : forall S S0 C v vt o o1,
+      red_expr S C (spec_object_get v "prototype") o1 ->
+      red_expr S C (spec_call_object_proto_is_prototype_of_1 o1 vt) o ->
+      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S0 vt) v) o
+
+  | spec_call_object_proto_is_prototype_of_1_null : forall S C vt, 
+      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S null) vt) (out_ter S false) 
+  
+  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt vp v, 
+      vt = v ->
+      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S vp) vt) (out_ter S true) 
+
+  (** Throw Type Error Function Object Initialisation *)           
+  
+  (* Could we have this not a a reduction, but as simple function in JsInit? *)
+  | red_spec_init_throw_type_error : forall O O1 code O2 S' A o1 S C o,
+      O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
+      O1 = object_with_invokation O (Some builtin_spec_op_function_call) None None ->
+      (* TODO : Is this ok? *)
+      code = body_intro (prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) "throw TypeError()" -> 
+      O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
+      S' = object_write S builtin_function_throw_type_error O2 ->
+      A = prop_attributes_create_data JsNumber.zero false false false ->
+      red_expr S' C (spec_object_define_own_prop builtin_function_throw_type_error "length" A false) o1 ->
+      red_expr S C (spec_init_throw_type_error_1 o1) o ->
+      red_expr S C spec_init_throw_type_error o
+  
+  | red_spec_init_throw_type_error_1 : forall O S' S0 S C v o,
+      object_binds S builtin_function_throw_type_error O ->
+      S' = object_write S builtin_function_throw_type_error (object_set_extensible_false O) ->
+      red_expr S0 C (spec_init_throw_type_error_1 (out_ter S v)) (out_void S')
+
+  (** Auxiliary: creates a new object, then pass its address [l] 
+      to a continuation [K]. Used for Object Initialiser expression. *)
+  | red_spec_new_object : forall S C o o1 K, 
+      red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
+      red_expr S C (spec_new_object_1 o1 K) o ->
+      red_expr S C (spec_new_object K) o
+
+  | red_spec_new_object_1 : forall S S0 C l K o, 
+      red_expr S C (K l) o ->
+      red_expr S C (spec_new_object_1 (out_ter S0 l) K) o
+  
+  (** Shortcut: creates a new function object in the given execution context *)
+  (* Daniele: [spec_creating_function_object] requires the function body as
+     a string as the 2nd argument, but we don't have it. *)
+  | red_spec_create_new_function_in : forall S C args bd o,
+      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
+      red_expr S C (spec_create_new_function_in C args bd) o
+.
 
 (*--------------------------------*)
 (* deprecated, but to keep around for wf invariants:

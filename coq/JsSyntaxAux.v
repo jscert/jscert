@@ -9,15 +9,16 @@ Implicit Type l : object_loc.
 
 (** Builds an object with all optional fields to None *)
 
-Definition object_create vproto sclass bextens P :=
+Definition object_create vproto sclass bextens builtinget P :=
   {| object_proto_ := vproto;
      object_class_ := sclass;
      object_extensible_ := bextens;
+     object_get_ := builtinget;
      object_properties_ := P;
      object_prim_value_ := None;
      object_construct_ := None;
      object_call_ := None;
-     object_has_instance_ := false;
+     object_has_instance_ := None;
      object_scope_ := None;
      object_formal_parameters_ := None;
      object_code_ := None;
@@ -26,37 +27,57 @@ Definition object_create vproto sclass bextens P :=
      object_bound_args_ := None;
      object_parameter_map_ := None |}.
 
+(** Sets extensible to false to an object. *)
+
+Definition object_set_extensible_false O :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
+    object_intro x1 x2 false x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
+  end.
+
 (** Modifies the property field of an object. *)
 
 Definition object_with_properties O properties :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 properties x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
+    object_intro x1 x2 x3 x4 properties x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
   end.
 
 (** Modifies the primitive value field of an object *)
 
 Definition object_with_primitive_value O v :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 (Some v) x6 x7 x8 x9 x10 x11 x12 x13 x14 x15
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
+    object_intro x1 x2 x3 x4 x5 (Some v) x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
   end.
 
 (** Modifies the construct, call and has_instance fields of an object *)
 Definition object_with_invokation O constr call has_instance :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 x5 constr call has_instance x9 x10 x11 x12 x13 x14 x15
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
+    object_intro x1 x2 x3 x4 x5 x6 constr call has_instance x10 x11 x12 x13 x14 x15 x16
   end.
 
 (** Modifies the other parameters of an object *)
 
 Definition object_with_details O scope params code target boundthis boundargs paramsmap :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 =>
-    object_intro x1 x2 x3 x4 x5 x6 x7 x8 scope params code target boundthis boundargs paramsmap
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
+    object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 scope params code target boundthis boundargs paramsmap
   end.
 
+
+(** Auxiliary functions for body type *)
+
+Definition body_prog bd :=
+  match bd with
+  | body_intro p _ => p
+  end.
+  
+Definition body_string bd :=
+  match bd with
+  | body_intro _ s => s
+  end.  
 
 (**************************************************************)
 (** ** Type [builtin] *)
@@ -282,7 +303,7 @@ Qed.
 
 Global Instance object_inhab : Inhab object.
 Proof.
-  apply (prove_Inhab (object_create arbitrary arbitrary arbitrary arbitrary)).
+  apply (prove_Inhab (object_create arbitrary arbitrary arbitrary arbitrary arbitrary)).
 Qed.
 
 
@@ -302,6 +323,24 @@ Proof. apply prove_Inhab. apply* (ret_value arbitrary). Qed.
 
 Global Instance function_code_inhab : Inhab function_code.
 Proof. apply prove_Inhab. apply function_code_code. apply* stat_skip. Qed.
+
+
+(**************************************************************)
+(** ** Type [prog] *)
+
+(** Inhabitants **)
+
+Global Instance prog_inhab : Inhab prog.
+Proof. apply prove_Inhab. apply* stat_skip. Qed.
+
+
+(**************************************************************)
+(** ** Type [body] *)
+
+(** Inhabitants **)
+
+Global Instance body_inhab : Inhab body.
+Proof. apply prove_Inhab. apply (body_intro arbitrary arbitrary). Qed.
 
 
 (**************************************************************)

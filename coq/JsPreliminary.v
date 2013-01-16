@@ -76,16 +76,16 @@ Definition type_of v :=
 Definition value_same v1 v2 :=
   let T1 := type_of v1 in
   let T2 := type_of v2 in
-  If T1 <> T2 then False else
+  ifb T1 <> T2 then False else
   match T1 with
   | type_undef => True
   | type_null => True
   | type_number =>
-      If    v1 = (prim_number JsNumber.nan)
+      ifb    v1 = (prim_number JsNumber.nan)
          /\ v2 = (prim_number JsNumber.nan) then True
-      else If    v1 = (prim_number JsNumber.zero)
+      else ifb    v1 = (prim_number JsNumber.zero)
               /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else If    v1 = (prim_number JsNumber.neg_zero)
+      else ifb    v1 = (prim_number JsNumber.neg_zero)
               /\ v2 = (prim_number JsNumber.zero) then False
       else (v1 = v2)
   | type_string =>
@@ -261,6 +261,13 @@ Definition object_class S l s :=
 
 Definition object_extensible S l b :=
   exists O, object_binds S l O /\ object_extensible_ O = b.
+  
+(** [object_get S l builtinid] asserts that the
+    [[get]] method for the object stored at address [l] 
+    is described by specification function with identifier builtinid. *)
+
+Definition object_get S l builtinid :=
+  exists O, object_binds S l O /\ object_get_ O = builtinid.  
 
 (** [object_prim_value S l v] asserts that the primitive value
     field of the object stored at address [l] in [S] contains the
@@ -276,12 +283,12 @@ Definition object_prim_value S l v :=
 Definition object_call S l fco :=
   exists O, object_binds S l O /\ object_call_ O = fco.
 
-(** [object_has_instance S l b] asserts that the existance of
-    the "has instance" method for the object stored at address [l] 
-    is described by the boolean [b]. *)
+(** [object_has_instance S l builtinid] asserts that the
+    [[has instance]] method for the object stored at address [l] 
+    is described by specification function with identifier builtinid. *)
 
-Definition object_has_instance S l b :=
-  exists O, object_binds S l O /\ object_has_instance_ O = b.
+Definition object_has_instance S l builtinid :=
+  exists O, object_binds S l O /\ object_has_instance_ O = builtinid.
   
 (** [object_scope S l scope] asserts that the [[Scope]]
     field of the object stored at address [l] in [S] contains
@@ -296,6 +303,13 @@ Definition object_scope S l scope :=
 
 Definition object_formal_parameters S l fp :=
   exists O, object_binds S l O /\ object_formal_parameters_ O = fp.
+  
+(** [object_code S l bd] asserts that the [[Code]]
+    field of the object stored at address [l] in [S] contains
+    an option [bd] which may contain function body. *)
+
+Definition object_code S l bd :=
+  exists O, object_binds S l O /\ object_code_ O = bd.
 
 (** [object_properties S l P] asserts that [P]
     is the content of the properties field of the object
@@ -409,6 +423,16 @@ Definition prop_attributes_create_accessor vset vget be bc := {|
    prop_attributes_writable := None;
    prop_attributes_get := Some vget;
    prop_attributes_set := Some vset;
+   prop_attributes_enumerable := Some be;
+   prop_attributes_configurable := Some bc |}.
+
+(* LATER: get rid of "prop_attributes_create_accessor" and use everywhere
+   the function below which is slightly more general *)
+Definition prop_attributes_create_accessor_opt vseto vgeto be bc := {|
+   prop_attributes_value := None;
+   prop_attributes_writable := None;
+   prop_attributes_get := vgeto;
+   prop_attributes_set := vseto;
    prop_attributes_enumerable := Some be;
    prop_attributes_configurable := Some bc |}.
 
@@ -825,8 +849,8 @@ Implicit Type pref : preftype.
 
 
 (* TODO : retrieve function and variable declarations from code *)
-Parameter function_declarations : function_code -> list function_declaration.
-Parameter variable_declarations : function_code -> list string.
+Parameter function_declarations : prog -> list function_declaration.
+Parameter variable_declarations : prog -> list string.
 
 
 (**************************************************************)
@@ -1113,7 +1137,9 @@ Definition inequality_test_number n1 n2 : prim :=
 (** Inequality comparison for strings *)
 
 (* todo: move *)
-Axiom ascii_dec : Comparable ascii.
+Axiom ascii_compare : ascii -> ascii -> bool.
+Global Instance ascii_comparable : Comparable ascii.
+Proof. applys (comparable_beq ascii_compare). skip. Qed. (* I need this for the extraction -- Martin. *)
 Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
 
 (* TODO: extract in more efficient way *)
@@ -1252,22 +1278,22 @@ Definition regular_binary_op op :=
 (**************************************************************)
 (** ** Implementation of [callable] *)
 
-(** [callable S v fco] ensures that [fco] is [None]
-    when [v] is not an object and, that [fco] is equal
+(** [callable S v builtinido] ensures that [builtinido] is [None]
+    when [v] is not an object and, that [builtinido] is equal
     to the content of the call field of the object [v]
     otherwise. *)
 
-Definition callable S v fco :=
+Definition callable S v builtinido :=
   match v with
-  | value_prim w => (fco = None)
-  | value_object l => object_call S l fco
+  | value_prim w => (builtinido = None)
+  | value_object l => object_call S l builtinido
   end.
 
 (** [is_callable S v] asserts that the object [v] is a location
     describing an object with a Call method. *)
 
 Definition is_callable S v :=
-  exists fct, callable S v (Some fct).
+  exists builtinid, callable S v (Some builtinid).
 
 
 (**************************************************************)
@@ -1425,3 +1451,20 @@ Inductive object_all_enumerable_properties : state -> value -> set prop_name -> 
 
 Axiom parse : string -> prog -> Prop.
 
+(**************************************************************)
+(** ** Auxiliary definition used in 'Object Initializer' *)
+
+(* Daniele: I understand that the only literal admitted is a string literal.
+   what to do with the other literal cases? I putted something arbitrary but 
+   I'm not sure. Please check! *)
+Definition string_of_propname (p : propname) : string :=
+  match p with 
+      | propname_literal l => match l with  
+          | literal_null => "?"%string
+          | literal_bool b => convert_bool_to_string b
+          | literal_string s => s
+          | literal_number n => JsNumber.to_string n
+                              end
+      | propname_string s => s
+      | propname_number n => JsNumber.to_string n
+  end.

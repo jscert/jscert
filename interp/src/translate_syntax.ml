@@ -101,7 +101,7 @@ let rec exp_to_exp exp : Interpreter.expr =
       | AnnonymousFun (vs, e) -> Interpreter.Expr_function (None, (map string_to_coq vs), exp_to_prog e)
       | NamedFun (n, vs, e) -> Interpreter.Expr_function 
         (Some (string_to_coq n), (map string_to_coq vs), exp_to_prog e)
-      | Obj xs -> Interpreter.Expr_object (map (fun (s,e) -> (string_to_coq s), f e) xs)
+      | Obj xs -> Interpreter.Expr_object (map (fun (s,e) -> Interpreter.Propname_string (string_to_coq s), Interpreter.Propbody_val (f e)) xs)
       | Array _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | ConditionalOp _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
 
@@ -155,12 +155,12 @@ and exp_to_stat exp : Interpreter.stat =
       (*Statements*)
       | Skip -> Interpreter.Stat_skip
       | Return (Some e) -> f e
-      | Return None -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | Return None -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* Note:  Now it accepts this. -- Martin *)
       | Break _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Continue _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Debugger -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
-      | VarDec (v, None) -> Interpreter.Stat_var_decl (string_to_coq v, None)
-      | VarDec (v, Some e) -> Interpreter.Stat_var_decl (string_to_coq v, Some (exp_to_exp e))
+      | VarDec (v, None) -> Interpreter.Stat_var_decl [string_to_coq v, None]
+      | VarDec (v, Some e) -> Interpreter.Stat_var_decl [string_to_coq v, Some (exp_to_exp e)]
       | Throw e -> Interpreter.Stat_throw (exp_to_exp e)
       | Label (_, e) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))   
       | Seq (e1, e2) -> Interpreter.Stat_seq (f e1, f e2)

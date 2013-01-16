@@ -57,9 +57,9 @@ Global Instance value_same_dec : forall v1 v2,
 Proof.
   introv. unfolds value_same.
   sets_eq T1 E1: (type_of v1). sets_eq T2 E2: (type_of v2).
-  apply If_dec; try typeclass.
+  cases_if; try typeclass.
   destruct T1; try typeclass.
-  repeat apply If_dec; try typeclass.
+  repeat cases_if; try typeclass.
 Qed.
 
 Global Instance prop_attributes_contains_dec : forall oldpf newpf,
@@ -135,6 +135,8 @@ Definition prop_descriptor_compare An1 An2 :=
   | _, _ => false
   end.
 
+(** Decidable comparison *)
+
 Global Instance prop_descriptor_comparable : Comparable prop_descriptor.
 Proof.
   applys (comparable_beq prop_descriptor_compare). intros x y.
@@ -142,7 +144,29 @@ Proof.
    tryfalse; auto; try congruence.
 Qed.
 
+(**************************************************************)
+(** ** Type [ref_kind] *)
 
+(** Inhabitants **)
+
+Global Instance ref_kind_inhab : Inhab ref_kind.
+Proof. apply (prove_Inhab ref_kind_null). Qed.
+
+(** Decidable comparison *)
+
+Global Instance ref_kind_comparable : Comparable ref_kind.
+Proof.
+  apply make_comparable. introv.
+  destruct x; destruct y;
+    ((rewrite~ prop_eq_True_back; apply true_dec) ||
+      (rewrite~ prop_eq_False_back; [apply false_dec | discriminate])).
+Qed.
+
+
+
+
+(**************************************************************)
+(** ** Some pickable instances *)
 
 Global Instance object_binds_pickable : forall S l,
   Pickable (object_binds S l).
@@ -151,4 +175,43 @@ Proof. typeclass. Qed.
 Global Instance env_record_binds_pickable : forall S L,
   Pickable (env_record_binds S L).
 Proof. typeclass. Qed.
+
+
+(**************************************************************)
+(** ** Some decidable instances *)
+
+Global Instance prop_descriptor_is_data_dec : forall An,
+  Decidable (prop_descriptor_is_data An).
+Proof.
+  introv. destruct An; try typeclass.
+  apply neg_decidable. apply and_decidable; typeclass.
+Qed.
+
+Global Instance prop_descriptor_is_accessor_dec : forall An,
+  Decidable (prop_descriptor_is_accessor An).
+Proof.
+  introv. destruct An; try typeclass.
+  apply neg_decidable. apply and_decidable; typeclass.
+Qed.
+
+Global Instance prop_descriptor_is_generic_dec : forall An,
+  Decidable (prop_descriptor_is_generic An).
+Proof.
+  introv. destruct An; try typeclass.
+  repeat (apply and_decidable || apply neg_decidable); try typeclass.
+Qed.
+
+Global Instance prop_descriptor_fully_populated_data_dec : forall An,
+  Decidable (prop_descriptor_fully_populated_data An).
+Proof.
+  introv. destruct An; try typeclass.
+  repeat apply and_decidable; typeclass.
+Qed.
+
+Global Instance prop_descriptor_fully_populated_accessor_dec : forall An,
+  Decidable (prop_descriptor_fully_populated_accessor An).
+Proof.
+  introv. destruct An; try typeclass.
+  repeat apply and_decidable; typeclass.
+Qed.
 

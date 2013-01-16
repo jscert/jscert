@@ -11,19 +11,62 @@ let arguments () =
       "file to run"]
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
-    
+
+let string_of_coq s = String.concat "" (List.map (String.make 1) s)
+
+let get_value_ref state r =
+	match Interpreter.ref_get_value state (Interpreter.Ret_ref r) with
+    | Interpreter.Out_interp_normal (
+	   Interpreter.Out_ter (_,
+         Interpreter.Res_normal (
+		   Interpreter.Ret_or_empty_ret (
+		     Interpreter.Ret_value v)))) ->
+		Some v
+	| _ -> None
+
+let get_global_value state name =
+	let x = Translate_syntax.string_to_coq name in
+	let r =
+	  Interpreter.ref_create_env_loc
+	    Interpreter.env_loc_global_env_record 
+		x true in
+	get_value_ref state r
+
 let _ = 
   arguments (); 
   let exp = Translate_syntax.coq_syntax_from_file !file in
-  match Interpreter.run_prog 
-          max_int 
+  match Interpreter.run_prog
+          max_int
           Interpreter.state_initial
           Interpreter.execution_ctx_initial 
           exp
   with
-  | Interpreter.Out_return (heap,
-                            Interpreter.Ret_ret_expr (
-                                Interpreter.Ret_expr_value res)) ->
-     print_endline "\n\nResult:\n";
-     print_endline (Prheap.prvalue res)
+  | Interpreter.Out_interp_normal (
+      Interpreter.Out_ter (state,
+                           Interpreter.Res_normal r)) ->
+      begin
+        match r with
+        | Interpreter.Ret_or_empty_ret (Interpreter.Ret_value v) ->
+           print_endline "\n\nResult:\n";
+           print_endline (Prheap.prvalue v)
+        | Interpreter.Ret_or_empty_ret (Interpreter.Ret_ref re) ->
+           print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness o the result. -- Martin *)
+		     string_of_coq re.Interpreter.ref_name ^
+			 " and of value:\n\t" ^
+		   (match get_value_ref state re with
+		   | Some v -> Prheap.prvalue v
+		   | None -> "Unknown!") ^ "\n")
+        | Interpreter.Ret_or_empty_empty -> 
+           print_endline "\n\nNo result\n"
+	  end ;
+	  print_endline
+	    (match get_global_value state "__$ERROR__" with
+		| Some v ->
+			"A variable [__$ERROR__] is defined at global scope.  Its value is:\n\t"
+			^ Prheap.prvalue v ^ "\n"
+		| None -> "No variable [__$ERROR__] is defined at global scope.\n")
+
+  | Interpreter.Out_interp_stuck ->
+		  print_endline "\n\nFIXME:  stuck!\n"
   | _ -> print_endline "can't print"
+
