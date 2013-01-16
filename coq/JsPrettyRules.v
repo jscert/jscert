@@ -2341,7 +2341,7 @@ END OF TO CLEAN----*)
 (*------------------------------------------------------------*)
 (** ** Object prototype builtin functions *)
 
-  (** Object.prototype.toString *)
+  (** Object.prototype.toString() *)
 
   (* Daniele: we can factorize the two rules for undef and null *)
   | red_spec_call_object_proto_to_string_undef : forall S C v v1 o args, 
@@ -2372,6 +2372,33 @@ END OF TO CLEAN----*)
   | red_spec_call_object_proto_to_string_1 : forall S C S0 s1 s, 
        s = "[object " ++ s1 ++ "]" -> (* Daniele: is it the right way to concatenate strings? *)
        red_expr S C (spec_call_object_proto_to_string_1 (out_ter S0 s1)) (out_ter S0 s) 
+
+   (** Object.prototype.isPrototypeOf() *)
+
+   | red_spec_call_object_proto_is_prototype_of_not_object : forall S C v v1 o args w, 
+      arguments_from (v::nil) args ->
+      v = value_prim w ->
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) (out_ter S false)
+
+  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 args, 
+      arguments_from (v::nil) args ->                                             
+      v = value_object l ->
+      vt = execution_ctx_this_binding C ->
+      red_expr S C (spec_to_object vt) o1 ->
+      red_expr S C (spec_call_object_proto_is_prototype_of o1 v) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+
+  | spec_call_object_proto_is_prototype_of : forall S S0 C v vt o o1,
+      red_expr S C (spec_object_get v "prototype") o1 ->
+      red_expr S C (spec_call_object_proto_is_prototype_of_1 o1 vt) o ->
+      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S0 vt) v) o
+
+  | spec_call_object_proto_is_prototype_of_1_null : forall S C vt, 
+      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S null) vt) (out_ter S false) 
+  
+  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt vp v, 
+      vt = v ->
+      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S vp) vt) (out_ter S true) 
 
   (** Throw Type Error Function Object Initialisation *)           
   
