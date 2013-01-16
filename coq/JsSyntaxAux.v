@@ -67,6 +67,18 @@ Definition object_with_details O scope params code target boundthis boundargs pa
   end.
 
 
+(** Auxiliary functions for body type *)
+
+Definition body_prog bd :=
+  match bd with
+  | body_intro p _ => p
+  end.
+  
+Definition body_string bd :=
+  match bd with
+  | body_intro _ s => s
+  end.  
+
 (**************************************************************)
 (** ** Type [builtin] *)
 
@@ -320,6 +332,15 @@ Proof. apply prove_Inhab. apply function_code_code. apply* stat_skip. Qed.
 
 Global Instance prog_inhab : Inhab prog.
 Proof. apply prove_Inhab. apply* stat_skip. Qed.
+
+
+(**************************************************************)
+(** ** Type [body] *)
+
+(** Inhabitants **)
+
+Global Instance body_inhab : Inhab body.
+Proof. apply prove_Inhab. apply (body_intro arbitrary arbitrary). Qed.
 
 
 (**************************************************************)

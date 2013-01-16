@@ -212,10 +212,10 @@ Definition run_object_code_empty S l : bool :=
     (object_code_ (pick (object_binds S l))).
 
 Definition run_object_code S l : prog :=
-  snd (extract_from_option (object_code_ (pick (object_binds S l)))).
+  body_prog (extract_from_option (object_code_ (pick (object_binds S l)))).
 
 Definition run_object_code_string S l : string :=
-  fst (extract_from_option (object_code_ (pick (object_binds S l)))).
+  body_string (extract_from_option (object_code_ (pick (object_binds S l)))).
 
 Definition run_object_properties S l : object_properties_type :=
   object_properties_ (pick (object_binds S l)).
@@ -494,13 +494,13 @@ Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x 
 Definition creating_function_object_proto S l (K : state -> out_interp) : out_interp :=
   arbitrary (* TODO *).
 
-Definition creating_function_object S (names : list string) (fb : string) p X (strict : strictness_flag) : out_interp :=
+Definition creating_function_object S (names : list string) bd X (strict : strictness_flag) : out_interp :=
   let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
   let O1 := object_with_invokation O
     (Some builtin_spec_op_function_call)
     (Some builtin_spec_op_function_constructor)
     (Some builtin_spec_op_function_has_instance) in
-  let O2 := object_with_details O1 (Some X) (Some names) (Some (fb, p)) None None None None in
+  let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let '(l, S1) := object_alloc S O2 in
   let A1 := prop_attributes_create_data (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 re1 =>
@@ -544,7 +544,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
           let p' := fd_code fd in
           let strictp := function_body_is_strict p in
           let f_string := fd_string fd in
-          if_value_object (creating_function_object S0 (fd_parameters fd) f_string p' (execution_ctx_variable_env C) strictp) (fun S1 fo =>
+          if_value_object (creating_function_object S0 (fd_parameters fd) (body_intro p' f_string) (execution_ctx_variable_env C) strictp) (fun S1 fo =>
             let hb := env_record_has_binding S0 L (fd_name fd) in
             if_success (if hb then
               match run_object_get_property S builtin_global (fd_name fd) with

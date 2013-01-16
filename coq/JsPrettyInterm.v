@@ -290,13 +290,13 @@ Inductive ext_expr :=
   | spec_creating_function_object_proto_1 : (out -> ext_expr) -> object_loc -> out -> ext_expr
   | spec_creating_function_object_proto_2 : (out -> ext_expr) -> object_loc -> object_loc -> out -> ext_expr
 
-  | spec_creating_function_object : list string -> string -> prog -> lexical_env -> strictness_flag -> ext_expr
+  | spec_creating_function_object : list string -> body -> lexical_env -> strictness_flag -> ext_expr
   | spec_creating_function_object_1 : strictness_flag -> object_loc -> out -> ext_expr
   | spec_creating_function_object_2 : object_loc -> out -> ext_expr
   | spec_creating_function_object_3 : object_loc -> out -> ext_expr
   
   (* Function creation in give execution context*)
-  | spec_create_new_function_in :  execution_ctx -> list string -> prog -> ext_expr
+  | spec_create_new_function_in :  execution_ctx -> list string -> body -> ext_expr
 
   (* TODO: Check if object_loc or value could be None *)
   | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr

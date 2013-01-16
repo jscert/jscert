@@ -565,10 +565,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* --- get --- *)
   (* If the propbody is a getter, we evaluate the function definition *)
   
-  | red_expr_object_2_get : forall S C p l x o o1 s pds,
-      red_expr S C (spec_create_new_function_in C nil p) o1 ->
+  | red_expr_object_2_get : forall S C bd l x o o1 pds,
+      red_expr S C (spec_create_new_function_in C nil bd) o1 ->
       red_expr S C (expr_object_3_get l x o1 pds) o ->
-      red_expr S C (expr_object_2 l x (propbody_get (body_intro p s)) pds) o
+      red_expr S C (expr_object_2 l x (propbody_get bd) pds) o
   
   (* If the function def terminates, we create an accessor *)
   | red_expr_object_3_get : forall S S0 C A l x v pds o,  
@@ -578,10 +578,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* --- set --- *)
   (* If the propbody is a setter, we evaluate the function definition *)
-  | red_expr_object_2_set : forall S S0 C A l x v pds o o1 p s args,
-      red_expr S C (spec_create_new_function_in C args p) o1 ->
+  | red_expr_object_2_set : forall S S0 C A l x v pds o o1 bd args,
+      red_expr S C (spec_create_new_function_in C args bd) o1 ->
       red_expr S C (expr_object_3_set l x o1 pds) o ->
-      red_expr S C (expr_object_2 l x (propbody_set args (body_intro p s)) pds) o
+      red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
 
   (* If the function def terminates, we create an accessor *)
   | red_expr_object_3_set : forall S S0 C A l x v pds o,
@@ -1449,14 +1449,14 @@ END OF TO CLEAN----*)
       red_expr S C (spec_object_function_get_1 l x o1) o ->
       red_expr S C (spec_object_function_get l x) o
       
-  | red_expr_object_function_get_1_error : forall p S0 S C l v o,
-      object_code S l p ->
-      function_body_is_strict p = true ->
+  | red_expr_object_function_get_1_error : forall bd S0 S C l v o,
+      object_code S l (Some bd) ->
+      function_body_is_strict (body_prog bd) = true ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S0 C (spec_object_function_get_1 l "caller" (out_ter S v)) o
       
-  | red_expr_object_function_get_1 : forall p S0 S C l x v o,
-      (object_code S l p /\ function_body_is_strict p = false) \/ (x <> "caller") \/ (object_code_empty S l) ->
+  | red_expr_object_function_get_1 : forall bd S0 S C l x v o,
+      (object_code S l (Some bd) /\ function_body_is_strict (body_prog bd) = false) \/ (x <> "caller") \/ (object_code S l None) ->
       red_expr S0 C (spec_object_function_get_1 l x (out_ter S v)) (out_ter S v)
 
   (** Can put *)
@@ -1998,9 +1998,9 @@ END OF TO CLEAN----*)
 
   (** Function call --- TODO: check this section*)
 
-  | red_expr_execution_ctx_function_call_direct : forall p strict newthis S C K func this args o,
-      object_code S func p ->
-      strict = function_body_is_strict p ->
+  | red_expr_execution_ctx_function_call_direct : forall bd strict newthis S C K func this args o,
+      object_code S func (Some bd) ->
+      strict = function_body_is_strict (body_prog bd) ->
       (If (strict = true) then newthis = this
       else If this = null \/ this = undef then newthis = builtin_global
       else If type_of this = type_object then newthis = this
@@ -2009,20 +2009,20 @@ END OF TO CLEAN----*)
       red_expr S C (spec_execution_ctx_function_call_1 K func args strict (out_ter S newthis)) o ->
       red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_convert : forall p strict o1 S C K func this args o,
-      object_code S func p ->
-      strict = function_body_is_strict p ->
+  | red_expr_execution_ctx_function_call_convert : forall bd strict o1 S C K func this args o,
+      object_code S func (Some bd) ->
+      strict = function_body_is_strict (body_prog bd) ->
       (~ (strict = true) /\ this <> null /\ this <> undef /\ type_of this <> type_object) ->
       red_expr S C (spec_to_object this) o1 ->
       red_expr S C (spec_execution_ctx_function_call_1 K func args strict o1) o ->
       red_expr S C (spec_execution_ctx_function_call K func this args) o
 
-  | red_expr_execution_ctx_function_call_1 : forall scope p S' lex' C' strict o1 S0 C K func args S this o,
+  | red_expr_execution_ctx_function_call_1 : forall scope bd S' lex' C' strict o1 S0 C K func args S this o,
       object_scope S func (Some scope) ->
-      object_code S func p ->
+      object_code S func (Some bd) ->
       (lex', S') = lexical_env_alloc_decl S scope ->
       C' = execution_ctx_intro_same lex' this strict ->
-      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) p args) o1 ->
+      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) (body_prog bd) args) o1 ->
       red_expr S' C' (spec_execution_ctx_function_call_2 K o1) o ->
       red_expr S0 C (spec_execution_ctx_function_call_1 K func args strict (out_ter S this)) o 
       
@@ -2074,7 +2074,7 @@ END OF TO CLEAN----*)
       let p := fd_code fd in
       let strict := function_body_is_strict p in
       let f_string := fd_string fd in
-      red_expr S C (spec_creating_function_object (fd_parameters fd) f_string p (execution_ctx_variable_env C) strict) o1 ->
+      red_expr S C (spec_creating_function_object (fd_parameters fd) (body_intro p f_string) (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_void S)) o
 
@@ -2193,18 +2193,18 @@ END OF TO CLEAN----*)
       red_expr S C (K o1) o ->
       red_expr S0 C (spec_creating_function_object_proto_2 K l lproto (out_ter S b)) o
   
-  | red_expr_creating_function_object : forall l S' o1 S C names fb p X strict o,
+  | red_expr_creating_function_object : forall l S' o1 S C names bd X strict o,
       let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
       let O1 := object_with_invokation O 
         (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_constructor) 
         (Some builtin_spec_op_function_has_instance) in
-      let O2 := object_with_details O1 (Some X) (Some names) (Some (fb, p)) None None None None in
+      let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
       (l, S') = object_alloc S O2 ->
       let A := prop_attributes_create_data (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
       red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 strict l) l o1) o ->
-      red_expr S C (spec_creating_function_object names fb p X strict) o
+      red_expr S C (spec_creating_function_object names bd X strict) o
                      
 
 
@@ -2243,12 +2243,12 @@ END OF TO CLEAN----*)
       
   | red_expr_spec_call_prog_1_empty: forall p o1 S C l o,
       (* TODO: check if red_prog return (normal, undef, empty) if function body is empty *)
-      object_code_empty S l ->
+      object_code S l None ->
       red_expr S C (spec_op_function_call_1 l) (out_ter S (res_normal undef))
       
-  | red_expr_spec_call_prog_1_prog: forall p o1 S C l o,
-      object_code S l p ->
-      red_prog S C p o1 ->
+  | red_expr_spec_call_prog_1_prog: forall bd o1 S C l o,
+      object_code S l (Some bd) ->
+      red_prog S C (body_prog bd) o1 ->
       red_expr S C (spec_op_function_call_2 o1) o ->
       red_expr S C (spec_op_function_call_1 l) o
       
@@ -2345,7 +2345,7 @@ END OF TO CLEAN----*)
       O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
       O1 = object_with_invokation O (Some builtin_spec_op_function_call) None None ->
       (* TODO : Is this ok? *)
-      code = ("throw TypeError()", prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) -> 
+      code = body_intro (prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) "throw TypeError()" -> 
       O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
       S' = object_write S builtin_function_throw_type_error O2 ->
       A = prop_attributes_create_data JsNumber.zero false false false ->
@@ -2372,9 +2372,9 @@ END OF TO CLEAN----*)
   (** Shortcut: creates a new function object in the given execution context *)
   (* Daniele: [spec_creating_function_object] requires the function body as
      a string as the 2nd argument, but we don't have it. *)
-  | red_spec_create_new_function_in : forall S C args p o,
-      red_expr S C (spec_creating_function_object args ""%string p (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
-      red_expr S C (spec_create_new_function_in C args p) o
+  | red_spec_create_new_function_in : forall S C args bd o,
+      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
+      red_expr S C (spec_create_new_function_in C args bd) o
 .
 
 (*--------------------------------*)

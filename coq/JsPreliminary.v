@@ -304,25 +304,12 @@ Definition object_scope S l scope :=
 Definition object_formal_parameters S l fp :=
   exists O, object_binds S l O /\ object_formal_parameters_ O = fp.
   
-(** [object_code S l p] asserts that the [[Code]]
+(** [object_code S l bd] asserts that the [[Code]]
     field of the object stored at address [l] in [S] contains
-    an option [s, p] which may contain function code. *)
+    an option [bd] which may contain function body. *)
 
-Definition object_code S l p :=
-  exists O s, object_binds S l O /\ object_code_ O = Some (s, p).
-  
-(** [object_code_string S l s] asserts that the [[Code]]
-    field of the object stored at address [l] in [S] contains
-    an option [s, p] which may contain function code. *)
-
-Definition object_code_string S l s :=
-  exists O p, object_binds S l O /\ object_code_ O = Some (s, p).
-  
-(** [object_code_empty S l p] asserts that the [[Code]]
-    field of the object stored at address [l] in [S] is empty. *)
-
-Definition object_code_empty S l :=
-  exists O, object_binds S l O /\ object_code_ O = None.
+Definition object_code S l bd :=
+  exists O, object_binds S l O /\ object_code_ O = bd.
 
 (** [object_properties S l P] asserts that [P]
     is the content of the properties field of the object
