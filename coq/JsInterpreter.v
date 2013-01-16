@@ -479,8 +479,8 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
       out_void S'
   | env_record_object l pt =>
     if object_has_prop S l x then out_interp_stuck
-    else let An := prop_attributes_create_data undef true true deletable in
-      object_define_own_prop S l x An throw_true
+    else let A := prop_attributes_create_data undef true true deletable in
+      object_define_own_prop S l x A throw_true
   end.
 
 Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x (deletable_opt : option bool) v (strict : strictness_flag) : out_interp :=
@@ -492,7 +492,12 @@ Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x 
     end).
 
 Definition creating_function_object_proto S l (K : state -> out_interp) : out_interp :=
-  arbitrary (* TODO *).
+  let lproto := arbitrary (* TODO *) in
+  let A1 := prop_attributes_create_data (value_object l) true false true in
+  if_success (object_define_own_prop S lproto "constructor" A1 false) (fun S1 re1 =>
+    let A2 := prop_attributes_create_data (value_object lproto) true false false in
+    if_success (object_define_own_prop S1 l "prototype" A2 false) (fun S2 re2 =>
+      K S2)).
 
 Definition creating_function_object S (names : list string) bd X (strict : strictness_flag) : out_interp :=
   let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
@@ -881,18 +886,32 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
       end
 
     | expr_object lxe =>
-      arbitrary
-      (* TODO:
-      (* allocate new object *)
-      let l := fresh_for h0 in
-      let h1 := alloc_obj h0 l loc_obj_proto in
-      let '(lx,le0) := LibList.split lxe in
-      (* writing the fields *)
-      run_list_expr' h1 s nil le0 (fun h2 lv2 =>
-              let lfv := arguments_comp lx lv2 in
-              let h3 := write_fields h2 l lfv in
-              out_return h3 (value_loc l))
-      *)
+      let l : object_loc := arbitrary (* TODO *) in
+      let create_new_function_in S0 C args bd :=
+        creating_function_object S0 args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
+      (fix iniObj S0 pds : out_interp :=
+        match pds with
+        | nil => out_ter S0 l
+        | (pn, pb) :: pds' =>
+          let x := string_of_propname pn in
+          let follows S1 A :=
+            if_success (object_define_own_prop S1 l x A false) (fun S2 re =>
+              iniObj S2 pds') in
+          match pb with
+          | propbody_val e0 =>
+            if_success_value (run_expr' S0 C e0) (fun S1 v0 =>
+              let A := prop_attributes_create_data v0 true true true in
+              follows S1 A)
+          | propbody_get bd =>
+            if_value (create_new_function_in S0 C nil bd) (fun S1 v0 =>
+              let A := prop_attributes_create_accessor_opt None (Some v0) true true in
+              follows S1 A)
+          | propbody_set args bd =>
+            if_value (create_new_function_in S0 C args bd) (fun S1 v0 =>
+              let A := prop_attributes_create_accessor_opt (Some v0) None true true in
+              follows S1 A)
+          end
+        end) S lxe
 
     | expr_member e1 f =>
       run_expr' S C (expr_access e1 (expr_literal (literal_string f)))
@@ -1137,7 +1156,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
 
     | stat_for_in_var x e1o e2 s =>
       arbitrary (* TODO *)
-  
+
     | stat_debugger =>
       out_ter S ret_empty
 
