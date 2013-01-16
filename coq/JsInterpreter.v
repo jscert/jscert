@@ -165,6 +165,15 @@ Definition if_value_primitive (o : out_interp) (K : state -> prim -> out_interp)
     | _ => out_interp_stuck
     end).
 
+
+Fixpoint get_nth_arg (i : nat) (Vs : list value) : value :=
+  match i, Vs with
+  | O, v :: _ => v
+  | S i', _ :: Vs' => get_nth_arg i' Vs'
+  | _, _ => arbitrary
+  end.
+
+
 Definition prop_attributes_is_generic_or_data A :=
   prop_attributes_is_generic A \/ prop_attributes_is_data A.
 
@@ -176,6 +185,7 @@ Proof.
      apply neg_decidable; apply and_decidable; typeclass.
   apply neg_decidable; apply and_decidable; typeclass.
 Qed.
+
 
 Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *)
 
@@ -499,7 +509,7 @@ Definition creating_function_object_proto S l (K : state -> out_interp) : out_in
     if_success (object_define_own_prop S1 l "prototype" A2 false) (fun S2 re2 =>
       K S2)).
 
-Definition creating_function_object S (names : list string) bd X (strict : strictness_flag) : out_interp :=
+Definition creating_function_object S (names : list string) (bd : body) X (strict : strictness_flag) : out_interp :=
   let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
   let O1 := object_with_invokation O
     (Some builtin_spec_op_function_call)
@@ -510,7 +520,7 @@ Definition creating_function_object S (names : list string) bd X (strict : stric
   let A1 := prop_attributes_create_data (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 re1 =>
     creating_function_object_proto S2 l (fun S3 =>
-      if neg strict then out_ter S3 l
+      if negb strict then out_ter S3 l
       else (
         let vthrower := value_object builtin_function_throw_type_error in
         let A2 := prop_attributes_create_accessor vthrower vthrower false false in
@@ -742,6 +752,47 @@ Definition convert_twice {A : Type} (ifv : out_interp -> (state -> A -> out_inte
     ifv (KC S1 v2) (fun S2 vc2 =>
       K S2 vc1 vc2)).
 
+Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state -> value -> out_interp) S v1 v2 : out_interp :=
+  let checkTypesThen S0 v1 v2 K :=
+    let T1 := type_of v1 in
+    let T2 := type_of v2 in
+    ifb T1 = T2 then
+      out_ter S0 (equality_test_for_same_type T1 v1 v2) : out_interp
+    else K T1 T2 in
+  checkTypesThen S v1 v2 (fun T1 T2 =>
+    let dc_conv v1 F v2 :=
+      if_value (F S v2) (fun S0 v2' =>
+        match max_depth with
+        | O => arbitrary
+        | S max_depth' => run_equal_partial max_depth' conv_number conv_primitive S0 v1 v2'
+        end) in
+    let so b :=
+      out_ter S b in
+    ifb (T1 = type_null \/ T1 = type_undef) /\ (T2 = type_null \/ T2 = type_undef) then
+      so true
+    else ifb T1 = type_number /\ T2 = type_string then
+      dc_conv v1 conv_number v2
+    else ifb T1 = type_string /\ T2 = type_number then
+      dc_conv v2 conv_number v1
+    else ifb T1 = type_bool then
+      dc_conv v2 conv_number v1
+    else ifb T2 = type_bool then
+      dc_conv v1 conv_number v2
+    else ifb (T1 = type_string \/ T1 = type_number) /\ T2 = type_object then
+      dc_conv v1 conv_primitive v2
+    else ifb T1 = type_object /\ (T2 = type_string \/ T2 = type_number) then
+      dc_conv v2 conv_primitive v1
+    else so false).
+
+Definition run_equal :=
+  run_equal_partial 4%nat (*
+    If I'm not mistaking, the longest conversion chain is given by the following one:
+     - string, object;
+     - string, boolean;
+     - string, number;
+     - number, number.
+  *).
+
 Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out_interp :=
   let conv_primitive S v :=
     to_primitive call S C v None in
@@ -795,6 +846,17 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
       end
     | _ => out_type_error S
     end
+
+  | binary_op_strict_equal | binary_op_strict_disequal =>
+    let finalPass b :=
+      match op with
+      | binary_op_strict_equal => b
+      | binary_op_strict_disequal => negb b
+      | _ => arbitrary
+      end in
+    if_success_bool (run_equal conv_number conv_primitive S v1 v2)
+      (fun S0 => out_ter S0 (finalPass true))
+      (fun S0 => out_ter S0 (finalPass false))
 
   | _ => arbitrary (* TODO *)
 
@@ -1193,7 +1255,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
     let run_call' := run_call max_step' in
     match builtinid with
 
-    | builtin_spec_op_object_get =>
+    | builtin_spec_op_function_call =>
       let lf := extract_from_option lfo in
       let this := extract_from_option vo in
       execution_ctx_function_call run_call' S C lf this args (fun S1 C1 =>
@@ -1204,6 +1266,27 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
           if_success_return (run_prog' S1 C1 p) (fun S2 re =>
             out_ter S (res_normal undef)) (fun S2 v =>
             out_ter S (res_normal v))))
+
+    | builtin_spec_op_function_bind_call =>
+      arbitrary (* TODO *)
+
+
+    | builtin_global_is_nan =>
+      let v := get_nth_arg 0 args in
+      if_value_number (to_number run_call' S C v) (fun S0 n =>
+        out_ter S0 (neg (decide (n = JsNumber.nan))))
+
+    | builtin_global_is_finite =>
+      let v := get_nth_arg 0 args in
+      if_value_number (to_number run_call' S C v) (fun S0 n =>
+        out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
+
+    | builtin_object_get_prototype_of =>
+      let v := get_nth_arg 0 args in
+      ifb type_of v <> type_object then
+        out_interp_stuck
+      else
+        out_ter S (ret_ref (ref_create_value v "prototype" false))
 
     | _ =>
       arbitrary (* TODO *)
