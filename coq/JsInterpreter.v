@@ -221,11 +221,8 @@ Definition run_object_code_empty S l : bool :=
   morph_option true (fun _ => false)
     (object_code_ (pick (object_binds S l))).
 
-Definition run_object_code S l : prog :=
-  body_prog (extract_from_option (object_code_ (pick (object_binds S l)))).
-
-Definition run_object_code_string S l : string :=
-  body_string (extract_from_option (object_code_ (pick (object_binds S l)))).
+Definition run_object_code S l : body :=
+  extract_from_option (object_code_ (pick (object_binds S l))).
 
 Definition run_object_properties S l : object_properties_type :=
   object_properties_ (pick (object_binds S l)).
@@ -556,10 +553,8 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
         match fds with
         | nil => out_void S0
         | fd :: fds' =>
-          let p' := fd_code fd in
-          let strictp := function_body_is_strict p in
-          let f_string := fd_string fd in
-          if_value_object (creating_function_object S0 (fd_parameters fd) (body_intro p' f_string) (execution_ctx_variable_env C) strictp) (fun S1 fo =>
+          let strictp := function_body_is_strict (fd_body fd) in
+          if_value_object (creating_function_object S0 (fd_parameters fd) (fd_body fd) (execution_ctx_variable_env C) strictp) (fun S1 fo =>
             let hb := env_record_has_binding S0 L (fd_name fd) in
             if_success (if hb then
               match run_object_get_property S builtin_global (fd_name fd) with
@@ -597,7 +592,7 @@ Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_l
       let scope := extract_from_option (run_object_scope S1 lf) in
       let (lex', S') := lexical_env_alloc_decl S1 scope in
       let C' := execution_ctx_intro_same lex' this strict in
-      if_success (execution_ctx_binding_instantiation call S' C' (Some lf) p args) (fun S3 re =>
+      if_success (execution_ctx_binding_instantiation call S' C' (Some lf) (body_prog p) args) (fun S3 re =>
         K S3 C')).
 
 
@@ -1263,7 +1258,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
           out_ter S1 (res_normal undef)
         else (
           let p := run_object_code S1 lf in
-          if_success_return (run_prog' S1 C1 p) (fun S2 re =>
+          if_success_return (run_prog' S1 C1 (body_prog p)) (fun S2 re =>
             out_ter S (res_normal undef)) (fun S2 v =>
             out_ter S (res_normal v))))
 

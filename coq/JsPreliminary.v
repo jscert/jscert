@@ -830,13 +830,6 @@ Definition execution_ctx_with_lex_this C lex lthis :=
     execution_ctx_intro lex x2 lthis x4 end.
 
 (**************************************************************)
-(** ** Auxilary functions for function_code *)
-
-Definition function_code_strict fc :=
-  match fc with
-    | function_code_code p => function_body_is_strict p
-    | function_code_builtin _ => false
-  end.
 
 (** Grammar of preferred types for use by the default_value
     conversion. *)
