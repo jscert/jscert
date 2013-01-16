@@ -742,7 +742,7 @@ Definition convert_twice {A : Type} (ifv : out_interp -> (state -> A -> out_inte
     ifv (KC S1 v2) (fun S2 vc2 =>
       K S2 vc1 vc2)).
 
-Definition run_equal (conv_number conv_primitive : state -> value -> out_interp) S v1 v2 : out_interp :=
+Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state -> value -> out_interp) S v1 v2 : out_interp :=
   let checkTypesThen S0 v1 v2 K :=
     let T1 := type_of v1 in
     let T2 := type_of v2 in
@@ -752,7 +752,10 @@ Definition run_equal (conv_number conv_primitive : state -> value -> out_interp)
   checkTypesThen S v1 v2 (fun T1 T2 =>
     let dc_conv v1 F v2 :=
       if_value (F S v2) (fun S0 v2' =>
-        checkTypesThen S0 v1 v2' (fun _ => arbitrary)) in
+        match max_depth with
+        | O => arbitrary
+        | S max_depth' => run_equal_partial max_depth' conv_number conv_primitive S0 v1 v2'
+        end) in
     let so b :=
       out_ter S b in
     ifb (T1 = type_null \/ T1 = type_undef) /\ (T2 = type_null \/ T2 = type_undef) then
@@ -771,6 +774,14 @@ Definition run_equal (conv_number conv_primitive : state -> value -> out_interp)
       dc_conv v2 conv_primitive v1
     else so false).
 
+Definition run_equal :=
+  run_equal_partial 4%nat (*
+    If I'm not mistaking, the longest conversion chain is given by the following one:
+     - string, object;
+     - string, boolean;
+     - string, number;
+     - number, number.
+  *).
 
 Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out_interp :=
   let conv_primitive S v :=
