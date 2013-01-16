@@ -203,6 +203,13 @@ Definition object_builtin_object_proto :=
 (**************************************************************)
 (** Bool prototype object *)
 
+Definition object_builtin_boolean_proto :=
+  let P := Heap.empty in
+  let P := write_native P "toString" builtin_bool_proto_to_string in   
+  let P := write_native P "valueOf" builtin_bool_proto_value_of in
+  (* TODO: complete list *)
+
+  object_create_builtin null "Boolean" builtin_spec_op_object_get P. (* Daniele: ? *)
 (**************************************************************)
 (** Math object *)
 

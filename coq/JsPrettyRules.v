@@ -2403,6 +2403,51 @@ END OF TO CLEAN----*)
       vt = v ->
       red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S vp) vt) (out_ter S true) 
 
+  (*------------------------------------------------------------*)
+  (** ** Boolean prototype builtin functions *)
+  
+  (** Boolean.prototype.toString() *)
+
+  | red_spec_call_bool_proto_to_string_boolean : forall S C v v1 b s o args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_bool ->
+      s = (if decide (b = true) then "true" else "false") ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_to_string args) (out_ter S s)
+
+  | red_spec_call_bool_proto_to_string_object : forall S C v v1 o o1 args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_object ->
+      red_expr S C (spec_object_get v "Class") o1 ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string o1 v) o ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_to_string args) o
+
+  | red_spec_call_bool_proto_to_string_object_boolean : forall S C v v1 s o o1,
+      s = "Boolean" ->
+      red_expr S C (spec_object_get v "PrimitiveValue") o1 ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 o1) o ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string (out_ter S s) v) o
+
+   | red_spec_call_bool_proto_to_string_object_not_boolean : forall S C v s o,
+      not (s = "Boolean") ->
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string (out_ter S s) v) o
+
+  | red_spec_call_bool_proto_to_string_1 : forall S C s b, 
+      s = (if decide (b = true) then "true" else "false") ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 (out_ter S b)) (out_ter S s)
+
+
+
+
+
+
+
+
+
+
+
   (** Throw Type Error Function Object Initialisation *)           
   
   (* Could we have this not a a reduction, but as simple function in JsInit? *)
@@ -2460,5 +2505,4 @@ END OF TO CLEAN----*)
 
   | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
       valid_lhs_for_assign R ->
-
 *)

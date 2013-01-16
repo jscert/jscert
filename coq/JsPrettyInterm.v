@@ -328,7 +328,11 @@ Inductive ext_expr :=
   (* Object.prototype.isPrototypeOf(v) *)
   | spec_call_object_proto_is_prototype_of : out -> value -> ext_expr
   | spec_call_object_proto_is_prototype_of_1 : out -> value -> ext_expr
-                                                   
+                                  
+  (** Extended expressions for calling boolean prototype builtin functions *)                 
+  (* Boolean.prototype.toString() *)
+  | spec_call_builtin_bool_proto_to_string : out -> value -> ext_expr
+  | spec_call_builtin_bool_proto_to_string_1 : out -> ext_expr
 
 (** Grammar of extended statements *)
 
