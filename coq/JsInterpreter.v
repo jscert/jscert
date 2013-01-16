@@ -510,7 +510,7 @@ Definition creating_function_object S (names : list string) bd X (strict : stric
   let A1 := prop_attributes_create_data (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 re1 =>
     creating_function_object_proto S2 l (fun S3 =>
-      if neg strict then out_ter S3 l
+      if negb strict then out_ter S3 l
       else (
         let vthrower := value_object builtin_function_throw_type_error in
         let A2 := prop_attributes_create_accessor vthrower vthrower false false in
@@ -742,6 +742,36 @@ Definition convert_twice {A : Type} (ifv : out_interp -> (state -> A -> out_inte
     ifv (KC S1 v2) (fun S2 vc2 =>
       K S2 vc1 vc2)).
 
+Definition run_equal (conv_number conv_primitive : state -> value -> out_interp) S v1 v2 : out_interp :=
+  let checkTypesThen S0 v1 v2 K :=
+    let T1 := type_of v1 in
+    let T2 := type_of v2 in
+    ifb T1 = T2 then
+      out_ter S0 (equality_test_for_same_type T1 v1 v2) : out_interp
+    else K T1 T2 in
+  checkTypesThen S v1 v2 (fun T1 T2 =>
+    let dc_conv v1 F v2 :=
+      if_value (F S v2) (fun S0 v2' =>
+        checkTypesThen S0 v1 v2' (fun _ => arbitrary)) in
+    let so b :=
+      out_ter S b in
+    ifb (T1 = type_null \/ T1 = type_undef) /\ (T2 = type_null \/ T2 = type_undef) then
+      so true
+    else ifb T1 = type_number /\ T2 = type_string then
+      dc_conv v1 conv_number v2
+    else ifb T1 = type_string /\ T2 = type_number then
+      dc_conv v2 conv_number v1
+    else ifb T1 = type_bool then
+      dc_conv v2 conv_number v1
+    else ifb T2 = type_bool then
+      dc_conv v1 conv_number v2
+    else ifb (T1 = type_string \/ T1 = type_number) /\ T2 = type_object then
+      dc_conv v1 conv_primitive v2
+    else ifb T1 = type_object /\ (T2 = type_string \/ T2 = type_number) then
+      dc_conv v2 conv_primitive v1
+    else so false).
+
+
 Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out_interp :=
   let conv_primitive S v :=
     to_primitive call S C v None in
@@ -795,6 +825,17 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
       end
     | _ => out_type_error S
     end
+
+  | binary_op_strict_equal | binary_op_strict_disequal =>
+    let finalPass b :=
+      match op with
+      | binary_op_strict_equal => b
+      | binary_op_strict_disequal => negb b
+      | _ => arbitrary
+      end in
+    if_success_bool (run_equal conv_number conv_primitive S v1 v2)
+      (fun S0 => out_ter S0 (finalPass true))
+      (fun S0 => out_ter S0 (finalPass false))
 
   | _ => arbitrary (* TODO *)
 
