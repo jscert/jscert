@@ -124,7 +124,7 @@ interp/src/interpreter.cmi: interp/src/interpreter.mli interp/src/parser_main.cm
 	$(OCAMLOPT) -c -I interp/src -o interp/src/interpreter.cmi interp/src/interpreter.mli
 
 interp/src/interpreter.cmx: interp/src/interpreter.ml interp/src/interpreter.cmi interp/src/parser_main.cmx
-	$(OCAMLOPT) -c -I interp/src -o $@ $<
+	$(OCAMLOPT) -c -w -20 -I interp/src -o $@ $<
 
 interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/interpreter.cmx
 	$(OCAMLOPT) -c -I interp/src -o $@ $<
