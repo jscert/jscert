@@ -649,28 +649,25 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_function_named_3 : forall S0 S C l,
       red_expr S0 C (expr_function_3 l (out_void S)) (out_ter S l) 
 
-  (** Access *)
+  (** Access 11.2.1 *)
 
-  | red_expr_access : forall S0 C e1 e2 o o1,
-      red_expr S0 C e1 o1 ->
-      red_expr S0 C (expr_access_1 o1 e2) o ->
-      red_expr S0 C (expr_access e1 e2) o
+  | red_expr_access : forall S C e1 e2 o o1,
+      red_expr S C (spec_expr_get_value e1) o1 ->
+      red_expr S C (expr_access_1 o1 e2) o ->
+      red_expr S C (expr_access e1 e2) o
+      
+  | red_expr_access_1 : forall S0 S C v o o1 e2,
+      red_expr S C (spec_expr_get_value e2) o1 ->
+      red_expr S C (expr_access_2 v o1) o ->
+      red_expr S0 C (expr_access_1 (out_ter S v) e2) o
+      
+  | red_expr_access_2 : forall S0 S C v1 v2 o,
+      red_expr S C (spec_convert_twice (spec_check_object_coercible v1) (spec_to_string v2) expr_access_3) o ->
+      red_expr S0 C (expr_access_2 v1 (out_ter S v2)) o
 
-  (*| red_expr_access_1 : forall S0 S1 C o o2 e2 v1 r l,
-      getvalue S1 r v1 ->
-      red_expr S1 C e2 o2 ->
-      red_expr S1 C (expr_access_2 v1 o2) o ->
-      red_expr S0 C (expr_access_1 (out_ter S1 r) e2) o*)
-
-  (*| red_expr_access_2 : forall S0 S1 C r v1 v2 o,
-      getvalue S1 r v2 ->
-      red_expr S1 C (spec_convert_twice (spec_to_object v1) (spec_to_string v2) expr_access_3) o ->
-      red_expr S0 C (expr_access_2 v1 (out_ter S1 r)) o*)
-
-  (*| red_expr_ext_expr_access_3 :
-     v1 = value_loc l ->  (* todo: generalize when references can take value as first argument *)
-     x = convert_prim_to_string v2 ->
-     red_expr S C (expr_access_3 v1 v2) (out_ter S (Ref l x))*)
+  | red_expr_ext_expr_access_3 : forall S C v1 x r,
+     r = ref_create_value v1 x (execution_ctx_strict C) ->
+     red_expr S C (expr_access_3 v1 x) (out_ter S r)
 
   (** Member *)
 
@@ -2217,8 +2214,8 @@ END OF TO CLEAN----*)
   | red_expr_creating_function_object : forall l S' o1 S C names bd X strict o,
       let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
       let O1 := object_with_invokation O 
-        (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_constructor) 
+        (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_has_instance) in
       let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
       (l, S') = object_alloc S O2 ->
@@ -2543,7 +2540,7 @@ END OF TO CLEAN----*)
   (* Could we have this not a a reduction, but as simple function in JsInit? *)
   | red_spec_init_throw_type_error : forall O O1 code O2 S' A o1 S C o,
       O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
-      O1 = object_with_invokation O (Some builtin_spec_op_function_call) None None ->
+      O1 = object_with_invokation O None (Some builtin_spec_op_function_call) None ->
       (* TODO : Is this ok? *)
       code = body_intro (prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) "throw TypeError()" -> 
       O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->

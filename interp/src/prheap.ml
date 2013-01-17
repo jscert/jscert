@@ -1,8 +1,15 @@
 open Interpreter
 
 let prloc = function
-	| Object_loc_normal i -> "@" ^ string_of_int i
-  | Object_loc_builtin _ -> "Object_loc_builtin NIY"
+  | Object_loc_normal i -> "@" ^ string_of_int i
+  | Object_loc_builtin builtinid ->
+		match builtinid with
+		| Builtin_error -> "Builtin_error"
+		| Builtin_range_error -> "Builtin_range_error"
+		| Builtin_ref_error -> "Builtin_ref_error"
+		| Builtin_syntax_error -> "Builtin_syntax_error"
+		| Builtin_type_error -> "Builtin_type_error"
+		| _ -> "Object_loc_builtin NIY"
 
 let string_of_char_list cl =
 	let s = String.create (List.length cl) in
