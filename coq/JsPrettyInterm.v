@@ -346,7 +346,9 @@ Inductive ext_expr :=
   | spec_call_builtin_bool_proto_value_of : value -> value -> ext_expr
   | spec_call_builtin_bool_proto_value_of_1 : value -> ext_expr
 
-
+  (* Number.prototype.toString() *)
+  | spec_call_builtin_number_proto_to_string : list value -> ext_expr
+  | spec_call_builtin_number_proto_to_string_1 : out -> ext_expr
 (** Grammar of extended statements *)
 
 with ext_stat :=

@@ -202,7 +202,8 @@ Definition object_builtin_object_proto :=
 
 Definition object_builtin_bool :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" builtin_bool_proto in
+  (* Daniele: use [builtin_function_proto] when available *)
+  let P := write_constant P "prototype" (* builtin_function_proto *) builtin_bool_proto in
   (* TODO: complete list *)
   object_create_builtin_constructor builtin_bool_call builtin_bool_new 1 P.
 

@@ -2433,8 +2433,16 @@ END OF TO CLEAN----*)
       vt = v ->
       red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true) 
 
-  (** Object.prototype.valueOf() *)
-  (* TODO: what to do with 'host objects'? [spec: 15.2.4.4] *)
+  (** Object.prototype.valueOf() - [15.2.4.4] *)
+
+  (* Daniele: - ignoring host objects for now (TODO) 
+              - implementation dependent part: we always return O (as Sergio suggested)*)
+
+  | spec_call_object_proto_value_of : forall S C args vt o,   
+      arguments_from args nil ->                                             
+      vt = execution_ctx_this_binding C ->
+      red_expr S C (spec_to_object vt) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_value_of args) o 
 
   (*------------------------------------------------------------*)
   (** ** Boolean builtin functions *)
@@ -2443,12 +2451,13 @@ END OF TO CLEAN----*)
   
   
   | red_spec_bool_constructor : forall S C v o o1 args,
+      arguments_from args (v::nil) -> 
       red_expr S C (spec_to_boolean v) o1 ->
       red_expr S C (spec_constructor_builtin_bool_new o1) o ->
-      red_expr S C (spec_constructor_builtin builtin_bool_new (v::args)) o
+      red_expr S C (spec_constructor_builtin builtin_bool_new args) o
   
    | red_spec_bool_constructor_1 : forall O l b S' S C,
-      let O1 := object_create builtin_bool_proto "Boolean" true builtin_spec_op_bool_get Heap.empty in 
+      let O1 := object_create builtin_bool_proto "Boolean" true builtin_spec_op_object_get Heap.empty in 
       let O := object_with_primitive_value O1 b in 
       (l, S') = object_alloc S O ->
       red_expr S C (spec_constructor_builtin_bool_new (out_ter S b)) (out_ter S' l) 
@@ -2526,6 +2535,90 @@ END OF TO CLEAN----*)
      and [Boolean.prototype.toString()] *)
   | red_spec_call_bool_proto_value_of_1 : forall S C s b, 
       red_expr S C (spec_call_builtin_bool_proto_value_of_1 b) (out_ter S b)
+
+
+  (*------------------------------------------------------------*)
+  (** ** Number builtin functions *)
+
+  (*------------------------------------------------------------*)
+  (** ** Number prototype builtin functions *)
+
+  (* 15.7.4.2: Number.prototype.toString([radix]) *)
+
+  (* TODO *)
+
+  (* Daniele: I guess we don't have the algorithm for representing numbers 
+     as strings with different radix. I'll just ignore this (i.e. always do
+     toString in base 10) *)
+
+  (* if [this] is not a number then throw Type Error exception *)
+  | red_spec_call_number_proto_to_string_not_number : forall S C s b o v args, 
+      v = execution_ctx_this_binding C ->
+      not (type_of v = type_number) -> (* Daniele: check last lines of [15.7.4.2]. *)
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string args) o
+
+  (* if [this] is a number we proceed to the next stages *)
+  | red_spec_call_number_proto_to_string_number : forall S C s b o v args, 
+      v = execution_ctx_this_binding C ->
+      type_of v = type_number -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string args) o ->
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string args) o
+
+  (* The [radix] parameter is not there *)
+  | red_spec_call_number_proto_to_string_number_no_radix : forall S C o args, 
+      args = nil ->
+   (*   red_expr S C (spec_call_builtin builtin_number_proto_to_string ((prim_number 10%number)::args)) o -> *)
+      red_expr S C (spec_call_builtin_number_proto_to_string args) o 
+
+  (* The [radix] parameter is undefined *)
+  | red_spec_call_number_proto_to_string_number_undef_radix : forall S C v args o, 
+      arguments_from args (v::nil) ->
+      v = undef ->
+(*      red_expr S C (spec_call_builtin builtin_number_proto_to_string ((value_number 10)::args)) o *)
+      red_expr S C (spec_call_builtin_number_proto_to_string args) o 
+
+  (* The [radix] is present *)
+  | red_spec_call_number_proto_to_string_number_radix : forall S C v args o o1,
+      arguments_from args (v::nil) ->
+      not (v = undef) ->
+      red_expr S C (spec_to_integer v) o1 ->
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 o1) o -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string args) o 
+ 
+  (* If the [radix] is 10 we do a simple toString *)
+  | red_spec_call_number_proto_to_string_1_radix_10 :forall S S' C v o,
+     (* v = (value_number 10) -> *)
+      red_expr S C (spec_to_string v) o ->
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 (out_ter S' v)) o
+      
+  (* If the [radix] is out of range we throw a Range Error exception *)
+  | red_spec_call_number_proto_to_string_1_radix_out_of_range : forall S S' C v n o,
+      (* v = (value_number n) -> *)
+      (* (n < 2 /\ n > 36) ->  *)
+      red_expr S C spec_init_throw_type_error o -> (* Should be Range Error instead of Type Error *)
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 (out_ter S' v)) o
+  
+  (* If the [radix] is in range we do a simple toString 
+     TODO: in fact the number should be printed using that radix
+     implementation dependent) *)
+  | red_spec_call_number_proto_to_string_1_radix_in_range : forall S S' C v o,
+     (* v = (value_number n) -> *)
+     (* not (n < 2 /\ n > 36) ->  *)
+      red_expr S C (spec_to_string v) o -> (* This should be something different *)
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 (out_ter S' v)) o
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
