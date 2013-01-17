@@ -2389,9 +2389,6 @@ END OF TO CLEAN----*)
 
   (* Daniele: we can factorize the two rules for undef and null *)
   | red_spec_call_object_proto_to_string_undef : forall S C v v1 o args, 
-      (* Daniele: since toString takes no args, we discard it here. Is it ok? Same below. *)
-      (* I think you can actually removes this line, or write [arguments_from args nil] if you want to be very closed to the spec' :) -- Martin *)
-      (* Daniele. Ok let's do [arguments_from args nil]. I fixed the order of arguments in [arguments_from] *)
       arguments_from args nil  ->
       v = execution_ctx_this_binding C ->
       v = undef ->
@@ -2411,15 +2408,10 @@ END OF TO CLEAN----*)
       red_expr S C (spec_call_object_proto_to_string o1) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_to_string args) o
 
-  | red_spec_call_object_proto_to_string : forall S S0 C l s o o1,
-      (* You should use object_class not spec_object_get : Daiva *)
-      red_expr S C (spec_object_get l "class") o1 ->  
-      red_expr S C (spec_call_object_proto_to_string_1 o1) o ->
-      red_expr S C (spec_call_object_proto_to_string (out_ter S0 l)) o
-
-  | red_spec_call_object_proto_to_string_1 : forall S C S0 s1 s, 
-       s = "[object " ++ s1 ++ "]" -> (* Daniele: is it the right way to concatenate strings? *)
-       red_expr S C (spec_call_object_proto_to_string_1 (out_ter S0 s1)) (out_ter S0 s) 
+  | red_spec_call_object_proto_to_string : forall S S0 C l s s1 o o1,
+      object_class S l s1 ->
+      s = "[object " ++ s1 ++ "]" ->
+      red_expr S C (spec_call_object_proto_to_string (out_ter S0 l)) (out_ter S0 s)
 
    (** Object.prototype.isPrototypeOf() *)
 
@@ -2428,25 +2420,21 @@ END OF TO CLEAN----*)
       v = value_prim w ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) (out_ter S false)
 
-  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 args, 
+  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 sp args, 
       arguments_from args (v::nil) ->                                             
       v = value_object l ->
       vt = execution_ctx_this_binding C ->
       red_expr S C (spec_to_object vt) o1 ->
-      red_expr S C (spec_call_object_proto_is_prototype_of o1 v) o ->
+      object_proto S l sp ->
+      red_expr S C (spec_call_object_proto_is_prototype_of o1 sp) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
 
-  | spec_call_object_proto_is_prototype_of : forall S S0 C v vt o o1,
-      red_expr S C (spec_object_get v "prototype") o1 -> (* Use object_proto : Daiva *)
-      red_expr S C (spec_call_object_proto_is_prototype_of_1 o1 vt) o ->
-      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S0 vt) v) o
-
-  | spec_call_object_proto_is_prototype_of_1_null : forall S C vt, 
-      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S null) vt) (out_ter S false) 
+  | spec_call_object_proto_is_prototype_of_1_null : forall S C o, 
+      red_expr S C (spec_call_object_proto_is_prototype_of o null) (out_ter S false) 
   
-  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt vp v, 
+  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt v, 
       vt = v ->
-      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S vp) vt) (out_ter S true) 
+      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true) 
 
   (*------------------------------------------------------------*)
   (** ** Boolean prototype builtin functions *)
@@ -2457,31 +2445,32 @@ END OF TO CLEAN----*)
       arguments_from args nil  ->
       v = execution_ctx_this_binding C ->
       type_of v = type_bool ->
-      s = (if decide (b = true) then "true" else "false") ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 v) o ->
       red_expr S C (spec_call_builtin builtin_bool_proto_to_string args) (out_ter S s)
 
-  | red_spec_call_bool_proto_to_string_object : forall S C v v1 o o1 args, 
+  | red_spec_call_bool_proto_to_string_object : forall S C l v v1 o o1 sc args, 
       arguments_from args nil  ->
       v = execution_ctx_this_binding C ->
       type_of v = type_object ->
-      red_expr S C (spec_object_get v "Class") o1 ->
-      red_expr S C (spec_call_builtin_bool_proto_to_string o1 v) o ->
+      v = value_object l ->
+      object_class S l sc ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string sc l) o ->
       red_expr S C (spec_call_builtin builtin_bool_proto_to_string args) o
 
-  | red_spec_call_bool_proto_to_string_object_boolean : forall S C v v1 s o o1,
+  | red_spec_call_bool_proto_to_string_object_boolean : forall S C l b s o o1,
       s = "Boolean" ->
-      red_expr S C (spec_object_get v "PrimitiveValue") o1 -> (* Use object_prim_value : Daiva *)
-      red_expr S C (spec_call_builtin_bool_proto_to_string_1 o1) o ->
-      red_expr S C (spec_call_builtin_bool_proto_to_string (out_ter S s) v) o
+      object_prim_value S l b ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 b) o ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string s l) o
 
-   | red_spec_call_bool_proto_to_string_object_not_boolean : forall S C v s o,
+   | red_spec_call_bool_proto_to_string_object_not_boolean : forall S C b v s o,
       not (s = "Boolean") ->
       red_expr S C spec_init_throw_type_error o ->
-      red_expr S C (spec_call_builtin_bool_proto_to_string (out_ter S s) v) o
+      red_expr S C (spec_call_builtin_bool_proto_to_string s b) o
 
   | red_spec_call_bool_proto_to_string_1 : forall S C s b, 
       s = (if decide (b = true) then "true" else "false") ->
-      red_expr S C (spec_call_builtin_bool_proto_to_string_1 (out_ter S b)) (out_ter S s)
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 b) (out_ter S s)
 
    (** Boolean.prototype.valueOf() *)
 
