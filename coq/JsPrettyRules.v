@@ -2436,6 +2436,9 @@ END OF TO CLEAN----*)
       vt = v ->
       red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true) 
 
+  (** Object.prototype.valueOf() *)
+  (* TODO: what to do with 'host objects'? [spec: 15.2.4.4] *)
+
   (*------------------------------------------------------------*)
   (** ** Boolean prototype builtin functions *)
   
@@ -2473,6 +2476,42 @@ END OF TO CLEAN----*)
       red_expr S C (spec_call_builtin_bool_proto_to_string_1 b) (out_ter S s)
 
    (** Boolean.prototype.valueOf() *)
+
+   (* Daniele: it is really the same thing as the previous one ([Boolean.prototype.toString()]), 
+      with the only difference that at the ends it returns the real value instead of its string
+      representation. Should be factorized? I just copied and pasted and fixed one line (see comment below). *)
+
+  | red_spec_call_bool_proto_value_of_boolean : forall S C v v1 b s o args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_bool ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of_1 v) o ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_value_of args) (out_ter S s)
+
+  | red_spec_call_bool_proto_value_of_object : forall S C l v v1 o o1 sc args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_object ->
+      v = value_object l ->
+      object_class S l sc ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of sc l) o ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_value_of args) o
+
+  | red_spec_call_bool_proto_value_of_object_boolean : forall S C l b s o o1,
+      s = "Boolean" ->
+      object_prim_value S l b ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of_1 b) o ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of s l) o
+
+   | red_spec_call_bool_proto_value_of_object_not_boolean : forall S C b v s o,
+      not (s = "Boolean") ->
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of s b) o
+
+  (* Daniele: This rule is the only difference between [Boolean.prototype.valueOf()]
+     and [Boolean.prototype.toString()] *)
+  | red_spec_call_bool_proto_value_of_1 : forall S C s b, 
+      red_expr S C (spec_call_builtin_bool_proto_value_of_1 b) (out_ter S b)
 
 
 
