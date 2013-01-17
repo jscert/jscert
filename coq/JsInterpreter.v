@@ -560,7 +560,7 @@ Definition creating_function_object S (names : list string) (bd : body) X (stric
     (Some builtin_spec_op_function_constructor)
     (Some builtin_spec_op_function_has_instance) in
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
-  let '(l, S1) := object_alloc S O2 in
+  let (l, S1) := object_alloc S O2 in
   let A1 := prop_attributes_create_data (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 re1 =>
     creating_function_object_proto S2 l (fun S3 =>
@@ -568,8 +568,8 @@ Definition creating_function_object S (names : list string) (bd : body) X (stric
       else (
         let vthrower := value_object builtin_function_throw_type_error in
         let A2 := prop_attributes_create_accessor vthrower vthrower false false in
-        if_success (object_define_own_prop S2 l "caller" A2 false) (fun S4 re2 =>
-          if_success (object_define_own_prop S3 l "arguments" A2 false) (fun S5 re3 =>
+        if_success (object_define_own_prop S3 l "caller" A2 false) (fun S4 re2 =>
+          if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 re3 =>
             out_ter S5 l))))).
 
 Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) p (args : list value) : out_interp :=
