@@ -1473,7 +1473,7 @@ END OF TO CLEAN----*)
 
   | red_expr_object_can_put_2_true : forall b An S C l x A o,
       (b = If (prop_attributes_set A = Some undef \/ prop_attributes_set A = None) then false else true) ->
-        (* TODO: need to check in a real implementation whether the line above is correct *)
+      (* TODO: need to check in a real implementation whether the line above is correct *)
       red_expr S C (spec_object_can_put_2 l x true) (out_ter S b)
 
   | red_expr_object_can_put_2_false : forall b S C l x A o,
@@ -2438,7 +2438,7 @@ END OF TO CLEAN----*)
       s = (if decide (b = true) then "true" else "false") ->
       red_expr S C (spec_call_builtin_bool_proto_to_string_1 (out_ter S b)) (out_ter S s)
 
-
+   (** Boolean.prototype.valueOf() *)
 
 
 
