@@ -305,14 +305,14 @@ Definition object_has_prop S l x : bool :=
   let An := run_object_get_property S (value_object l) x in
   decide (An <> prop_descriptor_undef).
 
-Definition env_record_has_binding S L x : option bool :=
-  env_record_lookup None S L (fun er =>
+Definition env_record_has_binding S L x : bool :=
+  env_record_lookup (fun _ : unit => arbitrary) S L (fun er _ =>
     match er with
     | env_record_decl D =>
-      Some (decide (decl_env_record_indom D x))
+      decide (decl_env_record_indom D x)
     | env_record_object l pt =>
-      Some (object_has_prop S l x)
-    end).
+      object_has_prop S l x
+    end) tt.
 
 Fixpoint lexical_env_get_identifier_ref S X x (strict : strictness_flag) : ref :=
   match X with
@@ -585,9 +585,10 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
         | nil => out_void S0
         | argname :: names' =>
           let v := hd undef args in
-          if_success (if_defined (env_record_has_binding S L argname) (fun hb =>
-            if hb then out_void S0
-            else env_record_create_mutable_binding S0 L argname None)) (fun S1 re1 =>
+          let hb := env_record_has_binding S L argname in
+          if_success
+            (if hb then out_void S0
+            else env_record_create_mutable_binding S0 L argname None) (fun S1 re1 =>
               if_success (env_record_set_mutable_binding call S1 C L argname v strict)
               (fun S2 re2 =>
                 setArgs S2 (tl args) names'))
@@ -624,7 +625,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
           match vds with
           | nil => out_void S0
           | vd :: vds' =>
-            if extract_from_option (env_record_has_binding S0 L vd) then
+            if env_record_has_binding S0 L vd then
               initVariables S0 vds'
             else (if_success
               (env_record_create_set_mutable_binding call S0 C L vd (Some false) undef strict) (fun S1 re1 =>
