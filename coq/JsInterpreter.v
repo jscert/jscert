@@ -553,21 +553,23 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
         match fds with
         | nil => out_void S0
         | fd :: fds' =>
-          let strictp := function_body_is_strict (fd_body fd) in
-          if_value_object (creating_function_object S0 (fd_parameters fd) (fd_body fd) (execution_ctx_variable_env C) strictp) (fun S1 fo =>
-            let hb := env_record_has_binding S0 L (fd_name fd) in
+          let fb := fd_body fd in
+          let fn := fd_name fd in
+          let strictp := function_body_is_strict fb in
+          if_value_object (creating_function_object S0 (fd_parameters fd) fb (execution_ctx_variable_env C) strictp) (fun S1 fo =>
+            let hb := env_record_has_binding S0 L fn in
             if_success (if hb then
-              match run_object_get_property S builtin_global (fd_name fd) with
+              match run_object_get_property S builtin_global fn with
               | prop_descriptor_undef => out_interp_stuck
               | prop_descriptor_some A =>
                 ifb prop_attributes_configurable A = Some true then (
                   let A' := prop_attributes_create_data undef true true false in (* To be reread *)
-                  object_define_own_prop S1 builtin_global (fd_name fd) A' true
+                  object_define_own_prop S1 builtin_global fn A' true
                 ) else ifb prop_descriptor_is_accessor A \/ prop_attributes_writable A <> Some true \/ prop_attributes_enumerable A <> Some true then
                 out_type_error S1
                 else out_void S1
-              end else env_record_create_mutable_binding S1 L (fd_name fd) (Some false)) (fun S2 re2 =>
-                if_success (env_record_set_mutable_binding call S2 C L (fd_name fd) (value_object fo) strictp) (fun S3 re3 =>
+              end else env_record_create_mutable_binding S1 L fn (Some false)) (fun S2 re2 =>
+                if_success (env_record_set_mutable_binding call S2 C L fn (value_object fo) strictp) (fun S3 re3 =>
                   createExecutionContext S3 fds')))
         end) S1 fds) (fun S2 re =>
         let vds := variable_declarations p in
@@ -659,6 +661,17 @@ Definition run_callable S v : option builtin :=
     run_object_call S l
   end.
 
+Global Instance is_callable_dec : forall S v,
+  Decidable (is_callable S v).
+Proof.
+  introv. applys decidable_make
+    (morph_option false (fun _ => true) (run_callable S v)).
+  destruct v; simpls.
+   rewrite~ isTrue_false. introv [b H]. inverts H.
+   lets (p&H): binds_pickable (state_object_heap S) o; try typeclass.
+    skip. (* TODO: tests: (exists a, binds (state_object_heap S) o a). *)
+Qed.
+
 Definition to_default (call : run_call_type) S C l (prefo : option preftype) : out_interp :=
   let gpref := unsome_default preftype_number prefo in
   let lpref := other_preftypes gpref in
@@ -711,11 +724,29 @@ Definition to_string (call : run_call_type) S C v : out_interp :=
       out_ter S (convert_prim_to_string w))
   end.
 
+Definition env_record_implicit_this_value S L : value :=
+  match pick (env_record_binds S L) with
+  | env_record_decl D => undef
+  | env_record_object l provide_this =>
+    if provide_this then value_object l
+    else undef
+  end.
+
+
+Fixpoint run_list_expr (run_expr : state -> execution_ctx -> expr -> out_interp)
+  S1 C (vs : list value) (es : list expr)
+  (K : state -> list value -> out_interp) : out_interp :=
+  match es with
+  | nil => K S1 (LibList.rev vs)
+  | e :: es' =>
+    if_success_value (run_expr S1 C e) (fun S2 v =>
+      run_list_expr run_expr S2 C (v :: vs) es' K)
+  end.
 
 End LexicalEnvironments.
 
 
-Section IntermediaryFunctions.
+Section Operators.
 
 Definition is_lazy_op (op : binary_op) : option bool :=
   match op with
@@ -857,7 +888,7 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
 
   end.
 
-End IntermediaryFunctions.
+End Operators.
 
 Section Interpreter.
 
@@ -1022,27 +1053,31 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
       let h4 := write h3 l1 (field_normal y) (value_loc l') in
       out_return h4 (value_loc l')*)
 
-    | expr_call e1 le2 =>
-      arbitrary
-      (* TODO
-      if_success (run_expr' h0 s e1) (fun h1 r1 =>
-        if_eq loc_eval h1 (getvalue_comp h1 r1) (fun _ =>
-          make_error h0 "Not_implemented"
-        ) (fun l1 =>
-          let l2 := get_this h1 r1 in
-          if_binds_scope_body h1 l1 (fun s3 lx P3 =>
-            let ys := defs_prog lx P3 in
-            run_list_expr' h1 s nil le2 (fun h2 lv2 =>
-              let l3 := fresh_for h2 in
-              let h3 := alloc_obj h2 l3 loc_null in
-              let h4 := write h3 l3 field_this l2 in
-              let lfv := arguments_comp lx lv2 in
-              let h5 := write_fields h4 l3 lfv in
-              let h6 := write_fields h5 l3
-                (LibList.map (fun y => (field_normal y, value_undef)) ys) in
-              if_success_value (run_prog' h6 (l3 :: s3) P3) (fun h7 v3 =>
-                out_return h7 v3)))))
-      *)
+    | expr_call e1 e2s =>
+      if_success (run_expr' S C e1) (fun S1 re =>
+        if_success_value (out_ter S1 re) (fun S2 f =>
+          run_list_expr run_expr' S2 C nil e2s (fun S3 args =>
+            match f with
+            | value_object l =>
+              ifb ~ (is_callable S3 l) then out_type_error S3
+              else
+                let follow v :=
+                  let builtin := extract_from_option (run_object_call S3 l) in
+                  run_call' S3 C builtin (Some l) (Some v) args in
+                match re with
+                | ret_value v => follow undef
+                | ret_ref r =>
+                  match ref_base r with
+                  | ref_base_type_value v =>
+                    ifb ref_is_property r then follow v
+                    else out_interp_stuck
+                  | ref_base_type_env_loc L =>
+                    follow (env_record_implicit_this_value S3 L)
+                  end
+                | _ => out_interp_stuck
+                end
+            | _ => out_type_error S3
+            end)))
 
     | expr_this =>
       out_ter S (execution_ctx_this_binding C)

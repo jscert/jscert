@@ -832,8 +832,8 @@ Definition execution_ctx_with_lex_this C lex lthis :=
   match C with execution_ctx_intro x1 x2 x3 x4 =>
     execution_ctx_intro lex x2 lthis x4 end.
 
-(**************************************************************)
 
+(**************************************************************)
 (** Grammar of preferred types for use by the default_value
     conversion. *)
 
