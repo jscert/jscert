@@ -2437,7 +2437,7 @@ END OF TO CLEAN----*)
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
 
   | spec_call_object_proto_is_prototype_of : forall S S0 C v vt o o1,
-      red_expr S C (spec_object_get v "prototype") o1 ->
+      red_expr S C (spec_object_get v "prototype") o1 -> (* Use object_proto : Daiva *)
       red_expr S C (spec_call_object_proto_is_prototype_of_1 o1 vt) o ->
       red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S0 vt) v) o
 
@@ -2470,7 +2470,7 @@ END OF TO CLEAN----*)
 
   | red_spec_call_bool_proto_to_string_object_boolean : forall S C v v1 s o o1,
       s = "Boolean" ->
-      red_expr S C (spec_object_get v "PrimitiveValue") o1 ->
+      red_expr S C (spec_object_get v "PrimitiveValue") o1 -> (* Use object_prim_value : Daiva *)
       red_expr S C (spec_call_builtin_bool_proto_to_string_1 o1) o ->
       red_expr S C (spec_call_builtin_bool_proto_to_string (out_ter S s) v) o
 
