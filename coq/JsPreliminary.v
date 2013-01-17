@@ -612,6 +612,9 @@ Definition ref_is_property r :=
   let k := ref_kind_of r in
      k = ref_kind_primitive_base
   \/ k = ref_kind_object.
+  
+Definition ref_is_value r v :=
+  ref_base r = ref_base_type_value v.
 
 (** [ref_is_env_record r L] asserts that the reference [r]
     either has the environment record L as base. *)
@@ -829,15 +832,8 @@ Definition execution_ctx_with_lex_this C lex lthis :=
   match C with execution_ctx_intro x1 x2 x3 x4 =>
     execution_ctx_intro lex x2 lthis x4 end.
 
+
 (**************************************************************)
-(** ** Auxilary functions for function_code *)
-
-Definition function_code_strict fc :=
-  match fc with
-    | function_code_code p => function_body_is_strict p
-    | function_code_builtin _ => false
-  end.
-
 (** Grammar of preferred types for use by the default_value
     conversion. *)
 

@@ -70,6 +70,10 @@ Inductive ext_expr :=
   | expr_object_4 : object_loc -> string -> prop_attributes -> list (propname * propbody) -> ext_expr
   | expr_object_5 : object_loc -> list (propname * propbody) -> out -> ext_expr
   
+  | expr_function_1 : string -> list string -> body -> env_loc -> lexical_env -> out -> ext_expr
+  | expr_function_2 : string -> env_loc -> out -> ext_expr
+  | expr_function_3 : object_loc -> out -> ext_expr
+  
   | expr_access_1 : out -> expr -> ext_expr (* The left expression has been executed *)
   | expr_access_2 : object_loc -> out -> ext_expr (* The left expression has been converted to a location and the right expression is executed. *)
   | expr_access_3 : value -> value -> ext_expr
@@ -77,10 +81,11 @@ Inductive ext_expr :=
   | expr_new_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
   | expr_new_2 : object_loc -> function_code -> list value -> ext_expr (* The arguments too. *)
   | expr_new_3 : object_loc -> out -> ext_expr (* The call has been executed. *)
+  
   | expr_call_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
-  | expr_call_2 : object_loc -> object_loc -> list expr -> ext_expr (* A check is performed on the location returned to know if it's a special one. *)
-  | expr_call_3 : object_loc -> function_code -> list value -> ext_expr (* The arguments have been executed. *)
-  | expr_call_4 : out -> ext_expr (* The call has been executed. *)
+  | expr_call_2 : ret -> list expr -> out -> ext_expr 
+  | expr_call_3 : ret -> value -> list value -> ext_expr (* The arguments have been executed. *)
+  | expr_call_4 : object_loc -> list value -> out -> ext_expr (* The call has been executed. *)
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
@@ -235,8 +240,8 @@ Inductive ext_expr :=
   | spec_env_record_create_set_mutable_binding : env_loc -> prop_name -> option bool -> value -> bool -> ext_expr
   | spec_env_record_create_set_mutable_binding_1 : out -> env_loc -> prop_name -> value -> bool -> ext_expr
 
-  | spec_env_record_implicit_this_value : env_loc -> prop_name -> ext_expr
-  | spec_env_record_implicit_this_value_1 : env_loc -> prop_name -> env_record -> ext_expr
+  | spec_env_record_implicit_this_value : env_loc -> ext_expr
+  | spec_env_record_implicit_this_value_1 : env_loc -> env_record -> ext_expr
 
   (** Extended expressions for operations on lexical environments *)
 

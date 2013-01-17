@@ -98,9 +98,9 @@ let rec exp_to_exp exp : Interpreter.expr =
       | Comma (e1, e2) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Call (e1, e2s) -> Interpreter.Expr_call (f e1, map (fun e2 -> f e2) e2s)
       | New (e1, e2s) -> Interpreter.Expr_new (f e1, map (fun e2 -> f e2) e2s)
-      | AnnonymousFun (vs, e) -> Interpreter.Expr_function (None, (map string_to_coq vs), exp_to_prog e)
+      | AnnonymousFun (vs, e) -> Interpreter.Expr_function (None, (map string_to_coq vs), Interpreter.Body_intro (exp_to_prog e, []))
       | NamedFun (n, vs, e) -> Interpreter.Expr_function 
-        (Some (string_to_coq n), (map string_to_coq vs), exp_to_prog e)
+        (Some (string_to_coq n), (map string_to_coq vs), Interpreter.Body_intro (exp_to_prog e, []))
       | Obj xs -> Interpreter.Expr_object (map (fun (s,e) -> Interpreter.Propname_string (string_to_coq s), Interpreter.Propbody_val (f e)) xs)
       | Array _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | ConditionalOp _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
@@ -182,12 +182,12 @@ and exp_to_stat exp : Interpreter.stat =
 	           List.fold_right (fun s1 s2 -> Interpreter.Stat_seq (f s1, s2)) stmts (f last)
         end
 
-and exp_to_prog exp =
+and exp_to_prog exp : Interpreter.prog =
   let f = exp_to_prog in
   let tos = string_to_coq in
   match exp.exp_stx with
 	  | NamedFun (name, args, body) -> 
-      Interpreter.Prog_function_decl (tos name, map tos args, f body)
+      Interpreter.Prog_function_decl (tos name, map tos args, Interpreter.Body_intro (f body, []))
 	  | Seq (e1, e2) -> Interpreter.Prog_seq (f e1, f e2)
 	  | _ -> Interpreter.Prog_stat (exp_to_stat exp)
 
