@@ -2214,8 +2214,8 @@ END OF TO CLEAN----*)
   | red_expr_creating_function_object : forall l S' o1 S C names bd X strict o,
       let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
       let O1 := object_with_invokation O 
-        (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_constructor) 
+        (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_has_instance) in
       let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
       (l, S') = object_alloc S O2 ->
@@ -2523,7 +2523,7 @@ END OF TO CLEAN----*)
   (* Could we have this not a a reduction, but as simple function in JsInit? *)
   | red_spec_init_throw_type_error : forall O O1 code O2 S' A o1 S C o,
       O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
-      O1 = object_with_invokation O (Some builtin_spec_op_function_call) None None ->
+      O1 = object_with_invokation O None (Some builtin_spec_op_function_call) None ->
       (* TODO : Is this ok? *)
       code = body_intro (prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) "throw TypeError()" -> 
       O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->

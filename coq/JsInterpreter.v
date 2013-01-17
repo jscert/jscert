@@ -556,8 +556,8 @@ Definition creating_function_object_proto S l (K : state -> out_interp) : out_in
 Definition creating_function_object S (names : list string) (bd : body) X (strict : strictness_flag) : out_interp :=
   let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
   let O1 := object_with_invokation O
-    (Some builtin_spec_op_function_call)
     (Some builtin_spec_op_function_constructor)
+    (Some builtin_spec_op_function_call)
     (Some builtin_spec_op_function_has_instance) in
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
