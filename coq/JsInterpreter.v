@@ -248,7 +248,8 @@ Qed.
 
 Definition run_decl_env_record_binds_value D x : value :=
   snd (pick (binds D x)).
- 
+
+
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
   | None => prop_descriptor_undef
@@ -348,6 +349,31 @@ Definition to_object S v : out_interp :=
     out_ter S' l
   | value_object l => out_ter S l
   end.
+
+Definition constructor_builtin S (builtinid : builtin) (vs : list value) : out_interp :=
+  match builtinid with
+
+  | builtin_object_new =>
+    let nil_case _ :=
+      let O := object_create builtin_object_proto "Object" true builtin_spec_op_object_get Heap.empty in
+      let (l, S') := object_alloc S O in
+      out_ter S' l in
+    match vs with
+    | nil => nil_case tt
+    | v :: vs' =>
+      match type_of v with
+      | type_object => out_ter S v
+      | type_null | type_undef =>
+        nil_case tt
+      | type_string | type_bool | type_number =>
+        to_object S v
+      end
+    end
+
+  | _ => arbitrary (* TODO *)
+
+  end.
+
 
 Definition object_get_special S v x : out_interp :=
   if_value_object (to_object S v) (fun S' l =>
@@ -520,12 +546,12 @@ Definition env_record_initialize_immutable_binding  S L x v : out_interp :=
   end.
 
 Definition creating_function_object_proto S l (K : state -> out_interp) : out_interp :=
-  let lproto := arbitrary (* TODO *) in
-  let A1 := prop_attributes_create_data (value_object l) true false true in
-  if_success (object_define_own_prop S lproto "constructor" A1 false) (fun S1 re1 =>
-    let A2 := prop_attributes_create_data (value_object lproto) true false false in
-    if_success (object_define_own_prop S1 l "prototype" A2 false) (fun S2 re2 =>
-      K S2)).
+  if_value_object (constructor_builtin S builtin_object_new nil) (fun S1 lproto =>
+    let A1 := prop_attributes_create_data (value_object l) true false true in
+    if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 re1 =>
+      let A2 := prop_attributes_create_data (value_object lproto) true false false in
+      if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 re2 =>
+        K S3))).
 
 Definition creating_function_object S (names : list string) (bd : body) X (strict : strictness_flag) : out_interp :=
   let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
@@ -1066,7 +1092,7 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
           if_value_object (creating_function_object S1 args bd lex' (function_body_is_strict bd)) (fun S2 l =>
             if_success (env_record_initialize_immutable_binding S2 L fn l) (fun S3 re2 =>
               out_ter S3 l))) in
-      map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 1 lex' tt
+      map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt
 
     | expr_call e1 e2s =>
       if_success (run_expr' S C e1) (fun S1 re =>

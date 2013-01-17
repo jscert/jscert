@@ -333,10 +333,16 @@ Inductive ext_expr :=
   | spec_call_object_proto_is_prototype_of : out -> value -> ext_expr
  
                                   
-  (** Extended expressions for calling boolean prototype builtin functions *)                 
+  (** Extended expressions for calling boolean prototype builtin functions *)   
+              
   (* Boolean.prototype.toString() *)
   | spec_call_builtin_bool_proto_to_string : value -> value -> ext_expr
   | spec_call_builtin_bool_proto_to_string_1 : value -> ext_expr
+
+  (* Boolean.prototype.toString() *)
+  | spec_call_builtin_bool_proto_value_of : value -> value -> ext_expr
+  | spec_call_builtin_bool_proto_value_of_1 : value -> ext_expr
+
 
 (** Grammar of extended statements *)
 

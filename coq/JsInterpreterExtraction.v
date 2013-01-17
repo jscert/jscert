@@ -43,7 +43,7 @@ Require Import ExtrOcamlNatInt.
 Require Import ExtrOcamlString.
 
 (* TODO:  These extraction directives are only temporary. *)
-Extract Constant function_body_is_strict => "(fun _ -> raise Not_found)".
+Extract Constant function_body_is_strict => "(fun _ -> false (* TODO:  Writen by hand, not implemented in the Coq file.  This is just to be able to run some tests. *))".
 Extract Constant function_declarations => "(fun _ -> raise Not_found)".
 Extract Constant variable_declarations => "(fun _ -> raise Not_found)".
 
