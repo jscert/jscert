@@ -75,7 +75,7 @@ Inductive ext_expr :=
   | expr_function_3 : object_loc -> out -> ext_expr
   
   | expr_access_1 : out -> expr -> ext_expr (* The left expression has been executed *)
-  | expr_access_2 : object_loc -> out -> ext_expr (* The left expression has been converted to a location and the right expression is executed. *)
+  | expr_access_2 : value -> out -> ext_expr (* The right expression is executed. *)
   | expr_access_3 : value -> value -> ext_expr
 
   | expr_new_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
