@@ -2361,20 +2361,20 @@ END OF TO CLEAN----*)
       
   (** new Object ([value]) 15.2.2.1. *)
   
-  | red_spec_object_constructor_obj : forall S C v,
+  | red_spec_object_constructor_obj : forall S C v vs,
       (* TODO: handle host objects *)
       type_of v = type_object ->
-      red_expr S C (spec_constructor_builtin builtin_object_new (v::nil)) (out_ter S v)
+      red_expr S C (spec_constructor_builtin builtin_object_new (v::vs)) (out_ter S v)
       
-  | red_spec_object_constructor_prim : forall S C v o,
+  | red_spec_object_constructor_prim : forall S C v vs o,
       type_of v = type_string \/ type_of v = type_bool \/ type_of v = type_number ->
       red_expr S C (spec_to_object v) o ->
-      red_expr S C (spec_constructor_builtin builtin_object_new (v::nil)) o
+      red_expr S C (spec_constructor_builtin builtin_object_new (v::vs)) o
       
-  | red_spec_object_constructor_null_undef : forall S C v o,
+  | red_spec_object_constructor_null_undef : forall S C v vs o,
       type_of v = type_null \/ type_of v = type_undef ->
       red_expr S C (spec_constructor_builtin builtin_object_new nil) o ->
-      red_expr S C (spec_constructor_builtin builtin_object_new (v::nil)) o
+      red_expr S C (spec_constructor_builtin builtin_object_new (v::vs)) o
  
    | red_spec_object_constructor_nil : forall O l S' S C,
       O = object_create builtin_object_proto "Object" true builtin_spec_op_object_get Heap.empty ->
