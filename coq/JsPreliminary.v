@@ -844,11 +844,6 @@ Inductive preftype :=
 Implicit Type pref : preftype.
 
 
-(* TODO : retrieve function and variable declarations from code *)
-Parameter function_declarations : prog -> list function_declaration.
-Parameter variable_declarations : prog -> list string.
-
-
 (**************************************************************)
 (** ** Rules for propagating aborting expressions *)
 
