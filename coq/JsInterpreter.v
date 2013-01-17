@@ -72,7 +72,7 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   end.
 
 Definition extract_from_option {B : Type} `{Inhab B} (op : option B) :=
-  (morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op) tt.
+  morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.
 
 Definition if_success (o : out_interp) (K : state -> ret_or_empty -> out_interp) : out_interp :=
   match o with
@@ -166,15 +166,17 @@ Definition if_value_primitive (o : out_interp) (K : state -> prim -> out_interp)
     end).
 
 
-Fixpoint get_nth_arg (i : nat) (Vs : list value) : value :=
-  match i, Vs with
-  | O, v :: _ => v
-  | S i', _ :: Vs' => get_nth_arg i' Vs'
-  | _, _ => arbitrary
+Fixpoint map_nth {A B : Type} (d : B) (f : A -> B) (i : nat) (s : list A) : B :=
+  match i, s with
+  | O, a :: _ => f a
+  | S i', _ :: s' => map_nth d f i' s'
+  | _, _ => d
   end.
 
+Definition get_nth {A : Type} (d : A) (i : nat) (s : list A) : A :=
+  map_nth (fun _ : unit => d) (fun (x : A) _ => x) i s tt.
 
-Definition prop_attributes_is_generic_or_data A :=
+Definition prop_attributes_is_generic_or_data A := (* TODO:  Still needed? *)
   prop_attributes_is_generic A \/ prop_attributes_is_data A.
 
 Global Instance prop_attributes_is_generic_or_data_dec : forall A,
@@ -244,6 +246,9 @@ Proof.
   skip. (* binds is a functionnal construction. *)
 Qed.
 
+Definition run_decl_env_record_binds_value D x : value :=
+  snd (pick (binds D x)).
+ 
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
   | None => prop_descriptor_undef
@@ -397,8 +402,7 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
   | prop_descriptor_undef =>
     if extensible then (
       let S' := pick (object_set_property S l x
-        (if @decide (prop_attributes_is_generic_or_data newpf)
-          (prop_attributes_is_generic_or_data_dec newpf) then (* Why Coq is not able to infer this?!? *)
+        (ifb prop_attributes_is_generic_or_data newpf then
           prop_attributes_convert_to_data newpf
         else prop_attributes_convert_to_accessor newpf)) in
       out_ter S' true
@@ -497,6 +501,23 @@ Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x 
       env_record_set_mutable_binding call S C L x v strict
     | _ => out_interp_stuck
     end).
+
+Definition env_record_create_immutable_binding S L x : out_interp :=
+  match pick (env_record_binds S L) with
+  | env_record_decl D =>
+    ifb decl_env_record_indom D x then out_interp_stuck
+    else out_void (
+      env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
+  | _ => out_interp_stuck
+  end.
+
+Definition env_record_initialize_immutable_binding  S L x v : out_interp :=
+  match pick (env_record_binds S L) with
+  | env_record_decl D =>
+    let v_old := run_decl_env_record_binds_value D x in
+    out_void (env_record_write_decl_env S L x mutability_immutable v)
+  | _ => out_interp_stuck
+  end.
 
 Definition creating_function_object_proto S l (K : state -> out_interp) : out_interp :=
   let lproto := arbitrary (* TODO *) in
@@ -1034,24 +1055,18 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
           end
         end)
 
-    | expr_function _ _ _ => arbitrary
-    (* TODO
-    | expr_function None f e =>
-      let l := fresh_for h0 in
-      let h1 := alloc_obj h0 l loc_obj_proto in
-      let l' := fresh_for h1 in
-      let h2 := alloc_fun h1 l' s f e l in
-      out_return h2 (value_loc l')
+    | expr_function None args bd =>
+      creating_function_object S args bd (execution_ctx_lexical_env C) (function_body_is_strict bd)
 
-    | expr_function (Some y) f e =>
-      let l := fresh_for h0 in
-      let h1 := alloc_obj h0 l loc_obj_proto in
-      let l1 := fresh_for h1 in
-      let h2 := alloc_obj h1 l1 loc_obj_proto in
-      let l' := fresh_for h2 in
-      let h3 := alloc_fun h2 l' (l1 :: s) f e l in
-      let h4 := write h3 l1 (field_normal y) (value_loc l') in
-      out_return h4 (value_loc l')*)
+    | expr_function (Some fn) args bd =>
+      let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
+      let follow L :=
+        let E := pick (env_record_binds S' L) in
+        if_success (env_record_create_immutable_binding S' L fn) (fun S1 re1 =>
+          if_value_object (creating_function_object S1 args bd lex' (function_body_is_strict bd)) (fun S2 l =>
+            if_success (env_record_initialize_immutable_binding S2 L fn l) (fun S3 re2 =>
+              out_ter S3 l))) in
+      map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 1 lex' tt
 
     | expr_call e1 e2s =>
       if_success (run_expr' S C e1) (fun S1 re =>
@@ -1302,17 +1317,17 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
 
 
     | builtin_global_is_nan =>
-      let v := get_nth_arg 0 args in
+      let v := get_nth undef 0 args in
       if_value_number (to_number run_call' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan))))
 
     | builtin_global_is_finite =>
-      let v := get_nth_arg 0 args in
+      let v := get_nth undef 0 args in
       if_value_number (to_number run_call' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
     | builtin_object_get_prototype_of =>
-      let v := get_nth_arg 0 args in
+      let v := get_nth undef 0 args in
       ifb type_of v <> type_object then
         out_interp_stuck
       else
