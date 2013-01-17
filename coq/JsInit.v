@@ -198,12 +198,18 @@ Definition object_builtin_object_proto :=
 (** String prototype object *)
 
 (**************************************************************)
-(** Bool object *)
+(** Bool object *) (* Daniele: help! *)
+
+Definition object_builtin_bool :=
+  let P := Heap.empty in
+  let P := write_constant P "prototype" builtin_bool_proto in
+  (* TODO: complete list *)
+  object_create_builtin_constructor builtin_bool_call builtin_bool_new 1 P.
 
 (**************************************************************)
 (** Bool prototype object *)
 
-Definition object_builtin_boolean_proto :=
+Definition object_builtin_bool_proto :=
   let P := Heap.empty in
   let P := write_native P "toString" builtin_bool_proto_to_string in   
   let P := write_native P "valueOf" builtin_bool_proto_value_of in
@@ -222,6 +228,8 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_global object_builtin_global in
   let h := Heap.write h builtin_object object_builtin_object in
   let h := Heap.write h builtin_object_proto object_builtin_object_proto in
+  let h := Heap.write h builtin_bool object_builtin_bool in
+  let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in
   (* TODO: update and uncomment once definitions have been completed
   let h := Heap.write h builtin_array_proto object_builtin_array_proto in
   let h := Heap.write h builtin_number_proto object_builtin_number_proto in

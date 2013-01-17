@@ -274,6 +274,8 @@ Inductive builtin :=
   (* LATER:
   | builtin_string_proto_char_code_at *)
 
+  | builtin_bool
+  | builtin_bool_proto
   | builtin_bool_call
   | builtin_bool_new
   | builtin_bool_proto_to_string
@@ -310,6 +312,7 @@ Inductive builtin :=
   (* [[Get]] *) 
   | builtin_spec_op_object_get (* 8.12.3 *)
   | builtin_spec_op_function_get (* 15.3.5.4 *)
+  | builtin_spec_op_bool_get (* Daniele: check! Maybe it's not needed...*)
   .
 
 

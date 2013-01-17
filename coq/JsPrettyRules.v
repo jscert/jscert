@@ -2440,6 +2440,23 @@ END OF TO CLEAN----*)
   (* TODO: what to do with 'host objects'? [spec: 15.2.4.4] *)
 
   (*------------------------------------------------------------*)
+  (** ** Boolean builtin functions *)
+
+  (** new Boolean(value) *)
+  
+  
+  | red_spec_bool_constructor : forall S C v o o1 args,
+      red_expr S C (spec_to_boolean v) o1 ->
+      red_expr S C (spec_constructor_builtin_bool_new o1) o ->
+      red_expr S C (spec_constructor_builtin builtin_bool_new (v::args)) o
+  
+   | red_spec_bool_constructor_1 : forall O l b S' S C,
+      let O1 := object_create builtin_bool_proto "Boolean" true builtin_spec_op_bool_get Heap.empty in 
+      let O := object_with_primitive_value O1 b in 
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_constructor_builtin_bool_new (out_ter S b)) (out_ter S' l) 
+
+  (*------------------------------------------------------------*)
   (** ** Boolean prototype builtin functions *)
   
   (** Boolean.prototype.toString() *)
