@@ -1865,19 +1865,19 @@ END OF TO CLEAN----*)
 
   (** Create immutable binding *)
 
-  | red_expr_env_record_create_immutable_binding : forall D S C L x h',
+  | red_expr_env_record_create_immutable_binding : forall D S C L x S',
       env_record_binds S L (env_record_decl D) -> (* Note: the spec asserts that there is a binding *)
       ~ decl_env_record_indom D x ->
-      h' = env_record_write_decl_env S L x mutability_uninitialized_immutable undef ->
-      red_expr S C (spec_env_record_create_immutable_binding L x) (out_void h')
+      S' = env_record_write_decl_env S L x mutability_uninitialized_immutable undef ->
+      red_expr S C (spec_env_record_create_immutable_binding L x) (out_void S')
 
   (** Initialize immutable binding *)
 
-  | red_expr_env_record_initialize_immutable_binding : forall D v_old S C L x v h',
+  | red_expr_env_record_initialize_immutable_binding : forall D v_old S C L x v S',
       env_record_binds S L (env_record_decl D) ->
       decl_env_record_binds D x mutability_uninitialized_immutable v_old -> (* Note: v_old is always undef *)
-      h' = env_record_write_decl_env S L x mutability_immutable v ->
-      red_expr S C (spec_env_record_initialize_immutable_binding L x v) (out_void h')
+      S' = env_record_write_decl_env S L x mutability_immutable v ->
+      red_expr S C (spec_env_record_initialize_immutable_binding L x v) (out_void S')
 
   (** Create mutable binding *)
 
