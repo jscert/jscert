@@ -2412,7 +2412,8 @@ END OF TO CLEAN----*)
       red_expr S C (spec_call_builtin builtin_object_proto_to_string args) o
 
   | red_spec_call_object_proto_to_string : forall S S0 C l s o o1,
-      red_expr S C (spec_object_get l "class") o1 ->
+      (* You should use object_class not spec_object_get : Daiva *)
+      red_expr S C (spec_object_get l "class") o1 ->  
       red_expr S C (spec_call_object_proto_to_string_1 o1) o ->
       red_expr S C (spec_call_object_proto_to_string (out_ter S0 l)) o
 
