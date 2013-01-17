@@ -16,8 +16,6 @@ let arguments () =
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
 
-let string_of_coq s = String.concat "" (List.map (String.make 1) s)
-
 let get_value_ref state r =
 	match Interpreter.ref_get_value state (Interpreter.Ret_ref r) with
     | Interpreter.Out_interp_normal (
@@ -59,7 +57,7 @@ let _ =
                       print_endline (Prheap.prvalue v)
                    | Interpreter.Ret_or_empty_ret (Interpreter.Ret_ref re) ->
                       print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness o the result. -- Martin *)
-		                                   string_of_coq re.Interpreter.ref_name ^
+		                                   Prheap.string_of_char_list re.Interpreter.ref_name ^
 			                                   " and of value:\n\t" ^
 		                                       (match get_value_ref state re with
 		                                        | Some v -> Prheap.prvalue v

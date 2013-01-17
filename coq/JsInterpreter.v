@@ -465,11 +465,39 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
   end.
 
 
-Definition run_prog_type : Type := (* The functions taking such an argument can call any arbitrary code *)
+(* The functions taking such arguments can call any arbitrary code *)
+Definition run_prog_type : Type :=
   state -> execution_ctx -> prog -> out_interp.
 
 Definition run_call_type : Type :=
   state -> execution_ctx -> builtin -> option object_loc -> option value -> list value -> out_interp.
+
+
+Definition ref_get_value S (re : ret) : out_interp :=
+  match re with
+  | ret_value v => out_ter S v
+  | ret_ref r =>
+    match ref_kind_of r with
+    | ref_kind_null | ref_kind_undef => out_ref_error S
+    | ref_kind_primitive_base =>
+      match ref_base r with
+      | ref_base_type_value v =>
+        object_get_special S v (ref_name r)
+      | ref_base_type_env_loc L =>
+        env_record_get_binding_value S L (ref_name r) (ref_strict r)
+      end
+    | ref_kind_object => out_interp_stuck
+    | ref_kind_env_record =>
+      match ref_base r with
+      | ref_base_type_value v => out_interp_stuck
+      | ref_base_type_env_loc L =>
+        env_record_get_binding_value S L (ref_name r) (ref_strict r)
+      end
+    end
+  end.
+
+Definition object_put_special v x (vnew : value) (strict : bool) : out_interp :=
+  arbitrary (* TODO *).
 
 Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_interp :=
   if_success_bool (object_can_put S l x) (fun S =>
@@ -498,13 +526,42 @@ Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (stri
   | env_record_decl D =>
     let (mu, v) := read D x in
     ifb mutability_is_mutable mu then
-      out_void (env_record_write_decl_env S L x mu v)
+      out_void (env_record_write_decl_env S L x mu v) (* TODO:  I really don't understand why, but it seems that at this point, [x] has been updated to [undefined] and not [v].  Can somebody help me understand this point?  -- Martin. *)
     else if strict then
       out_type_error S
     else out_ter S prim_undef
   | env_record_object l pt =>
     object_put call S C l x v strict
   end.
+
+Definition ref_put_value (call : run_call_type) S C re v : out_interp :=
+  match re with
+  | ret_value v => out_ref_error S
+  | ret_ref r =>
+    ifb ref_is_unresolvable r then (
+      if ref_strict r then out_ref_error S
+      else object_put call S C builtin_global (ref_name r) v throw_false)
+    else
+      match ref_base r with
+      | ref_base_type_value (value_object l) =>
+        object_put call S C l (ref_name r) v (ref_strict r)
+      | ref_base_type_value (value_prim w) =>
+        ifb ref_kind_of r = ref_kind_primitive_base then
+          object_put_special (value_prim w) (ref_name r) v (ref_strict r)
+        else out_interp_stuck
+      | ref_base_type_env_loc L =>
+        env_record_set_mutable_binding call S C L (ref_name r) v (ref_strict r)
+      end
+  end.
+
+Definition if_success_value (o : out_interp) (K : state -> value -> out_interp) : out_interp :=
+  if_success_ret o (fun S1 re1 =>
+      if_success (ref_get_value S1 re1) (fun S2 re2 =>
+        match re2 with
+        | ret_value v => K S2 v
+        | _ => out_ref_error S1
+        end)).
+
 
 Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : out_interp :=
   let deletable := unsome_default false deletable_opt in
@@ -640,67 +697,13 @@ Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_l
     else ifb type_of this = type_object then out_ter S this
     else to_object S this) (fun S1 newthis =>
       let scope := extract_from_option (run_object_scope S1 lf) in
-      let (lex', S') := lexical_env_alloc_decl S1 scope in
-      let C' := execution_ctx_intro_same lex' this strict in
-      if_success (execution_ctx_binding_instantiation call S' C' (Some lf) (body_prog p) args) (fun S3 re =>
-        K S3 C')).
+      let (lex', S2) := lexical_env_alloc_decl S1 scope in
+      let C1 := execution_ctx_intro_same lex' this strict in
+      if_success (execution_ctx_binding_instantiation call S2 C1 (Some lf) (body_prog p) args) (fun S3 re =>
+        K S3 C1)).
 
-
-Definition ref_get_value S (re : ret) : out_interp :=
-  match re with
-  | ret_value v => out_ter S v
-  | ret_ref r =>
-    match ref_kind_of r with
-    | ref_kind_null | ref_kind_undef => out_ref_error S
-    | ref_kind_primitive_base =>
-      match ref_base r with
-      | ref_base_type_value v =>
-        object_get_special S v (ref_name r)
-      | ref_base_type_env_loc L =>
-        env_record_get_binding_value S L (ref_name r) (ref_strict r)
-      end
-    | ref_kind_object => out_interp_stuck
-    | ref_kind_env_record =>
-      match ref_base r with
-      | ref_base_type_value v => out_interp_stuck
-      | ref_base_type_env_loc L =>
-        env_record_get_binding_value S L (ref_name r) (ref_strict r)
-      end
-    end
-  end.
-
-Definition object_put_special v x (vnew : value) (strict : bool) : out_interp :=
-  arbitrary (* TODO *).
-
-Definition ref_put_value (call : run_call_type) S C re v : out_interp :=
-  match re with
-  | ret_value v => out_ref_error S
-  | ret_ref r =>
-    ifb ref_is_unresolvable r then (
-      if ref_strict r then out_ref_error S
-      else object_put call S C builtin_global (ref_name r) v throw_false)
-    else
-      match ref_base r with
-      | ref_base_type_value (value_object l) =>
-        object_put call S C l (ref_name r) v (ref_strict r)
-      | ref_base_type_value (value_prim w) =>
-        ifb ref_kind_of r = ref_kind_primitive_base then
-          object_put_special (value_prim w) (ref_name r) v (ref_strict r)
-        else out_interp_stuck
-      | ref_base_type_env_loc L =>
-        env_record_set_mutable_binding call S C L (ref_name r) v (ref_strict r)
-      end
-  end.
 
 (* Definition object_has_instance *) (* TODO:  understand the rules [spec_object_has_instance] of the semantics. *)
-
-Definition if_success_value (o : out_interp) (K : state -> value -> out_interp) : out_interp :=
-  if_success_ret o (fun S1 re1 =>
-      if_success (ref_get_value S1 re1) (fun S2 re2 =>
-        match re2 with
-        | ret_value v => K S2 v
-        | _ => out_ref_error S1
-        end)).
 
 Definition run_callable S v : option builtin :=
   match v with
@@ -1336,8 +1339,8 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
         else (
           let p := run_object_code S1 lf in
           if_success_return (run_prog' S1 C1 (body_prog p)) (fun S2 re =>
-            out_ter S (res_normal undef)) (fun S2 v =>
-            out_ter S (res_normal v))))
+            out_ter S2 (res_normal undef)) (fun S2 v =>
+            out_ter S2 (res_normal v))))
 
     | builtin_spec_op_function_bind_call =>
       arbitrary (* TODO *)
