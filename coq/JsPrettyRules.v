@@ -604,7 +604,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 (*---begin to clean ---*)
 
-  (*----- TOCLEAN---
+  (*----- TOCLEAN---*)
 
   (** Array initializer [TODO] *)
 
@@ -636,14 +636,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (expr_function_1 s args bd L lex' o1) o -> 
       red_expr S C (expr_function (Some s) args bd) o 
       
-  | red_expr_function_named_1 : forall o1 S0 S C s args bd o,
+  | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
       red_expr S C (spec_creating_function_object args bd scope (function_body_is_strict bd)) o1 ->
-      red_expr S C (expr_function_2 s L o1) ->
+      red_expr S C (expr_function_2 s L o1) o ->
       red_expr S0 C (expr_function_1 s args bd L scope (out_void S)) o
       
   | red_expr_function_named_2 : forall o1 S0 S C s L l o,
       red_expr S C (spec_env_record_initialize_immutable_binding L s l) o1 ->
-      red_expr S C (expr_function_3 l o1) ->
+      red_expr S C (expr_function_3 l o1) o ->
       red_expr S0 C (expr_function_2 s L (out_ter S l)) o  
       
   | red_expr_function_named_3 : forall S0 S C l,
@@ -725,42 +725,61 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_new_3 l0 (out_ter S1 r)) (out_ter S1 l)*)
 
 
-  (** Call *)
+  (** Call 11.2.3 *)
 
-(*
+
   | red_expr_call : forall S0 C e1 e2s o1 o2,
-      red_expr S0 C (expr_basic e1) o1 ->
+      red_expr S0 C e1 o1 ->
       red_expr S0 C (expr_call_1 o1 e2s) o2 ->
       red_expr S0 C (expr_call e1 e2s) o2
-*)
-  (*| red_expr_call_1 : forall S0 S1 C l1 l2 o r1 e2s,
-      getvalue S1 r1 l1 ->
-      l2 = get_this S1 r1 ->
-      red_expr S1 C (expr_call_2 l1 l2 e2s) o ->
-      red_expr S0 C (expr_call_1 (out_ter S1 r1) e2s) o*)
 
-  (*| red_expr_call_2 : forall S0 C l1 l2 s3 P3 xs e2s o,
-      l1 <> loc_eval ->
-      binds S0 l1 field_scope (value_scope s3) ->
-      binds S0 l1 field_body (value_body xs P3) ->
-      red_expr S0 C (expr_list_then (expr_call_3 l2 (normal_body s3 xs P3)) e2s) o ->
-      red_expr S0 C (expr_call_2 l1 l2 e2s) o*)
+  | red_expr_call_1 : forall o1 S0 S C o R e2s,
+      red_expr S C (spec_get_value R) o1 ->
+      red_expr S C (expr_call_2 R e2s o1) o ->
+      red_expr S0 C (expr_call_1 (out_ter S R) e2s) o
+      
+  | red_expr_call_2 : forall S0 S C o R v e2s,
+      red_expr S C (expr_list_then (expr_call_3 R v) e2s) o ->
+      red_expr S0 C (expr_call_2 R e2s (out_ter S v)) o
+      
+  | red_expr_call_3_not_object : forall S C o R v vs,
+      type_of v <> type_object ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (expr_call_3 R v vs) o
+      
+  | red_expr_call_3_not_callable : forall S C o R l vs,
+      ~ (is_callable S l) ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (expr_call_3 R (value_object l) vs) o
+      
+  | red_expr_call_3_prop : forall v S C o r l vs,
+      (is_callable S l) ->
+      ref_is_property r -> 
+      ref_is_value r v ->
+      red_expr S C (expr_call_4 l vs (out_ter S v)) o ->
+      red_expr S C (expr_call_3 (ret_ref r) (value_object l) vs) o
+      
+  | red_expr_call_3_env : forall L o1 S C o r l vs,
+      (is_callable S l) ->
+      ref_is_env_record r L -> 
+      red_expr S C (spec_env_record_implicit_this_value L) o1 -> 
+      red_expr S C (expr_call_4 l vs o1) o ->
+      red_expr S C (expr_call_3 (ret_ref r) (value_object l) vs) o
 
-  | red_expr_call_2_eval : forall S0 C e2s l2 o,
+  | red_expr_call_3_not_ref : forall S C v l vs o,
+      red_expr S C (expr_call_4 l vs (out_ter S undef)) o ->
+      red_expr S C (expr_call_3 (ret_value v) (value_object l) vs) o
+   
+  | red_expr_call_4 : forall builtin S0 S C l vs v o,
+      object_call S l (Some builtin) ->
+      red_expr S C (spec_call builtin (Some l) (Some v) vs) o ->
+      red_expr S0 C (expr_call_4 l vs (out_ter S v)) o    
+      
+  (* TODO: eval call *)     
+   
+  (*| red_expr_call_2_eval : forall S0 C e2s l2 o,
       red_expr S0 C (expr_list_then (expr_call_3 l2 primitive_eval) e2s) o ->
-      red_expr S0 C (expr_call_2 loc_eval l2 e2s) o
-
-  (*| red_expr_call_3 : forall S0 S1 S2 S3 S4 l0 l1 o3 o ys vs xs fvs C s3 P3,
-      ys = defs_prog xs P3 ->
-      object_fresh S0 l1 ->
-      S1 = alloc_obj S0 l1 loc_null ->
-      S2 = write S1 l1 field_this l0 ->
-      arguments xs vs fvs ->
-      S3 = write_fields S2 l1 fvs ->
-      S4 = reserve_local_vars S3 l1 ys ->
-      red_expr S4 (l1::s3) (ext_expr_prog P3) o3 ->
-      red_expr S4 C (expr_call_4 o3) o ->
-      red_expr S0 C (expr_call_3 l0 (normal_body s3 xs P3) vs) o*)
+      red_expr S0 C (expr_call_2 loc_eval l2 e2s) o*)
 
   (*| red_expr_call_3_eval : forall S0 C vs g e3 l0 o o3,
       parse g e3 ->
@@ -768,11 +787,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_call_4 o3) o ->
       red_expr S0 C (expr_call_3 l0 primitive_eval (g::vs)) o*)
 
-  (*| red_expr_call_4 : forall S0 S1 C r v,
-      getvalue S1 r v ->
-      red_expr S0 C (expr_call_4 (out_ter S1 r)) (out_ter S1 v)*)
-
----end to clean ---*)
+(*---end to clean ---*)
 
   (** Unary op -- regular rules *)
 
@@ -1966,17 +1981,17 @@ END OF TO CLEAN----*)
 
   (** Record implicit this value *)
 
-  | red_expr_env_record_implicit_this_value : forall S C L x o E,
+  | red_expr_env_record_implicit_this_value : forall S C L o E,
       env_record_binds S L E ->
-      red_expr S C (spec_env_record_implicit_this_value_1 L x E) o ->
-      red_expr S C (spec_env_record_implicit_this_value L x) o
+      red_expr S C (spec_env_record_implicit_this_value_1 L E) o ->
+      red_expr S C (spec_env_record_implicit_this_value L) o
 
-  | red_expr_env_record_implicit_this_value_1_decl : forall S C L x D,
-      red_expr S C (spec_env_record_implicit_this_value_1 L x (env_record_decl D)) (out_ter S undef)
+  | red_expr_env_record_implicit_this_value_1_decl : forall S C L D,
+      red_expr S C (spec_env_record_implicit_this_value_1 L (env_record_decl D)) (out_ter S undef)
 
-  | red_expr_env_record_implicit_this_value_1_obj : forall S C L x l (provide_this : bool) v,
+  | red_expr_env_record_implicit_this_value_1_obj : forall S C L l (provide_this : bool) v,
       v = (if provide_this then (value_object l) else undef) ->
-      red_expr S C (spec_env_record_implicit_this_value_1 L x (env_record_object l provide_this)) (out_ter S v)
+      red_expr S C (spec_env_record_implicit_this_value_1 L (env_record_object l provide_this)) (out_ter S v)
 
   (*------------------------------------------------------------*)
   (** ** Operations on lexical environments *)

@@ -612,6 +612,9 @@ Definition ref_is_property r :=
   let k := ref_kind_of r in
      k = ref_kind_primitive_base
   \/ k = ref_kind_object.
+  
+Definition ref_is_value r v :=
+  ref_base r = ref_base_type_value v.
 
 (** [ref_is_env_record r L] asserts that the reference [r]
     either has the environment record L as base. *)
