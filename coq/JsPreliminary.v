@@ -226,7 +226,7 @@ Definition object_write S l O :=
 Definition object_alloc S O :=
    match S with state_intro cells bindings (n:::alloc) =>
      let L := object_loc_normal n in
-     (L, object_write S L O)
+     (L, object_write (state_intro cells bindings alloc) L O)
    end.
 
 (** [object_binds S l O] asserts that [l] is bound to the object [O]
