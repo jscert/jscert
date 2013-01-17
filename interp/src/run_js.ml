@@ -8,7 +8,11 @@ let arguments () =
       "path to js_parser.jar";
       "-file",
       Arg.String(fun f -> file := f),
-      "file to run"]
+      "file to run";
+      "-verbose",
+      Arg.Unit(fun () -> Parser_main.verbose := true),
+      "print the parsed program"
+    ]
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
 
