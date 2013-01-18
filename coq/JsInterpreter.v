@@ -524,7 +524,7 @@ Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_inte
 Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : strictness_flag) : out_interp :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
-    let (mu, v) := read D x in
+    let (mu, v_old) := read D x in
     ifb mutability_is_mutable mu then
       out_void (env_record_write_decl_env S L x mu v) (* TODO:  I really don't understand why, but it seems that at this point, [x] has been updated to [undefined] and not [v].  Can somebody help me understand this point?  -- Martin. *)
     else if strict then
@@ -690,17 +690,18 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
           end) S2 vds)).
 
 Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> out_interp) :=
-  let p := run_object_code S lf in
-  let strict := function_body_is_strict p in
-  if_success (if strict then out_ter S this
-    else ifb this = null \/ this = undef then out_ter S builtin_global
-    else ifb type_of this = type_object then out_ter S this
-    else to_object S this) (fun S1 newthis =>
-      let scope := extract_from_option (run_object_scope S1 lf) in
-      let (lex', S2) := lexical_env_alloc_decl S1 scope in
-      let C1 := execution_ctx_intro_same lex' this strict in
-      if_success (execution_ctx_binding_instantiation call S2 C1 (Some lf) (body_prog p) args) (fun S3 re =>
-        K S3 C1)).
+  let bd := run_object_code S lf in
+  let strict := function_body_is_strict bd in
+  let newthis :=
+    if strict then this
+    else ifb this = null \/ this = undef then builtin_global
+    else ifb type_of this = type_object then this
+    else arbitrary in
+  let scope := extract_from_option (run_object_scope S lf) in
+  let (lex', S1) := lexical_env_alloc_decl S scope in
+  let C1 := execution_ctx_intro_same lex' this strict in
+  if_success (execution_ctx_binding_instantiation call S1 C1 (Some lf) (body_prog bd) args) (fun S2 re =>
+    K S2 C1).
 
 
 (* Definition object_has_instance *) (* TODO:  understand the rules [spec_object_has_instance] of the semantics. *)
