@@ -180,3 +180,50 @@ let print_to_file f h=
 	output_string oc (main h);
 	close_out oc
  *)
+
+
+let dump_expr_step = function
+  | Expr_this -> "Expr_this"
+  | Expr_variable _ -> "Expr_variable"
+  | Expr_literal _ -> "Expr_literal"
+  | Expr_object _ -> "Expr_object"
+  | Expr_function _ -> "Expr_function"
+  | Expr_access _ -> "Expr_access"
+  | Expr_member _ -> "Expr_member"
+  | Expr_new _ -> "Expr_new"
+  | Expr_call _ -> "Expr_call"
+  | Expr_unary_op _ -> "Expr_unary_op"
+  | Expr_binary_op _ -> "Expr_binary_op"
+  | Expr_conditional _ -> "Expr_conditional"
+  | Expr_assign _ -> "Expr_assign"
+
+let dump_propbody_step = function
+  | Propbody_val _ -> "Propbody_val"
+  | Propbody_get _ -> "Propbody_get"
+  | Propbody_set _ -> "Propbody_set"
+
+let dump_body_step = function
+  | Body_intro _ -> "Body_intro"
+
+let dump_stat_step = function
+  | Stat_expr _ -> "Stat_expr"
+  | Stat_seq _ -> "Stat_seq"
+  | Stat_var_decl _ -> "Stat_var_decl"
+  | Stat_if _ -> "Stat_if"
+  | Stat_while _ -> "Stat_while"
+  | Stat_with _ -> "Stat_with"
+  | Stat_throw _ -> "Stat_throw"
+  | Stat_return _ -> "Stat_return"
+  | Stat_break _ -> "Stat_break"
+  | Stat_continue _ -> "Stat_continue"
+  | Stat_try _ -> "Stat_try"
+  | Stat_skip -> "Stat_skip"
+  | Stat_for_in _ -> "Stat_for_in"
+  | Stat_for_in_var _ -> "Stat_for_in_var"
+  | Stat_debugger -> "Stat_debugger"
+
+let dump_prog_step = function
+  | Prog_stat _ -> "Prog_stat"
+  | Prog_seq _ -> "Prog_seq"
+  | Prog_function_decl _ -> "Prog_function_decl"
+

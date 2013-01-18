@@ -295,6 +295,17 @@ Definition object_get_property_body run_object_get_property S v x : prop_descrip
 
 Definition run_object_get_property := FixFun3 object_get_property_body.
 
+Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : out_interp :=
+  match run_object_proto S  l  with
+  | null => out_ter S false
+  | value_object l' =>
+    ifb l' = l0 then out_ter S true
+    else run_object_proto_is_prototype_of S l0 l'
+  | _ => out_interp_stuck
+  end.
+
+Definition run_object_proto_is_prototype_of := FixFun3 object_proto_is_prototype_of_body.
+
 Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
   match read_option (state_env_record_heap S) L with
   | Some er => K er
@@ -524,9 +535,9 @@ Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_inte
 Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : strictness_flag) : out_interp :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
-    let (mu, v) := read D x in
+    let (mu, v_old) := read D x in
     ifb mutability_is_mutable mu then
-      out_void (env_record_write_decl_env S L x mu v) (* TODO:  I really don't understand why, but it seems that at this point, [x] has been updated to [undefined] and not [v].  Can somebody help me understand this point?  -- Martin. *)
+      out_void (env_record_write_decl_env S L x mu v)
     else if strict then
       out_type_error S
     else out_ter S prim_undef
@@ -690,17 +701,18 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
           end) S2 vds)).
 
 Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> out_interp) :=
-  let p := run_object_code S lf in
-  let strict := function_body_is_strict p in
-  if_success (if strict then out_ter S this
-    else ifb this = null \/ this = undef then out_ter S builtin_global
-    else ifb type_of this = type_object then out_ter S this
-    else to_object S this) (fun S1 newthis =>
-      let scope := extract_from_option (run_object_scope S1 lf) in
-      let (lex', S2) := lexical_env_alloc_decl S1 scope in
-      let C1 := execution_ctx_intro_same lex' this strict in
-      if_success (execution_ctx_binding_instantiation call S2 C1 (Some lf) (body_prog p) args) (fun S3 re =>
-        K S3 C1)).
+  let bd := run_object_code S lf in
+  let strict := function_body_is_strict bd in
+  let newthis :=
+    if strict then this
+    else ifb this = null \/ this = undef then builtin_global
+    else ifb type_of this = type_object then this
+    else arbitrary in
+  let scope := extract_from_option (run_object_scope S lf) in
+  let (lex', S1) := lexical_env_alloc_decl S scope in
+  let C1 := execution_ctx_intro_same lex' this strict in
+  if_success (execution_ctx_binding_instantiation call S1 C1 (Some lf) (body_prog bd) args) (fun S2 re =>
+    K S2 C1).
 
 
 (* Definition object_has_instance *) (* TODO:  understand the rules [spec_object_has_instance] of the semantics. *)
@@ -1314,7 +1326,11 @@ with run_prog (max_step : nat) S C p : out_interp :=
     | prog_seq p1 p2 =>
       if_success (run_prog' S C p1) (fun S1 re1 =>
         if_success (run_prog' S1 C p2) (fun S2 re2 =>
-          out_ter S2 re2))
+          out_ter S2
+            match re2 with
+            | ret_empty => re1
+            | _ => re2
+            end))
 
     | prog_function_decl f lx P =>
       arbitrary (* TODO *)
@@ -1362,6 +1378,27 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
         out_interp_stuck
       else
         out_ter S (ret_ref (ref_create_value v "prototype" false))
+
+    | builtin_object_proto_to_string =>
+      let v := execution_ctx_this_binding C in
+      match v with
+      | undef => out_ter S "[object Undefined]"
+      | null => out_ter S "[object Null]"
+      | _ =>
+        if_value_object (to_object S v) (fun S1 l =>
+          let s := run_object_class S l in
+          out_ter S1 ("[object " ++ s ++ "]"))
+      end
+
+    | builtin_object_proto_is_prototype_of =>
+      let v := get_nth undef 0 args in
+      match v with
+      | value_prim w => out_ter S false
+      | value_object l =>
+        let vt := execution_ctx_this_binding C in
+        if_value_object (to_object S vt) (fun S1 lo =>
+          run_object_proto_is_prototype_of S1 lo l)
+      end
 
     | _ =>
       arbitrary (* TODO *)
