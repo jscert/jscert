@@ -2358,25 +2358,24 @@ END OF TO CLEAN----*)
       
   (** new Object ([value]) 15.2.2.1. *)
   
-  | red_spec_object_constructor_obj : forall S C v vs,
+  | red_spec_object_constructor_obj : forall v S C args,
       (* TODO: handle host objects *)
+      arguments_from args (v::nil) ->
       type_of v = type_object ->
-      red_expr S C (spec_constructor_builtin builtin_object_new (v::vs)) (out_ter S v)
+      red_expr S C (spec_constructor_builtin builtin_object_new args) (out_ter S v)
       
-  | red_spec_object_constructor_prim : forall S C v vs o,
+  | red_spec_object_constructor_prim : forall v S C args o,
+      arguments_from args (v::nil) ->
       type_of v = type_string \/ type_of v = type_bool \/ type_of v = type_number ->
       red_expr S C (spec_to_object v) o ->
-      red_expr S C (spec_constructor_builtin builtin_object_new (v::vs)) o
-      
-  | red_spec_object_constructor_null_undef : forall S C v vs o,
-      type_of v = type_null \/ type_of v = type_undef ->
-      red_expr S C (spec_constructor_builtin builtin_object_new nil) o ->
-      red_expr S C (spec_constructor_builtin builtin_object_new (v::vs)) o
+      red_expr S C (spec_constructor_builtin builtin_object_new args) o
  
-   | red_spec_object_constructor_nil : forall O l S' S C,
+   | red_spec_object_constructor_nil : forall v O S' S C args l,
+      arguments_from args (v::nil) ->
+      type_of v = type_null \/ type_of v = type_undef ->
       O = object_create builtin_object_proto "Object" true builtin_spec_op_object_get Heap.empty ->
       (l, S') = object_alloc S O ->
-      red_expr S C (spec_constructor_builtin builtin_object_new nil) (out_ter S' l)
+      red_expr S C (spec_constructor_builtin builtin_object_new args) (out_ter S' l)
   
   
 (*------------------------------------------------------------*)
