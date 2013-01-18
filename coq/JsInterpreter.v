@@ -1315,7 +1315,11 @@ with run_prog (max_step : nat) S C p : out_interp :=
     | prog_seq p1 p2 =>
       if_success (run_prog' S C p1) (fun S1 re1 =>
         if_success (run_prog' S1 C p2) (fun S2 re2 =>
-          out_ter S2 re2))
+          out_ter S2
+            match re2 with
+            | ret_empty => re1
+            | _ => re2
+            end))
 
     | prog_function_decl f lx P =>
       arbitrary (* TODO *)

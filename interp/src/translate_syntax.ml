@@ -154,8 +154,8 @@ and exp_to_stat exp : Interpreter.stat =
 
       (*Statements*)
       | Skip -> Interpreter.Stat_skip
-      | Return (Some e) -> f e
-      | Return None -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* Note:  Now it accepts this. -- Martin *)
+      | Return (Some e) -> Interpreter.Stat_return (Some (exp_to_exp e))
+      | Return None -> Interpreter.Stat_return None
       | Break _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Continue _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Debugger -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
