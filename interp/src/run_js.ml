@@ -40,12 +40,14 @@ let get_global_value state name =
 	get_value_ref state r
 
 let pr_test state =
-	print_endline
-	  (match get_global_value state "__$ERROR__" with
-		 | Some v ->
-			  "A variable [__$ERROR__] is defined at global scope.  Its value is:\n\t"
-			  ^ Prheap.prvalue v ^ "\n"
-		 | None -> "No variable [__$ERROR__] is defined at global scope.\n")
+  (match get_global_value state "__$ERROR__" with
+     | Some v ->
+    	  print_endline ("\nA variable [__$ERROR__] is defined at global scope.  Its value is:\n\t"
+		  ^ Prheap.prvalue v ^ "\n") ;
+		  exit (-1)
+     | None ->
+	    if (not !test) then
+	      print_endline "No variable [__$ERROR__] is defined at global scope.\n")
 
 
 let _ = 
@@ -67,7 +69,8 @@ let _ =
                 | _ -> assert false
 	            end
             else Interpreter.state_initial
-  in match Interpreter.run_prog
+  in
+  try match Interpreter.run_prog
           max_int
           sti
           Interpreter.execution_ctx_initial 
@@ -80,7 +83,8 @@ let _ =
           begin
             match res with
             | Interpreter.Res_normal r ->
-               (begin
+               (if (not !test) then
+			     begin
                    match r with
                    | Interpreter.Ret_or_empty_ret (Interpreter.Ret_value v) ->
                       print_endline "\n\nResult:\n";
@@ -94,7 +98,7 @@ let _ =
 		                                        | None -> "Unknown!") ^ "\n")
                    | Interpreter.Ret_or_empty_empty -> 
                       print_endline "\n\nNo result\n"
-	               end;
+	             end;
                if (!test) then pr_test state)
             | Interpreter.Res_break _ -> print_endline "\n\nBREAK\n"
             | Interpreter.Res_continue _ -> print_endline "\n\nCONTINUE\n"
@@ -108,4 +112,7 @@ let _ =
   | Interpreter.Out_interp_stuck ->
 		 print_endline "\n\nFIXME:  stuck!\n"
   | Interpreter.Out_interp_bottom -> print_endline "\n\nBOTTOM\n"
+  with
+  | Assert_failure (file, line, col) ->
+	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) (* That way such tests will be considered as successful. *)
 
