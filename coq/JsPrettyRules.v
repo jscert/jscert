@@ -1033,15 +1033,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_binary_op_equal : forall S C v1 v2 o,
       red_expr S C (spec_equal v1 v2) o ->
-      red_expr S C (expr_binary_op_3 binary_op_strict_equal v1 v2) o
+      red_expr S C (expr_binary_op_3 binary_op_equal v1 v2) o
 
   | red_expr_binary_op_disequal : forall S C v1 v2 o1 o,
       red_expr S C (spec_equal v1 v2) o1 ->
-      red_expr S C (expr_binary_op_strict_disequal_1 o1) o ->
-      red_expr S C (expr_binary_op_3 binary_op_strict_disequal v1 v2) o
+      red_expr S C (expr_binary_op_disequal_1 o1) o ->
+      red_expr S C (expr_binary_op_3 binary_op_disequal v1 v2) o
 
   | red_expr_binary_op_disequal_1 : forall S0 S C b,
-      red_expr S0 C (expr_binary_op_strict_disequal_1 (out_ter S b)) (out_ter S (negb b))
+      red_expr S0 C (expr_binary_op_disequal_1 (out_ter S b)) (out_ter S (negb b))
 
   (** Binary op : conversion steps for the abstract equality algorithm *)
 

@@ -936,16 +936,22 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
     | _ => out_type_error S
     end
 
-  | binary_op_strict_equal | binary_op_strict_disequal =>
+  | binary_op_equal | binary_op_disequal =>
     let finalPass b :=
       match op with
-      | binary_op_strict_equal => b
-      | binary_op_strict_disequal => negb b
+      | binary_op_equal => b
+      | binary_op_disequal => negb b
       | _ => arbitrary
       end in
     if_success_bool (run_equal conv_number conv_primitive S v1 v2)
       (fun S0 => out_ter S0 (finalPass true))
       (fun S0 => out_ter S0 (finalPass false))
+
+  | binary_op_strict_equal =>
+    out_ter S (strict_equality_test v1 v2)
+
+  | binary_op_strict_disequal =>
+    out_ter S (negb (strict_equality_test v1 v2))
 
   | _ => arbitrary (* TODO *)
 
