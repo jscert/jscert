@@ -2411,11 +2411,13 @@ END OF TO CLEAN----*)
 
    (** Object.prototype.isPrototypeOf() *)
 
+   (* If the argument is not an object return false *)
    | red_spec_call_object_proto_is_prototype_of_not_object : forall S C v v1 o args w, 
       arguments_from args (v::nil)  ->
       v = value_prim w ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) (out_ter S false)
 
+  (* old : replaced by the next 2 rules
   | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 sp args, 
       arguments_from args (v::nil) ->                                             
       v = value_object l ->
@@ -2424,15 +2426,35 @@ END OF TO CLEAN----*)
       object_proto S l sp -> (* [spec_to_object] may change the heap:  I think this should be runned on the new computed heap. -- Martin *)
       red_expr S C (spec_call_object_proto_is_prototype_of o1 sp) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+  *)
 
-  | red_spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o re,
-      red_expr S0 C (spec_call_object_proto_is_prototype_of (out_ter S re) null) (out_ter S false)
+  (* If the argument is an object, first get toObject(this) then move on *)
+  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 args, 
+      arguments_from args (v::nil) ->                                             
+      v = value_object l ->
+      vt = execution_ctx_this_binding C ->  
+      red_expr S C (spec_to_object vt) o1 ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 o1 l) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+
+  (* Now get the prototype of the argument *)
+  | red_spec_call_object_proto_is_prototype_of_object_1 : forall S S' C v vt l o o1 sp,
+      object_proto S l sp -> 
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt sp) o ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 (out_ter S' vt) l) o
+
+  (* Compare this and the prototype of the argument... *)
+  | red_spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o vt,
+      red_expr S0 C (spec_call_builtin_object_proto_is_prototype_of vt null) (out_ter S false)
   
   | red_spec_call_object_proto_is_prototype_of_1_same : forall S C vt v,
       vt = v ->
-      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true)
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt v) (out_ter S true)
 
-      (* The spec says `Repeat':  there should be a loop there  -- Martin *)
+  | red_spec_call_object_proto_is_prototype_of_1_loop : forall S C vt v o,
+      not (vt = v \/ v = null) ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 (out_ter S vt) v) o ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt v) o
 
   (** Object.prototype.valueOf() - [15.2.4.4] *)
 
