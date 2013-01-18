@@ -295,6 +295,17 @@ Definition object_get_property_body run_object_get_property S v x : prop_descrip
 
 Definition run_object_get_property := FixFun3 object_get_property_body.
 
+Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : out_interp :=
+  match run_object_proto S  l  with
+  | null => out_ter S false
+  | value_object l' =>
+    ifb l' = l0 then out_ter S true
+    else run_object_proto_is_prototype_of S l0 l'
+  | _ => out_interp_stuck
+  end.
+
+Definition run_object_proto_is_prototype_of := FixFun3 object_proto_is_prototype_of_body.
+
 Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
   match read_option (state_env_record_heap S) L with
   | Some er => K er
@@ -1386,14 +1397,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
       | value_object l =>
         let vt := execution_ctx_this_binding C in
         if_value_object (to_object S vt) (fun S1 lo =>
-          (fix aux lc : out_interp :=
-            match run_object_proto S1 lc with
-            | null => out_ter S1 false
-            | value_object lc' =>
-              ifb lc' = lo then out_ter S1 true
-              else aux lc'
-            | _ => out_interp_stuck
-            end) l)
+          run_object_proto_is_prototype_of S1 lo l)
       end
 
     | _ =>
