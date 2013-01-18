@@ -2545,12 +2545,12 @@ END OF TO CLEAN----*)
 
   (* 15.7.4.2: Number.prototype.toString([radix]) *)
 
-  (* TODO *)
+  (* TODO : syntax for writing numbers? *)
 
   (* Daniele: I guess we don't have the algorithm for representing numbers 
      as strings with different radix. I'll just ignore this (i.e. always do
      toString in base 10) *)
-
+  (*
   (* if [this] is not a number then throw Type Error exception *)
   | red_spec_call_number_proto_to_string_not_number : forall S C s b o v args, 
       v = execution_ctx_this_binding C ->
@@ -2607,7 +2607,7 @@ END OF TO CLEAN----*)
      (* not (n < 2 /\ n > 36) ->  *)
       red_expr S C (spec_to_string v) o -> (* This should be something different *)
       red_expr S C (spec_call_builtin_number_proto_to_string_1 (out_ter S' v)) o
-
+*)
 
 
 
