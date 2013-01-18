@@ -2421,16 +2421,18 @@ END OF TO CLEAN----*)
       v = value_object l ->
       vt = execution_ctx_this_binding C ->
       red_expr S C (spec_to_object vt) o1 ->
-      object_proto S l sp ->
+      object_proto S l sp -> (* [spec_to_object] may change the heap:  I think this should be runned on the new computed heap. -- Martin *)
       red_expr S C (spec_call_object_proto_is_prototype_of o1 sp) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
 
-  | spec_call_object_proto_is_prototype_of_1_null : forall S C o, 
-      red_expr S C (spec_call_object_proto_is_prototype_of o null) (out_ter S false) 
+  | spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o re,
+      red_expr S0 C (spec_call_object_proto_is_prototype_of (out_ter S re) null) (out_ter S false)
   
-  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt v, 
+  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt v,
       vt = v ->
-      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true) 
+      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true)
+
+      (* The spec says `Repeat':  there should be a loop there  -- Martin *)
 
   (** Object.prototype.valueOf() - [15.2.4.4] *)
 

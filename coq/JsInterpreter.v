@@ -526,7 +526,7 @@ Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (stri
   | env_record_decl D =>
     let (mu, v_old) := read D x in
     ifb mutability_is_mutable mu then
-      out_void (env_record_write_decl_env S L x mu v) (* TODO:  I really don't understand why, but it seems that at this point, [x] has been updated to [undefined] and not [v].  Can somebody help me understand this point?  -- Martin. *)
+      out_void (env_record_write_decl_env S L x mu v)
     else if strict then
       out_type_error S
     else out_ter S prim_undef
@@ -1367,6 +1367,34 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
         out_interp_stuck
       else
         out_ter S (ret_ref (ref_create_value v "prototype" false))
+
+    | builtin_object_proto_to_string =>
+      let v := execution_ctx_this_binding C in
+      match v with
+      | undef => out_ter S "[object Undefined]"
+      | null => out_ter S "[object Null]"
+      | _ =>
+        if_value_object (to_object S v) (fun S1 l =>
+          let s := run_object_class S l in
+          out_ter S1 ("[object " ++ s ++ "]"))
+      end
+
+    | builtin_object_proto_is_prototype_of =>
+      let v := get_nth undef 0 args in
+      match v with
+      | value_prim w => out_ter S false
+      | value_object l =>
+        let vt := execution_ctx_this_binding C in
+        if_value_object (to_object S vt) (fun S1 lo =>
+          (fix aux lc : out_interp :=
+            match run_object_proto S1 lc with
+            | null => out_ter S1 false
+            | value_object lc' =>
+              ifb lc' = lo then out_ter S1 true
+              else aux lc'
+            | _ => out_interp_stuck
+            end) l)
+      end
 
     | _ =>
       arbitrary (* TODO *)
