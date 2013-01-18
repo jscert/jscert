@@ -715,7 +715,23 @@ Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_l
     K S2 C1).
 
 
-(* Definition object_has_instance *) (* TODO:  understand the rules [spec_object_has_instance] of the semantics. *)
+Definition run_spec_object_has_instance (has_instance_id : builtin) S l v : out_interp :=
+  match has_instance_id with
+  | builtin_spec_op_function_has_instance =>
+    match v with
+    | value_prim w => out_ter S false
+    | value_object lv =>
+      if_value_object (object_get S l "prototype") (fun S1 lo =>
+        match run_object_proto S1 lv with
+        | null => out_ter S1 false
+        | value_object proto =>
+          ifb proto = lo then out_ter S1 true
+          else arbitrary (* TODO: use an optimal fixpoint there. *)
+        | _ => out_interp_stuck
+        end)
+    end
+  | _ => arbitrary (* TODO *)
+  end.
 
 Definition run_callable S v : option builtin :=
   match v with
@@ -911,9 +927,12 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
     convert_twice_number S v1 v2 (fun S1 n1 n2 =>
       out_ter S1 (mop n1 n2))
 
-  | binary_op_and | binary_op_or => arbitrary (* Lazy operators are already dealt with at this point. *)
+  | binary_op_and | binary_op_or => out_interp_stuck (* Lazy operators are already dealt with at this point. *)
 
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift => arbitrary (* TODO *)
+
+  | binary_op_bitwise_and | binary_op_bitwise_or | binary_op_bitwise_xor =>
+    arbitrary (* TODO *)
 
   | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
     let (b_swap, b_neg) := get_inequality_op op in
@@ -923,6 +942,16 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
       out_ter S1 (ifb wr = prim_undef then false
         else ifb b_neg = true /\ wr = true then false
         else wr))
+
+  | binary_op_instanceof =>
+    match v2 with
+    | value_object l =>
+      morph_option (fun _ : unit => out_type_error S : out_interp)
+      (fun has_instance_id _ =>
+        run_spec_object_has_instance has_instance_id S l v1)
+      (run_object_has_instance S l) tt
+    | _ => out_type_error S
+    end
 
   | binary_op_in =>
     match v2 with
@@ -953,7 +982,8 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
   | binary_op_strict_disequal =>
     out_ter S (negb (strict_equality_test v1 v2))
 
-  | _ => arbitrary (* TODO *)
+  | binary_op_coma =>
+    out_ter S v2
 
   end.
 
