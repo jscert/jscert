@@ -115,7 +115,7 @@ Inductive ext_expr :=
   | expr_inequality_op_1 : bool -> bool -> value -> value -> ext_expr
   | expr_inequality_op_2 : bool -> bool -> value -> value -> ext_expr
   | expr_binary_op_in_1 : object_loc -> out -> ext_expr
-  | expr_binary_op_strict_disequal_1 : out -> ext_expr
+  | expr_binary_op_disequal_1 : out -> ext_expr
   | spec_equal : value -> value -> ext_expr
   | spec_equal_1 : type -> type -> value -> value -> ext_expr
   | spec_equal_2 : bool -> ext_expr
