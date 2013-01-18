@@ -1,4 +1,6 @@
 let file = ref ""
+let test_prelude = ref ""
+let test = ref false
 
 let arguments () =
   let usage_msg="Usage: -jsparser <path> -file <path>" in
@@ -11,7 +13,10 @@ let arguments () =
       "file to run";
       "-verbose",
       Arg.Unit(fun () -> Parser_main.verbose := true),
-      "print the parsed program"
+      "print the parsed program";
+      "-test_prelude",
+      Arg.String(fun f -> test_prelude := f; test := true),
+      "run the given test";
     ]
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
@@ -34,12 +39,37 @@ let get_global_value state name =
 		x true in
 	get_value_ref state r
 
+let pr_test state =
+	print_endline
+	  (match get_global_value state "__$ERROR__" with
+		 | Some v ->
+			  "A variable [__$ERROR__] is defined at global scope.  Its value is:\n\t"
+			  ^ Prheap.prvalue v ^ "\n"
+		 | None -> "No variable [__$ERROR__] is defined at global scope.\n")
+
+
 let _ = 
-  arguments (); 
+  arguments ();
   let exp = Translate_syntax.coq_syntax_from_file !file in
-  match Interpreter.run_prog
+  let sti = if (!test) then
+              begin
+                match Interpreter.run_prog
+                        max_int
+                        Interpreter.state_initial
+                        Interpreter.execution_ctx_initial 
+                        (Translate_syntax.coq_syntax_from_file !test_prelude)
+                with
+                | Interpreter.Out_interp_normal (
+                    Interpreter.Out_ter (state, 
+                                         Interpreter.Res_normal
+                                           (Interpreter.Ret_or_empty_empty))) -> 
+                   state
+                | _ -> assert false
+	            end
+            else Interpreter.state_initial
+  in match Interpreter.run_prog
           max_int
-          Interpreter.state_initial
+          sti
           Interpreter.execution_ctx_initial 
           exp
   with
@@ -65,13 +95,7 @@ let _ =
                    | Interpreter.Ret_or_empty_empty -> 
                       print_endline "\n\nNo result\n"
 	               end;
-	              print_endline
-	                (match get_global_value state "__$ERROR__" with
-		               | Some v ->
-			                "A variable [__$ERROR__] is defined at global scope.  Its value is:\n\t"
-			                ^ Prheap.prvalue v ^ "\n"
-		               | None -> "No variable [__$ERROR__] is defined at global scope.\n")           
-               )
+               if (!test) then pr_test state)
             | Interpreter.Res_break _ -> print_endline "\n\nBREAK\n"
             | Interpreter.Res_continue _ -> print_endline "\n\nCONTINUE\n"
             | Interpreter.Res_return _ -> print_endline "\n\nRETURN\n"
