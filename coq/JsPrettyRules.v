@@ -2544,12 +2544,12 @@ END OF TO CLEAN----*)
 
   (* 15.7.4.2: Number.prototype.toString([radix]) *)
 
-  (* TODO : syntax for writing numbers? *)
-
   (* Daniele: I guess we don't have the algorithm for representing numbers 
      as strings with different radix. I'll just ignore this (i.e. always do
      toString in base 10) *)
-  (*
+
+  (* Daniele: I'm not convinced by this one :/ *)
+  
   (* if [this] is not a number then throw Type Error exception *)
   | red_spec_call_number_proto_to_string_not_number : forall S C s b o v args, 
       v = execution_ctx_this_binding C ->
@@ -2561,57 +2561,71 @@ END OF TO CLEAN----*)
   | red_spec_call_number_proto_to_string_number : forall S C s b o v args, 
       v = execution_ctx_this_binding C ->
       type_of v = type_number -> 
-      red_expr S C (spec_call_builtin_number_proto_to_string args) o ->
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o ->
       red_expr S C (spec_call_builtin builtin_number_proto_to_string args) o
 
-  (* The [radix] parameter is not there *)
-  | red_spec_call_number_proto_to_string_number_no_radix : forall S C o args, 
+  (* The [radix] parameter is not there: use 10 as default *)
+  | red_spec_call_number_proto_to_string_number_no_radix : forall S C v o args, 
       args = nil ->
-   (*   red_expr S C (spec_call_builtin builtin_number_proto_to_string ((prim_number 10%number)::args)) o -> *)
-      red_expr S C (spec_call_builtin_number_proto_to_string args) o 
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o 
 
-  (* The [radix] parameter is undefined *)
-  | red_spec_call_number_proto_to_string_number_undef_radix : forall S C v args o, 
-      arguments_from args (v::nil) ->
-      v = undef ->
-(*      red_expr S C (spec_call_builtin builtin_number_proto_to_string ((value_number 10)::args)) o *)
-      red_expr S C (spec_call_builtin_number_proto_to_string args) o 
+  (* The [radix] parameter is undefined: use 10 as default *)
+  | red_spec_call_number_proto_to_string_number_undef_radix : forall S C v vr args o, 
+      arguments_from args (vr::nil) ->
+      vr = undef ->
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o 
+
+  (* TODO: factorize the previous 2? *)
 
   (* The [radix] is present *)
-  | red_spec_call_number_proto_to_string_number_radix : forall S C v args o o1,
-      arguments_from args (v::nil) ->
-      not (v = undef) ->
-      red_expr S C (spec_to_integer v) o1 ->
-      red_expr S C (spec_call_builtin_number_proto_to_string_1 o1) o -> 
-      red_expr S C (spec_call_builtin_number_proto_to_string args) o 
+  | red_spec_call_number_proto_to_string_number_radix : forall S C v vr args o o1,
+      arguments_from args (vr::nil) ->
+      not (vr = undef) ->
+      red_expr S C (spec_to_integer vr) o1 ->
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v o1) o -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o 
  
   (* If the [radix] is 10 we do a simple toString *)
-  | red_spec_call_number_proto_to_string_1_radix_10 :forall S S' C v o,
-     (* v = (value_number 10) -> *)
+  | red_spec_call_number_proto_to_string_1_radix_10 :forall S S' C v vr o,
+      vr = value_prim (prim_number (JsNumber.of_int 10)) -> 
       red_expr S C (spec_to_string v) o ->
-      red_expr S C (spec_call_builtin_number_proto_to_string_1 (out_ter S' v)) o
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v (out_ter S' vr)) o
       
   (* If the [radix] is out of range we throw a Range Error exception *)
-  | red_spec_call_number_proto_to_string_1_radix_out_of_range : forall S S' C v n o,
-      (* v = (value_number n) -> *)
-      (* (n < 2 /\ n > 36) ->  *)
+  | red_spec_call_number_proto_to_string_1_radix_out_of_range : forall S S' C v vr k o,
+      vr = value_prim (prim_number (JsNumber.of_int k)) ->
+      (k < 2 /\ k > 36) -> 
       red_expr S C spec_init_throw_type_error o -> (* Should be Range Error instead of Type Error *)
-      red_expr S C (spec_call_builtin_number_proto_to_string_1 (out_ter S' v)) o
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v (out_ter S' vr)) o
   
   (* If the [radix] is in range we do a simple toString 
      TODO: in fact the number should be printed using that radix
      implementation dependent) *)
-  | red_spec_call_number_proto_to_string_1_radix_in_range : forall S S' C v o,
-     (* v = (value_number n) -> *)
-     (* not (n < 2 /\ n > 36) ->  *)
+  | red_spec_call_number_proto_to_string_1_radix_in_range : forall S S' C v vr k o,
+      vr = value_prim (prim_number (JsNumber.of_int k)) ->
+      not (k < 2 /\ k > 36) -> 
       red_expr S C (spec_to_string v) o -> (* This should be something different *)
-      red_expr S C (spec_call_builtin_number_proto_to_string_1 (out_ter S' v)) o
-*)
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v (out_ter S' vr)) o
 
 
+  (* 15.7.4.4: Number.prototype.valueOf() *)
 
+  (* it throws a TypeError exception if its this value is not a Number or a Number object. *)
+  | red_spec_call_number_proto_value_of_not_number : forall S C v o args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      not (type_of v = type_number) -> (* ? *)
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin builtin_number_proto_value_of args) o
 
-
+  (* Otherwise it returns the Number value itself *)
+  | red_spec_call_number_proto_value_of_number : forall S C v args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_number ->
+      red_expr S C (spec_call_builtin builtin_number_proto_value_of args) (out_ter S v)
 
 
 
