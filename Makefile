@@ -102,7 +102,7 @@ init:
 # INTERPRETER
 
 run_tests: interpreter
-	find tests/ -type f -exec interp/run.sh {} \;
+	find tests/ -type f -name \*.js -exec interp/run.sh {} \;
 
 interpreter:  interp/run_js
 
