@@ -50,14 +50,14 @@ let bin_op_to_coq op : Interpreter.binary_op =
   match op with
     | Comparison op ->
       begin match op with
-              | Equal -> Interpreter.Binary_op_equal
-              | NotEqual
-              | TripleEqual 
-              | NotTripleEqual
               | Lt 
               | Le
               | Gt
               | Ge -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_comparison_op op))
+              | Equal -> Interpreter.Binary_op_equal
+              | NotEqual -> Interpreter.Binary_op_disequal
+              | TripleEqual -> Interpreter.Binary_op_strict_equal
+              | NotTripleEqual -> Interpreter.Binary_op_strict_disequal
               | In -> Interpreter.Binary_op_in
               | InstanceOf -> Interpreter.Binary_op_instanceof
       end
