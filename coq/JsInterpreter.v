@@ -927,7 +927,7 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
     convert_twice_number S v1 v2 (fun S1 n1 n2 =>
       out_ter S1 (mop n1 n2))
 
-  | binary_op_and | binary_op_or => arbitrary (* Lazy operators are already dealt with at this point. *)
+  | binary_op_and | binary_op_or => out_interp_stuck (* Lazy operators are already dealt with at this point. *)
 
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift => arbitrary (* TODO *)
 
