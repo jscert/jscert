@@ -228,17 +228,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 (* --which version to keep ??
 
   (** For-in statement *)
-  
-  | red_stat_for_in : forall o1 S C e1 e2 t o,
-      red_expr S C e2 o1 ->
-      red_stat S C (stat_for_in_1 e1 t o1) o ->
-      red_stat S C (stat_for_in e1 e2 t) o
-      
-  | red_stat_for_in_1 : forall o1 S0 S C e1 t R o,
-      red_expr S C (spec_get_value R) o1 ->
-      red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_1 e1 t (out_ter S R)) o
-   (* todo: use spec_expr_get_value to factorize first two rules *)
 
   | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
       v1 = null \/ v1 = undef ->
@@ -262,19 +251,14 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** For-in statement *)
 
-  | red_stat_for_in_1 : forall o1 S C e1 e2 t o,
-      red_expr S C e2 o1 ->
-      red_stat S C (stat_for_in_1 e1 t o1) o ->
-      red_stat S C (stat_for_in e1 e2 t) o
-
-  | red_stat_for_in_2 : forall o1 S0 S C e1 t exprRef o,
-      red_expr S C (spec_get_value exprRef) o1 ->
+  | red_stat_for_in : forall o1 S0 S C e1 e2 t o,
+      red_expr S C (spec_expr_get_value e2) o1 ->
       red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_1 e1 t (out_ter S exprRef)) o
+      red_stat S0 C (stat_for_in e1 e2 t) o
 
-  | red_stat_for_in_3_null_undef : forall S0 S C e1 t exprValue o,
-      exprValue = null \/ exprValue = undef ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) (out_void S)
+  | red_stat_for_in_3_null_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S ret_or_empty_empty)
 
   | red_stat_for_in_4 : forall o1 S0 S C e1 t exprValue o,
       exprValue <> null /\ exprValue <> undef ->
