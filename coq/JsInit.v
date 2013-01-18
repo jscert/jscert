@@ -9,9 +9,6 @@ Coercion function_code_builtin : builtin >-> function_code.
 
 Coercion JsNumber.of_int : Z >-> JsNumber.number.
 
-
-
-
 (**************************************************************)
 (** ** Implicit Types -- copied from JsSemanticsDefs *)
 
@@ -170,40 +167,77 @@ Definition object_builtin_object_proto :=
   let P := write_constant P "constructor" builtin_object_new in
   let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in
   let P := write_native P "toString" builtin_object_proto_to_string in  
-  (* TODO: complete list *)
+  let P := write_native P "valueOf" builtin_object_proto_value_of in (* Daniele: remove this comment *)  
   object_create_builtin null "Object" builtin_spec_op_object_get P.
 
 (**************************************************************)
 (** Function object *)
 
+Definition object_builtin_function :=
+  let P := Heap.empty in
+  let P := write_constant P "prototype" builtin_function_proto in
+  let P := write_native P "get_prototype_of" builtin_object_get_prototype_of in
+  (* TODO: complete list *)
+  object_create_builtin_constructor builtin_function_call builtin_function_new 1 P.
+
 (**************************************************************)
 (** Function prototype object *)
+
+Definition object_builtin_function_proto :=
+  let P := Heap.empty in
+  (*let P := write_native P "toString" builtin_function_proto_to_string in *) (* TODO *)
+  (* TODO: complete list *)
+  object_create_builtin builtin_object_proto "Function" builtin_spec_op_object_get P.
 
 (**************************************************************)
 (** Number object *)
 
+(* Daniele: ? *)
+
+Definition object_builtin_number :=
+  let P := Heap.empty in
+  (* Daniele: use [builtin_function_proto] when available *)
+  let P := write_constant P "prototype"  builtin_function_proto in
+  (* TODO: complete list *)
+  object_create_builtin_constructor builtin_number_call builtin_number_new 1 P.
+
 (**************************************************************)
 (** Number prototype object *)
+
+Definition object_builtin_number_proto :=
+  let P := Heap.empty in
+  let P := write_native P "toString" builtin_number_proto_to_string in   
+  let P := write_native P "valueOf" builtin_number_proto_value_of in
+  (* TODO: complete list *)
+
+  object_create_builtin builtin_object_proto "Number" builtin_spec_op_object_get P.
 
 (**************************************************************)
 (** Array object *)
 
+(* TODO *)
+
 (**************************************************************)
 (** Array prototype object *)
+
+(* TODO *)
 
 (**************************************************************)
 (** String object *)
 
+(* TODO *)
+
 (**************************************************************)
 (** String prototype object *)
 
+(* TODO *)
+
 (**************************************************************)
-(** Bool object *) (* Daniele: help! *)
+(** Bool object *)
 
 Definition object_builtin_bool :=
   let P := Heap.empty in
-  (* Daniele: use [builtin_function_proto] when available *)
-  let P := write_constant P "prototype" (* builtin_function_proto *) builtin_bool_proto in
+  let P := write_constant P "prototype" builtin_function_proto in
   (* TODO: complete list *)
   object_create_builtin_constructor builtin_bool_call builtin_bool_new 1 P.
 
@@ -215,11 +249,12 @@ Definition object_builtin_bool_proto :=
   let P := write_native P "toString" builtin_bool_proto_to_string in   
   let P := write_native P "valueOf" builtin_bool_proto_value_of in
   (* TODO: complete list *)
+  object_create_builtin builtin_object_proto "Boolean" builtin_spec_op_object_get P. 
 
-  object_create_builtin null "Boolean" builtin_spec_op_object_get P. (* Daniele: ? *)
 (**************************************************************)
 (** Math object *)
 
+(* TODO *)
 
 (**************************************************************)
 (** Initial object heap *)
@@ -231,9 +266,12 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_object_proto object_builtin_object_proto in
   let h := Heap.write h builtin_bool object_builtin_bool in
   let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in
-  (* TODO: update and uncomment once definitions have been completed
-  let h := Heap.write h builtin_array_proto object_builtin_array_proto in
+  let h := Heap.write h builtin_number object_builtin_number in
   let h := Heap.write h builtin_number_proto object_builtin_number_proto in
+  let h := Heap.write h builtin_function object_builtin_function in
+  let h := Heap.write h builtin_function_proto object_builtin_function_proto in
+(* TODO: update and uncomment once definitions have been completed
+  let h := Heap.write h builtin_array_proto object_builtin_array_proto in
   let h := Heap.write h builtin_string_proto object_builtin_string_proto in
   let h := Heap.write h builtin_eval_proto object_builtin_eval_proto in
   let h := Heap.write h builtin_range_error object_builtin_range_error in
@@ -244,7 +282,6 @@ Definition object_heap_initial :=
   *)
   h.
 
-
 (**************************************************************)
 (** Initial environment record heap *)
 
@@ -253,14 +290,12 @@ Definition env_record_heap_initial :=
              env_loc_global_env_record
              (env_record_object_default builtin_global).
 
-
 (**************************************************************)
 (** TODO: remove this once Heap representation is fixed *)
 
 CoFixpoint all_locations (k:nat) : stream nat :=
   stream_intro k (all_locations (S k)).
 Definition dummy_fresh_locations := all_locations 1%nat. (* Starting at 1 and not 0 because location 0 is already reserved for env_loc_global_env_record. *)
-
 
 (**************************************************************)
 (** Initial state *)
@@ -269,7 +304,6 @@ Definition state_initial :=
   {| state_object_heap := object_heap_initial;
      state_env_record_heap := env_record_heap_initial;
      state_fresh_locations := dummy_fresh_locations |}.
-
 
 (**************************************************************)
 (** Initial lexical environment *)

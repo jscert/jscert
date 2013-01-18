@@ -281,6 +281,7 @@ Inductive builtin :=
   | builtin_bool_proto_to_string
   | builtin_bool_proto_value_of
 
+  | builtin_number
   | builtin_number_call
   | builtin_number_new
   | builtin_number_proto

@@ -2455,6 +2455,7 @@ END OF TO CLEAN----*)
       red_expr S C (spec_constructor_builtin_bool_new o1) o ->
       red_expr S C (spec_constructor_builtin builtin_bool_new args) o
   
+   (* TODO: change with function proto *)
    | red_spec_bool_constructor_1 : forall O l b S' S C,
       let O1 := object_create builtin_bool_proto "Boolean" true builtin_spec_op_object_get Heap.empty in 
       let O := object_with_primitive_value O1 b in 
@@ -2535,9 +2536,34 @@ END OF TO CLEAN----*)
   | red_spec_call_bool_proto_value_of_1 : forall S C s b, 
       red_expr S C (spec_call_builtin_bool_proto_value_of_1 b) (out_ter S b)
 
-
   (*------------------------------------------------------------*)
   (** ** Number builtin functions *)
+
+  (** 15.7.2.1: new Number([value]) *)
+  
+  (* Daniele: do I have to type [(value_prim (prim_number (JsNumber.of_int k)))] 
+     every time? Shortcuts? *)
+
+  (* If [value] is not supplied, the default value is 0 *)
+  | red_spec_number_constructor_no_value : forall S C o o1 args,
+      arguments_from args nil -> 
+      o1 = (out_ter S (value_prim (prim_number (JsNumber.of_int 10)))) ->
+      red_expr S C (spec_constructor_builtin_number_new o1) o ->
+      red_expr S C (spec_constructor_builtin builtin_number_new args) o
+
+  (* If [value] is supplied, we call toNumber(value) and move on *)
+  | red_spec_number_constructor_value : forall S C v o o1 args,
+      arguments_from args (v::nil) -> 
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (spec_constructor_builtin_number_new o1) o ->
+      red_expr S C (spec_constructor_builtin builtin_number_new args) o
+  
+  (* We create the new object using the provided value (or the default one, zero) *)
+  | red_spec_number_constructor_1 : forall O l v S' S C,
+      let O1 := object_create builtin_number_proto "Number" true builtin_spec_op_object_get Heap.empty in
+      let O := object_with_primitive_value O1 v in 
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_constructor_builtin_number_new (out_ter S v)) (out_ter S' l) 
 
   (*------------------------------------------------------------*)
   (** ** Number prototype builtin functions *)
@@ -2626,19 +2652,6 @@ END OF TO CLEAN----*)
       v = execution_ctx_this_binding C ->
       type_of v = type_number ->
       red_expr S C (spec_call_builtin builtin_number_proto_value_of args) (out_ter S v)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
   (** Throw Type Error Function Object Initialisation *)           
