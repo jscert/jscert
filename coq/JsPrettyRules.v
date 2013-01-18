@@ -2425,10 +2425,10 @@ END OF TO CLEAN----*)
       red_expr S C (spec_call_object_proto_is_prototype_of o1 sp) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
 
-  | spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o re,
+  | red_spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o re,
       red_expr S0 C (spec_call_object_proto_is_prototype_of (out_ter S re) null) (out_ter S false)
   
-  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt v,
+  | red_spec_call_object_proto_is_prototype_of_1_same : forall S C vt v,
       vt = v ->
       red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true)
 
@@ -2439,7 +2439,7 @@ END OF TO CLEAN----*)
   (* Daniele: - ignoring host objects for now (TODO) 
               - implementation dependent part: we always return O (as Sergio suggested)*)
 
-  | spec_call_object_proto_value_of : forall S C args vt o,   
+  | red_spec_call_object_proto_value_of : forall S C args vt o,   
       arguments_from args nil ->                                             
       vt = execution_ctx_this_binding C ->
       red_expr S C (spec_to_object vt) o ->
@@ -2448,8 +2448,15 @@ END OF TO CLEAN----*)
   (*------------------------------------------------------------*)
   (** ** Boolean builtin functions *)
 
-  (** new Boolean(value) *)
-  
+  (** [15.6.1]: Boolean(value) *)
+
+  (* Just performs a type conversion [toBoolean] *)
+  | red_spec_call_bool_call : forall S C v o args, 
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_to_boolean v) o ->
+      red_expr S C (spec_call_builtin builtin_bool_call args) o 
+
+  (** [15.6.2.1]: new Boolean(value) *)
   
   | red_spec_bool_constructor : forall S C v o o1 args,
       arguments_from args (v::nil) -> 
@@ -2457,7 +2464,6 @@ END OF TO CLEAN----*)
       red_expr S C (spec_constructor_builtin_bool_new o1) o ->
       red_expr S C (spec_constructor_builtin builtin_bool_new args) o
   
-   (* TODO: change with function proto *)
    | red_spec_bool_constructor_1 : forall O l b S' S C,
       let O1 := object_create builtin_bool_proto "Boolean" true builtin_spec_op_object_get Heap.empty in 
       let O := object_with_primitive_value O1 b in 
@@ -2541,7 +2547,15 @@ END OF TO CLEAN----*)
   (*------------------------------------------------------------*)
   (** ** Number builtin functions *)
 
-  (** 15.7.2.1: new Number([value]) *)
+  (** [15.7.1.1]: Number(value) *)
+
+  (* Just performs a type conversion [toNumber] *)
+  | red_spec_call_number_call : forall S C v o args, 
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_to_number v) o ->
+      red_expr S C (spec_call_builtin builtin_number_call args) o
+
+  (** [15.7.2.1]: new Number([value]) *)
   
   (* Daniele: do I have to type [(value_prim (prim_number (JsNumber.of_int k)))] 
      every time? Shortcuts? *)
