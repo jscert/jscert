@@ -1999,6 +1999,11 @@ END OF TO CLEAN----*)
   | red_expr_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x strict S o,
       red_expr S C (spec_lexical_env_get_identifier_ref lexs x strict) o ->
       red_expr S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x strict (out_ter S false)) o
+      
+  (** TODO : 10.4.2 Entering eval code *)    
+
+  | red_expr_execution_ctx_eval_call : forall S C K bd o,
+      red_expr S C (spec_execution_ctx_eval_call K bd) o  
 
   (** Function call --- TODO: check this section*)
 
@@ -2327,7 +2332,46 @@ END OF TO CLEAN----*)
 
   | red_spec_call_global_is_finite_1 : forall S S0 C b n,
       b = (ifb n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity then false else true) ->
-      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)               
+      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)   
+      
+  (** 15.1.2.1 eval *)  
+  
+  | red_spec_call_global_eval_not_string : forall S C args v,
+      arguments_from args (v::nil) ->
+      type_of v <> type_string ->
+      red_expr S C (spec_call_builtin builtin_global_eval args) (out_ter S v)  
+      
+  | red_spec_call_global_eval_string : forall v s p S C args o,
+      arguments_from args (v::nil) ->
+      type_of v = type_string ->
+      v = prim_string s ->
+      ~ (parse s p) ->
+      (* TODO see also clause 16 *)
+      red_expr S C (spec_error builtin_syntax_error) o -> 
+      red_expr S C (spec_call_builtin builtin_global_eval args) o 
+      
+  | red_spec_call_global_eval_string_parse : forall v s p S C args v o,
+      arguments_from args (v::nil) ->
+      type_of v = type_string ->
+      v = prim_string s ->
+      parse s p ->
+      red_expr S C (spec_execution_ctx_eval_call (spec_call_global_eval p) (body_intro p s)) o ->
+      red_expr S C (spec_call_builtin builtin_global_eval args) o 
+      
+  | red_spec_call_global_eval : forall o1 S C p o,
+      red_prog S C p o1 ->
+      red_expr S C (spec_call_global_eval_1 o1) o ->
+      red_expr S C (spec_call_global_eval p) o  
+      
+  | red_spec_call_global_eval_1_normal_value: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S v)) (out_ter S v)
+      
+  | red_spec_call_global_eval_1_normal_empty: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S (res_normal ret_or_empty_empty))) (out_ter S undef)
+      
+  | red_spec_call_global_eval_1_throw: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S (res_throw v))) (out_ter S (res_throw v))     
+     
 
 (*------------------------------------------------------------*)
 (** ** Object builtin functions *)
