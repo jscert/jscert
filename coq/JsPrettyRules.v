@@ -228,17 +228,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 (* --which version to keep ??
 
   (** For-in statement *)
-  
-  | red_stat_for_in : forall o1 S C e1 e2 t o,
-      red_expr S C e2 o1 ->
-      red_stat S C (stat_for_in_1 e1 t o1) o ->
-      red_stat S C (stat_for_in e1 e2 t) o
-      
-  | red_stat_for_in_1 : forall o1 S0 S C e1 t R o,
-      red_expr S C (spec_get_value R) o1 ->
-      red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_1 e1 t (out_ter S R)) o
-   (* todo: use spec_expr_get_value to factorize first two rules *)
 
   | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
       v1 = null \/ v1 = undef ->
@@ -262,19 +251,14 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** For-in statement *)
 
-  | red_stat_for_in_1 : forall o1 S C e1 e2 t o,
-      red_expr S C e2 o1 ->
-      red_stat S C (stat_for_in_1 e1 t o1) o ->
-      red_stat S C (stat_for_in e1 e2 t) o
-
-  | red_stat_for_in_2 : forall o1 S0 S C e1 t exprRef o,
-      red_expr S C (spec_get_value exprRef) o1 ->
+  | red_stat_for_in : forall o1 S0 S C e1 e2 t o,
+      red_expr S C (spec_expr_get_value e2) o1 ->
       red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_1 e1 t (out_ter S exprRef)) o
+      red_stat S0 C (stat_for_in e1 e2 t) o
 
-  | red_stat_for_in_3_null_undef : forall S0 S C e1 t exprValue o,
-      exprValue = null \/ exprValue = undef ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) (out_void S)
+  | red_stat_for_in_3_null_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S ret_or_empty_empty)
 
   | red_stat_for_in_4 : forall o1 S0 S C e1 t exprValue o,
       exprValue <> null /\ exprValue <> undef ->
@@ -2015,6 +1999,11 @@ END OF TO CLEAN----*)
   | red_expr_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x strict S o,
       red_expr S C (spec_lexical_env_get_identifier_ref lexs x strict) o ->
       red_expr S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x strict (out_ter S false)) o
+      
+  (** TODO : 10.4.2 Entering eval code *)    
+
+  | red_expr_execution_ctx_eval_call : forall S C K bd o,
+      red_expr S C (spec_execution_ctx_eval_call K bd) o  
 
   (** Function call --- TODO: check this section*)
 
@@ -2343,7 +2332,46 @@ END OF TO CLEAN----*)
 
   | red_spec_call_global_is_finite_1 : forall S S0 C b n,
       b = (ifb n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity then false else true) ->
-      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)               
+      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)   
+      
+  (** 15.1.2.1 eval *)  
+  
+  | red_spec_call_global_eval_not_string : forall S C args v,
+      arguments_from args (v::nil) ->
+      type_of v <> type_string ->
+      red_expr S C (spec_call_builtin builtin_global_eval args) (out_ter S v)  
+      
+  | red_spec_call_global_eval_string : forall v s p S C args o,
+      arguments_from args (v::nil) ->
+      type_of v = type_string ->
+      v = prim_string s ->
+      ~ (parse s p) ->
+      (* TODO see also clause 16 *)
+      red_expr S C (spec_error builtin_syntax_error) o -> 
+      red_expr S C (spec_call_builtin builtin_global_eval args) o 
+      
+  | red_spec_call_global_eval_string_parse : forall v s p S C args v o,
+      arguments_from args (v::nil) ->
+      type_of v = type_string ->
+      v = prim_string s ->
+      parse s p ->
+      red_expr S C (spec_execution_ctx_eval_call (spec_call_global_eval p) (body_intro p s)) o ->
+      red_expr S C (spec_call_builtin builtin_global_eval args) o 
+      
+  | red_spec_call_global_eval : forall o1 S C p o,
+      red_prog S C p o1 ->
+      red_expr S C (spec_call_global_eval_1 o1) o ->
+      red_expr S C (spec_call_global_eval p) o  
+      
+  | red_spec_call_global_eval_1_normal_value: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S v)) (out_ter S v)
+      
+  | red_spec_call_global_eval_1_normal_empty: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S (res_normal ret_or_empty_empty))) (out_ter S undef)
+      
+  | red_spec_call_global_eval_1_throw: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S (res_throw v))) (out_ter S (res_throw v))     
+     
 
 (*------------------------------------------------------------*)
 (** ** Object builtin functions *)
@@ -2411,11 +2439,13 @@ END OF TO CLEAN----*)
 
    (** Object.prototype.isPrototypeOf() *)
 
+   (* If the argument is not an object return false *)
    | red_spec_call_object_proto_is_prototype_of_not_object : forall S C v v1 o args w, 
       arguments_from args (v::nil)  ->
       v = value_prim w ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) (out_ter S false)
 
+  (* old : replaced by the next 2 rules
   | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 sp args, 
       arguments_from args (v::nil) ->                                             
       v = value_object l ->
@@ -2424,15 +2454,35 @@ END OF TO CLEAN----*)
       object_proto S l sp -> (* [spec_to_object] may change the heap:  I think this should be runned on the new computed heap. -- Martin *)
       red_expr S C (spec_call_object_proto_is_prototype_of o1 sp) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+  *)
 
-  | red_spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o re,
-      red_expr S0 C (spec_call_object_proto_is_prototype_of (out_ter S re) null) (out_ter S false)
+  (* If the argument is an object, first get toObject(this) then move on *)
+  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 args, 
+      arguments_from args (v::nil) ->                                             
+      v = value_object l ->
+      vt = execution_ctx_this_binding C ->  
+      red_expr S C (spec_to_object vt) o1 ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 o1 l) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+
+  (* Now get the prototype of the argument *)
+  | red_spec_call_object_proto_is_prototype_of_object_1 : forall S S' C v vt l o o1 sp,
+      object_proto S l sp -> 
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt sp) o ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 (out_ter S' vt) l) o
+
+  (* Compare this and the prototype of the argument... *)
+  | red_spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o vt,
+      red_expr S0 C (spec_call_builtin_object_proto_is_prototype_of vt null) (out_ter S false)
   
   | red_spec_call_object_proto_is_prototype_of_1_same : forall S C vt v,
       vt = v ->
-      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S vt) v) (out_ter S true)
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt v) (out_ter S true)
 
-      (* The spec says `Repeat':  there should be a loop there  -- Martin *)
+  | red_spec_call_object_proto_is_prototype_of_1_loop : forall S C vt v o,
+      not (vt = v \/ v = null) ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 (out_ter S vt) v) o ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt v) o
 
   (** Object.prototype.valueOf() - [15.2.4.4] *)
 

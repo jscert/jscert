@@ -249,6 +249,13 @@ Inductive ext_expr :=
   | spec_lexical_env_get_identifier_ref_1 : env_loc -> lexical_env -> prop_name -> bool -> ext_expr
   | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_expr
 
+  (** Extented expressions for eval *)
+  
+  | spec_execution_ctx_eval_call : ext_expr -> body -> ext_expr
+  
+  | spec_call_global_eval : prog -> ext_expr
+  | spec_call_global_eval_1 : out -> ext_expr
+
   (** Extended expressions for function calls *)
 
   | spec_execution_ctx_function_call : ext_expr -> object_loc -> value -> list value -> ext_expr
@@ -330,8 +337,9 @@ Inductive ext_expr :=
   | spec_call_object_proto_to_string : out -> ext_expr
 
   (* Object.prototype.isPrototypeOf(v) *)
-  | spec_call_object_proto_is_prototype_of : out -> value -> ext_expr
- 
+  | spec_call_builtin_object_proto_is_prototype_of : value -> value -> ext_expr
+  | spec_call_builtin_object_proto_is_prototype_of_1 : out -> value -> ext_expr 
+
   (** Extended expressions for calling boolean object builtin functions *)   
   | spec_constructor_builtin_bool_new : out -> ext_expr
 
