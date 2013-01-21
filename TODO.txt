@@ -1,0 +1,7 @@
+*) we would be closer to the spec in red_stat_try_1_catch_throw
+   if lexical environments were not lists, but instead objects with a parent field,
+   however this would come at the cost of having a predicate to enforce acyclicity
+
+
+
+=====
