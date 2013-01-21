@@ -35,6 +35,13 @@ Implicit Type t : stat.
 
 
 (**************************************************************)
+(** ** Auxiliary functions function bodies *)
+
+Definition funcbody_is_strict fb := 
+  match fb with funcbody_intro (prog_intro b_strict _) _ => b_strict end.
+
+
+(**************************************************************)
 (** ** Auxiliary functions on values and types *)
 
 (** Convert a literal into a primitive *)

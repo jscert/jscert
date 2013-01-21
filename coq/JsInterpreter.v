@@ -751,7 +751,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
         | fd :: fds' =>
           let fb := funcdecl_body fd in
           let fn := funcdecl_name fd in
-          let strictp := function_body_is_strict fb in
+          let strictp := funcbody_is_strict fb in
           if_object (creating_function_object S0 (funcdecl_parameters fd) fb (execution_ctx_variable_env C) strictp) (fun S1 fo =>
             let hb := env_record_has_binding S0 L fn in
             if_success (if hb then
@@ -782,7 +782,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
 
 Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) :=
   let bd := run_object_code S lf in
-  let strict := function_body_is_strict bd in
+  let strict := funcbody_is_strict bd in
   let newthis :=
     if strict then this
     else ifb this = null \/ this = undef then builtin_global
@@ -1218,14 +1218,14 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
         end)
 
     | expr_function None args bd =>
-      creating_function_object S args bd (execution_ctx_lexical_env C) (function_body_is_strict bd)
+      creating_function_object S args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)
 
     | expr_function (Some fn) args bd =>
       let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
       let follow L :=
         let E := pick (env_record_binds S' L) in
         if_success (env_record_create_immutable_binding S' L fn) (fun S1 re1 =>
-          if_object (creating_function_object S1 args bd lex' (function_body_is_strict bd)) (fun S2 l =>
+          if_object (creating_function_object S1 args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
             if_success (env_record_initialize_immutable_binding S2 L fn l) (fun S3 re2 =>
               out_ter S3 l))) in
       map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt

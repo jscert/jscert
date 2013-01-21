@@ -42,9 +42,6 @@ Require Import ExtrOcamlBasic.
 Require Import ExtrOcamlNatInt.
 Require Import ExtrOcamlString.
 
-(* TODO:  These extraction directives are only temporary. *)
-Extract Constant function_body_is_strict => "(fun _ -> false (* TODO:  Writen by hand, not implemented in the Coq file.  This is just to be able to run some tests. *))".
-
 (* number *)
 Require Import ExtrOcamlZInt.
 Extract Inductive Fappli_IEEE.binary_float => float [

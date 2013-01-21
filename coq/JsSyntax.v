@@ -127,55 +127,35 @@ with funcbody :=
 
 with stat :=
   | stat_expr : expr -> stat
-  (* TODO | stat_label : label -> stat -> stat *)
-  | stat_seq : stat -> stat -> stat (* TODO: remove *)
-  (* TODO: add | with stat_block : list stat -> stat *)
+  | stat_label : label -> stat -> stat 
+  | stat_block : list stat -> stat
   | stat_var_decl : list (string * option expr) -> stat
   | stat_if : expr -> stat -> option stat -> stat
-  | stat_while : (* TODO: label_set -> *) expr -> stat -> stat
+  | stat_while : label_set -> expr -> stat -> stat
   | stat_with : expr -> stat -> stat
   | stat_throw : expr -> stat
   | stat_return : option expr -> stat
   | stat_break : label_opt -> stat
   | stat_continue : label_opt ->  stat
   | stat_try : stat -> option (string * stat) -> option stat -> stat (* Note: try s1 [catch (x) s2] [finally s3] *)
-  | stat_skip (* TODO: remove when stat_block is used *)
-  | stat_for_in : (* TODO: label_set -> *) expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
-  | stat_for_in_var : (* TODO: label_set -> *) string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
-  (* TODO: factorize syntax of for_in and for_in_var *)
+  | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
+  | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
   | stat_debugger : stat  
   (* LATER: add do_while *)
   (* LATER: add switch *)
 
 (** Grammar of programs *)
 
-with prog := (* TODO: replace all def with | prog_intro : strictness_flag -> list stat -> prog *)
-  | prog_stat : stat -> prog
-  | prog_seq : prog -> prog -> prog  
-  | prog_function_decl : string -> list string -> funcbody -> prog. (* TODO: remove since not documented *)
+with prog := 
+  | prog_intro : strictness_flag -> list progitem -> prog 
 
-(* TODO:
-   with prog :=
-    | prog_intro : strictness_flag -> list progitem -> prog
-     
-   with progitem :=
-    | progitem_stat : stat -> progitem
-    | progitem_func_decl : string -> list string -> funcbody -> progitem 
-*)
-
-(* TODO: implement function below by looking the strictness flag at the head of the body, once grammar of prog has changed:
-   Definition funcbody_is_strict fb := 
-     match fb with funcbody_intro (prog_intro b_strict _) _ => b_strict end.
-   TODO: move this to JsPreliminary
-*)
-(* We assume that function declarations know about their strictness in terms of 10.1.1 *)
-Parameter function_body_is_strict : funcbody -> bool.
-
+with progitem :=
+  | progitem_stat : stat -> progitem
+  | progitem_func_decl : string -> list string -> funcbody -> progitem.
 
 (** Coercions for grammars *)
 
 Coercion stat_expr : expr >-> stat.
-Coercion prog_stat : stat >-> prog.
 
 
 (**************************************************************)

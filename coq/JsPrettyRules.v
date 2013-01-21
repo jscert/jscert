@@ -603,7 +603,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Function expression *)
 
   | red_expr_function_unnamed : forall S C args bd o,
-      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (function_body_is_strict bd)) o ->
+      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)) o ->
       red_expr S C (expr_function None args bd) o 
 
   | red_expr_function_named : forall lex' S' L lextail E o1 S C s args bd o,
@@ -615,7 +615,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_function (Some s) args bd) o 
       
   | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
-      red_expr S C (spec_creating_function_object args bd scope (function_body_is_strict bd)) o1 ->
+      red_expr S C (spec_creating_function_object args bd scope (funcbody_is_strict bd)) o1 ->
       red_expr S C (expr_function_2 s L o1) o ->
       red_expr S0 C (expr_function_1 s args bd L scope (out_void S)) o
       
@@ -1393,12 +1393,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_expr_object_function_get_1_error : forall bd S0 S C l v o,
       object_code S l (Some bd) ->
-      function_body_is_strict bd = true ->
+      funcbody_is_strict bd = true ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S0 C (spec_object_function_get_1 l "caller" (out_ter S v)) o
       
   | red_expr_object_function_get_1 : forall bd S0 S C l x v o,
-      (object_code S l (Some bd) /\ function_body_is_strict bd = false) \/ (x <> "caller") \/ (object_code S l None) ->
+      (object_code S l (Some bd) /\ funcbody_is_strict bd = false) \/ (x <> "caller") \/ (object_code S l None) ->
       red_expr S0 C (spec_object_function_get_1 l x (out_ter S v)) (out_ter S v)
 
      (* TODO: see 15.3.5.4 for a special get method for functions;
@@ -1950,7 +1950,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_execution_ctx_function_call_direct : forall bd strict newthis S C K func this args o,
       object_code S func (Some bd) ->
-      strict = function_body_is_strict bd ->
+      strict = funcbody_is_strict bd ->
       (If (strict = true) then newthis = this
       else If this = null \/ this = undef then newthis = builtin_global
       else If type_of this = type_object then newthis = this
@@ -1961,7 +1961,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_execution_ctx_function_call_convert : forall bd strict o1 S C K func this args o,
       object_code S func (Some bd) ->
-      strict = function_body_is_strict bd ->
+      strict = funcbody_is_strict bd ->
       (~ (strict = true) /\ this <> null /\ this <> undef /\ type_of this <> type_object) ->
       red_expr S C (spec_to_object this) o1 ->
       red_expr S C (spec_execution_ctx_function_call_1 K func args strict o1) o ->
@@ -2021,7 +2021,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_binding_instantiation_function_decls K args L nil bconfig (out_void S)) o
 
   | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds bconfig o, (* Step 5b *)
-      let strict := function_body_is_strict (funcdecl_body fd) in
+      let strict := funcbody_is_strict (funcdecl_body fd) in
       red_expr S C (spec_creating_function_object (funcdecl_parameters fd) (funcdecl_body fd) (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_void S)) o
