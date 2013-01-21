@@ -228,17 +228,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 (* --which version to keep ??
 
   (** For-in statement *)
-  
-  | red_stat_for_in : forall o1 S C e1 e2 t o,
-      red_expr S C e2 o1 ->
-      red_stat S C (stat_for_in_1 e1 t o1) o ->
-      red_stat S C (stat_for_in e1 e2 t) o
-      
-  | red_stat_for_in_1 : forall o1 S0 S C e1 t R o,
-      red_expr S C (spec_get_value R) o1 ->
-      red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_1 e1 t (out_ter S R)) o
-   (* todo: use spec_expr_get_value to factorize first two rules *)
 
   | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
       v1 = null \/ v1 = undef ->
@@ -262,19 +251,14 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** For-in statement *)
 
-  | red_stat_for_in_1 : forall o1 S C e1 e2 t o,
-      red_expr S C e2 o1 ->
-      red_stat S C (stat_for_in_1 e1 t o1) o ->
-      red_stat S C (stat_for_in e1 e2 t) o
-
-  | red_stat_for_in_2 : forall o1 S0 S C e1 t exprRef o,
-      red_expr S C (spec_get_value exprRef) o1 ->
+  | red_stat_for_in : forall o1 S0 S C e1 e2 t o,
+      red_expr S C (spec_expr_get_value e2) o1 ->
       red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_1 e1 t (out_ter S exprRef)) o
+      red_stat S0 C (stat_for_in e1 e2 t) o
 
-  | red_stat_for_in_3_null_undef : forall S0 S C e1 t exprValue o,
-      exprValue = null \/ exprValue = undef ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) (out_void S)
+  | red_stat_for_in_3_null_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S ret_or_empty_empty)
 
   | red_stat_for_in_4 : forall o1 S0 S C e1 t exprValue o,
       exprValue <> null /\ exprValue <> undef ->
@@ -598,7 +582,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 (*---begin to clean ---*)
 
-  (*----- TOCLEAN---
+  (*----- TOCLEAN---*)
 
   (** Array initializer [TODO] *)
 
@@ -616,47 +600,52 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       S1 = write_fields S0 l lfv ->
       red_expr S0 C (expr_object_1 l lx lv) (out_ter S1 l) *)
 
-  (** Function declaration [TODO] *)
+  (** Function expression *)
 
-  (*| red_expr_function_unnamed : forall l l' S0 S1 S2 C lx P,
-      object_fresh S0 l ->
-      S1 = alloc_obj S0 l loc_obj_proto ->
-      object_fresh S1 l' ->
-      S2 = alloc_fun S1 l' s lx P l ->
-      red_expr S0 C (expr_function None lx P) (out_ter S2 l') *)
+  | red_expr_function_unnamed : forall S C args bd o,
+      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (function_body_is_strict bd)) o ->
+      red_expr S C (expr_function None args bd) o 
 
-  (*| red_expr_function_named : forall l l' l1 S0 S1 S2 S3 S4 C y lx P,
-      object_fresh S0 l ->
-      S1 = alloc_obj S0 l loc_obj_proto ->
-      object_fresh S1 l1 ->
-      S2 = alloc_obj S1 l1 loc_obj_proto ->
-      object_fresh S2 l' ->
-      S3 = alloc_fun S2 l' (l1::s) lx P l ->
-      S4 = write S3 l1 (field_normal y) (value_loc l') ->
-      red_expr S0 C (expr_function (Some y) lx P) (out_ter S4 l') *)
+  | red_expr_function_named : forall lex' S' L lextail E o1 S C s args bd o,
+      (lex', S') = lexical_env_alloc_decl S (execution_ctx_lexical_env C) ->
+      lex' = L :: lextail ->
+      env_record_binds S' L E ->
+      red_expr S' C (spec_env_record_create_immutable_binding L s) o1 ->
+      red_expr S' C (expr_function_1 s args bd L lex' o1) o -> 
+      red_expr S C (expr_function (Some s) args bd) o 
+      
+  | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
+      red_expr S C (spec_creating_function_object args bd scope (function_body_is_strict bd)) o1 ->
+      red_expr S C (expr_function_2 s L o1) o ->
+      red_expr S0 C (expr_function_1 s args bd L scope (out_void S)) o
+      
+  | red_expr_function_named_2 : forall o1 S0 S C s L l o,
+      red_expr S C (spec_env_record_initialize_immutable_binding L s l) o1 ->
+      red_expr S C (expr_function_3 l o1) o ->
+      red_expr S0 C (expr_function_2 s L (out_ter S l)) o  
+      
+  | red_expr_function_named_3 : forall S0 S C l,
+      red_expr S0 C (expr_function_3 l (out_void S)) (out_ter S l) 
 
-  (** Access *)
+  (** Access 11.2.1 *)
 
-  | red_expr_access : forall S0 C e1 e2 o o1,
-      red_expr S0 C e1 o1 ->
-      red_expr S0 C (expr_access_1 o1 e2) o ->
-      red_expr S0 C (expr_access e1 e2) o
+  | red_expr_access : forall S C e1 e2 o o1,
+      red_expr S C (spec_expr_get_value e1) o1 ->
+      red_expr S C (expr_access_1 o1 e2) o ->
+      red_expr S C (expr_access e1 e2) o
+      
+  | red_expr_access_1 : forall S0 S C v o o1 e2,
+      red_expr S C (spec_expr_get_value e2) o1 ->
+      red_expr S C (expr_access_2 v o1) o ->
+      red_expr S0 C (expr_access_1 (out_ter S v) e2) o
+      
+  | red_expr_access_2 : forall S0 S C v1 v2 o,
+      red_expr S C (spec_convert_twice (spec_check_object_coercible v1) (spec_to_string v2) expr_access_3) o ->
+      red_expr S0 C (expr_access_2 v1 (out_ter S v2)) o
 
-  (*| red_expr_access_1 : forall S0 S1 C o o2 e2 v1 r l,
-      getvalue S1 r v1 ->
-      red_expr S1 C e2 o2 ->
-      red_expr S1 C (expr_access_2 v1 o2) o ->
-      red_expr S0 C (expr_access_1 (out_ter S1 r) e2) o*)
-
-  (*| red_expr_access_2 : forall S0 S1 C r v1 v2 o,
-      getvalue S1 r v2 ->
-      red_expr S1 C (spec_convert_twice (spec_to_object v1) (spec_to_string v2) expr_access_3) o ->
-      red_expr S0 C (expr_access_2 v1 (out_ter S1 r)) o*)
-
-  (*| red_expr_ext_expr_access_3 :
-     v1 = value_loc l ->  (* todo: generalize when references can take value as first argument *)
-     x = convert_prim_to_string v2 ->
-     red_expr S C (expr_access_3 v1 v2) (out_ter S (Ref l x))*)
+  | red_expr_ext_expr_access_3 : forall S C v1 x r,
+     r = ref_create_value v1 x (execution_ctx_strict C) ->
+     red_expr S C (expr_access_3 v1 x) (out_ter S r)
 
   (** Member *)
 
@@ -711,42 +700,61 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_new_3 l0 (out_ter S1 r)) (out_ter S1 l)*)
 
 
-  (** Call *)
+  (** Call 11.2.3 *)
 
-(*
+
   | red_expr_call : forall S0 C e1 e2s o1 o2,
-      red_expr S0 C (expr_basic e1) o1 ->
+      red_expr S0 C e1 o1 ->
       red_expr S0 C (expr_call_1 o1 e2s) o2 ->
       red_expr S0 C (expr_call e1 e2s) o2
-*)
-  (*| red_expr_call_1 : forall S0 S1 C l1 l2 o r1 e2s,
-      getvalue S1 r1 l1 ->
-      l2 = get_this S1 r1 ->
-      red_expr S1 C (expr_call_2 l1 l2 e2s) o ->
-      red_expr S0 C (expr_call_1 (out_ter S1 r1) e2s) o*)
 
-  (*| red_expr_call_2 : forall S0 C l1 l2 s3 P3 xs e2s o,
-      l1 <> loc_eval ->
-      binds S0 l1 field_scope (value_scope s3) ->
-      binds S0 l1 field_body (value_body xs P3) ->
-      red_expr S0 C (expr_list_then (expr_call_3 l2 (normal_body s3 xs P3)) e2s) o ->
-      red_expr S0 C (expr_call_2 l1 l2 e2s) o*)
+  | red_expr_call_1 : forall o1 S0 S C o R e2s,
+      red_expr S C (spec_get_value R) o1 ->
+      red_expr S C (expr_call_2 R e2s o1) o ->
+      red_expr S0 C (expr_call_1 (out_ter S R) e2s) o
+      
+  | red_expr_call_2 : forall S0 S C o R v e2s,
+      red_expr S C (expr_list_then (expr_call_3 R v) e2s) o ->
+      red_expr S0 C (expr_call_2 R e2s (out_ter S v)) o
+      
+  | red_expr_call_3_not_object : forall S C o R v vs,
+      type_of v <> type_object ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (expr_call_3 R v vs) o
+      
+  | red_expr_call_3_not_callable : forall S C o R l vs,
+      ~ (is_callable S l) ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (expr_call_3 R (value_object l) vs) o
+      
+  | red_expr_call_3_prop : forall v S C o r l vs,
+      (is_callable S l) ->
+      ref_is_property r -> 
+      ref_is_value r v ->
+      red_expr S C (expr_call_4 l vs (out_ter S v)) o ->
+      red_expr S C (expr_call_3 (ret_ref r) (value_object l) vs) o
+      
+  | red_expr_call_3_env : forall L o1 S C o r l vs,
+      (is_callable S l) ->
+      ref_is_env_record r L -> 
+      red_expr S C (spec_env_record_implicit_this_value L) o1 -> 
+      red_expr S C (expr_call_4 l vs o1) o ->
+      red_expr S C (expr_call_3 (ret_ref r) (value_object l) vs) o
 
-  | red_expr_call_2_eval : forall S0 C e2s l2 o,
+  | red_expr_call_3_not_ref : forall S C v l vs o,
+      red_expr S C (expr_call_4 l vs (out_ter S undef)) o ->
+      red_expr S C (expr_call_3 (ret_value v) (value_object l) vs) o
+   
+  | red_expr_call_4 : forall builtin S0 S C l vs v o,
+      object_call S l (Some builtin) ->
+      red_expr S C (spec_call builtin (Some l) (Some v) vs) o ->
+      red_expr S0 C (expr_call_4 l vs (out_ter S v)) o    
+      
+  (* TODO: eval call *)     
+   
+  (*| red_expr_call_2_eval : forall S0 C e2s l2 o,
       red_expr S0 C (expr_list_then (expr_call_3 l2 primitive_eval) e2s) o ->
-      red_expr S0 C (expr_call_2 loc_eval l2 e2s) o
-
-  (*| red_expr_call_3 : forall S0 S1 S2 S3 S4 l0 l1 o3 o ys vs xs fvs C s3 P3,
-      ys = defs_prog xs P3 ->
-      object_fresh S0 l1 ->
-      S1 = alloc_obj S0 l1 loc_null ->
-      S2 = write S1 l1 field_this l0 ->
-      arguments xs vs fvs ->
-      S3 = write_fields S2 l1 fvs ->
-      S4 = reserve_local_vars S3 l1 ys ->
-      red_expr S4 (l1::s3) (ext_expr_prog P3) o3 ->
-      red_expr S4 C (expr_call_4 o3) o ->
-      red_expr S0 C (expr_call_3 l0 (normal_body s3 xs P3) vs) o*)
+      red_expr S0 C (expr_call_2 loc_eval l2 e2s) o*)
 
   (*| red_expr_call_3_eval : forall S0 C vs g e3 l0 o o3,
       parse g e3 ->
@@ -754,11 +762,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_call_4 o3) o ->
       red_expr S0 C (expr_call_3 l0 primitive_eval (g::vs)) o*)
 
-  (*| red_expr_call_4 : forall S0 S1 C r v,
-      getvalue S1 r v ->
-      red_expr S0 C (expr_call_4 (out_ter S1 r)) (out_ter S1 v)*)
-
----end to clean ---*)
+(*---end to clean ---*)
 
   (** Unary op -- regular rules *)
 
@@ -1007,15 +1011,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_binary_op_equal : forall S C v1 v2 o,
       red_expr S C (spec_equal v1 v2) o ->
-      red_expr S C (expr_binary_op_3 binary_op_strict_equal v1 v2) o
+      red_expr S C (expr_binary_op_3 binary_op_equal v1 v2) o
 
   | red_expr_binary_op_disequal : forall S C v1 v2 o1 o,
       red_expr S C (spec_equal v1 v2) o1 ->
-      red_expr S C (expr_binary_op_strict_disequal_1 o1) o ->
-      red_expr S C (expr_binary_op_3 binary_op_strict_disequal v1 v2) o
+      red_expr S C (expr_binary_op_disequal_1 o1) o ->
+      red_expr S C (expr_binary_op_3 binary_op_disequal v1 v2) o
 
   | red_expr_binary_op_disequal_1 : forall S0 S C b,
-      red_expr S0 C (expr_binary_op_strict_disequal_1 (out_ter S b)) (out_ter S (negb b))
+      red_expr S0 C (expr_binary_op_disequal_1 (out_ter S b)) (out_ter S (negb b))
 
   (** Binary op : conversion steps for the abstract equality algorithm *)
 
@@ -1389,12 +1393,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_expr_object_function_get_1_error : forall bd S0 S C l v o,
       object_code S l (Some bd) ->
-      function_body_is_strict (body_prog bd) = true ->
+      function_body_is_strict bd = true ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S0 C (spec_object_function_get_1 l "caller" (out_ter S v)) o
       
   | red_expr_object_function_get_1 : forall bd S0 S C l x v o,
-      (object_code S l (Some bd) /\ function_body_is_strict (body_prog bd) = false) \/ (x <> "caller") \/ (object_code S l None) ->
+      (object_code S l (Some bd) /\ function_body_is_strict bd = false) \/ (x <> "caller") \/ (object_code S l None) ->
       red_expr S0 C (spec_object_function_get_1 l x (out_ter S v)) (out_ter S v)
 
      (* TODO: see 15.3.5.4 for a special get method for functions;
@@ -1414,7 +1418,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_object_can_put_2_true : forall b An S C l x A o,
       (b = If (prop_attributes_set A = Some undef \/ prop_attributes_set A = None) then false else true) ->
-        (* TODO: need to check in a real implementation whether the line above is correct *)
+      (* TODO: need to check in a real implementation whether the line above is correct *)
       red_expr S C (spec_object_can_put_2 l x true) (out_ter S b)
 
   | red_expr_object_can_put_2_false : forall b S C l x A o,
@@ -1783,19 +1787,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Create immutable binding *)
 
-  | red_expr_env_record_create_immutable_binding : forall D S C L x h',
+  | red_expr_env_record_create_immutable_binding : forall D S C L x S',
       env_record_binds S L (env_record_decl D) -> (* Note: the spec asserts that there is a binding *)
       ~ decl_env_record_indom D x ->
-      h' = env_record_write_decl_env S L x mutability_uninitialized_immutable undef ->
-      red_expr S C (spec_env_record_create_immutable_binding L x) (out_void h')
+      S' = env_record_write_decl_env S L x mutability_uninitialized_immutable undef ->
+      red_expr S C (spec_env_record_create_immutable_binding L x) (out_void S')
 
   (** Initialize immutable binding *)
 
-  | red_expr_env_record_initialize_immutable_binding : forall D v_old S C L x v h',
+  | red_expr_env_record_initialize_immutable_binding : forall D v_old S C L x v S',
       env_record_binds S L (env_record_decl D) ->
       decl_env_record_binds D x mutability_uninitialized_immutable v_old -> (* Note: v_old is always undef *)
-      h' = env_record_write_decl_env S L x mutability_immutable v ->
-      red_expr S C (spec_env_record_initialize_immutable_binding L x v) (out_void h')
+      S' = env_record_write_decl_env S L x mutability_immutable v ->
+      red_expr S C (spec_env_record_initialize_immutable_binding L x v) (out_void S')
 
   (** Create mutable binding *)
 
@@ -1899,17 +1903,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Record implicit this value *)
 
-  | red_expr_env_record_implicit_this_value : forall S C L x o E,
+  | red_expr_env_record_implicit_this_value : forall S C L o E,
       env_record_binds S L E ->
-      red_expr S C (spec_env_record_implicit_this_value_1 L x E) o ->
-      red_expr S C (spec_env_record_implicit_this_value L x) o
+      red_expr S C (spec_env_record_implicit_this_value_1 L E) o ->
+      red_expr S C (spec_env_record_implicit_this_value L) o
 
-  | red_expr_env_record_implicit_this_value_1_decl : forall S C L x D,
-      red_expr S C (spec_env_record_implicit_this_value_1 L x (env_record_decl D)) (out_ter S undef)
+  | red_expr_env_record_implicit_this_value_1_decl : forall S C L D,
+      red_expr S C (spec_env_record_implicit_this_value_1 L (env_record_decl D)) (out_ter S undef)
 
-  | red_expr_env_record_implicit_this_value_1_obj : forall S C L x l (provide_this : bool) v,
+  | red_expr_env_record_implicit_this_value_1_obj : forall S C L l (provide_this : bool) v,
       v = (if provide_this then (value_object l) else undef) ->
-      red_expr S C (spec_env_record_implicit_this_value_1 L x (env_record_object l provide_this)) (out_ter S v)
+      red_expr S C (spec_env_record_implicit_this_value_1 L (env_record_object l provide_this)) (out_ter S v)
 
   (*------------------------------------------------------------*)
   (** ** Operations on lexical environments *)
@@ -1936,12 +1940,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x strict S o,
       red_expr S C (spec_lexical_env_get_identifier_ref lexs x strict) o ->
       red_expr S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x strict (out_ter S false)) o
+      
+  (** TODO : 10.4.2 Entering eval code *)    
+
+  | red_expr_execution_ctx_eval_call : forall S C K bd o,
+      red_expr S C (spec_execution_ctx_eval_call K bd) o  
 
   (** Function call --- TODO: check this section*)
 
   | red_expr_execution_ctx_function_call_direct : forall bd strict newthis S C K func this args o,
       object_code S func (Some bd) ->
-      strict = function_body_is_strict (body_prog bd) ->
+      strict = function_body_is_strict bd ->
       (If (strict = true) then newthis = this
       else If this = null \/ this = undef then newthis = builtin_global
       else If type_of this = type_object then newthis = this
@@ -1952,7 +1961,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_execution_ctx_function_call_convert : forall bd strict o1 S C K func this args o,
       object_code S func (Some bd) ->
-      strict = function_body_is_strict (body_prog bd) ->
+      strict = function_body_is_strict bd ->
       (~ (strict = true) /\ this <> null /\ this <> undef /\ type_of this <> type_object) ->
       red_expr S C (spec_to_object this) o1 ->
       red_expr S C (spec_execution_ctx_function_call_1 K func args strict o1) o ->
@@ -2012,10 +2021,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_binding_instantiation_function_decls K args L nil bconfig (out_void S)) o
 
   | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds bconfig o, (* Step 5b *)
-      let p := fd_code fd in
-      let strict := function_body_is_strict p in
-      let f_string := fd_string fd in
-      red_expr S C (spec_creating_function_object (fd_parameters fd) (body_intro p f_string) (execution_ctx_variable_env C) strict) o1 ->
+      let strict := function_body_is_strict (fd_body fd) in
+      red_expr S C (spec_creating_function_object (fd_parameters fd) (fd_body fd) (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_void S)) o
 
@@ -2137,8 +2144,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_creating_function_object : forall l S' o1 S C names bd X strict o,
       let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
       let O1 := object_with_invokation O 
-        (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_constructor) 
+        (Some builtin_spec_op_function_call) 
         (Some builtin_spec_op_function_has_instance) in
       let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
       (l, S') = object_alloc S O2 ->
@@ -2266,7 +2273,46 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_global_is_finite_1 : forall S S0 C b n,
       b = (ifb n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity then false else true) ->
-      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)               
+      red_expr S0 C (spec_call_global_is_finite (out_ter S n)) (out_ter S b)   
+      
+  (** 15.1.2.1 eval *)  
+  
+  | red_spec_call_global_eval_not_string : forall S C args v,
+      arguments_from args (v::nil) ->
+      type_of v <> type_string ->
+      red_expr S C (spec_call_builtin builtin_global_eval args) (out_ter S v)  
+      
+  | red_spec_call_global_eval_string : forall v s p S C args o,
+      arguments_from args (v::nil) ->
+      type_of v = type_string ->
+      v = prim_string s ->
+      ~ (parse s p) ->
+      (* TODO see also clause 16 *)
+      red_expr S C (spec_error builtin_syntax_error) o -> 
+      red_expr S C (spec_call_builtin builtin_global_eval args) o 
+      
+  | red_spec_call_global_eval_string_parse : forall v s p S C args v o,
+      arguments_from args (v::nil) ->
+      type_of v = type_string ->
+      v = prim_string s ->
+      parse s p ->
+      red_expr S C (spec_execution_ctx_eval_call (spec_call_global_eval p) (body_intro p s)) o ->
+      red_expr S C (spec_call_builtin builtin_global_eval args) o 
+      
+  | red_spec_call_global_eval : forall o1 S C p o,
+      red_prog S C p o1 ->
+      red_expr S C (spec_call_global_eval_1 o1) o ->
+      red_expr S C (spec_call_global_eval p) o  
+      
+  | red_spec_call_global_eval_1_normal_value: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S v)) (out_ter S v)
+      
+  | red_spec_call_global_eval_1_normal_empty: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S (res_normal ret_or_empty_empty))) (out_ter S undef)
+      
+  | red_spec_call_global_eval_1_throw: forall S C v,
+      red_expr S C (spec_call_global_eval_1 (out_ter S (res_throw v))) (out_ter S (res_throw v))     
+     
 
 (*------------------------------------------------------------*)
 (** ** Object builtin functions *)
@@ -2278,6 +2324,28 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       type_of v = type_object ->
       r = (ref_create_value v "prototype" false) ->
       red_expr S C (spec_call_builtin builtin_object_get_prototype_of args) (out_ter S (ret_ref r))
+      
+  (** new Object ([value]) 15.2.2.1. *)
+  
+  | red_spec_object_constructor_obj : forall v S C args,
+      (* TODO: handle host objects *)
+      arguments_from args (v::nil) ->
+      type_of v = type_object ->
+      red_expr S C (spec_constructor_builtin builtin_object_new args) (out_ter S v)
+      
+  | red_spec_object_constructor_prim : forall v S C args o,
+      arguments_from args (v::nil) ->
+      type_of v = type_string \/ type_of v = type_bool \/ type_of v = type_number ->
+      red_expr S C (spec_to_object v) o ->
+      red_expr S C (spec_constructor_builtin builtin_object_new args) o
+ 
+   | red_spec_object_constructor_nil : forall v O S' S C args l,
+      arguments_from args (v::nil) ->
+      type_of v = type_null \/ type_of v = type_undef ->
+      O = object_create builtin_object_proto "Object" true builtin_spec_op_object_get Heap.empty ->
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_constructor_builtin builtin_object_new args) (out_ter S' l)
+  
   
 (*------------------------------------------------------------*)
 (** ** Object prototype builtin functions *)
@@ -2286,9 +2354,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Daniele: we can factorize the two rules for undef and null *)
   | red_spec_call_object_proto_to_string_undef : forall S C v v1 o args, 
-      (* Daniele: since toString takes no args, we discard it here. Is it ok? Same below. *)
-      (* I think you can actually removes this line, or write [arguments_from args nil] if you want to be very closed to the spec' :) -- Martin *)
-      (* Daniele. Ok let's do [arguments_from args nil]. I fixed the order of arguments in [arguments_from] *)
       arguments_from args nil  ->
       v = execution_ctx_this_binding C ->
       v = undef ->
@@ -2308,48 +2373,300 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_proto_to_string o1) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_to_string args) o
 
-  | red_spec_call_object_proto_to_string : forall S S0 C l s o o1,
-      red_expr S C (spec_object_get l "class") o1 ->
-      red_expr S C (spec_call_object_proto_to_string_1 o1) o ->
-      red_expr S C (spec_call_object_proto_to_string (out_ter S0 l)) o
-
-  | red_spec_call_object_proto_to_string_1 : forall S C S0 s1 s, 
-       s = "[object " ++ s1 ++ "]" -> (* Daniele: is it the right way to concatenate strings? *)
-       red_expr S C (spec_call_object_proto_to_string_1 (out_ter S0 s1)) (out_ter S0 s) 
+  | red_spec_call_object_proto_to_string : forall S S0 C l s s1 o o1,
+      object_class S l s1 ->
+      s = "[object " ++ s1 ++ "]" ->
+      red_expr S C (spec_call_object_proto_to_string (out_ter S0 l)) (out_ter S0 s)
 
    (** Object.prototype.isPrototypeOf() *)
 
+   (* If the argument is not an object return false *)
    | red_spec_call_object_proto_is_prototype_of_not_object : forall S C v v1 o args w, 
       arguments_from args (v::nil)  ->
       v = value_prim w ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) (out_ter S false)
 
-  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 args, 
+  (* old : replaced by the next 2 rules
+  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 sp args, 
       arguments_from args (v::nil) ->                                             
       v = value_object l ->
       vt = execution_ctx_this_binding C ->
       red_expr S C (spec_to_object vt) o1 ->
-      red_expr S C (spec_call_object_proto_is_prototype_of o1 v) o ->
+      object_proto S l sp -> (* [spec_to_object] may change the heap:  I think this should be runned on the new computed heap. -- Martin *)
+      red_expr S C (spec_call_object_proto_is_prototype_of o1 sp) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+  *)
+
+  (* If the argument is an object, first get toObject(this) then move on *)
+  | red_spec_call_object_proto_is_prototype_of_object : forall S C v vt l o o1 args, 
+      arguments_from args (v::nil) ->                                             
+      v = value_object l ->
+      vt = execution_ctx_this_binding C ->  
+      red_expr S C (spec_to_object vt) o1 ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 o1 l) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
 
-  | spec_call_object_proto_is_prototype_of : forall S S0 C v vt o o1,
-      red_expr S C (spec_object_get v "prototype") o1 ->
-      red_expr S C (spec_call_object_proto_is_prototype_of_1 o1 vt) o ->
-      red_expr S C (spec_call_object_proto_is_prototype_of (out_ter S0 vt) v) o
+  (* Now get the prototype of the argument *)
+  | red_spec_call_object_proto_is_prototype_of_object_1 : forall S S' C v vt l o o1 sp,
+      object_proto S l sp -> 
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt sp) o ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 (out_ter S' vt) l) o
 
-  | spec_call_object_proto_is_prototype_of_1_null : forall S C vt, 
-      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S null) vt) (out_ter S false) 
+  (* Compare this and the prototype of the argument... *)
+  | red_spec_call_object_proto_is_prototype_of_1_null : forall S0 S C o vt,
+      red_expr S0 C (spec_call_builtin_object_proto_is_prototype_of vt null) (out_ter S false)
   
-  | spec_call_object_proto_is_prototype_of_1_same : forall S C vt vp v, 
+  | red_spec_call_object_proto_is_prototype_of_1_same : forall S C vt v,
       vt = v ->
-      red_expr S C (spec_call_object_proto_is_prototype_of_1 (out_ter S vp) vt) (out_ter S true) 
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt v) (out_ter S true)
+
+  | red_spec_call_object_proto_is_prototype_of_1_loop : forall S C vt v o,
+      not (vt = v \/ v = null) ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of_1 (out_ter S vt) v) o ->
+      red_expr S C (spec_call_builtin_object_proto_is_prototype_of vt v) o
+
+  (** Object.prototype.valueOf() - [15.2.4.4] *)
+
+  (* Daniele: - ignoring host objects for now (TODO) 
+              - implementation dependent part: we always return O (as Sergio suggested)*)
+
+  | red_spec_call_object_proto_value_of : forall S C args vt o,   
+      arguments_from args nil ->                                             
+      vt = execution_ctx_this_binding C ->
+      red_expr S C (spec_to_object vt) o ->
+      red_expr S C (spec_call_builtin builtin_object_proto_value_of args) o 
+
+  (*------------------------------------------------------------*)
+  (** ** Boolean builtin functions *)
+
+  (** [15.6.1]: Boolean(value) *)
+
+  (* Just performs a type conversion [toBoolean] *)
+  | red_spec_call_bool_call : forall S C v o args, 
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_to_boolean v) o ->
+      red_expr S C (spec_call_builtin builtin_bool_call args) o 
+
+  (** [15.6.2.1]: new Boolean(value) *)
+  
+  | red_spec_bool_constructor : forall S C v o o1 args,
+      arguments_from args (v::nil) -> 
+      red_expr S C (spec_to_boolean v) o1 ->
+      red_expr S C (spec_constructor_builtin_bool_new o1) o ->
+      red_expr S C (spec_constructor_builtin builtin_bool_new args) o
+  
+   | red_spec_bool_constructor_1 : forall O l b S' S C,
+      let O1 := object_create builtin_bool_proto "Boolean" true builtin_spec_op_object_get Heap.empty in 
+      let O := object_with_primitive_value O1 b in 
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_constructor_builtin_bool_new (out_ter S b)) (out_ter S' l) 
+
+  (*------------------------------------------------------------*)
+  (** ** Boolean prototype builtin functions *)
+  
+  (** Boolean.prototype.toString() *)
+
+  | red_spec_call_bool_proto_to_string_boolean : forall S C v v1 b s o args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_bool ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 v) o ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_to_string args) (out_ter S s)
+
+  | red_spec_call_bool_proto_to_string_object : forall S C l v v1 o o1 sc args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_object ->
+      v = value_object l ->
+      object_class S l sc ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string sc l) o ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_to_string args) o
+
+  | red_spec_call_bool_proto_to_string_object_boolean : forall S C l b s o o1,
+      s = "Boolean" ->
+      object_prim_value S l b ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 b) o ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string s l) o
+
+   | red_spec_call_bool_proto_to_string_object_not_boolean : forall S C b v s o,
+      not (s = "Boolean") ->
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string s b) o
+
+  | red_spec_call_bool_proto_to_string_1 : forall S C s b, 
+      s = (if decide (b = true) then "true" else "false") ->
+      red_expr S C (spec_call_builtin_bool_proto_to_string_1 b) (out_ter S s)
+
+   (** Boolean.prototype.valueOf() *)
+
+   (* Daniele: it is really the same thing as the previous one ([Boolean.prototype.toString()]), 
+      with the only difference that at the ends it returns the real value instead of its string
+      representation. Should be factorized? I just copied and pasted and fixed one line (see comment below). *)
+
+  | red_spec_call_bool_proto_value_of_boolean : forall S C v v1 b s o args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_bool ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of_1 v) o ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_value_of args) (out_ter S s)
+
+  | red_spec_call_bool_proto_value_of_object : forall S C l v v1 o o1 sc args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_object ->
+      v = value_object l ->
+      object_class S l sc ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of sc l) o ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_value_of args) o
+
+  | red_spec_call_bool_proto_value_of_object_boolean : forall S C l b s o o1,
+      s = "Boolean" ->
+      object_prim_value S l b ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of_1 b) o ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of s l) o
+
+   | red_spec_call_bool_proto_value_of_object_not_boolean : forall S C b v s o,
+      not (s = "Boolean") ->
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin_bool_proto_value_of s b) o
+
+  (* Daniele: This rule is the only difference between [Boolean.prototype.valueOf()]
+     and [Boolean.prototype.toString()] *)
+  | red_spec_call_bool_proto_value_of_1 : forall S C s b, 
+      red_expr S C (spec_call_builtin_bool_proto_value_of_1 b) (out_ter S b)
+
+  (*------------------------------------------------------------*)
+  (** ** Number builtin functions *)
+
+  (** [15.7.1.1]: Number(value) *)
+
+  (* Just performs a type conversion [toNumber] *)
+  | red_spec_call_number_call : forall S C v o args, 
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_to_number v) o ->
+      red_expr S C (spec_call_builtin builtin_number_call args) o
+
+  (** [15.7.2.1]: new Number([value]) *)
+  
+  (* Daniele: do I have to type [(value_prim (prim_number (JsNumber.of_int k)))] 
+     every time? Shortcuts? *)
+
+  (* If [value] is not supplied, the default value is 0 *)
+  | red_spec_number_constructor_no_value : forall S C o o1 args,
+      arguments_from args nil -> 
+      o1 = (out_ter S (value_prim (prim_number (JsNumber.of_int 10)))) ->
+      red_expr S C (spec_constructor_builtin_number_new o1) o ->
+      red_expr S C (spec_constructor_builtin builtin_number_new args) o
+
+  (* If [value] is supplied, we call toNumber(value) and move on *)
+  | red_spec_number_constructor_value : forall S C v o o1 args,
+      arguments_from args (v::nil) -> 
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (spec_constructor_builtin_number_new o1) o ->
+      red_expr S C (spec_constructor_builtin builtin_number_new args) o
+  
+  (* We create the new object using the provided value (or the default one, zero) *)
+  | red_spec_number_constructor_1 : forall O l v S' S C,
+      let O1 := object_create builtin_number_proto "Number" true builtin_spec_op_object_get Heap.empty in
+      let O := object_with_primitive_value O1 v in 
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_constructor_builtin_number_new (out_ter S v)) (out_ter S' l) 
+
+  (*------------------------------------------------------------*)
+  (** ** Number prototype builtin functions *)
+
+  (* 15.7.4.2: Number.prototype.toString([radix]) *)
+
+  (* Daniele: I guess we don't have the algorithm for representing numbers 
+     as strings with different radix. I'll just ignore this (i.e. always do
+     toString in base 10) *)
+
+  (* Daniele: I'm not convinced by this one :/ *)
+  
+  (* if [this] is not a number then throw Type Error exception *)
+  | red_spec_call_number_proto_to_string_not_number : forall S C s b o v args, 
+      v = execution_ctx_this_binding C ->
+      not (type_of v = type_number) -> (* Daniele: check last lines of [15.7.4.2]. *)
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string args) o
+
+  (* if [this] is a number we proceed to the next stages *)
+  | red_spec_call_number_proto_to_string_number : forall S C s b o v args, 
+      v = execution_ctx_this_binding C ->
+      type_of v = type_number -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o ->
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string args) o
+
+  (* The [radix] parameter is not there: use 10 as default *)
+  | red_spec_call_number_proto_to_string_number_no_radix : forall S C v o args, 
+      args = nil ->
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o 
+
+  (* The [radix] parameter is undefined: use 10 as default *)
+  | red_spec_call_number_proto_to_string_number_undef_radix : forall S C v vr args o, 
+      arguments_from args (vr::nil) ->
+      vr = undef ->
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o 
+
+  (* TODO: factorize the previous 2? *)
+
+  (* The [radix] is present *)
+  | red_spec_call_number_proto_to_string_number_radix : forall S C v vr args o o1,
+      arguments_from args (vr::nil) ->
+      not (vr = undef) ->
+      red_expr S C (spec_to_integer vr) o1 ->
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v o1) o -> 
+      red_expr S C (spec_call_builtin_number_proto_to_string v args) o 
+ 
+  (* If the [radix] is 10 we do a simple toString *)
+  | red_spec_call_number_proto_to_string_1_radix_10 :forall S S' C v vr o,
+      vr = value_prim (prim_number (JsNumber.of_int 10)) -> 
+      red_expr S C (spec_to_string v) o ->
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v (out_ter S' vr)) o
+      
+  (* If the [radix] is out of range we throw a Range Error exception *)
+  | red_spec_call_number_proto_to_string_1_radix_out_of_range : forall S S' C v vr k o,
+      vr = value_prim (prim_number (JsNumber.of_int k)) ->
+      (k < 2 /\ k > 36) -> 
+      red_expr S C spec_init_throw_type_error o -> (* Should be Range Error instead of Type Error *)
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v (out_ter S' vr)) o
+  
+  (* If the [radix] is in range we do a simple toString 
+     TODO: in fact the number should be printed using that radix
+     implementation dependent) *)
+  | red_spec_call_number_proto_to_string_1_radix_in_range : forall S S' C v vr k o,
+      vr = value_prim (prim_number (JsNumber.of_int k)) ->
+      not (k < 2 /\ k > 36) -> 
+      red_expr S C (spec_to_string v) o -> (* This should be something different *)
+      red_expr S C (spec_call_builtin_number_proto_to_string_1 v (out_ter S' vr)) o
+
+
+  (* 15.7.4.4: Number.prototype.valueOf() *)
+
+  (* it throws a TypeError exception if its this value is not a Number or a Number object. *)
+  | red_spec_call_number_proto_value_of_not_number : forall S C v o args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      not (type_of v = type_number) -> (* ? *)
+      red_expr S C spec_init_throw_type_error o ->
+      red_expr S C (spec_call_builtin builtin_number_proto_value_of args) o
+
+  (* Otherwise it returns the Number value itself *)
+  | red_spec_call_number_proto_value_of_number : forall S C v args, 
+      arguments_from args nil  ->
+      v = execution_ctx_this_binding C ->
+      type_of v = type_number ->
+      red_expr S C (spec_call_builtin builtin_number_proto_value_of args) (out_ter S v)
+
 
   (** Throw Type Error Function Object Initialisation *)           
   
   (* Could we have this not a a reduction, but as simple function in JsInit? *)
   | red_spec_init_throw_type_error : forall O O1 code O2 S' A o1 S C o,
       O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
-      O1 = object_with_invokation O (Some builtin_spec_op_function_call) None None ->
+      O1 = object_with_invokation O None (Some builtin_spec_op_function_call) None ->
       (* TODO : Is this ok? *)
       code = body_intro (prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) "throw TypeError()" -> 
       O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
@@ -2401,5 +2718,4 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
       valid_lhs_for_assign R ->
-
 *)

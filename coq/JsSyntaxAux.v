@@ -343,6 +343,35 @@ Global Instance body_inhab : Inhab body.
 Proof. apply prove_Inhab. apply (body_intro arbitrary arbitrary). Qed.
 
 
+
+(**************************************************************)
+(* retrieve function and variable declarations from code *)
+
+Fixpoint function_declarations (p : prog) : list function_declaration :=
+  match p with
+  | prog_function_decl name args bd =>
+    function_declaration_intro name args bd :: nil
+  | prog_seq p1 p2 =>
+    function_declarations p1 ++ function_declarations p2
+  | prog_stat _ => nil
+  end.
+
+Fixpoint variable_declarations (p : prog) : list string :=
+  let fs := (fix fs (t : stat) : list string :=
+    match t with
+    | stat_var_decl nes =>
+      LibList.map fst nes
+    | stat_seq t1 t2 => fs t1 ++ fs t2
+    (* TODO:  stat_for_in_var *)
+    | _ => nil
+    end) in
+  match p with
+  | prog_stat t => fs t
+  | prog_seq p1 p2 =>
+    variable_declarations p1 ++ variable_declarations p2
+  | prog_function_decl _ _ _ => nil
+  end.
+
+
 (**************************************************************)
 (** TODO: complete this file *)
-

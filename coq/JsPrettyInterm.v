@@ -70,17 +70,22 @@ Inductive ext_expr :=
   | expr_object_4 : object_loc -> string -> prop_attributes -> list (propname * propbody) -> ext_expr
   | expr_object_5 : object_loc -> list (propname * propbody) -> out -> ext_expr
   
+  | expr_function_1 : string -> list string -> body -> env_loc -> lexical_env -> out -> ext_expr
+  | expr_function_2 : string -> env_loc -> out -> ext_expr
+  | expr_function_3 : object_loc -> out -> ext_expr
+  
   | expr_access_1 : out -> expr -> ext_expr (* The left expression has been executed *)
-  | expr_access_2 : object_loc -> out -> ext_expr (* The left expression has been converted to a location and the right expression is executed. *)
+  | expr_access_2 : value -> out -> ext_expr (* The right expression is executed. *)
   | expr_access_3 : value -> value -> ext_expr
 
   | expr_new_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
   | expr_new_2 : object_loc -> function_code -> list value -> ext_expr (* The arguments too. *)
   | expr_new_3 : object_loc -> out -> ext_expr (* The call has been executed. *)
+  
   | expr_call_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
-  | expr_call_2 : object_loc -> object_loc -> list expr -> ext_expr (* A check is performed on the location returned to know if it's a special one. *)
-  | expr_call_3 : object_loc -> function_code -> list value -> ext_expr (* The arguments have been executed. *)
-  | expr_call_4 : out -> ext_expr (* The call has been executed. *)
+  | expr_call_2 : ret -> list expr -> out -> ext_expr 
+  | expr_call_3 : ret -> value -> list value -> ext_expr (* The arguments have been executed. *)
+  | expr_call_4 : object_loc -> list value -> out -> ext_expr (* The call has been executed. *)
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
@@ -110,7 +115,7 @@ Inductive ext_expr :=
   | expr_inequality_op_1 : bool -> bool -> value -> value -> ext_expr
   | expr_inequality_op_2 : bool -> bool -> value -> value -> ext_expr
   | expr_binary_op_in_1 : object_loc -> out -> ext_expr
-  | expr_binary_op_strict_disequal_1 : out -> ext_expr
+  | expr_binary_op_disequal_1 : out -> ext_expr
   | spec_equal : value -> value -> ext_expr
   | spec_equal_1 : type -> type -> value -> value -> ext_expr
   | spec_equal_2 : bool -> ext_expr
@@ -235,14 +240,21 @@ Inductive ext_expr :=
   | spec_env_record_create_set_mutable_binding : env_loc -> prop_name -> option bool -> value -> bool -> ext_expr
   | spec_env_record_create_set_mutable_binding_1 : out -> env_loc -> prop_name -> value -> bool -> ext_expr
 
-  | spec_env_record_implicit_this_value : env_loc -> prop_name -> ext_expr
-  | spec_env_record_implicit_this_value_1 : env_loc -> prop_name -> env_record -> ext_expr
+  | spec_env_record_implicit_this_value : env_loc -> ext_expr
+  | spec_env_record_implicit_this_value_1 : env_loc -> env_record -> ext_expr
 
   (** Extended expressions for operations on lexical environments *)
 
   | spec_lexical_env_get_identifier_ref : lexical_env -> prop_name -> bool -> ext_expr
   | spec_lexical_env_get_identifier_ref_1 : env_loc -> lexical_env -> prop_name -> bool -> ext_expr
   | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_expr
+
+  (** Extented expressions for eval *)
+  
+  | spec_execution_ctx_eval_call : ext_expr -> body -> ext_expr
+  
+  | spec_call_global_eval : prog -> ext_expr
+  | spec_call_global_eval_1 : out -> ext_expr
 
   (** Extended expressions for function calls *)
 
@@ -323,12 +335,32 @@ Inductive ext_expr :=
 
   (* Object.prototype.toString() *)
   | spec_call_object_proto_to_string : out -> ext_expr
-  | spec_call_object_proto_to_string_1 : out -> ext_expr
 
   (* Object.prototype.isPrototypeOf(v) *)
-  | spec_call_object_proto_is_prototype_of : out -> value -> ext_expr
-  | spec_call_object_proto_is_prototype_of_1 : out -> value -> ext_expr
-                                                   
+  | spec_call_builtin_object_proto_is_prototype_of : value -> value -> ext_expr
+  | spec_call_builtin_object_proto_is_prototype_of_1 : out -> value -> ext_expr 
+
+  (** Extended expressions for calling boolean object builtin functions *)   
+  | spec_constructor_builtin_bool_new : out -> ext_expr
+
+                                  
+  (** Extended expressions for calling boolean prototype builtin functions *)   
+              
+  (* Boolean.prototype.toString() *)
+  | spec_call_builtin_bool_proto_to_string : value -> value -> ext_expr
+  | spec_call_builtin_bool_proto_to_string_1 : value -> ext_expr
+
+  (* Boolean.prototype.toString() *)
+  | spec_call_builtin_bool_proto_value_of : value -> value -> ext_expr
+  | spec_call_builtin_bool_proto_value_of_1 : value -> ext_expr
+
+  (* Number.prototype.toString() *)
+  | spec_call_builtin_number_proto_to_string : value -> list value -> ext_expr
+  | spec_call_builtin_number_proto_to_string_1 : value -> out -> ext_expr
+
+  (** Extended expressions for calling Number builtin functions *)   
+
+  | spec_constructor_builtin_number_new : out -> ext_expr
 
 (** Grammar of extended statements *)
 

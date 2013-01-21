@@ -14,3 +14,4 @@ interpreter.mli
 syntax.ml
 syntax.mli
 TAGS
+*.xml

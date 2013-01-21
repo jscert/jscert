@@ -34,30 +34,30 @@ let unary_op_to_coq op : Interpreter.unary_op =
 let arith_op_to_coq op : Interpreter.binary_op =
   begin match op with
     | Plus -> Interpreter.Binary_op_add
-	  | Minus -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_arith_op op))
-	  | Times -> Interpreter.Binary_op_mult
-	  | Div -> Interpreter.Binary_op_div
-	  | Mod 
-	  | Ursh
-	  | Lsh
-	  | Rsh
-	  | Bitand
-	  | Bitor
-	  | Bitxor -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_arith_op op))
+    | Minus -> Interpreter.Binary_op_sub
+    | Times -> Interpreter.Binary_op_mult
+    | Div -> Interpreter.Binary_op_div
+    | Mod -> Interpreter.Binary_op_mult
+    | Bitand -> Interpreter.Binary_op_bitwise_and
+    | Bitor -> Interpreter.Binary_op_bitwise_or
+    | Bitxor -> Interpreter.Binary_op_bitwise_xor
+    | Ursh
+    | Lsh
+    | Rsh -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_arith_op op))
   end
 
 let bin_op_to_coq op : Interpreter.binary_op =
   match op with
     | Comparison op ->
       begin match op with
+              | Lt -> Interpreter.Binary_op_lt
+              | Le -> Interpreter.Binary_op_le
+              | Gt -> Interpreter.Binary_op_gt
+              | Ge -> Interpreter.Binary_op_ge
               | Equal -> Interpreter.Binary_op_equal
-              | NotEqual
-              | TripleEqual 
-              | NotTripleEqual
-              | Lt 
-              | Le
-              | Gt
-              | Ge -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_comparison_op op))
+              | NotEqual -> Interpreter.Binary_op_disequal
+              | TripleEqual -> Interpreter.Binary_op_strict_equal
+              | NotTripleEqual -> Interpreter.Binary_op_strict_disequal
               | In -> Interpreter.Binary_op_in
               | InstanceOf -> Interpreter.Binary_op_instanceof
       end
@@ -95,15 +95,15 @@ let rec exp_to_exp exp : Interpreter.expr =
       | Assign (e1, e2)  -> Interpreter.Expr_assign (f e1, None, f e2)
       | AssignOp (e1, op, e2) -> Interpreter.Expr_assign (f e1, Some (arith_op_to_coq op), f e2)
       | CAccess (e1, e2) -> Interpreter.Expr_access (f e1, f e2)
-      | Comma (e1, e2) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | Comma (e1, e2) -> Interpreter.Expr_binary_op (f e1, Interpreter.Binary_op_coma, f e2)
       | Call (e1, e2s) -> Interpreter.Expr_call (f e1, map (fun e2 -> f e2) e2s)
       | New (e1, e2s) -> Interpreter.Expr_new (f e1, map (fun e2 -> f e2) e2s)
-      | AnnonymousFun (vs, e) -> Interpreter.Expr_function (None, (map string_to_coq vs), exp_to_prog e)
+      | AnnonymousFun (vs, e) -> Interpreter.Expr_function (None, (map string_to_coq vs), Interpreter.Body_intro (exp_to_prog e, []))
       | NamedFun (n, vs, e) -> Interpreter.Expr_function 
-        (Some (string_to_coq n), (map string_to_coq vs), exp_to_prog e)
+        (Some (string_to_coq n), (map string_to_coq vs), Interpreter.Body_intro (exp_to_prog e, []))
       | Obj xs -> Interpreter.Expr_object (map (fun (s,e) -> Interpreter.Propname_string (string_to_coq s), Interpreter.Propbody_val (f e)) xs)
       | Array _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
-      | ConditionalOp _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | ConditionalOp (e1, e2, e3) -> Interpreter.Expr_conditional (f e1, f e2, f e3)
 
       (*Statements*)
       | Skip 
@@ -154,11 +154,13 @@ and exp_to_stat exp : Interpreter.stat =
 
       (*Statements*)
       | Skip -> Interpreter.Stat_skip
-      | Return (Some e) -> f e
-      | Return None -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* Note:  Now it accepts this. -- Martin *)
-      | Break _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
-      | Continue _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
-      | Debugger -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | Return (Some e) -> Interpreter.Stat_return (Some (exp_to_exp e))
+      | Return None -> Interpreter.Stat_return None
+      | Break (Some l) -> Interpreter.Stat_break (Some (string_to_coq l))
+      | Break None -> Interpreter.Stat_break None
+      | Continue (Some l) -> Interpreter.Stat_continue (Some (string_to_coq l))
+      | Continue None -> Interpreter.Stat_continue None
+      | Debugger -> Interpreter.Stat_debugger
       | VarDec (v, None) -> Interpreter.Stat_var_decl [string_to_coq v, None]
       | VarDec (v, Some e) -> Interpreter.Stat_var_decl [string_to_coq v, Some (exp_to_exp e)]
       | Throw e -> Interpreter.Stat_throw (exp_to_exp e)
@@ -182,12 +184,12 @@ and exp_to_stat exp : Interpreter.stat =
 	           List.fold_right (fun s1 s2 -> Interpreter.Stat_seq (f s1, s2)) stmts (f last)
         end
 
-and exp_to_prog exp =
+and exp_to_prog exp : Interpreter.prog =
   let f = exp_to_prog in
   let tos = string_to_coq in
   match exp.exp_stx with
 	  | NamedFun (name, args, body) -> 
-      Interpreter.Prog_function_decl (tos name, map tos args, f body)
+      Interpreter.Prog_function_decl (tos name, map tos args, Interpreter.Body_intro (f body, []))
 	  | Seq (e1, e2) -> Interpreter.Prog_seq (f e1, f e2)
 	  | _ -> Interpreter.Prog_stat (exp_to_stat exp)
 

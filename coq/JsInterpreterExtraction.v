@@ -43,9 +43,7 @@ Require Import ExtrOcamlNatInt.
 Require Import ExtrOcamlString.
 
 (* TODO:  These extraction directives are only temporary. *)
-Extract Constant function_body_is_strict => "(fun _ -> raise Not_found)".
-Extract Constant function_declarations => "(fun _ -> raise Not_found)".
-Extract Constant variable_declarations => "(fun _ -> raise Not_found)".
+Extract Constant function_body_is_strict => "(fun _ -> false (* TODO:  Writen by hand, not implemented in the Coq file.  This is just to be able to run some tests. *))".
 
 (* number *)
 Require Import ExtrOcamlZInt.
@@ -93,7 +91,7 @@ Extract Constant JsNumber.mult => "( *. )".
 Extract Constant JsNumber.div => "(/.)".
 Extract Constant JsNumber.fmod => "mod_float".
 Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
-Extract Constant JsNumber.number_comparable => "(=)".
+Extract Constant JsNumber.number_comparable => "(fun n1 n2 -> 0 = compare n1 n2)".
 Extract Constant JsNumber.lt_bool => "(<)".
 
 Extract Constant int_of_char => "int_of_char".

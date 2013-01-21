@@ -103,7 +103,7 @@ Inductive expr :=
   | expr_literal : literal -> expr
   (*| expr_object : list (prop * expr) -> expr*) (* Old def *)
   | expr_object : list (propname * propbody) -> expr (* New def *)
-  | expr_function : option string -> list string -> prog -> expr
+  | expr_function : option string -> list string -> body -> expr
   | expr_access : expr -> expr -> expr
   | expr_member : expr -> string -> expr
   | expr_new : expr -> list expr -> expr
@@ -167,7 +167,7 @@ with stat :=
 with prog :=
   | prog_stat : stat -> prog
   | prog_seq : prog -> prog -> prog
-  | prog_function_decl : string -> list string -> prog -> prog.
+  | prog_function_decl : string -> list string -> body -> prog.
   (* TODO:  Add prog_use_strict : prog -> prog. *)
 
 
@@ -179,11 +179,10 @@ Coercion prog_stat : stat >-> prog.
 Record function_declaration := function_declaration_intro {
    fd_name : string;
    fd_parameters : list string;
-   fd_code : prog;
-   fd_string : string }.
+   fd_body : body }.
 
 (* We assume that function declarations know about their strictness in terms of 10.1.1 *)
-Parameter function_body_is_strict : prog -> bool.
+Parameter function_body_is_strict : body -> bool.
 
 
 (**************************************************************)
@@ -275,11 +274,14 @@ Inductive builtin :=
   (* LATER:
   | builtin_string_proto_char_code_at *)
 
+  | builtin_bool
+  | builtin_bool_proto
   | builtin_bool_call
   | builtin_bool_new
   | builtin_bool_proto_to_string
   | builtin_bool_proto_value_of
 
+  | builtin_number
   | builtin_number_call
   | builtin_number_new
   | builtin_number_proto
@@ -297,6 +299,7 @@ Inductive builtin :=
   (* Spec operation ids *)
     
   (* [[Call]] *)
+
   | builtin_spec_op_function_call      (* 13.2.1 *)  
   | builtin_spec_op_function_bind_call (* 15.3.4.5.1 *) (* TODO *)
   
