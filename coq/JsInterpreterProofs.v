@@ -323,8 +323,8 @@ Proof.
   lets (b&E'): H. right*.
 Qed.
 
-Lemma elim_if_success_throw : forall o k1 k2 h r,
-  if_success_throw o k1 k2 = out_return h r ->
+Lemma elim_if_success_or_throw : forall o k1 k2 h r,
+  if_success_or_throw o k1 k2 = out_return h r ->
   (o = out_return h r /\ (forall v, r <> ret_ret_expr v) /\ forall v, r <> ret_throw v) \/
   (exists v h, o = out_return h (ret_ret_expr v)) \/
   (exists v h, o = out_return h (ret_throw v)).
@@ -1905,7 +1905,7 @@ Proof.
     apply* getvalue_comp_correct.
 
   (* try *)
-  forwards [(eq1&nV1&nV2) | [(r0&h1&eq1) | (v0&h1&eq1)]]: elim_if_success_throw R; tryfalse.
+  forwards [(eq1&nV1&nV2) | [(r0&h1&eq1) | (v0&h1&eq1)]]: elim_if_success_or_throw R; tryfalse.
     inverts OR; tryfalse.
     rewrite eq1 in R. simpls.
      forwards~ R1: run_stat_correct eq1.

@@ -36,28 +36,76 @@ Implicit Type p : prog.
 Implicit Type t : stat.
 
 
+
+(**************************************************************)
+(** Macros for exceptional behaviors in reduction rules *)
+
+(* TODO: the macros for errors need to allocate error objects *)
+
+(** "Syntax error" behavior *)
+
+Definition out_syntax_error S :=
+  out_ter S (res_throw builtin_syntax_error).
+
+(** "Type error" behavior *)
+
+Definition out_type_error S :=
+  out_ter S (res_throw builtin_type_error).
+
+(** "Reference error" behavior *)
+
+Definition out_ref_error S :=
+  out_ter S (res_throw builtin_ref_error).
+
+(** The "void" result is used by specification-level functions
+    which do not produce any javascript value, but only perform
+    side effects. (We return the value [undef] in the implementation.)
+    -- TODO : sometimes we used false instead  -- where? fix it.. *)
+
+Definition out_void S :=
+  out_ter S undef.
+
+(** [out_reject S bthrow] throws a type error if
+    [bthrow] is true, else returns the value [false] *)
+
+Definition out_reject S bthrow :=
+  ifb bthrow = true
+    then (out_type_error S)
+    else (out_ter S false).
+
+(** [out_ref_error_or_undef S bthrow] throws a type error if
+    [bthrow] is true, else returns the value [undef] *)
+
+Definition out_ref_error_or_undef S (bthrow:bool) :=
+  if bthrow
+    then (out_ref_error S)
+    else (out_ter S undef).
+
+
+
 (**************************************************************)
 (** ** Some functions to be implemented (or extracted differently). *)
 
+(* TODO *)
 Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 
 
 (**************************************************************)
 (** ** Some types used by the interpreter *)
 
-Inductive out_interp :=
-  | out_interp_normal : out -> out_interp
-  | out_interp_stuck : out_interp
-  | out_interp_bottom : out_interp.
+Inductive result := 
+  | result_normal : out -> result 
+  | result_stuck : result 
+  | result_bottom : result.
 
 (* Coercion *)
 
-Coercion out_interp_normal : out >-> out_interp.
+Coercion result_normal : out >-> result.
 
 (* Inhabited *)
 
-Global Instance out_interp_inhab : Inhab out_interp.
-Proof. applys prove_Inhab out_interp_stuck. Qed.
+Global Instance result_inhab : Inhab result.
+Proof. applys prove_Inhab result_stuck. Qed.
 
 
 (**************************************************************)
@@ -65,62 +113,68 @@ Proof. applys prove_Inhab out_interp_stuck. Qed.
 
 Section InterpreterEliminations.
 
+(* TODO: move in Shared.v and leave it as a todo for LibOption *)
 Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   match op with
   | None => c
   | Some b => f b
   end.
 
+(* TODO: find more explicit name suggesting that a function is extracted *)
 Definition extract_from_option {B : Type} `{Inhab B} (op : option B) :=
   morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.
 
-Definition if_success (o : out_interp) (K : state -> ret_or_empty -> out_interp) : out_interp :=
+
+(**************************************************************)
+(** Monadic constructors *)
+
+Definition if_success (o : result) (K : state -> ret_or_empty -> result) : result :=
   match o with
   | out_ter S0 (res_normal re) => K S0 re
   | _ => o
   end.
 
-Definition if_success_throw (o : out_interp) (K1 : state -> res -> out_interp) (K2 : state -> value -> out_interp) : out_interp :=
+Definition if_success_or_throw (o : result) (K1 : state -> res -> result) (K2 : state -> value -> result) : result :=
   match o with
   | out_ter S0 (res_normal re) => K1 S0 re
   | out_ter S0 (res_throw v) => K2 S0 v
   | _ => o
   end.
 
-Definition if_success_return (o : out_interp) (K1 : state -> res -> out_interp) (K2 : state -> value -> out_interp) : out_interp :=
+Definition if_success_or_return (o : result) (K1 : state -> res -> result) (K2 : state -> value -> result) : result :=
   match o with
   | out_ter S0 (res_normal re) => K1 S0 re
   | out_ter S0 (res_return v) => K2 S0 v
   | _ => o
   end.
 
-Definition if_value (o : out_interp) (K : state -> value -> out_interp) : out_interp :=
+Definition if_value (o : result) (K : state -> value -> result) : result :=
   if_success o (fun S re =>
     match re with
     | ret_value v =>
       K S v
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition if_success_bool (o : out_interp) (K1 K2 : state -> out_interp) : out_interp :=
+Definition if_success_bool (o : result) (K1 K2 : state -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_bool b =>
       (if b then K1 else K2) S
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition if_success_primitive (o : out_interp) (K : state -> prim -> out_interp) : out_interp :=
+Definition if_success_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S re =>
     match re with
     | value_prim w =>
       K S w
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition if_defined {B : Type} (op : option B) (K : B -> out_interp) : out_interp :=
+Definition if_defined {B : Type} (op : option B) (K : B -> result) : result :=
   match op with
-  | None => out_interp_stuck
+  | None => result_stuck
   | Some a => K a
   end.
 
@@ -130,42 +184,42 @@ Definition if_defined_else {B C : Type} (op : option B) (K : B -> C) (K' : unit 
   | Some a => K a
   end.
 
-Definition if_success_ret (o : out_interp) (K : state -> ret -> out_interp) : out_interp :=
+Definition if_success_ret (o : result) (K : state -> ret -> result) : result :=
   if_success o (fun S re =>
     match re with
     | ret_or_empty_ret re' => K S re'
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition if_value_object (o : out_interp) (K : state -> object_loc -> out_interp) : out_interp :=
+Definition if_object (o : result) (K : state -> object_loc -> result) : result :=
   if_value o (fun S v =>
     match v with
     | value_object l => K S l
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition if_value_string (o : out_interp) (K : state -> string -> out_interp) : out_interp :=
+Definition if_string (o : result) (K : state -> string -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_string s => K S s
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition if_value_number (o : out_interp) (K : state -> number -> out_interp) : out_interp :=
+Definition if_number (o : result) (K : state -> number -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_number n => K S n
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition if_value_primitive (o : out_interp) (K : state -> prim -> out_interp) : out_interp :=
+Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-
+(* TODO: move to Shared.v *)
 Fixpoint map_nth {A B : Type} (d : B) (f : A -> B) (i : nat) (s : list A) : B :=
   match i, s with
   | O, a :: _ => f a
@@ -173,9 +227,13 @@ Fixpoint map_nth {A B : Type} (d : B) (f : A -> B) (i : nat) (s : list A) : B :=
   | _, _ => d
   end.
 
+(**************************************************************)
+
+(* TODO: move to Shared.v *)
 Definition get_nth {A : Type} (d : A) (i : nat) (s : list A) : A :=
   map_nth (fun _ : unit => d) (fun (x : A) _ => x) i s tt.
 
+(* TODO: should be in JsPreliminary *)
 Definition prop_attributes_is_generic_or_data A := (* TODO:  Still needed? *)
   prop_attributes_is_generic A \/ prop_attributes_is_data A.
 
@@ -192,6 +250,9 @@ Qed.
 Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *)
 
 End InterpreterEliminations.
+
+(**************************************************************)
+(** Operations on objects *)
 
 Section LexicalEnvironments.
 
@@ -223,7 +284,7 @@ Definition run_object_code_empty S l : bool :=
   morph_option true (fun _ => false)
     (object_code_ (pick (object_binds S l))).
 
-Definition run_object_code S l : body :=
+Definition run_object_code S l : funcbody :=
   extract_from_option (object_code_ (pick (object_binds S l))).
 
 Definition run_object_properties S l : object_properties_type :=
@@ -244,11 +305,15 @@ Proof.
   introv [a [O [B E]]]. exists O. splits~.
   unfolds run_object_heap_map_properties.
   skip. (* binds is a functionnal construction. *)
+  (* TODO: use LibHeap.binds_func *)
 Qed.
+
+
+(**************************************************************)
+(** Operations on environments *)
 
 Definition run_decl_env_record_binds_value D x : value :=
   snd (pick (binds D x)).
-
 
 Definition run_object_get_own_property_base P x : prop_descriptor :=
   match read_option P x with
@@ -259,6 +324,7 @@ Definition run_object_get_own_property_base P x : prop_descriptor :=
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
   run_object_get_own_property_base (run_object_properties S l) x.
 
+(* TODO: check this definition once the one in JsPreliminary has been updated *)
 Definition run_object_get_own_property S l x : prop_descriptor :=
   let sclass := run_object_class S l in
   let An := run_object_get_own_property_default S l x in
@@ -295,13 +361,17 @@ Definition object_get_property_body run_object_get_property S v x : prop_descrip
 
 Definition run_object_get_property := FixFun3 object_get_property_body.
 
-Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : out_interp :=
+Definition object_has_prop S l x : bool :=
+  let An := run_object_get_property S (value_object l) x in
+  decide (An <> prop_descriptor_undef).
+
+Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
   match run_object_proto S  l  with
   | null => out_ter S false
   | value_object l' =>
     ifb l' = l0 then out_ter S true
     else run_object_proto_is_prototype_of S l0 l'
-  | _ => out_interp_stuck
+  | _ => result_stuck
   end.
 
 Definition run_object_proto_is_prototype_of := FixFun3 object_proto_is_prototype_of_body.
@@ -311,10 +381,6 @@ Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
   | Some er => K er
   | None => d
   end.
-
-Definition object_has_prop S l x : bool :=
-  let An := run_object_get_property S (value_object l) x in
-  decide (An <> prop_descriptor_undef).
 
 Definition env_record_has_binding S L x : bool :=
   env_record_lookup (fun _ : unit => arbitrary) S L (fun er _ =>
@@ -340,19 +406,22 @@ Definition identifier_res S C x :=
   let strict := execution_ctx_strict C in
   lexical_env_get_identifier_ref S lex x strict.
 
-Definition object_get S v x : out_interp :=
+Definition object_get S v x : result :=
   match run_object_get_property S v x with
   | prop_descriptor_undef => out_ter S undef
   | prop_descriptor_some A =>
     ifb prop_attributes_is_data A then
-      morph_option out_interp_stuck (out_ter S : value -> _) (prop_attributes_value A)
-    else out_interp_stuck
+      morph_option result_stuck (out_ter S : value -> _) (prop_attributes_value A)
+    else result_stuck
   end.
 
 Definition run_alloc_primitive_value S w : state * object_loc :=
   arbitrary (* TODO *).
 
-Definition to_object S v : out_interp :=
+(**************************************************************)
+(** Conversions *)
+
+Definition to_object S v : result :=
   match v with
   | prim_null | prim_undef => out_type_error S
   | value_prim w =>
@@ -361,7 +430,15 @@ Definition to_object S v : out_interp :=
   | value_object l => out_ter S l
   end.
 
-Definition constructor_builtin S (builtinid : builtin) (vs : list value) : out_interp :=
+Definition object_get_special S v x : result :=
+  if_object (to_object S v) (fun S' l =>
+    object_get S' l x).
+
+
+(**************************************************************)
+
+(* TODO: what is this ?? *)
+Definition constructor_builtin S (builtinid : builtin) (vs : list value) : result :=
   match builtinid with
 
   | builtin_object_new =>
@@ -385,13 +462,10 @@ Definition constructor_builtin S (builtinid : builtin) (vs : list value) : out_i
 
   end.
 
+(**************************************************************)
 
-Definition object_get_special S v x : out_interp :=
-  if_value_object (to_object S v) (fun S' l =>
-    object_get S' l x).
-
-Definition env_record_get_binding_value S L x (strict : strictness_flag) : out_interp :=
-  env_record_lookup out_interp_stuck S L (fun er =>
+Definition env_record_get_binding_value S L x (strict : strictness_flag) : result :=
+  env_record_lookup result_stuck S L (fun er =>
     match er with
     | env_record_decl D =>
       let (mu, v) := read D x in
@@ -404,7 +478,7 @@ Definition env_record_get_binding_value S L x (strict : strictness_flag) : out_i
       else out_ref_error_or_undef S strict
     end).
 
-Definition object_can_put S l x : out_interp :=
+Definition object_can_put S l x : result :=
   let An := run_object_get_own_property S l x in
   let oe := run_object_extensible S l in
   match An with
@@ -414,7 +488,7 @@ Definition object_can_put S l x : out_interp :=
         \/ prop_attributes_set A = None))
     else ifb prop_attributes_is_data A then
       out_ter S (morph_option undef prim_bool (prop_attributes_writable A))
-    else out_interp_stuck
+    else result_stuck
   | prop_descriptor_undef =>
     let lproto := run_object_proto S l in
     ifb lproto = null then out_ter S oe
@@ -427,12 +501,12 @@ Definition object_can_put S l x : out_interp :=
           out_ter S (decide (prop_attributes_set A = Some undef \/ prop_attributes_set A = None))
         else ifb prop_attributes_is_data A then
           out_ter S (if oe then false else morph_option undef prim_bool (prop_attributes_writable A))
-        else out_interp_stuck
+        else result_stuck
       end
     )
   end.
 
-Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool) : out_interp :=
+Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool) : result :=
   let oldpd := run_object_get_own_property S l x in
   let extensible := run_object_extensible S l in
   match oldpd with
@@ -471,20 +545,24 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
        ifb change_accessor_on_non_configurable oldpf newpf then
          out_reject S throw
        else fman S
-     else out_interp_stuck
-    ) else out_interp_stuck
+     else result_stuck
+    ) else result_stuck
   end.
 
+(**************************************************************)
+(** TODO: clarify this ... *)
+(* TODO: rename variables named " call " into " red' " *)
 
 (* The functions taking such arguments can call any arbitrary code *)
 Definition run_prog_type : Type :=
-  state -> execution_ctx -> prog -> out_interp.
+  state -> execution_ctx -> prog -> result.
 
 Definition run_call_type : Type :=
-  state -> execution_ctx -> builtin -> option object_loc -> option value -> list value -> out_interp.
+  state -> execution_ctx -> builtin -> option object_loc -> option value -> list value -> result.
 
+(**************************************************************)
 
-Definition ref_get_value S (re : ret) : out_interp :=
+Definition ref_get_value S (re : ret) : result :=
   match re with
   | ret_value v => out_ter S v
   | ret_ref r =>
@@ -497,20 +575,20 @@ Definition ref_get_value S (re : ret) : out_interp :=
       | ref_base_type_env_loc L =>
         env_record_get_binding_value S L (ref_name r) (ref_strict r)
       end
-    | ref_kind_object => out_interp_stuck
+    | ref_kind_object => result_stuck
     | ref_kind_env_record =>
       match ref_base r with
-      | ref_base_type_value v => out_interp_stuck
+      | ref_base_type_value v => result_stuck
       | ref_base_type_env_loc L =>
         env_record_get_binding_value S L (ref_name r) (ref_strict r)
       end
     end
   end.
 
-Definition object_put_special v x (vnew : value) (strict : bool) : out_interp :=
+Definition object_put_special v x (vnew : value) (strict : bool) : result :=
   arbitrary (* TODO *).
 
-Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_interp :=
+Definition object_put (call : run_call_type) S C l x v (throw : bool) : result :=
   if_success_bool (object_can_put S l x) (fun S =>
     let AnOwn := run_object_get_own_property S l x in
     ifb prop_descriptor_is_data AnOwn then
@@ -525,14 +603,14 @@ Definition object_put (call : run_call_type) S C l x v (throw : bool) : out_inte
             | value_object fsetter =>
               let fc := extract_from_option (run_object_call S fsetter) in
               call S C fc (Some fsetter) (Some (value_object l)) (v :: nil)
-            | _ => out_interp_stuck
+            | _ => result_stuck
             end
           end) else (
             let A' := prop_attributes_create_data v true true true in
             object_define_own_prop S l x A' throw)))
   (fun S => out_reject S throw).
 
-Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : strictness_flag) : out_interp :=
+Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (strict : strictness_flag) : result :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
     let (mu, v_old) := read D x in
@@ -545,7 +623,7 @@ Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (stri
     object_put call S C l x v strict
   end.
 
-Definition ref_put_value (call : run_call_type) S C re v : out_interp :=
+Definition ref_put_value (call : run_call_type) S C re v : result :=
   match re with
   | ret_value v => out_ref_error S
   | ret_ref r =>
@@ -559,13 +637,13 @@ Definition ref_put_value (call : run_call_type) S C re v : out_interp :=
       | ref_base_type_value (value_prim w) =>
         ifb ref_kind_of r = ref_kind_primitive_base then
           object_put_special (value_prim w) (ref_name r) v (ref_strict r)
-        else out_interp_stuck
+        else result_stuck
       | ref_base_type_env_loc L =>
         env_record_set_mutable_binding call S C L (ref_name r) v (ref_strict r)
       end
   end.
 
-Definition if_success_value (o : out_interp) (K : state -> value -> out_interp) : out_interp :=
+Definition if_success_value (o : result) (K : state -> value -> result) : result :=
   if_success_ret o (fun S1 re1 =>
       if_success (ref_get_value S1 re1) (fun S2 re2 =>
         match re2 with
@@ -574,54 +652,54 @@ Definition if_success_value (o : out_interp) (K : state -> value -> out_interp) 
         end)).
 
 
-Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : out_interp :=
+Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : result :=
   let deletable := unsome_default false deletable_opt in
   match pick (env_record_binds S L) with
   | env_record_decl D =>
-    ifb decl_env_record_indom D x then out_interp_stuck
+    ifb decl_env_record_indom D x then result_stuck
     else
       let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
       out_void S'
   | env_record_object l pt =>
-    if object_has_prop S l x then out_interp_stuck
+    if object_has_prop S l x then result_stuck
     else let A := prop_attributes_create_data undef true true deletable in
       object_define_own_prop S l x A throw_true
   end.
 
-Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x (deletable_opt : option bool) v (strict : strictness_flag) : out_interp :=
+Definition env_record_create_set_mutable_binding (call : run_call_type) S C L x (deletable_opt : option bool) v (strict : strictness_flag) : result :=
   if_success (env_record_create_mutable_binding S L x deletable_opt) (fun S re =>
     match re with
     | prim_undef =>
       env_record_set_mutable_binding call S C L x v strict
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition env_record_create_immutable_binding S L x : out_interp :=
+Definition env_record_create_immutable_binding S L x : result :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
-    ifb decl_env_record_indom D x then out_interp_stuck
+    ifb decl_env_record_indom D x then result_stuck
     else out_void (
       env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
-  | _ => out_interp_stuck
+  | _ => result_stuck
   end.
 
-Definition env_record_initialize_immutable_binding  S L x v : out_interp :=
+Definition env_record_initialize_immutable_binding  S L x v : result :=
   match pick (env_record_binds S L) with
   | env_record_decl D =>
     let v_old := run_decl_env_record_binds_value D x in
     out_void (env_record_write_decl_env S L x mutability_immutable v)
-  | _ => out_interp_stuck
+  | _ => result_stuck
   end.
 
-Definition creating_function_object_proto S l (K : state -> out_interp) : out_interp :=
-  if_value_object (constructor_builtin S builtin_object_new nil) (fun S1 lproto =>
+Definition creating_function_object_proto S l (K : state -> result) : result :=
+  if_object (constructor_builtin S builtin_object_new nil) (fun S1 lproto =>
     let A1 := prop_attributes_create_data (value_object l) true false true in
     if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 re1 =>
       let A2 := prop_attributes_create_data (value_object lproto) true false false in
       if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 re2 =>
         K S3))).
 
-Definition creating_function_object S (names : list string) (bd : body) X (strict : strictness_flag) : out_interp :=
+Definition creating_function_object S (names : list string) (bd : funcbody) X (strict : strictness_flag) : result :=
   let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
   let O1 := object_with_invokation O
     (Some builtin_spec_op_function_constructor)
@@ -640,7 +718,9 @@ Definition creating_function_object S (names : list string) (bd : body) X (stric
           if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 re3 =>
             out_ter S5 l))))).
 
-Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) p (args : list value) : out_interp :=
+(* TODO: need to name fixpoints as auxiliary definitions, otherwise we won't be able to prove anything about them *)
+
+Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco : option object_loc) p (args : list value) : result :=
   let L := hd env_loc_default (execution_ctx_variable_env C) in
   let strict := execution_ctx_strict C in
   if_success
@@ -648,7 +728,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
     | Some func =>
       let names_option := run_object_formal_parameters S func in
       let names := unsome_default nil names_option in
-      (fix setArgs S0 (args : list value) (names : list string) : out_interp :=
+      (fix setArgs S0 (args : list value) (names : list string) : result :=
         match names with
         | nil => out_void S0
         | argname :: names' =>
@@ -665,18 +745,18 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
     end (fun S1 re0 =>
       let fds := function_declarations p in
       if_success
-      ((fix createExecutionContext S0 (fds : list function_declaration) : out_interp :=
+      ((fix createExecutionContext S0 (fds : list funcdecl) : result :=
         match fds with
         | nil => out_void S0
         | fd :: fds' =>
-          let fb := fd_body fd in
-          let fn := fd_name fd in
+          let fb := funcdecl_body fd in
+          let fn := funcdecl_name fd in
           let strictp := function_body_is_strict fb in
-          if_value_object (creating_function_object S0 (fd_parameters fd) fb (execution_ctx_variable_env C) strictp) (fun S1 fo =>
+          if_object (creating_function_object S0 (funcdecl_parameters fd) fb (execution_ctx_variable_env C) strictp) (fun S1 fo =>
             let hb := env_record_has_binding S0 L fn in
             if_success (if hb then
               match run_object_get_property S builtin_global fn with
-              | prop_descriptor_undef => out_interp_stuck
+              | prop_descriptor_undef => result_stuck
               | prop_descriptor_some A =>
                 ifb prop_attributes_configurable A = Some true then (
                   let A' := prop_attributes_create_data undef true true false in (* To be reread *)
@@ -689,7 +769,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
                   createExecutionContext S3 fds')))
         end) S1 fds) (fun S2 re =>
         let vds := variable_declarations p in
-        (fix initVariables S0 (vds : list string) : out_interp :=
+        (fix initVariables S0 (vds : list string) : result :=
           match vds with
           | nil => out_void S0
           | vd :: vds' =>
@@ -700,7 +780,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
                 initVariables S1 vds'))
           end) S2 vds)).
 
-Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> out_interp) :=
+Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) :=
   let bd := run_object_code S lf in
   let strict := function_body_is_strict bd in
   let newthis :=
@@ -711,23 +791,22 @@ Definition execution_ctx_function_call (call : run_call_type) S C (lf : object_l
   let scope := extract_from_option (run_object_scope S lf) in
   let (lex', S1) := lexical_env_alloc_decl S scope in
   let C1 := execution_ctx_intro_same lex' this strict in
-  if_success (execution_ctx_binding_instantiation call S1 C1 (Some lf) (body_prog bd) args) (fun S2 re =>
+  if_success (execution_ctx_binding_instantiation call S1 C1 (Some lf) (funcbody_prog bd) args) (fun S2 re =>
     K S2 C1).
 
-
-Definition run_spec_object_has_instance (has_instance_id : builtin) S l v : out_interp :=
+Definition run_spec_object_has_instance (has_instance_id : builtin) S l v : result :=
   match has_instance_id with
   | builtin_spec_op_function_has_instance =>
     match v with
     | value_prim w => out_ter S false
     | value_object lv =>
-      if_value_object (object_get S l "prototype") (fun S1 lo =>
+      if_object (object_get S l "prototype") (fun S1 lo =>
         match run_object_proto S1 lv with
         | null => out_ter S1 false
         | value_object proto =>
           ifb proto = lo then out_ter S1 true
           else arbitrary (* TODO: use an optimal fixpoint there. *)
-        | _ => out_interp_stuck
+        | _ => result_stuck
         end)
     end
   | _ => arbitrary (* TODO *)
@@ -736,8 +815,7 @@ Definition run_spec_object_has_instance (has_instance_id : builtin) S l v : out_
 Definition run_callable S v : option builtin :=
   match v with
   | value_prim w => None
-  | value_object l =>
-    run_object_call S l
+  | value_object l => run_object_call S l
   end.
 
 Global Instance is_callable_dec : forall S v,
@@ -751,12 +829,15 @@ Proof.
     skip. (* TODO: tests: (exists a, binds (state_object_heap S) o a). *)
 Qed.
 
-Definition to_default (call : run_call_type) S C l (prefo : option preftype) : out_interp :=
+(**************************************************************)
+(** Conversions *)
+
+Definition to_default (call : run_call_type) S C l (prefo : option preftype) : result :=
   let gpref := unsome_default preftype_number prefo in
   let lpref := other_preftypes gpref in
   let gmeth := method_of_preftype gpref in
   let sub x K :=
-    if_value_object (object_get S l x) (fun S1 lfo =>
+    if_object (object_get S l x) (fun S1 lfo =>
       let lf := value_object lfo in
       match run_callable S lf with
       | Some fc =>
@@ -771,50 +852,50 @@ Definition to_default (call : run_call_type) S C l (prefo : option preftype) : o
     let lmeth := method_of_preftype lpref in
     sub lmeth (fun _ => out_type_error S)).
 
-Definition to_primitive (call : run_call_type) S C v (prefo : option preftype) : out_interp :=
+Definition to_primitive (call : run_call_type) S C v (prefo : option preftype) : result :=
   match v with
   | value_prim w => out_ter S w
   | value_object l => to_default call S C l prefo
   end.
 
-Definition to_number (call : run_call_type) S C v : out_interp :=
+Definition to_number (call : run_call_type) S C v : result :=
   match v with
   | value_prim w =>
-    out_ter S (convert_prim_to_number w)
+      out_ter S (convert_prim_to_number w)
   | value_object l =>
-    if_success_primitive (to_primitive call S C (value_object l) (Some preftype_number)) (fun S1 w =>
-      out_ter S (convert_prim_to_number w))
+     if_success_primitive (to_primitive call S C (value_object l) (Some preftype_number)) (fun S1 w =>
+        out_ter S (convert_prim_to_number w))
   end.
 
-Definition to_integer (call : run_call_type) S C v : out_interp :=
+Definition to_integer (call : run_call_type) S C v : result :=
   if_success (to_number call S C v) (fun S1 re1 =>
     match re1 with
     | prim_number n =>
       out_ter S (convert_number_to_integer n)
-    | _ => out_interp_stuck
+    | _ => result_stuck
     end).
 
-Definition to_string (call : run_call_type) S C v : out_interp :=
+Definition to_string (call : run_call_type) S C v : result :=
   match v with
   | value_prim w =>
-    out_ter S (convert_prim_to_string w)
+      out_ter S (convert_prim_to_string w)
   | value_object l =>
-    if_success_primitive (to_primitive call S C (value_object l) (Some preftype_string)) (fun S1 w =>
-      out_ter S (convert_prim_to_string w))
+      if_success_primitive (to_primitive call S C (value_object l) (Some preftype_string)) (fun S1 w =>
+        out_ter S (convert_prim_to_string w))
   end.
 
 Definition env_record_implicit_this_value S L : value :=
   match pick (env_record_binds S L) with
   | env_record_decl D => undef
   | env_record_object l provide_this =>
-    if provide_this then value_object l
-    else undef
+      if provide_this
+        then value_object l
+        else undef
   end.
 
-
-Fixpoint run_list_expr (run_expr : state -> execution_ctx -> expr -> out_interp)
+Fixpoint run_list_expr (run_expr : state -> execution_ctx -> expr -> result)
   S1 C (vs : list value) (es : list expr)
-  (K : state -> list value -> out_interp) : out_interp :=
+  (K : state -> list value -> result) : result :=
   match es with
   | nil => K S1 (LibList.rev vs)
   | e :: es' =>
@@ -824,6 +905,8 @@ Fixpoint run_list_expr (run_expr : state -> execution_ctx -> expr -> out_interp)
 
 End LexicalEnvironments.
 
+(**************************************************************)
+(** Operators *)
 
 Section Operators.
 
@@ -852,17 +935,17 @@ Definition get_inequality_op (op : binary_op) : bool * bool :=
   | _ => arbitrary
   end.
 
-Definition convert_twice {A : Type} (ifv : out_interp -> (state -> A -> out_interp) -> out_interp) (KC : state -> value -> out_interp) S v1 v2 (K : state -> A -> A -> out_interp) :=
+Definition convert_twice {A : Type} (ifv : result -> (state -> A -> result) -> result) (KC : state -> value -> result) S v1 v2 (K : state -> A -> A -> result) :=
   ifv (KC S v1) (fun S1 vc1 =>
     ifv (KC S1 v2) (fun S2 vc2 =>
       K S2 vc1 vc2)).
 
-Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state -> value -> out_interp) S v1 v2 : out_interp :=
+Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state -> value -> result) S v1 v2 : result :=
   let checkTypesThen S0 v1 v2 K :=
     let T1 := type_of v1 in
     let T2 := type_of v2 in
     ifb T1 = T2 then
-      out_ter S0 (equality_test_for_same_type T1 v1 v2) : out_interp
+      out_ter S0 (equality_test_for_same_type T1 v1 v2) : result
     else K T1 T2 in
   checkTypesThen S v1 v2 (fun T1 T2 =>
     let dc_conv v1 F v2 :=
@@ -898,19 +981,20 @@ Definition run_equal :=
      - number, number.
   *).
 
-Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out_interp :=
+Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : result := 
+  (* TODO: move these as definitions outside the body *)
   let conv_primitive S v :=
     to_primitive call S C v None in
   let convert_twice_primitive :=
-    convert_twice if_value_primitive conv_primitive in
+    convert_twice if_primitive conv_primitive in
   let conv_number S v :=
     to_number call S C v in
   let convert_twice_number :=
-    convert_twice if_value_number conv_number in
+    convert_twice if_number conv_number in
   let conv_string S v :=
     to_string call S C v in
   let convert_twice_string :=
-    convert_twice if_value_string conv_string in
+    convert_twice if_string conv_string in
   match op with
 
   | binary_op_add =>
@@ -927,7 +1011,7 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
     convert_twice_number S v1 v2 (fun S1 n1 n2 =>
       out_ter S1 (mop n1 n2))
 
-  | binary_op_and | binary_op_or => out_interp_stuck (* Lazy operators are already dealt with at this point. *)
+  | binary_op_and | binary_op_or => result_stuck (* Lazy operators are already dealt with at this point. *)
 
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift => arbitrary (* TODO *)
 
@@ -946,7 +1030,7 @@ Definition run_binary_op (call : run_call_type) S C (op : binary_op) v1 v2 : out
   | binary_op_instanceof =>
     match v2 with
     | value_object l =>
-      morph_option (fun _ : unit => out_type_error S : out_interp)
+      morph_option (fun _ : unit => out_type_error S : result)
       (fun has_instance_id _ =>
         run_spec_object_has_instance has_instance_id S l v1)
       (run_object_has_instance S l) tt
@@ -994,9 +1078,9 @@ Section Interpreter.
 (**************************************************************)
 (** ** Definition of the interpreter *)
 
-Fixpoint run_expr (max_step : nat) S C e : out_interp :=
+Fixpoint run_expr (max_step : nat) S C e : result :=
   match max_step with
-  | O => out_interp_bottom
+  | O => result_bottom
   | S max_step' =>
     let run_expr' := run_expr max_step' in
     let run_prog' := run_prog max_step' in
@@ -1006,7 +1090,7 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
     | expr_literal i =>
       out_ter S (convert_literal_to_prim i)
 
-    | expr_variable x =>
+    | expr_identifier x =>
       out_ter S (identifier_res S C x)
 
     | expr_unary_op op e =>
@@ -1076,7 +1160,7 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
       let l : object_loc := arbitrary (* TODO *) in
       let create_new_function_in S0 C args bd :=
         creating_function_object S0 args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
-      (fix iniObj S0 pds : out_interp :=
+      (fix iniObj S0 pds : result :=
         match pds with
         | nil => out_ter S0 l
         | (pn, pb) :: pds' =>
@@ -1114,14 +1198,14 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
     | expr_assign e1 opo e2 =>
       if_success (run_expr' S C e1) (fun S1 re1 =>
         match re1 with
-        | ret_or_empty_empty => out_interp_stuck
+        | ret_or_empty_empty => result_stuck
         | ret_or_empty_ret re =>
           let follow S re' :=
             match re' with
             | ret_or_empty_ret (ret_value v) =>
               if_success (ref_put_value run_call' S C re v) (fun S' re2 =>
                out_ter S' v)
-            | _ => out_interp_stuck
+            | _ => result_stuck
             end in
           match opo with
           | None =>
@@ -1141,7 +1225,7 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
       let follow L :=
         let E := pick (env_record_binds S' L) in
         if_success (env_record_create_immutable_binding S' L fn) (fun S1 re1 =>
-          if_value_object (creating_function_object S1 args bd lex' (function_body_is_strict bd)) (fun S2 l =>
+          if_object (creating_function_object S1 args bd lex' (function_body_is_strict bd)) (fun S2 l =>
             if_success (env_record_initialize_immutable_binding S2 L fn l) (fun S3 re2 =>
               out_ter S3 l))) in
       map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt
@@ -1163,11 +1247,11 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
                   match ref_base r with
                   | ref_base_type_value v =>
                     ifb ref_is_property r then follow v
-                    else out_interp_stuck
+                    else result_stuck
                   | ref_base_type_env_loc L =>
                     follow (env_record_implicit_this_value S3 L)
                   end
-                | _ => out_interp_stuck
+                | _ => result_stuck
                 end
             | _ => out_type_error S3
             end)))
@@ -1209,9 +1293,11 @@ Fixpoint run_expr (max_step : nat) S C e : out_interp :=
     end
   end
 
-with run_stat (max_step : nat) S C t : out_interp :=
+(**************************************************************)
+
+with run_stat (max_step : nat) S C t : result :=
   match max_step with
-  | O => out_interp_bottom
+  | O => result_bottom
   | S max_step' =>
     let run_expr' := run_expr max_step' in
     let run_stat' := run_stat max_step' in
@@ -1226,7 +1312,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
       out_ter S ret_empty
 
     | stat_var_decl xeos =>
-      (fix run_var_decl S0 xeos : out_interp :=
+      (fix run_var_decl S0 xeos : result :=
         match xeos with
         | nil => out_ter S0 ret_empty
         | (x, eo) :: xeos' =>
@@ -1259,7 +1345,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
             let (lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
             let C' := execution_ctx_with_lex_this C lex' l in
             run_stat' S3 C' t2
-          | _ => out_interp_stuck
+          | _ => result_stuck
           end))
 
     | stat_if e1 t2 to =>
@@ -1287,7 +1373,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
         out_ter S (res_throw v1))
 
     | stat_try t1 t2o t3o =>
-      let finally : out_interp -> out_interp :=
+      let finally : result -> result :=
         match t3o with
         | None => fun o => o
         | Some t3 => fun o =>
@@ -1299,7 +1385,7 @@ with run_stat (max_step : nat) S C t : out_interp :=
           end
         end
       in
-      if_success_throw (run_stat' S C t1) (fun S1 re1 =>
+      if_success_or_throw (run_stat' S C t1) (fun S1 re1 =>
         finally (out_ter S1 re1)) (fun S1 v =>
         match t2o with
         | None => finally (out_ter S1 (res_throw v))
@@ -1315,9 +1401,9 @@ with run_stat (max_step : nat) S C t : out_interp :=
               | prim_undef =>
                 let C' := execution_ctx_with_lex C lex' in
                 finally (run_stat' S2 C' t2)
-              | _ => out_interp_stuck
+              | _ => result_stuck
               end)
-          | nil => out_interp_stuck
+          | nil => result_stuck
           end
         end)
 
@@ -1348,9 +1434,9 @@ with run_stat (max_step : nat) S C t : out_interp :=
     end
   end
 
-with run_prog (max_step : nat) S C p : out_interp :=
+with run_prog (max_step : nat) S C p : result :=
   match max_step with
-  | O => out_interp_bottom
+  | O => result_bottom
   | S max_step' =>
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
@@ -1374,9 +1460,9 @@ with run_prog (max_step : nat) S C p : out_interp :=
     end
   end
 
-with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_loc) (vo : option value) (args : list value) : out_interp :=
+with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_loc) (vo : option value) (args : list value) : result :=
   match max_step with
-  | O => out_interp_bottom
+  | O => result_bottom
   | S max_step' =>
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
@@ -1390,7 +1476,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
           out_ter S1 (res_normal undef)
         else (
           let p := run_object_code S1 lf in
-          if_success_return (run_prog' S1 C1 (body_prog p)) (fun S2 re =>
+          if_success_or_return (run_prog' S1 C1 (funcbody_prog p)) (fun S2 re =>
             out_ter S2 (res_normal undef)) (fun S2 v =>
             out_ter S2 (res_normal v))))
 
@@ -1400,18 +1486,18 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
 
     | builtin_global_is_nan =>
       let v := get_nth undef 0 args in
-      if_value_number (to_number run_call' S C v) (fun S0 n =>
+      if_number (to_number run_call' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan))))
 
     | builtin_global_is_finite =>
       let v := get_nth undef 0 args in
-      if_value_number (to_number run_call' S C v) (fun S0 n =>
+      if_number (to_number run_call' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
     | builtin_object_get_prototype_of =>
       let v := get_nth undef 0 args in
       ifb type_of v <> type_object then
-        out_interp_stuck
+        result_stuck
       else
         out_ter S (ret_ref (ref_create_value v "prototype" false))
 
@@ -1421,7 +1507,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
       | undef => out_ter S "[object Undefined]"
       | null => out_ter S "[object Null]"
       | _ =>
-        if_value_object (to_object S v) (fun S1 l =>
+        if_object (to_object S v) (fun S1 l =>
           let s := run_object_class S l in
           out_ter S1 ("[object " ++ s ++ "]"))
       end
@@ -1432,7 +1518,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
       | value_prim w => out_ter S false
       | value_object l =>
         let vt := execution_ctx_this_binding C in
-        if_value_object (to_object S vt) (fun S1 lo =>
+        if_object (to_object S vt) (fun S1 lo =>
           run_object_proto_is_prototype_of S1 lo l)
       end
 

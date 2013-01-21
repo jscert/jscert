@@ -37,10 +37,8 @@ Implicit Type R : ret.
 Implicit Type o : out.
 
 
-
 (****************************************************************)
 (** ** Intermediate expression for the Pretty-Big-Step semantic *)
-
 
 (** Grammar of extended expressions *)
 
@@ -70,7 +68,7 @@ Inductive ext_expr :=
   | expr_object_4 : object_loc -> string -> prop_attributes -> list (propname * propbody) -> ext_expr
   | expr_object_5 : object_loc -> list (propname * propbody) -> out -> ext_expr
   
-  | expr_function_1 : string -> list string -> body -> env_loc -> lexical_env -> out -> ext_expr
+  | expr_function_1 : string -> list string -> funcbody -> env_loc -> lexical_env -> out -> ext_expr
   | expr_function_2 : string -> env_loc -> out -> ext_expr
   | expr_function_3 : object_loc -> out -> ext_expr
   
@@ -79,7 +77,7 @@ Inductive ext_expr :=
   | expr_access_3 : value -> value -> ext_expr
 
   | expr_new_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
-  | expr_new_2 : object_loc -> function_code -> list value -> ext_expr (* The arguments too. *)
+  | expr_new_2 : object_loc -> funccode -> list value -> ext_expr (* The arguments too. *)
   | expr_new_3 : object_loc -> out -> ext_expr (* The call has been executed. *)
   
   | expr_call_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
@@ -164,8 +162,8 @@ Inductive ext_expr :=
   | spec_convert_twice_1 : out -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
   | spec_convert_twice_2 : out -> (value -> ext_expr) -> ext_expr
 
+  (** Extended expressions for comparison *)
 
-  (** Extended expressions for conversions *)
   | spec_eq : value -> value -> ext_expr
   | spec_eq0 : value -> value -> ext_expr
   | spec_eq1 : value -> value -> ext_expr
@@ -251,7 +249,7 @@ Inductive ext_expr :=
 
   (** Extented expressions for eval *)
   
-  | spec_execution_ctx_eval_call : ext_expr -> body -> ext_expr
+  | spec_execution_ctx_eval_call : ext_expr -> funcbody -> ext_expr
   
   | spec_call_global_eval : prog -> ext_expr
   | spec_call_global_eval_1 : out -> ext_expr
@@ -266,11 +264,11 @@ Inductive ext_expr :=
   | spec_binding_instantiation_formal_params_1 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
   | spec_binding_instantiation_formal_params_2 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
   | spec_binding_instantiation_formal_params_3 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> list string -> out -> ext_expr
-  | spec_binding_instantiation_function_decls : (env_loc -> ext_expr) -> list value -> env_loc -> list function_declaration -> bool -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_1 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> bool -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_2 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> prop_attributes -> option bool -> bool -> ext_expr
-  | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> function_declaration -> list function_declaration -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_instantiation_function_decls : (env_loc -> ext_expr) -> list value -> env_loc -> list funcdecl -> bool -> out -> ext_expr
+  | spec_binding_instantiation_function_decls_1 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
+  | spec_binding_instantiation_function_decls_2 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> prop_attributes -> option bool -> bool -> ext_expr
+  | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation : option object_loc -> prog -> list value -> ext_expr
@@ -292,23 +290,22 @@ Inductive ext_expr :=
   | spec_init_throw_type_error_1 : out -> ext_expr
 
   (* Object creation and calling continuation with object address *)
+
   | spec_new_object : (object_loc -> ext_expr) -> ext_expr
   | spec_new_object_1 : out -> (object_loc -> ext_expr) -> ext_expr
-  
-  
   
   (* Auxiliary reduction for creating function object steps 16 - 18 *) 
   | spec_creating_function_object_proto : (out -> ext_expr) -> object_loc -> out -> ext_expr
   | spec_creating_function_object_proto_1 : (out -> ext_expr) -> object_loc -> out -> ext_expr
   | spec_creating_function_object_proto_2 : (out -> ext_expr) -> object_loc -> object_loc -> out -> ext_expr
 
-  | spec_creating_function_object : list string -> body -> lexical_env -> strictness_flag -> ext_expr
+  | spec_creating_function_object : list string -> funcbody -> lexical_env -> strictness_flag -> ext_expr
   | spec_creating_function_object_1 : strictness_flag -> object_loc -> out -> ext_expr
   | spec_creating_function_object_2 : object_loc -> out -> ext_expr
   | spec_creating_function_object_3 : object_loc -> out -> ext_expr
   
   (* Function creation in give execution context*)
-  | spec_create_new_function_in :  execution_ctx -> list string -> body -> ext_expr
+  | spec_create_new_function_in :  execution_ctx -> list string -> funcbody -> ext_expr
 
   (* TODO: Check if object_loc or value could be None *)
   | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr
@@ -328,33 +325,17 @@ Inductive ext_expr :=
   | spec_function_constructor_2 : object_loc -> out -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
+
   | spec_call_global_is_nan : out -> ext_expr
   | spec_call_global_is_finite : out -> ext_expr
-
-  (** Extended expressions for calling object prototype builtin functions *)
-
-  (* Object.prototype.toString() *)
   | spec_call_object_proto_to_string : out -> ext_expr
-
-  (* Object.prototype.isPrototypeOf(v) *)
   | spec_call_builtin_object_proto_is_prototype_of : value -> value -> ext_expr
   | spec_call_builtin_object_proto_is_prototype_of_1 : out -> value -> ext_expr 
-
-  (** Extended expressions for calling boolean object builtin functions *)   
-  | spec_constructor_builtin_bool_new : out -> ext_expr
-
-                                  
-  (** Extended expressions for calling boolean prototype builtin functions *)   
-              
-  (* Boolean.prototype.toString() *)
+  | spec_constructor_builtin_bool_new : out -> ext_expr (* TODO: rename ? *)
   | spec_call_builtin_bool_proto_to_string : value -> value -> ext_expr
   | spec_call_builtin_bool_proto_to_string_1 : value -> ext_expr
-
-  (* Boolean.prototype.toString() *)
   | spec_call_builtin_bool_proto_value_of : value -> value -> ext_expr
   | spec_call_builtin_bool_proto_value_of_1 : value -> ext_expr
-
-  (* Number.prototype.toString() *)
   | spec_call_builtin_number_proto_to_string : value -> list value -> ext_expr
   | spec_call_builtin_number_proto_to_string_1 : value -> out -> ext_expr
 
@@ -375,11 +356,6 @@ with ext_stat :=
   | stat_seq_1 : out -> stat -> ext_stat (* The first statement has been executed. *)
   | stat_seq_2 : ret_or_empty -> out -> ext_stat
 
-  (* Old def *)
-  (*
-  | stat_var_decl_1 : out -> ext_stat (* Ignore its argument and returns [undef] *)
-  *)
-  (* New def *)
   | stat_var_decl_1 : out -> list (string * option expr) -> ext_stat
   | stat_var_decl_item : (string * option expr) -> ext_stat
   | stat_var_decl_item_1 : string -> out -> expr -> ext_stat
@@ -395,7 +371,7 @@ with ext_stat :=
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
   | stat_for_in_2 : expr -> stat -> out -> ext_stat
   | stat_for_in_3 : expr -> stat -> out -> ext_stat
-  | stat_for_in_4 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> ext_stat
+  | stat_for_in_4 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> ext_stat (* TODO: define prop_names for [set prop_name] *)
   | stat_for_in_5 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
   | stat_for_in_6 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
   | stat_for_in_7 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> out -> ext_stat
@@ -412,7 +388,6 @@ with ext_stat :=
   | stat_try_2 : out -> lexical_env -> stat -> option stat -> ext_stat (* The catch block is actived and will be executed. *)
   | stat_try_3 : out -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
   | stat_try_4 : res -> out -> ext_stat (* The finally has been executed. *)
-
   
   (* Auxiliary forms for performing [red_expr] then [ref_get_value] and a conversion *)
 
@@ -593,6 +568,17 @@ Inductive abort_intercepted : ext_stat -> out -> Prop :=
 (**************************************************************)
 (** ** Auxiliary definition used in identifier resolution *)
 
+(** [identifier_resolution C x] returns the extended expression
+    which needs to be evaluated in order to perform the lookup
+    of name [x] in the execution context [C]. Typically, a
+    reduction rule that performs such a lookup would have a
+    premise of the form [red_expr S C (identifier_resolution C x) o1]. *)
+
+Definition identifier_resolution C x :=
+  let lex := execution_ctx_lexical_env C in
+  let strict := execution_ctx_strict C in
+  spec_lexical_env_get_identifier_ref lex x strict.
+
 
 (**************************************************************)
 (** Macros for exceptional behaviors in reduction rules *)
@@ -641,17 +627,4 @@ Definition out_reject S bthrow :=
 
 (** [out_ref_error_or_undef S bthrow] throws a type error if
     [bthrow] is true, else returns the value [undef] *)
-
-
-
-(* [identifier_resolution C x] returns the extended expression
-   which needs to be evaluated in order to perform the lookup
-   of name [x] in the execution context [C]. Typically, a
-   reduction rule that performs such a lookup would have a
-   premise of the form [red_expr S C (identifier_resolution C x) o1]. *)
-
-Definition identifier_resolution C x :=
-  let lex := execution_ctx_lexical_env C in
-  let strict := execution_ctx_strict C in
-  spec_lexical_env_get_identifier_ref lex x strict.
 

@@ -21,7 +21,7 @@ Implicit Type m : mutability.
 Implicit Type A : prop_attributes.
 Implicit Type An : prop_descriptor.
 Implicit Type L : env_loc.
-Implicit Type E : env_record. (* suggested R *)
+Implicit Type E : env_record. (* TODO: suggested using R *)
 Implicit Type D : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
@@ -71,29 +71,26 @@ Definition type_of v :=
   | value_object _ => type_object
   end.
 
-(** Definition of the "SameValue" algorithm *)
+(** Definition of the "SameValue" algorithm -- TODO: does not seem to be used *)
 
 Definition value_same v1 v2 :=
   let T1 := type_of v1 in
   let T2 := type_of v2 in
-  ifb T1 <> T2 then False else
+  If T1 <> T2 then False else
   match T1 with
   | type_undef => True
   | type_null => True
   | type_number =>
-      ifb    v1 = (prim_number JsNumber.nan)
+      If   v1 = (prim_number JsNumber.nan)
          /\ v2 = (prim_number JsNumber.nan) then True
-      else ifb    v1 = (prim_number JsNumber.zero)
+      else If    v1 = (prim_number JsNumber.zero)
               /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else ifb    v1 = (prim_number JsNumber.neg_zero)
+      else If    v1 = (prim_number JsNumber.neg_zero)
               /\ v2 = (prim_number JsNumber.zero) then False
       else (v1 = v2)
-  | type_string =>
-      v1 = v2
-  | type_bool =>
-      v1 = v2
-  | type_object =>
-      v1 = v2
+  | type_string => (v1 = v2)
+  | type_bool => (v1 = v2)
+  | type_object => (v1 = v2)
   end.
 
 
@@ -137,12 +134,6 @@ Definition option_transfer (A:Type) (oldopt newopt : option A) :=
   | None => oldopt
   | _ => newopt
   end.
-
-  (* TEMP: Alternative definition:
-  match newopt,oldopt with
-  | Some v, _ => Some v
-  | _, _ => oldopt
-  end.*)
 
 Definition prop_attributes_transfer oldpf newpf :=
   match oldpf, newpf with
@@ -262,12 +253,12 @@ Definition object_class S l s :=
 Definition object_extensible S l b :=
   exists O, object_binds S l O /\ object_extensible_ O = b.
   
-(** [object_get S l builtinid] asserts that the
+(** [object_get S l B] asserts that the
     [[get]] method for the object stored at address [l] 
-    is described by specification function with identifier builtinid. *)
+    is described by specification function with identifier [B]. *)
 
-Definition object_get S l builtinid :=
-  exists O, object_binds S l O /\ object_get_ O = builtinid.  
+Definition object_get S l B :=
+  exists O, object_binds S l O /\ object_get_ O = B.  
 
 (** [object_prim_value S l v] asserts that the primitive value
     field of the object stored at address [l] in [S] contains the
@@ -283,12 +274,12 @@ Definition object_prim_value S l v :=
 Definition object_call S l fco :=
   exists O, object_binds S l O /\ object_call_ O = fco.
 
-(** [object_has_instance S l builtinid] asserts that the
+(** [object_has_instance S l Bo] asserts that the
     [[has instance]] method for the object stored at address [l] 
-    is described by specification function with identifier builtinid. *)
+    is described by specification function with identifier [Bo]. *)
 
-Definition object_has_instance S l builtinid :=
-  exists O, object_binds S l O /\ object_has_instance_ O = builtinid.
+Definition object_has_instance S l Bo :=
+  exists O, object_binds S l O /\ object_has_instance_ O = Bo.
   
 (** [object_scope S l scope] asserts that the [[Scope]]
     field of the object stored at address [l] in [S] contains
@@ -306,7 +297,7 @@ Definition object_formal_parameters S l fp :=
   
 (** [object_code S l bd] asserts that the [[Code]]
     field of the object stored at address [l] in [S] contains
-    an option [bd] which may contain function body. *)
+    an option [bd] which may contain function funcbody. *)
 
 Definition object_code S l bd :=
   exists O, object_binds S l O /\ object_code_ O = bd.
@@ -554,17 +545,6 @@ Definition prop_attributes_fully_populated An :=
     (prop_descriptor_is_data An /\ prop_descriptor_fully_populated_data An)
  \/ (prop_descriptor_is_accessor An /\ prop_descriptor_fully_populated_accessor An).
 
- (* TEMP: alternative definition:
-  match An with
-  | prop_descriptor_undef => False
-  | prop_descriptor_some A =>
-         (   prop_attributes_is_data A
-         /\ prop_attributes_fully_populated_accessor A)
-     \/ (prop_attributes_is_accessor A
-         /\ prop_attributes_fully_populated_accessor A).
-  end.
-  *)
-
 
 (**************************************************************)
 (** ** Auxiliary functions on references *)
@@ -646,9 +626,11 @@ Definition ref_create_env_loc L x strict :=
 
 (** [valid_lhs_for_assign R] asserts that [R] will not satisfy
     the condition under which a SyntaxError gets triggered
-    (see the semantics of simple assignement in the spec). *)
+    (see the semantics of simple assignement in the spec).
+    LATER: will be used if we do not rely on parser for raising
+    the SyntaxError. *)
 
-Open Scope string_scope. (* todo: move *)
+Open Scope string_scope. (* TODO: move to top of the file *)
 
 Definition valid_lhs_for_assign R :=
   ~ (exists r,
@@ -843,89 +825,21 @@ Inductive preftype :=
 
 Implicit Type pref : preftype.
 
+(** Convert a preferred type to a string *)
 
-(**************************************************************)
-(** ** Rules for propagating aborting expressions *)
+Definition method_of_preftype pref :=
+  match pref with
+  | preftype_number => "valueOf"
+  | preftype_string => "toString"
+  end.
 
-(** Definition of aborting programs --
-   TODO: define [abort] as "not a normal behavior",
-   by taking the negation of being of the form [ter (normal ...)]. *)
+(** Return the opposite of a given prefered type *)
 
-Inductive abort : out -> Prop :=
-  | abort_div :
-      abort out_div
-  | abort_break : forall S la,
-      abort (out_ter S (res_break la))
-  | abort_continue : forall S la,
-      abort (out_ter S (res_continue la))
-  | abort_return : forall S la,
-      abort (out_ter S (res_return la))
-  | abort_throw : forall S v,
-      abort (out_ter S (res_throw v)).
-
-(** Definition of normal results -- TODO: not used ? *)
-
-Inductive is_res_normal : res -> Prop :=
-  | is_res_normal_intro : forall v,
-      is_res_normal (res_normal v).
-
-(** Definition of exception results, used in the
-    semantics of try-catch blocks. *)
-
-Inductive is_res_throw : res -> Prop :=
-  | is_res_throw_intro : forall v,
-      is_res_throw (res_throw v).
-
-Inductive is_res_break : res -> Prop :=
-  | is_res_break_intro : forall label,
-      is_res_break (res_break label).
-
-Inductive is_res_continue : res -> Prop :=
-  | is_res_continue_intro: forall label,
-      is_res_continue (res_continue label).
-
-
-(**************************************************************)
-(** Macros for exceptional behaviors in reduction rules *)
-
-(** "Syntax error" behavior *)
-
-Definition out_syntax_error S :=
-  out_ter S (res_throw builtin_syntax_error).
-
-(** "Type error" behavior *)
-
-Definition out_type_error S :=
-  out_ter S (res_throw builtin_type_error).
-
-(** "Reference error" behavior *)
-
-Definition out_ref_error S :=
-  out_ter S (res_throw builtin_ref_error).
-
-(** The "void" result is used by specification-level functions
-    which do not produce any javascript value, but only perform
-    side effects. (We return the value [undef] in the implementation.)
-    -- TODO : sometimes we used false instead  -- where? fix it.. *)
-
-Definition out_void S :=
-  out_ter S undef.
-
-(** [out_reject S bthrow] throws a type error if
-    [bthrow] is true, else returns the value [false] *)
-
-Definition out_reject S bthrow :=
-  ifb bthrow = true
-    then (out_type_error S)
-    else (out_ter S false).
-
-(** [out_ref_error_or_undef S bthrow] throws a type error if
-    [bthrow] is true, else returns the value [undef] *)
-
-Definition out_ref_error_or_undef S (bthrow:bool) :=
-  if bthrow
-    then (out_ref_error S)
-    else (out_ter S undef).
+Definition other_preftypes pref :=
+  match pref with
+  | preftype_number => preftype_string
+  | preftype_string => preftype_number
+  end.
 
 
 (**************************************************************)
@@ -935,55 +849,6 @@ Definition throw_true : strictness_flag := true.
 Definition throw_false : strictness_flag := false.
 Definition throw_irrelevant : strictness_flag := false.
 
-
-(**************************************************************)
-(**************************************************************)
-(**************************************************************)
-
-
-(**************************************************************)
-(** ** Auxiliary definition for the evaluation of a program code *)
-
-(* TODO: fix
-
-(** Computing local variables of a statement or a program *)
-
-(* TODO: problem below if we do Open Scope string_scope (why?).*)
-(* TODO: rename lx into xs *)
-Fixpoint defs_stat (lx:list string) (t:stat) : (list string) :=
-  let d := defs_stat lx in
-  match t with
-  | stat_expr e => nil
-  | stat_seq p1 p2 => (d p1) ++ (d p2)
-  | stat_var_decl y oe => ifb In y lx then nil else (y::nil)
-  | stat_if e1 p2 None => d p2
-  | stat_if e1 p2 (Some p3) => d p2 ++ d p3
-  | stat_while e1 p2 => d p2
-  | stat_with e1 p2 => d p2
-  | stat_throw e1 => nil
-  | stat_return eo1 => nil
-  | stat_break => nil
-  | stat_continue => nil
-  | stat_try p1 None None => d p1 (* Should not happen. *)
-  | stat_try p1 None (Some p3) => d p1 ++ d p3
-  | stat_try p1 (Some (x,p2)) None => d p1 ++ d p2
-  | stat_try p1 (Some (x,p2)) (Some p3) => d p1 ++ d p2 ++ d p3
-  | stat_skip => nil
-  | stat_for_in e1 e2 p => d p
-  | stat_for_in_var x e1 e2 p => ifb In x lx then (d p) else (x::(d p))
-  end.
-
-Fixpoint defs_prog (lx:list string) p :=
-  let d := defs_prog lx in
-  match p with
-  | prog_stat p => defs_stat lx p
-  | prog_seq p1 p2 => d p1 ++ d p2
-  | prog_function_decl _ _ _ => nil
-  end.
-
-(* TODO: the same thing for function declarations. *)
-
-*)
 
 (**************************************************************)
 (** ** Auxiliary definitions used for type conversions *)
@@ -1060,23 +925,6 @@ Definition convert_prim_to_string w :=
   | prim_string s => s
   end.
 
-(* <informal> Implicit Types pref : preftype *)
-
-(** Convert a preferred type to a string *)
-
-Definition method_of_preftype pref :=
-  match pref with
-  | preftype_number => "valueOf"
-  | preftype_string => "toString"
-  end.
-
-(** Return the opposite of a given prefered type *)
-
-Definition other_preftypes pref :=
-  match pref with
-  | preftype_number => preftype_string
-  | preftype_string => preftype_number
-  end.
 
 (**************************************************************)
 (** ** Auxiliary functions for comparisons *)
@@ -1125,15 +973,8 @@ Definition inequality_test_number n1 n2 : prim :=
   else ifb n1 = JsNumber.neg_infinity then true
   else JsNumber.lt_bool n1 n2.
 
-(** Inequality comparison for strings *)
+(** Inequality comparison for strings e*)
 
-(* todo: move *)
-Axiom ascii_compare : ascii -> ascii -> bool.
-Global Instance ascii_comparable : Comparable ascii.
-Proof. applys (comparable_beq ascii_compare). skip. Qed. (* I need this for the extraction -- Martin. *)
-Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
-
-(* TODO: extract in more efficient way *)
 Fixpoint inequality_test_string s1 s2 : bool :=
   match s1, s2 with
   | _, EmptyString => false
@@ -1156,8 +997,7 @@ Definition inequality_test_primitive w1 w2 : prim :=
 (**************************************************************)
 (** ** Factorization of rules for unary operators *)
 
-(* todo: move a bunch of these defs into js_pretty_inter *)
-
+(* TODO: move a bunch of these defs into js_pretty_inter *)
 
 (** Operations increment and decrement *)
 
@@ -1182,7 +1022,7 @@ Inductive prepost_op : unary_op -> (number -> number) -> bool -> Prop :=
 
 (* TODO: change def below into 
    prepost_unary_op op := exists f b, prepost_op op f b. 
-   and possibly even remove this definition *)
+   and even remove this definition if it is not used *)
 
 Definition prepost_unary_op op :=
   match op with
@@ -1207,7 +1047,7 @@ Definition regular_unary_op op :=
 (**************************************************************)
 (** ** Factorization of rules for binary operators *)
 
-(* todo: move a bunch of these defs into js_pretty_inter *)
+(* TODO: move a bunch of these defs into js_pretty_inter *)
 
 (** Characterizes pure mathematical operators, which always call toNumber
     before applying a mathematical function *)
@@ -1262,29 +1102,29 @@ Definition regular_binary_op op :=
   | binary_op_or => False
   | _ => True
   end.
-  (* TODO: discard alternative definition below?
+  (* TODO: use alternative definition below
       ~ (exists b, lazy_op op b). *)
 
 
 (**************************************************************)
 (** ** Implementation of [callable] *)
 
-(** [callable S v builtinido] ensures that [builtinido] is [None]
-    when [v] is not an object and, that [builtinido] is equal
+(** [callable S v Bo] ensures that [Bo] is [None]
+    when [v] is not an object and, that [Bo] is equal
     to the content of the call field of the object [v]
     otherwise. *)
 
-Definition callable S v builtinido :=
+Definition callable S v Bo :=
   match v with
-  | value_prim w => (builtinido = None)
-  | value_object l => object_call S l builtinido
+  | value_prim w => (Bo = None)
+  | value_object l => object_call S l Bo
   end.
 
 (** [is_callable S v] asserts that the object [v] is a location
     describing an object with a Call method. *)
 
 Definition is_callable S v :=
-  exists builtinid, callable S v (Some builtinid).
+  exists B, callable S v (Some B).
 
 
 (**************************************************************)
@@ -1361,9 +1201,7 @@ Definition object_get_own_property_default S l x An :=
     (* TODO: should the spec say that the function above always returns
        a fully populated descriptor or undefined, like it does for getproperty? *)
 
-(* TODO:  To be moved on LibString in TLC *)
-Fixpoint string_sub s (n l : int) : string :=
-  substring (abs n) (abs l) s.
+(* TODO: double check this definition *)
 
 Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_descriptor -> Prop :=
   | object_get_own_property_not_string : forall S l x An sclass,
@@ -1379,7 +1217,7 @@ Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_des
        else
          (If (prim_string x <> convert_prim_to_string (prim_number (JsNumber.absolute (convert_primitive_to_integer x)))) (* TODO: remove coercion *)
           then An' = prop_descriptor_undef
-          else
+          else (* TODO: make an auxiliary definition for this else branch *)
             (exists s, exists (i:int),
                  object_prim_value S l (prim_string s)
               /\ JsNumber.of_int i = convert_primitive_to_integer x
@@ -1415,6 +1253,8 @@ Inductive object_get_property : state -> value -> prop_name -> prop_descriptor -
       object_get_property S lproto x An ->
       object_get_property S l x An.
 
+(* TODO: add comment *)
+
 Inductive object_all_properties : state -> value -> set prop_name -> Prop :=
   | object_all_properties_null : forall S,
       object_all_properties S null (@empty_impl prop_name)
@@ -1424,6 +1264,8 @@ Inductive object_all_properties : state -> value -> set prop_name -> Prop :=
       object_binds S l obj ->
       let obj_properties := Heap.dom (object_properties_ obj) in
       object_all_properties S (value_object l) (union_impl obj_properties proto_properties).
+
+(* TODO: add comment *)
 
 Inductive object_all_enumerable_properties : state -> value -> set prop_name -> Prop :=
   | object_all_enumerable_properties_intro : forall S l props,
@@ -1436,26 +1278,66 @@ Inductive object_all_enumerable_properties : state -> value -> set prop_name -> 
 
 
 (**************************************************************)
+(** ** Auxiliary definition used by object initializers *)
+
+Definition string_of_propname (pn : propname) : prop_name :=
+  match pn with 
+  | propname_identifier s => s
+  | propname_string s => s
+  | propname_number n => JsNumber.to_string n
+  end.
+
+
+(**************************************************************)
 (** ** Auxiliary definition used in the reduction of [eval] *)
 
 (** Axiomatized parsing relation for eval *)
 
 Axiom parse : string -> prog -> Prop.
 
-(**************************************************************)
-(** ** Auxiliary definition used in 'Object Initializer' *)
 
-(* Daniele: I understand that the only literal admitted is a string literal.
-   what to do with the other literal cases? I putted something arbitrary but 
-   I'm not sure. Please check! *)
-Definition string_of_propname (p : propname) : string :=
-  match p with 
-      | propname_literal l => match l with  
-          | literal_null => "?"%string
-          | literal_bool b => convert_bool_to_string b
-          | literal_string s => s
-          | literal_number n => JsNumber.to_string n
-                              end
-      | propname_string s => s
-      | propname_number n => JsNumber.to_string n
-  end.
+(**************************************************************)
+(** ** Auxiliary definition for the evaluation of a program code *)
+
+(* TODO: fix or delete
+
+  (** Computing local variables of a statement or a program *)
+
+  (* TODO: problem below if we do Open Scope string_scope (why?).*)
+  (* TODO: rename lx into xs *)
+  Fixpoint defs_stat (lx:list string) (t:stat) : (list string) :=
+    let d := defs_stat lx in
+    match t with
+    | stat_expr e => nil
+    | stat_seq p1 p2 => (d p1) ++ (d p2)
+    | stat_var_decl y oe => ifb In y lx then nil else (y::nil)
+    | stat_if e1 p2 None => d p2
+    | stat_if e1 p2 (Some p3) => d p2 ++ d p3
+    | stat_while e1 p2 => d p2
+    | stat_with e1 p2 => d p2
+    | stat_throw e1 => nil
+    | stat_return eo1 => nil
+    | stat_break => nil
+    | stat_continue => nil
+    | stat_try p1 None None => d p1 (* Should not happen. *)
+    | stat_try p1 None (Some p3) => d p1 ++ d p3
+    | stat_try p1 (Some (x,p2)) None => d p1 ++ d p2
+    | stat_try p1 (Some (x,p2)) (Some p3) => d p1 ++ d p2 ++ d p3
+    | stat_skip => nil
+    | stat_for_in e1 e2 p => d p
+    | stat_for_in_var x e1 e2 p => ifb In x lx then (d p) else (x::(d p))
+    end.
+
+  Fixpoint defs_prog (lx:list string) p :=
+    let d := defs_prog lx in
+    match p with
+    | prog_stat p => defs_stat lx p
+    | prog_seq p1 p2 => d p1 ++ d p2
+    | prog_function_decl _ _ _ => nil
+    end.
+
+  (* TODO: the same thing for function declarations. *)
+
+*)
+
+

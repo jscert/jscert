@@ -52,6 +52,7 @@ Definition object_with_primitive_value O v :=
   end.
 
 (** Modifies the construct, call and has_instance fields of an object *)
+
 Definition object_with_invokation O constr call has_instance :=
   match O with
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
@@ -66,18 +67,18 @@ Definition object_with_details O scope params code target boundthis boundargs pa
     object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 scope params code target boundthis boundargs paramsmap
   end.
 
+(** Projection functions for [funcbody] *)
 
-(** Auxiliary functions for body type *)
-
-Definition body_prog bd :=
+Definition funcbody_prog bd :=
   match bd with
-  | body_intro p _ => p
+  | funcbody_intro p _ => p
   end.
   
-Definition body_string bd :=
+Definition funcbody_string bd :=
   match bd with
-  | body_intro _ s => s
+  | funcbody_intro _ s => s
   end.  
+
 
 (**************************************************************)
 (** ** Type [builtin] *)
@@ -89,7 +90,8 @@ Proof. apply (prove_Inhab builtin_global). Qed.
 
 (** Boolean comparison *)
 
-(*
+(* LATER: use a plugin to generate definition *)
+(* TODO: extract to ocaml primitive comparison *)
 Definition builtin_compare bl1 bl2 :=
   match bl1, bl2 with
   | builtin_global, builtin_global => true
@@ -99,9 +101,9 @@ Definition builtin_compare bl1 bl2 :=
   | builtin_type_error, builtin_type_error => true
   | _, _ => false
   end.
-*)
-
+(*
 Parameter builtin_compare : builtin -> builtin -> bool.
+*)
 
 (** Decidable comparison *)
 
@@ -125,7 +127,7 @@ Proof. apply (prove_Inhab (object_loc_normal 0%nat)). Qed.
 Definition object_loc_compare l1 l2 :=
   match l1, l2 with
   | object_loc_normal ln1, object_loc_normal ln2 => decide (ln1 = ln2)
-  | object_loc_builtin bl1,  object_loc_builtin bl2 => decide (bl1 = bl2)
+  | object_loc_builtin bl1, object_loc_builtin bl2 => decide (bl1 = bl2)
   | _, _ => false
   end.
 
@@ -218,6 +220,7 @@ Definition mutability_compare m1 m2 : bool :=
 
 Global Instance mutability_comparable : Comparable mutability.
 Proof.
+  (* TODO: change proof script to follow the pattern of similar proofs above *)
   apply make_comparable. introv.
   applys decidable_make (mutability_compare x y).
   destruct x; destruct y; simpl; rew_refl;
@@ -237,7 +240,7 @@ Qed.
 
 
 (**************************************************************)
-(** ** Type [ref] *)
+(** ** Type [env_record] *)
 
 (** Inhabitants **)
 
@@ -286,14 +289,7 @@ Qed.
 
 
 (**************************************************************)
-(** ** Type [prop_attributes] *)
-
-(* Done in PreliminaryAux *)
-
-(**************************************************************)
-(** ** Type [prop_descriptor] *)
-
-(* Done in PreliminaryAux *)
+(** ** Type [prop_attributes] and [prop_descriptor]: see PreliminaryAux.v *)
 
 
 (**************************************************************)
@@ -317,40 +313,41 @@ Proof. apply prove_Inhab. apply* (ret_value arbitrary). Qed.
 
 
 (**************************************************************)
-(** ** Type [function_code] *)
-
-(** Inhabitants **)
-
-Global Instance function_code_inhab : Inhab function_code.
-Proof. apply prove_Inhab. apply function_code_code. apply* stat_skip. Qed.
-
-
-(**************************************************************)
 (** ** Type [prog] *)
 
 (** Inhabitants **)
 
 Global Instance prog_inhab : Inhab prog.
 Proof. apply prove_Inhab. apply* stat_skip. Qed.
+ (* TODO: use an arbitrary for type [stat] *)
 
 
 (**************************************************************)
-(** ** Type [body] *)
+(** ** Type [funcbody] *)
 
 (** Inhabitants **)
 
-Global Instance body_inhab : Inhab body.
-Proof. apply prove_Inhab. apply (body_intro arbitrary arbitrary). Qed.
-
+Global Instance body_inhab : Inhab funcbody.
+Proof. apply prove_Inhab. apply (funcbody_intro arbitrary arbitrary). Qed.
 
 
 (**************************************************************)
-(* retrieve function and variable declarations from code *)
+(** ** Type [funccode] *)
 
-Fixpoint function_declarations (p : prog) : list function_declaration :=
+(** Inhabitants **)
+
+Global Instance funccode_inhab : Inhab funccode.
+Proof. apply prove_Inhab. apply funccode_code. apply* stat_skip. Qed. 
+ (* TODO: use an arbitrary for type [stat] *)
+
+
+(**************************************************************)
+(** Retrieve function and variable declarations from code *)
+
+Fixpoint function_declarations (p : prog) : list funcdecl :=
   match p with
   | prog_function_decl name args bd =>
-    function_declaration_intro name args bd :: nil
+    funcdecl_intro name args bd :: nil
   | prog_seq p1 p2 =>
     function_declarations p1 ++ function_declarations p2
   | prog_stat _ => nil

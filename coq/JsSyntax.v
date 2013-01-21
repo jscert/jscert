@@ -89,9 +89,8 @@ Definition strictness_flag := bool.
 
 (** Property name in source code *)
 
-(** TODO: we only accept strings as literals in the first case *)
 Inductive propname :=
-  | propname_literal : literal -> propname
+  | propname_identifier : string -> propname
   | propname_string : string -> propname
   | propname_number : number -> propname.
 
@@ -99,11 +98,10 @@ Inductive propname :=
 
 Inductive expr :=
   | expr_this : expr
-  | expr_variable : string -> expr (* todo: rename to expr_identifier *)
+  | expr_identifier : string -> expr
   | expr_literal : literal -> expr
-  (*| expr_object : list (prop * expr) -> expr*) (* Old def *)
-  | expr_object : list (propname * propbody) -> expr (* New def *)
-  | expr_function : option string -> list string -> body -> expr
+  | expr_object : list (propname * propbody) -> expr
+  | expr_function : option string -> list string -> funcbody -> expr
   | expr_access : expr -> expr -> expr
   | expr_member : expr -> string -> expr
   | expr_new : expr -> list expr -> expr
@@ -113,33 +111,26 @@ Inductive expr :=
   | expr_conditional : expr -> expr -> expr -> expr
   | expr_assign : expr -> option binary_op -> expr -> expr
 
-(* Old def. Changing because we also function body as string
+(** Grammar of object properties *)
+
 with propbody :=
   | propbody_val : expr -> propbody
-  | propbody_get : prog -> propbody
-  | propbody_set : list string -> prog -> propbody
-*)
+  | propbody_get : funcbody -> propbody
+  | propbody_set : list string -> funcbody -> propbody
 
-with propbody :=
- | propbody_val : expr ->  propbody
- | propbody_get : body ->  propbody
- | propbody_set : list string ->  body ->  propbody
+(** Grammar of function bodies *)
 
-with body :=
- | body_intro : prog ->  string ->  body
+with funcbody :=
+  | funcbody_intro : prog -> string -> funcbody
   
 (** Grammar of statements *)
 
-(* -->TODO: general labelled statements *)
-(* TODO: is our representation of labels faithful to the spec in 12.0 *)
-
 with stat :=
-(* -->TODO: var x,y;  is it equivalent to var x; var y ? *)
-  (* TODO | stat_label : label -> expr -> stat *)
   | stat_expr : expr -> stat
-  | stat_seq : stat -> stat -> stat
-(*| stat_var_decl : string -> option expr -> stat*)      (* Old def *)
-  | stat_var_decl : list (string * option expr) -> stat  (* New def *)
+  (* TODO | stat_label : label -> stat -> stat *)
+  | stat_seq : stat -> stat -> stat (* TODO: remove *)
+  (* TODO: add | with stat_block : list stat -> stat *)
+  | stat_var_decl : list (string * option expr) -> stat
   | stat_if : expr -> stat -> option stat -> stat
   | stat_while : (* TODO: label_set -> *) expr -> stat -> stat
   | stat_with : expr -> stat -> stat
@@ -147,42 +138,44 @@ with stat :=
   | stat_return : option expr -> stat
   | stat_break : label_opt -> stat
   | stat_continue : label_opt ->  stat
-  | stat_try : stat -> option (string * stat) -> option stat -> stat
-               (* try s1 [catch (x) s2] [finally s3] *)
-  | stat_skip (* for semi-column *)
-  | stat_for_in : (* TODO: label_set -> *) expr -> expr -> stat -> stat (* for (e1 in e2) stat *)
-  | stat_for_in_var : (* TODO: label_set -> *) string -> option expr -> expr -> stat -> stat (* for (var x [= e1] in e2) stat *)
+  | stat_try : stat -> option (string * stat) -> option stat -> stat (* Note: try s1 [catch (x) s2] [finally s3] *)
+  | stat_skip (* TODO: remove when stat_block is used *)
+  | stat_for_in : (* TODO: label_set -> *) expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
+  | stat_for_in_var : (* TODO: label_set -> *) string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
+  (* TODO: factorize syntax of for_in and for_in_var *)
   | stat_debugger : stat  
-(* todo: factorize the two *)
-(* TODO: missing do_while and for *)
-(* TODO: missing switch *)
-
-(* TODO: note the invariant somewhere:
-   - try must have either catch or finally
-   - with statement cannot be in strict mode
-*)
+  (* LATER: add do_while *)
+  (* LATER: add switch *)
 
 (** Grammar of programs *)
 
-with prog :=
+with prog := (* TODO: replace all def with | prog_intro : strictness_flag -> list stat -> prog *)
   | prog_stat : stat -> prog
-  | prog_seq : prog -> prog -> prog
-  | prog_function_decl : string -> list string -> body -> prog.
-  (* TODO:  Add prog_use_strict : prog -> prog. *)
+  | prog_seq : prog -> prog -> prog  
+  | prog_function_decl : string -> list string -> funcbody -> prog. (* TODO: remove since not documented *)
+
+(* TODO:
+   with prog :=
+    | prog_intro : strictness_flag -> list progitem -> prog
+     
+   with progitem :=
+    | progitem_stat : stat -> progitem
+    | progitem_func_decl : string -> list string -> funcbody -> progitem 
+*)
+
+(* TODO: implement function below by looking the strictness flag at the head of the body, once grammar of prog has changed:
+   Definition funcbody_is_strict fb := 
+     match fb with funcbody_intro (prog_intro b_strict _) _ => b_strict end.
+   TODO: move this to JsPreliminary
+*)
+(* We assume that function declarations know about their strictness in terms of 10.1.1 *)
+Parameter function_body_is_strict : funcbody -> bool.
 
 
 (** Coercions for grammars *)
 
 Coercion stat_expr : expr >-> stat.
 Coercion prog_stat : stat >-> prog.
-
-Record function_declaration := function_declaration_intro {
-   fd_name : string;
-   fd_parameters : list string;
-   fd_body : body }.
-
-(* We assume that function declarations know about their strictness in terms of 10.1.1 *)
-Parameter function_body_is_strict : body -> bool.
 
 
 (**************************************************************)
@@ -341,11 +334,6 @@ Inductive value :=
   | value_prim : prim -> value
   | value_object : object_loc -> value.
 
-(** Shorthands for [null] and [undef] *)
-
-Notation "'null'" := (value_prim prim_null).
-Notation "'undef'" := (value_prim prim_undef).
-
 (** Grammar of types *)
 
 Inductive type :=
@@ -355,6 +343,11 @@ Inductive type :=
   | type_number : type
   | type_string : type
   | type_object : type.
+
+(** Shorthands for [null] and [undef] *)
+
+Notation "'null'" := (value_prim prim_null).
+Notation "'undef'" := (value_prim prim_undef).
 
 (** Coercions for primitive and values *)
 
@@ -465,12 +458,6 @@ Record ref := ref_intro {
 
 Definition class_name := string.
 
-(** Representation of function code *)
-
-Inductive function_code :=
-  | function_code_code : prog -> function_code
-  | function_code_builtin : builtin -> function_code.
-
 (** Representation of the map from properties to attributes *)
 
 Definition object_properties_type :=
@@ -490,7 +477,7 @@ Record object := object_intro {
    object_has_instance_ : option builtin;
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
-   object_code_ : option body;
+   object_code_ : option funcbody;
    object_target_function_ : option object_loc;
    object_bound_this_ : option value;
    object_bound_args_ : option (list value);
@@ -550,7 +537,6 @@ Inductive ret_or_empty :=
     - (normal,value,empty) as [res_normal (ret_or_empty_ret value)] 
     - (break,empty,labelopt) as [res_break labelopt] 
     - (continue,empty,labelopt) as [res_continue labelopt] 
-    - (return,empty,empty) as [res_return None] (* Daniele: do we use this case? And: below res_return is not defined as an option anyway... *)
     - (return,value,empty) as [res_return (Some value)] 
     - (throw,value,empty) as [res_throw value] 
     
@@ -577,4 +563,27 @@ Coercion ret_value : value >-> ret.
 Coercion ret_ref : ref >-> ret.
 Coercion ret_or_empty_ret : ret >-> ret_or_empty.
 Coercion res_normal : ret_or_empty >-> res.
+
+
+
+(**************************************************************)
+(**************************************************************)
+(****************************************************************)
+(** ** Auxiliarly data structures used for the semantics *)
+
+(** Representation of function code -- TODO: seems to be deprecated *)
+
+Inductive funccode :=
+  | funccode_code : prog -> funccode  (* TODO: this should probably be of type funcbody -> funccode *)
+  | funccode_builtin : builtin -> funccode.
+
+Coercion funccode_builtin : builtin >-> funccode.
+
+(** Representation of a function declaration *)
+
+Record funcdecl := funcdecl_intro {
+   funcdecl_name : string;
+   funcdecl_parameters : list string;
+   funcdecl_body : funcbody }.
+
 

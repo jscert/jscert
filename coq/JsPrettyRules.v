@@ -144,7 +144,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (* TODO: red_stat_var_decl_some: can we justify that this is equivalent to the spec ?*)
   | red_stat_var_decl_some : forall S C x e o1 o,
-      red_expr S C (expr_assign (expr_variable x) None e) o1 ->
+      red_expr S C (expr_assign (expr_identifier x) None e) o1 ->
       red_stat S C (stat_var_decl_1 o1) o ->
       red_stat S C (stat_var_decl x (Some e)) o
 
@@ -498,9 +498,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Identifier *)
 
-  | red_expr_variable : forall S C x o,
+  | red_expr_identifier : forall S C x o,
       red_expr S C (identifier_resolution C x) o ->
-      red_expr S C (expr_variable x) o
+      red_expr S C (expr_identifier x) o
 
   (** Literal *)
 
@@ -1972,7 +1972,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_code S func (Some bd) ->
       (lex', S') = lexical_env_alloc_decl S scope ->
       C' = execution_ctx_intro_same lex' this strict ->
-      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) (body_prog bd) args) o1 ->
+      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some func) (funcbody_prog bd) args) o1 ->
       red_expr S' C' (spec_execution_ctx_function_call_2 K o1) o ->
       red_expr S0 C (spec_execution_ctx_function_call_1 K func args strict (out_ter S this)) o 
       
@@ -2021,29 +2021,29 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_binding_instantiation_function_decls K args L nil bconfig (out_void S)) o
 
   | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds bconfig o, (* Step 5b *)
-      let strict := function_body_is_strict (fd_body fd) in
-      red_expr S C (spec_creating_function_object (fd_parameters fd) (fd_body fd) (execution_ctx_variable_env C) strict) o1 ->
+      let strict := function_body_is_strict (funcdecl_body fd) in
+      red_expr S C (spec_creating_function_object (funcdecl_parameters fd) (funcdecl_body fd) (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_void S)) o
 
   | red_expr_spec_binding_instantiation_function_decls_1 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5c *)
-      red_expr S C (spec_env_record_has_binding L (fd_name fd)) o1 ->
+      red_expr S C (spec_env_record_has_binding L (funcdecl_name fd)) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig (out_ter S fo)) o
 
   | red_expr_spec_binding_instantiation_function_decls_2_false : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5d *)
-      red_expr S C (spec_env_record_create_mutable_binding L (fd_name fd) (Some bconfig)) o1 ->
+      red_expr S C (spec_env_record_create_mutable_binding L (funcdecl_name fd) (Some bconfig)) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig (out_ter S false)) o
 
   | red_expr_spec_binding_instantiation_function_decls_2_true_global : forall A o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5e ii *)
-      object_get_property S builtin_global (fd_name fd) (prop_descriptor_some A) ->
+      object_get_property S builtin_global (funcdecl_name fd) (prop_descriptor_some A) ->
       red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (prop_attributes_configurable A) bconfig) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args env_loc_global_env_record fd fds strict fo bconfig (out_ter S true)) o
 
   | red_expr_spec_binding_instantiation_function_decls_3_true : forall o1 L S C K args fd fds strict fo bconfig o, (* Step 5e iii *)
       let A := prop_attributes_create_data undef true true bconfig in
-      red_expr S C (spec_object_define_own_prop builtin_global (fd_name fd) A true) o1 ->
+      red_expr S C (spec_object_define_own_prop builtin_global (funcdecl_name fd) A true) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo bconfig o1) o ->
       red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A (Some true) bconfig) o
 
@@ -2064,7 +2064,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig (out_ter S true)) o
 
   | red_expr_spec_binding_instantiation_function_decls_4 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5f *)
-      red_expr S C (spec_env_record_set_mutable_binding L (fd_name fd) (value_object fo) strict) o1 ->
+      red_expr S C (spec_env_record_set_mutable_binding L (funcdecl_name fd) (value_object fo) strict) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_void S)) o
       
@@ -2196,7 +2196,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_expr_spec_call_prog_1_prog: forall bd o1 S C l o,
       object_code S l (Some bd) ->
-      red_prog S C (body_prog bd) o1 ->
+      red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_op_function_call_2 o1) o ->
       red_expr S C (spec_op_function_call_1 l) o
       
@@ -2296,7 +2296,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       type_of v = type_string ->
       v = prim_string s ->
       parse s p ->
-      red_expr S C (spec_execution_ctx_eval_call (spec_call_global_eval p) (body_intro p s)) o ->
+      red_expr S C (spec_execution_ctx_eval_call (spec_call_global_eval p) (funcbody_intro p s)) o ->
       red_expr S C (spec_call_builtin builtin_global_eval args) o 
       
   | red_spec_call_global_eval : forall o1 S C p o,
@@ -2668,7 +2668,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
       O1 = object_with_invokation O None (Some builtin_spec_op_function_call) None ->
       (* TODO : Is this ok? *)
-      code = body_intro (prog_stat (stat_throw (expr_new (expr_variable "TypeError") nil))) "throw TypeError()" -> 
+      code = funcbody_intro (prog_stat (stat_throw (expr_new (expr_identifier "TypeError") nil))) "throw TypeError()" -> 
       O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
       S' = object_write S builtin_function_throw_type_error O2 ->
       A = prop_attributes_create_data JsNumber.zero false false false ->
@@ -2699,23 +2699,3 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
       red_expr S C (spec_create_new_function_in C args bd) o
 .
-
-(*--------------------------------*)
-(* deprecated, but to keep around for wf invariants:
-
-  | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
-      ref_is_unresolvable r ->
-      red_expr S C (spec_error_or_cst (ref_strict r) builtin_syntax_error true) o -> 
-      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
-
-  | red_expr_delete_3_strict : forall S C r L o,
-      red_expr S C (spec_error builtin_syntax_error) o -> 
-      red_expr S C (expr_delete_3 r L true) o 
-
-  | red_expr_prepost_1_invalid : forall S0 S C op R,
-      ~ valid_lhs_for_assign R ->
-      red_expr S0 C (expr_prepost_1 op (out_ter S R)) (out_syntax_error S)
-
-  | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
-      valid_lhs_for_assign R ->
-*)

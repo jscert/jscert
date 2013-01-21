@@ -1,7 +1,63 @@
+
+*) add label sets on blocks
+*) handle break on stat_label
+
+*) is function_code deprecated
+
+*) factorize syntax of for_in and for_in_var 
+
+*) prog_function_decl : should it be removed since nonstandard?
+
+*) Inductive funccode => deprecated?
+
+*) Definition of the "SameValue" algorithm -- TODO: does not seem to be used 
+
+*) Define [abort] as "not a normal behavior",
+   by taking the negation of being of the form [ter (normal ...)]. *)
+
+*) delete section for errors, since it was already moved to jsprettyinterm
+
+*) resolve ambiguity "propname" vs "prop_name"
+
+*) Factorization of rules for binary operators : move a bunch of these defs into js_pretty_inter 
+
+
+=====
+LESS URGENT
+
+*) Find an order for sections in JsPreliminary
+
+*) TODO: store the fresh locations into a wrapper around LibHeap
+
 *) we would be closer to the spec in red_stat_try_1_catch_throw
    if lexical environments were not lists, but instead objects with a parent field,
    however this would come at the cost of having a predicate to enforce acyclicity
 
 
+=====
+INVARIANT ON SYNTAX
+
+- "try" must have either catch or finally
+- "with" statement cannot be in strict mode
+
+
+
 
 =====
+INVARIANT ON WF
+
+  | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
+      ref_is_unresolvable r ->
+      red_expr S C (spec_error_or_cst (ref_strict r) builtin_syntax_error true) o -> 
+      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
+
+  | red_expr_delete_3_strict : forall S C r L o,
+      red_expr S C (spec_error builtin_syntax_error) o -> 
+      red_expr S C (expr_delete_3 r L true) o 
+
+  | red_expr_prepost_1_invalid : forall S0 S C op R,
+      ~ valid_lhs_for_assign R ->
+      red_expr S0 C (expr_prepost_1 op (out_ter S R)) (out_syntax_error S)
+
+  | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
+      valid_lhs_for_assign R ->

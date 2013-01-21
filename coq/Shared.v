@@ -461,3 +461,16 @@ Global Instance binary_op_inhab : forall P : Type,
   Inhab (P -> P -> P).
 Proof. introv. apply prove_Inhab. introv. auto*. Qed.
 
+
+(**************************************************************)
+(** ** LATER: move to LibString *)
+
+(* TODO:  To be moved on LibString in TLC *)
+Definition string_sub s (n l : int) : string :=
+  substring (abs n) (abs l) s.
+
+(* todo: move *)
+Axiom ascii_compare : Ascii.ascii -> Ascii.ascii -> bool.
+Global Instance ascii_comparable : Comparable Ascii.ascii.
+Proof. applys (comparable_beq ascii_compare). skip. Qed. (* I need this for the extraction -- Martin. *)
+Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).

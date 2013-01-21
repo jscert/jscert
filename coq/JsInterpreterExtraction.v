@@ -126,3 +126,6 @@ Extract Constant object_builtin_global_class => "(
 
 Extraction "interp/src/interpreter.ml" state_initial execution_ctx_initial run_prog.
 
+
+
+(* -- LATER: extract inequality_test_string in more efficient way*)

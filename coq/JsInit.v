@@ -1,25 +1,23 @@
 Set Implicit Arguments.
 Require Export JsPreliminary JsPreliminaryAux.
 
-(* TODO: move *)
-
-Coercion function_code_builtin : builtin >-> function_code.
-
-(* TODO:*)
+(* TODO: (re)move *)
 
 Coercion JsNumber.of_int : Z >-> JsNumber.number.
 
 (**************************************************************)
-(** ** Implicit Types -- copied from JsSemanticsDefs *)
+(** ** Implicit Types -- copied from JsPreliminary *)
 
 Implicit Type b : bool.
 Implicit Type n : number.
 Implicit Type k : int.
 Implicit Type s : string.
+Implicit Type i : literal.
 Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
+Implicit Type B : builtin.
 Implicit Type T : type.
 
 Implicit Type x : prop_name.
@@ -27,7 +25,7 @@ Implicit Type m : mutability.
 Implicit Type A : prop_attributes.
 Implicit Type An : prop_descriptor.
 Implicit Type L : env_loc.
-Implicit Type E : env_record.
+Implicit Type E : env_record. (* TODO: suggested using R *)
 Implicit Type D : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
@@ -42,7 +40,6 @@ Implicit Type t : stat.
 
 (**************************************************************)
 (** Common shorthands *)
-
 
 (** Shorthand notation for building a property attributes
     that is non writable, non configurable and non enumerable. *)
@@ -121,10 +118,10 @@ Definition object_builtin_global_properties :=
   let P := write_native P "eval" builtin_global_eval in
   let P := write_native P "isNan" builtin_global_is_nan in
   let P := write_native P "isFinite" builtin_global_is_finite in
-  (* TODO: many other functions to insert here *)
+  (* LATER: other functions to insert here *)
   let P := write_native P "Object" builtin_object in
   let P := write_native P "Function" builtin_function in
-  (* TODO: let P := write_native P "Array" builtin_array in
+  (* LATER: let P := write_native P "Array" builtin_array in
   let P := write_native P "String" builtin_string in
   let P := write_native P "Boolean" builtin_boolean in
   let P := write_native P "Number" builtin_number in *)
@@ -154,8 +151,9 @@ Definition object_builtin_object :=
   let P := Heap.empty in
   let P := write_constant P "prototype" builtin_object_proto in
   let P := write_native P "get_prototype_of" builtin_object_get_prototype_of in
-  (* TODO: complete list *)
+  (* LATER: complete list *)
   object_create_builtin_constructor builtin_object_call builtin_object_new 1 P.
+
 
 (**************************************************************)
 (** Object prototype object *)
@@ -167,8 +165,9 @@ Definition object_builtin_object_proto :=
   let P := write_constant P "constructor" builtin_object_new in
   let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in
   let P := write_native P "toString" builtin_object_proto_to_string in  
-  let P := write_native P "valueOf" builtin_object_proto_value_of in (* Daniele: remove this comment *)  
+  let P := write_native P "valueOf" builtin_object_proto_value_of in 
   object_create_builtin null "Object" builtin_spec_op_object_get P.
+
 
 (**************************************************************)
 (** Function object *)
@@ -177,17 +176,19 @@ Definition object_builtin_function :=
   let P := Heap.empty in
   let P := write_constant P "prototype" builtin_function_proto in
   let P := write_native P "get_prototype_of" builtin_object_get_prototype_of in
-  (* TODO: complete list *)
+  (* LATER: complete list *)
   object_create_builtin_constructor builtin_function_call builtin_function_new 1 P.
+
 
 (**************************************************************)
 (** Function prototype object *)
 
 Definition object_builtin_function_proto :=
   let P := Heap.empty in
-  (*let P := write_native P "toString" builtin_function_proto_to_string in *) (* TODO *)
-  (* TODO: complete list *)
+  (* let P := write_native P "toString" builtin_function_proto_to_string in *) (* TODO *)
+  (* LATER: complete list *)
   object_create_builtin builtin_object_proto "Function" builtin_spec_op_object_get P.
+
 
 (**************************************************************)
 (** Number object *)
@@ -196,10 +197,11 @@ Definition object_builtin_function_proto :=
 
 Definition object_builtin_number :=
   let P := Heap.empty in
-  (* Daniele: use [builtin_function_proto] when available *)
-  let P := write_constant P "prototype"  builtin_function_proto in
+  (* TODO: what does this mean? --:: Daniele: use [builtin_function_proto] when available *)
+  let P := write_constant P "prototype" builtin_function_proto in
   (* TODO: complete list *)
   object_create_builtin_constructor builtin_number_call builtin_number_new 1 P.
+
 
 (**************************************************************)
 (** Number prototype object *)
@@ -212,25 +214,26 @@ Definition object_builtin_number_proto :=
 
   object_create_builtin builtin_object_proto "Number" builtin_spec_op_object_get P.
 
+
 (**************************************************************)
 (** Array object *)
 
-(* TODO *)
+(* LATER *)
 
 (**************************************************************)
 (** Array prototype object *)
 
-(* TODO *)
+(* LATER *)
 
 (**************************************************************)
 (** String object *)
 
-(* TODO *)
+(* LATER *)
 
 (**************************************************************)
 (** String prototype object *)
 
-(* TODO *)
+(* LATER *)
 
 (**************************************************************)
 (** Bool object *)
@@ -240,6 +243,7 @@ Definition object_builtin_bool :=
   let P := write_constant P "prototype" builtin_function_proto in
   (* TODO: complete list *)
   object_create_builtin_constructor builtin_bool_call builtin_bool_new 1 P.
+
 
 (**************************************************************)
 (** Bool prototype object *)
@@ -251,10 +255,12 @@ Definition object_builtin_bool_proto :=
   (* TODO: complete list *)
   object_create_builtin builtin_object_proto "Boolean" builtin_spec_op_object_get P. 
 
+
 (**************************************************************)
 (** Math object *)
 
 (* TODO *)
+
 
 (**************************************************************)
 (** Initial object heap *)
@@ -270,7 +276,7 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_number_proto object_builtin_number_proto in
   let h := Heap.write h builtin_function object_builtin_function in
   let h := Heap.write h builtin_function_proto object_builtin_function_proto in
-(* TODO: update and uncomment once definitions have been completed
+  (* LATER : update and uncomment once definitions have been completed
   let h := Heap.write h builtin_array_proto object_builtin_array_proto in
   let h := Heap.write h builtin_string_proto object_builtin_string_proto in
   let h := Heap.write h builtin_eval_proto object_builtin_eval_proto in
@@ -278,9 +284,9 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_ref_error object_builtin_ref_error in
   let h := Heap.write h builtin_syntax_error object_builtin_syntax_error in
   let h := Heap.write h builtin_type_error object_builtin_type_error in
-  ...etc
   *)
   h.
+
 
 (**************************************************************)
 (** Initial environment record heap *)
@@ -290,12 +296,14 @@ Definition env_record_heap_initial :=
              env_loc_global_env_record
              (env_record_object_default builtin_global).
 
+
 (**************************************************************)
 (** TODO: remove this once Heap representation is fixed *)
 
 CoFixpoint all_locations (k:nat) : stream nat :=
   stream_intro k (all_locations (S k)).
 Definition dummy_fresh_locations := all_locations 1%nat. (* Starting at 1 and not 0 because location 0 is already reserved for env_loc_global_env_record. *)
+
 
 (**************************************************************)
 (** Initial state *)
@@ -304,6 +312,7 @@ Definition state_initial :=
   {| state_object_heap := object_heap_initial;
      state_env_record_heap := env_record_heap_initial;
      state_fresh_locations := dummy_fresh_locations |}.
+
 
 (**************************************************************)
 (** Initial lexical environment *)

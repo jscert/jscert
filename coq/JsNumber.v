@@ -81,6 +81,7 @@ Parameter to_int16 : number -> int. (* currently not used *)
 
 (**************************************************************)
 (** ** Extraction of numbers *)
+(* TODO: move this section to JsInterpreterExtraction *)
 
 Require Import ExtrOcamlZInt.
 Extract Inductive Fappli_IEEE.binary_float => float [
@@ -95,7 +96,6 @@ Extract Inductive Fappli_IEEE.binary_float => float [
 Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bits.b64_plus.
 Extraction Inline Fappli_IEEE.Bmult Fappli_IEEE.Bmult_FF Fappli_IEEE_bits.b64_mult.
 Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
-
 
 
 

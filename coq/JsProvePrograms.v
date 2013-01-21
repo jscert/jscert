@@ -831,7 +831,7 @@ Section Defining_expressions.
 Definition expr_var_assign s e :=
   expr_var_decl s (Some e).
 Definition assign_variable x e :=
-  expr_assign (expr_variable x) None e.
+  expr_assign (expr_identifier x) None e.
 Definition expr_undefined := expr_skip. (* NEWSYNTAX: use skip instead of value_undef *)
 Definition expr_bool b := expr_literal (literal_bool b).
 Definition expr_number n := expr_literal (literal_number n).
@@ -925,14 +925,14 @@ Definition prog :=
     expr_var_assign "f" (expr_function None ["w"%string] (
       seq [
         expr_var_assign "v" expr_undefined;
-        assign_variable "x" (expr_variable "v");
+        assign_variable "x" (expr_identifier "v");
         assign_variable "v" (expr_string "4");
-        assign_variable "y" (expr_variable "v")
+        assign_variable "y" (expr_identifier "v")
       ]
     ));
     assign_variable "v" (expr_string "4");
-    expr_call (expr_variable "f") [expr_null];
-    assign_variable "z" (expr_variable "v")
+    expr_call (expr_identifier "f") [expr_null];
+    assign_variable "z" (expr_identifier "v")
   ].
 
 
@@ -1077,7 +1077,7 @@ skip (* idem *).
 skip. skip. skip. skip. skip. skip. skip.
 Existential 1 := h. Existential 1 := h. Existential 1 := value_loc loc_null. Existential 1 := loc_null.
 Existential 1 := []. Existential 1 := ""%string.
-Existential 1 := expr_variable "". Existential 1 := ret_expr_value (value_loc loc_null).
+Existential 1 := expr_identifier "". Existential 1 := ret_expr_value (value_loc loc_null).
 Existential 1 := ret_expr_value (value_loc loc_null).
 
 Qed.*)
