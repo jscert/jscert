@@ -324,7 +324,6 @@ Definition run_object_get_own_property_base P x : prop_descriptor :=
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
   run_object_get_own_property_base (run_object_properties S l) x.
 
-(* TODO: check this definition once the one in JsPreliminary has been updated *)
 Definition run_object_get_own_property S l x : prop_descriptor :=
   let sclass := run_object_class S l in
   let An := run_object_get_own_property_default S l x in
