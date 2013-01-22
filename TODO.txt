@@ -1,63 +1,5 @@
 
 
-Inductive restype :=
-  | restype_normal
-  | restype_break
-  | restype_continue
-  | restype_return
-  | restype_throw.
-
-Inductive resvalue :=
-  | resvalue_empty : resvalue
-  | resvalue_value : value -> resvalue
-  | resvalue_ref : ref -> resvalue.
-
-Definition res := (restype * resvalue * label_opt)%type.
-
-(** Projection for [res] *)
-
-Definition res_type_of R :=
-  match R with (rt, _, _) => rt end.
-
-Definition res_value_of R :=
-  match R with (_, rv, _) => rv end.
-
-Definition res_label_of R :=
-  match R with (_, _, labopt) => labopt end.
-
-(** Modification of fields for type [res] *)
-
-Definition res_with_type R rt :=
-  match R with (old_rt, rv, lo) => (rt, rv, lo) end.
-
-Definition res_with_value R rv :=
-  match R with (rt, old_rv, lo) => (rt, rv, lo) end.
-
-(** Smart constructors for type [res] *)
-
-Coercion res_ref r := (restype_normal, resvalue_ref r, None).
-Coercion res_value v := (restype_normal, resvalue_value v, None).
-Definition res_empty := (restype_normal, resvalue_empty, None).
-Definition res_break labopt := (restype_break, resvalue_empty, labopt).
-Definition res_continue labopt := (restype_continue, resvalue_empty, labopt).
-Definition res_return v := (restype_return, resvalue_value v, None).
-Definition res_throw v := (restype_throw, resvalue_value v, None).
-
-(** Test whether [res] has an empty value *)
-
-Definition res_value_is_empty R :=
-  res_get_value R = resvalue_empty.
-
-(** Update the value field if it is empty *)
-
-Definition res_overwrite_value_if_empty Rold Rnew :=
-  If res_get_value Rnew = resvalue_empty 
-    then res_with_value Rnew (res_value_of Rold)
-    else Rnew.
-
-
-
-
 
 Martin: I changed & moved the definition of execution_ctx_initial, see JsPreliminary
 
@@ -90,6 +32,8 @@ Martin: I changed & moved the definition of execution_ctx_initial, see JsPrelimi
 *)  initialize the execution context with binding instantiation 
 
 (* TODO: handle labels in while loops *)
+
+(* TODO: abort_intercepted check whether we need to add this:
 
 =====
 LESS URGENT

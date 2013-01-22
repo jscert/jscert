@@ -1,4 +1,4 @@
-Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm (* JsPrettyIntermAux *) JsInit.
+Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm (* JsPrettyIntermAux *).
 
 (**************************************************************)
 (** ** Implicit Types, same as in JsSemanticsDefs *)
@@ -120,7 +120,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_abort : forall S C text o,
       out_of_ext_stat text = Some o ->
-      ~ abort_intercepted text o ->
+      ~ abort_intercepted text ->
       abort o ->
       red_stat S C text o
 
@@ -274,7 +274,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_for_in_6g_exit : forall S C e1 t l vret lhdRef initProps visitedProps res,
       (* TODO: check continue label is in current label set *)
+      (* TODO: use instead the res_type projection *)
       ~ (is_res_break res) /\ ~ (is_res_continue res) /\ ~ (is_res_normal res) ->
+
       red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) (out_ter S res)
 
   | red_stat_for_in_6g_continue : forall o1 S C e1 t l vret lhdRef initProps visitedProps res o,

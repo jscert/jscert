@@ -16,12 +16,18 @@ Implicit Type r : ref.
 Implicit Type B : builtin.
 Implicit Type T : type.
 
+Implicit Type rt : restype.
+Implicit Type rv : resvalue.
+Implicit Type lab : label.
+Implicit Type R : res.
+Implicit Type o : out.
+
 Implicit Type x : prop_name.
 Implicit Type m : mutability.
 Implicit Type A : prop_attributes.
 Implicit Type An : prop_descriptor.
 Implicit Type L : env_loc.
-Implicit Type E : env_record. (* TODO: suggested using R *)
+Implicit Type E : env_record.
 Implicit Type D : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
@@ -35,7 +41,23 @@ Implicit Type t : stat.
 
 
 (**************************************************************)
-(** ** Auxiliary functions function bodies *)
+(** ** Auxiliary functions for results *)
+
+(** Test whether [res] has an empty value *)
+
+Definition res_value_is_empty R :=
+  res_value R = resvalue_empty.
+
+(** Update the value field if it is empty *)
+
+Definition res_overwrite_value_if_empty Rold Rnew :=
+  If res_value_is_empty Rnew
+    then res_with_value Rnew (res_value Rold)
+    else Rnew.
+
+
+(**************************************************************)
+(** ** Auxiliary functions for function bodies *)
 
 Definition funcbody_is_strict fb := 
   match fb with funcbody_intro (prog_intro b_strict _) _ => b_strict end.
@@ -639,6 +661,7 @@ Definition ref_create_env_loc L x strict :=
 
 Open Scope string_scope. (* TODO: move to top of the file *)
 
+(* LATER: only for syntax errors
 Definition valid_lhs_for_assign R :=
   ~ (exists r,
          R = ret_ref r
@@ -646,7 +669,7 @@ Definition valid_lhs_for_assign R :=
       /\ ref_kind_of r = ref_kind_env_record
       /\ let s := ref_name r in
          (s = "eval" \/ s = "arguments")).
-
+*)
 
 (**************************************************************)
 (** ** Operations on mutability flags *)

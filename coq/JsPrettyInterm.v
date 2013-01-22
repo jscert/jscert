@@ -13,7 +13,14 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
+Implicit Type B : builtin.
 Implicit Type T : type.
+
+Implicit Type rt : restype.
+Implicit Type rv : resvalue.
+Implicit Type lab : label.
+Implicit Type R : res.
+Implicit Type o : out.
 
 Implicit Type x : prop_name.
 Implicit Type m : mutability.
@@ -31,10 +38,6 @@ Implicit Type P : object_properties_type.
 Implicit Type e : expr.
 Implicit Type p : prog.
 Implicit Type t : stat.
-
-Implicit Type res : res.
-Implicit Type R : ret.
-Implicit Type o : out.
 
 
 (****************************************************************)
@@ -81,8 +84,8 @@ Inductive ext_expr :=
   | expr_new_3 : object_loc -> out -> ext_expr (* The call has been executed. *)
   
   | expr_call_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
-  | expr_call_2 : ret -> list expr -> out -> ext_expr 
-  | expr_call_3 : ret -> value -> list value -> ext_expr (* The arguments have been executed. *)
+  | expr_call_2 : res -> list expr -> out -> ext_expr 
+  | expr_call_3 : res -> value -> list value -> ext_expr (* The arguments have been executed. *)
   | expr_call_4 : object_loc -> list value -> out -> ext_expr (* The call has been executed. *)
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
@@ -93,8 +96,8 @@ Inductive ext_expr :=
   | expr_typeof_1 : out -> ext_expr
   | expr_typeof_2 : out -> ext_expr
   | expr_prepost_1 : unary_op -> out -> ext_expr
-  | expr_prepost_2 : unary_op -> ret -> out -> ext_expr
-  | expr_prepost_3 : unary_op -> ret -> out -> ext_expr
+  | expr_prepost_2 : unary_op -> res -> out -> ext_expr
+  | expr_prepost_3 : unary_op -> res -> out -> ext_expr
   | expr_prepost_4 : value -> out -> ext_expr
   | expr_unary_op_neg_1 : out -> ext_expr
   | expr_unary_op_bitwise_not_1 : int -> ext_expr
@@ -125,9 +128,9 @@ Inductive ext_expr :=
   | expr_lazy_op_2 : bool -> value -> out -> expr -> ext_expr
 
   | expr_assign_1 : out -> option binary_op -> expr -> ext_expr
-  | expr_assign_2 : ret -> out -> binary_op -> expr -> ext_expr
-  | expr_assign_3 : ret -> value -> binary_op -> out -> ext_expr
-  | expr_assign_4 : ret -> out -> ext_expr
+  | expr_assign_2 : res -> out -> binary_op -> expr -> ext_expr
+  | expr_assign_3 : res -> value -> binary_op -> out -> ext_expr
+  | expr_assign_4 : res -> out -> ext_expr
   | expr_assign_5 : value -> out -> ext_expr
 
 (* TODO: we could separate ext_spec from ext_expr,
@@ -205,8 +208,8 @@ Inductive ext_expr :=
 
   (** Extended expressions for operations on references *)
 
-  | spec_get_value : ret -> ext_expr
-  | spec_put_value : ret -> value -> ext_expr
+  | spec_get_value : resvalue -> ext_expr
+  | spec_put_value : resvalue -> value -> ext_expr
 
   (** Shorthand for calling [red_expr] then [ref_get_value] *)
 
@@ -353,8 +356,8 @@ with ext_stat :=
 
   (** Extended statements associated with primitive statements *)
 
-  | stat_block_1 : ret_or_empty -> list stat -> ext_stat (* The first statement has been executed. *)
-  | stat_block_2 : ret_or_empty -> out -> list stat -> ext_stat
+  | stat_block_1 : res -> list stat -> ext_stat (* The first statement has been executed. *)
+  | stat_block_2 : res -> out -> list stat -> ext_stat
 
   | stat_label_1 : label -> out -> ext_stat
 
@@ -370,15 +373,17 @@ with ext_stat :=
   | stat_while_1 : expr -> stat -> value -> ext_stat (* The condition have been executed. *)
   | stat_while_2 : expr -> stat -> out -> ext_stat (* The condition have been executed and converted to a boolean. *)
 
+(*
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
   | stat_for_in_2 : expr -> stat -> out -> ext_stat
   | stat_for_in_3 : expr -> stat -> out -> ext_stat
-  | stat_for_in_4 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> ext_stat (* TODO: define prop_names for [set prop_name] *)
-  | stat_for_in_5 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
-  | stat_for_in_6 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
-  | stat_for_in_7 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> out -> ext_stat
-  | stat_for_in_8 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> out -> ext_stat
-  | stat_for_in_9 : expr -> stat -> object_loc -> option ret -> option out -> set prop_name -> set prop_name -> res -> ext_stat
+  | stat_for_in_4 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> ext_stat (* TODO: define prop_names for [set prop_name] *)
+  | stat_for_in_5 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
+  | stat_for_in_6 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
+  | stat_for_in_7 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> out -> ext_stat
+  | stat_for_in_8 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> out -> ext_stat
+  | stat_for_in_9 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> res -> ext_stat
+*)
 
   | stat_with_1 : stat -> value -> ext_stat (* The expression have been executed. *)
 
@@ -403,8 +408,8 @@ with ext_stat :=
 with ext_prog :=
  
   | prog_basic : prog -> ext_prog
-  | prog_1 : ret_or_empty -> elements -> ext_prog
-  | prog_2 : ret_or_empty -> out -> elements -> ext_prog
+  | prog_1 : res -> elements -> ext_prog
+  | prog_2 : res -> out -> elements -> ext_prog
 .
 
 
@@ -511,56 +516,31 @@ Definition out_of_ext_prog (p : ext_prog) : option out :=
 (**************************************************************)
 (** ** Rules for propagating aborting expressions *)
 
-(** Definition of aborting programs --
-   TODO: define [abort] as "not a normal behavior",
-   by taking the negation of being of the form [ter (normal ...)]. *)
+(** Definition of aborting outcomes: diverging outcomes,
+    and terminating outcomes that are not of type "normal". *)
 
 Inductive abort : out -> Prop :=
   | abort_div :
       abort out_div
-  | abort_break : forall S la,
-      abort (out_ter S (res_break la))
-  | abort_continue : forall S la,
-      abort (out_ter S (res_continue la))
-  | abort_return : forall S la,
-      abort (out_ter S (res_return la))
-  | abort_throw : forall S v,
-      abort (out_ter S (res_throw v)).
-
-(** Definition of normal results -- TODO: not used ? *)
-
-Inductive is_res_normal : res -> Prop :=
-  | is_res_normal_intro : forall v,
-      is_res_normal (res_normal v).
-
-(** Definition of exception results, used in the
-    semantics of try-catch blocks. *)
-
-Inductive is_res_throw : res -> Prop :=
-  | is_res_throw_intro : forall v,
-      is_res_throw (res_throw v).
-
-Inductive is_res_break : res -> Prop :=
-  | is_res_break_intro : forall label,
-      is_res_break (res_break label).
-
-Inductive is_res_continue : res -> Prop :=
-  | is_res_continue_intro: forall label,
-      is_res_continue (res_continue label).
-
-
-
-(**************************************************************)
-(** ** Other rules for propagating aborting expressions *)
+  | abort_not_normal : forall S R,
+      res_type R <> restype_normal ->
+      abort (out_ter S R).
 
 (** Definition of the behaviors caught by an exception handler,
     and thus not propagated by the generic abort rule *)
 
-Inductive abort_intercepted : ext_stat -> out -> Prop :=
-  | abort_intercepted_stat_try_1 : forall S v cb fio o,
-      abort_intercepted (stat_try_1 o (Some cb) fio) (out_ter S (res_throw v))
+Inductive abort_intercepted : ext_stat -> Prop :=
+  | abort_intercepted_stat_label_1 : forall lab S R,
+      res_type R = restype_break ->
+      abort_intercepted (stat_label_1 lab (out_ter S R)) 
+  | abort_intercepted_stat_try_1 : forall S R cb fio,
+      res_type R = restype_throw ->
+      abort_intercepted (stat_try_1 (out_ter S R) (Some cb) fio).
+
+  (* TODO: abort_intercepted check whether we need to add this:
   | abort_intercepted_stat_try_3 : forall S r fio o,
       abort_intercepted (stat_try_3 o fio) (out_ter S r).
+  *)
 
 
 (**************************************************************)

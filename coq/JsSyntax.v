@@ -493,59 +493,47 @@ Record state := state_intro {
 (****************************************************************)
 (** ** Definition of outcomes *)
 
-(** Description of the normal result of an expression: 
-    a value or a reference *)
+(** Kind of results *)
 
-Inductive ret :=
-  | ret_value : value -> ret
-  | ret_ref : ref -> ret.
+Inductive restype :=
+  | restype_normal
+  | restype_break
+  | restype_continue
+  | restype_return
+  | restype_throw.
 
-(** Possibly empty normal result *)
+(** Kind of values carried by a result *)
 
-Inductive ret_or_empty := 
-  | ret_or_empty_empty : ret_or_empty
-  | ret_or_empty_ret : ret -> ret_or_empty.
+Inductive resvalue :=
+  | resvalue_empty : resvalue
+  | resvalue_value : value -> resvalue
+  | resvalue_ref : ref -> resvalue.
 
-(** Result of an evaluation:
+Coercion resvalue_value : value >-> resvalue.
+Coercion resvalue_ref : ref >-> resvalue.
 
-    In the specification, these are triples of the form
-    (type,value,label), where 
-    type is normal or return or break or continue or throw,
-    value is empty or a javascript value,
-    label is empty or a label.
+(** Representation of a result as a triple *)
 
-    We represent results as follows:
-    - (normal,empty,empty) as [res_normal ret_or_empty_empty] 
-    - (normal,value,empty) as [res_normal (ret_or_empty_ret value)] 
-    - (break,empty,labelopt) as [res_break labelopt] 
-    - (continue,empty,labelopt) as [res_continue labelopt] 
-    - (return,value,empty) as [res_return (Some value)] 
-    - (throw,value,empty) as [res_throw value] 
-    
-    Other combinations are not used in the specification. *)
+Inductive res := res_intro {
+  res_type : restype;
+  res_value : resvalue;
+  res_label : label_opt }.
 
-Inductive res :=
-  | res_normal : ret_or_empty -> res
-  | res_break : label_opt -> res
-  | res_continue : label_opt -> res
-  | res_return : value -> res
-  | res_throw : value -> res.
+(** Smart constructors for type [res] *)
+
+Coercion res_ref r := res_intro restype_normal r None.
+Coercion res_val v := res_intro restype_normal v None.
+Definition res_empty := res_intro restype_normal resvalue_empty None.
+Definition res_break labopt := res_intro restype_break resvalue_empty labopt.
+Definition res_continue labopt := res_intro restype_continue resvalue_empty labopt.
+Definition res_return v := res_intro restype_return v None.
+Definition res_throw v := res_intro restype_throw v None.
 
 (** Outcome of an evaluation: divergence or termination *)
 
 Inductive out :=
   | out_div : out
   | out_ter : state -> res -> out.
-
-(** Coercions and shortnames *)
-
-Notation "'ret_empty'" := ret_or_empty_empty.
-
-Coercion ret_value : value >-> ret.
-Coercion ret_ref : ref >-> ret.
-Coercion ret_or_empty_ret : ret >-> ret_or_empty.
-Coercion res_normal : ret_or_empty >-> res.
-
 
 
 (**************************************************************)

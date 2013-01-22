@@ -1,7 +1,12 @@
 Set Implicit Arguments.
 Require Import LibLogic LibHeap.
 Require Export JsSyntax.
+
 Implicit Type l : object_loc.
+Implicit Type rt : restype.
+Implicit Type rv : resvalue.
+Implicit Type lab : label.
+Implicit Type R : res.
 
 
 (**************************************************************)
@@ -309,7 +314,16 @@ Qed.
 (** Inhabitants **)
 
 Global Instance res_inhab : Inhab res.
-Proof. apply (prove_Inhab (res_break None)). Qed.
+Proof. apply (prove_Inhab res_empty). Qed.
+
+(** Modification of fields *)
+
+Definition res_with_type R rt : res :=
+  match R with res_intro old_rt rv labopt => res_intro rt rv labopt end.
+
+Definition res_with_value R rv : res :=
+  match R with res_intro rt old_rv labopt => res_intro rt rv labopt end.
+
 
 
 (**************************************************************)
