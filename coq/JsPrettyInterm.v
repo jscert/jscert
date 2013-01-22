@@ -353,8 +353,10 @@ with ext_stat :=
 
   (** Extended statements associated with primitive statements *)
 
-  | stat_seq_1 : out -> stat -> ext_stat (* The first statement has been executed. *)
-  | stat_seq_2 : ret_or_empty -> out -> ext_stat
+  | stat_block_1 : ret_or_empty -> list stat -> ext_stat (* The first statement has been executed. *)
+  | stat_block_2 : ret_or_empty -> out -> list stat -> ext_stat
+
+  | stat_label_1 : label -> out -> ext_stat
 
   | stat_var_decl_1 : out -> list (string * option expr) -> ext_stat
   | stat_var_decl_item : (string * option expr) -> ext_stat
@@ -399,14 +401,10 @@ with ext_stat :=
 (** Grammar of extended programs *)
 
 with ext_prog :=
-
-  (** Extended expressions include statements *)
-
+ 
   | prog_basic : prog -> ext_prog
-
-  (** Extended programs associated with primitive programs *)
-
-  | prog_seq_1 : out -> prog -> ext_prog (* The first program has been executed. *)
+  | prog_1 : ret_or_empty -> elements -> ext_prog
+  | prog_2 : ret_or_empty -> out -> elements -> ext_prog
 .
 
 
@@ -502,12 +500,12 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
 
 Definition out_of_ext_prog (p : ext_prog) : option out :=
   match p with
-  | prog_basic _ => None
-  | prog_seq_1 o _ => Some o
+  (* TODO update later
+  | elements_1 _ => None
+  | elements_2 _ o _ => Some o
+  *)
+  | _ => None
   end.
-
-
-
 
 
 (**************************************************************)

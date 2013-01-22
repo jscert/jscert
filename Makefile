@@ -34,7 +34,7 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 #######################################################
 
 INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC) 
-COQC=$(COQBIN)coqc $(INCLUDES)
+COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 OCAMLOPT=ocamlopt
 

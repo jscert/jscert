@@ -9,14 +9,6 @@ Require Export LibTactics LibLogic LibReflect LibList
 Require Flocq.Appli.Fappli_IEEE Flocq.Appli.Fappli_IEEE_bits.
 
 
-(**************************************************************)
-(** ** To be moved on JsSemanticsInit *)
-
-Definition execution_ctx_initial :=
-  {| execution_ctx_lexical_env := lexical_env_initial;
-     execution_ctx_variable_env := nil;
-     execution_ctx_this_binding := builtin_object;
-     execution_ctx_strict := false |}.
 
 (**************************************************************)
 (** ** Numerical values *)

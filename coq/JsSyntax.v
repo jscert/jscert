@@ -147,11 +147,13 @@ with stat :=
 (** Grammar of programs *)
 
 with prog := 
-  | prog_intro : strictness_flag -> list progitem -> prog 
+  | prog_intro : strictness_flag -> list element -> prog 
 
-with progitem :=
-  | progitem_stat : stat -> progitem
-  | progitem_func_decl : string -> list string -> funcbody -> progitem.
+with element :=
+  | element_stat : stat -> element
+  | element_func_decl : string -> list string -> funcbody -> element.
+
+Definition elements := list element.
 
 (** Coercions for grammars *)
 

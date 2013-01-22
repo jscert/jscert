@@ -1,4 +1,4 @@
-Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm (* JsPrettyIntermAux *).
+Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm (* JsPrettyIntermAux *) JsInit.
 
 (**************************************************************)
 (** ** Implicit Types, same as in JsSemanticsDefs *)
@@ -75,29 +75,40 @@ Inductive red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
   (** Generic abort rule *)
 
-  | red_prog_abort : forall S C p o,
+  | red_prog_abort : forall S C p o, (* TODO: replace "ee" with a better name *)
       out_of_ext_prog p = Some o ->
       abort o ->
       red_prog S C p o
 
-  (** Statements *)
+  (** Program *)
 
-  | red_prog_stat : forall S C t o,
-      red_stat S C t o ->
-      red_prog S C (prog_stat t) o
+  | red_prog_intro : forall S C0 bstrict pis o,
+      (* TODO: initialize the execution context with binding instantiation *)
+      red_prog S (execution_ctx_initial bstrict) (prog_1 ret_empty pis) o ->
+      red_prog S C0 (prog_intro bstrict pis) o
 
-  (** Sequence *)
+  (** No more source elements *)
 
-  | red_prog_seq : forall S C p1 p2 o1 o,
-      red_prog S C p1 o1 ->
-      red_prog S C (prog_seq_1 o1 p2) o ->
-      red_prog S C (prog_seq p1 p2) o
+  | red_prog_1_nil : forall S C (Re:ret_or_empty),
+      red_prog S C (prog_1 Re nil) (out_ter S Re)
 
-  | red_prog_seq_1 : forall S0 S re C p2 o,
-      red_prog S C p2 o ->
-      red_prog S C (prog_seq_1 (out_ter S re) p2) o
+  (** Source element : statement *)
 
-  (* TODO: red_prog_function_decl ? *)
+  | red_prog_1_cons_stat : forall S C t Re els o1 o,
+      red_stat S C t o1 ->
+      red_prog S C (prog_2 Re o1 els) o ->
+      red_prog S C (prog_1 Re ((element_stat t)::els)) o
+
+  | red_prog_2 : forall S0 S C Re Re1 Re2 els o,
+      Re = (If Re2 = ret_empty then Re1 else Re2) ->
+      red_prog S C (prog_1 Re els) o ->
+      red_prog S0 C (prog_2 Re1 (out_ter S Re2) els) o
+
+  (** Source element : function declaration *)
+
+  | red_prog_1_cons_funcdecl : forall S C Re name args bd els o,
+      red_prog S C (prog_1 Re els) o ->
+      red_prog S C (prog_1 Re ((element_func_decl name args bd)::els)) o
 
 
 (**************************************************************)
@@ -119,21 +130,38 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_expr S C (spec_expr_get_value e) o ->
       red_stat S C (stat_expr e) o
 
-  (** Sequence *)
+  (** Labelled statement *)
 
-  | red_stat_seq : forall S C t1 t2 o1 o,
-      red_stat S C t1 o1 ->
-      red_stat S C (stat_seq_1 o1 t2) o ->
-      red_stat S C (stat_seq t1 t2) o
+  | red_stat_label : forall S C lab t o1 o,
+      red_stat S C t o1 ->
+      red_stat S C (stat_label_1 lab o1) o ->
+      red_stat S C (stat_label lab t) o
 
-  | red_stat_seq_1 : forall S0 S C (R1:ret_or_empty) t2 o2 o,
-      red_stat S C t2 o2 ->
-      red_stat S0 C (stat_seq_2 R1 o2) o ->
-      red_stat S0 C (stat_seq_1 (out_ter S R1) t2) o
+  | red_stat_label_1_normal : forall S0 S lab C R,
+      red_stat S0 C (stat_label_1 lab (out_ter S R)) (out_ter S R)
 
-  | red_stat_seq_2 : forall S0 S C (R1 R2 R:ret_or_empty),
-      R = (If R2 = ret_empty then R1 else R2) ->
-      red_stat S0 C (stat_seq_2 R1 (out_ter S R2)) (out_ter S R)
+  | red_stat_label_1_break_eq : forall S0 S C lab,
+      (* TODO: needs to be changed to simply updating the type of the result *)
+      red_stat S0 C (stat_label_1 lab (out_ter S (res_break (Some lab)))) (out_ter S ret_empty)
+
+  (** Block statement *)
+
+  | red_stat_block : forall S C ts o,
+      red_stat S C (stat_block_1 ret_empty ts) o ->
+      red_stat S C (stat_block ts) o
+
+  | red_stat_block_1_nil : forall S C (Re:ret_or_empty),
+      red_stat S C (stat_block_1 Re nil) (out_ter S Re)
+
+  | red_stat_block_1_cons : forall S C (Re:ret_or_empty) ts t o1 o,
+      red_stat S C t o1 ->
+      red_stat S C (stat_block_2 Re o1 ts) o ->
+      red_stat S C (stat_block_1 Re (t::ts)) o
+
+  | red_stat_block_2 : forall S0 S C ts (Re Re1 Re2:ret_or_empty) o,
+      Re = (If Re2 = ret_empty then Re1 else Re2) ->
+      red_stat S C (stat_block_1 Re ts) o ->
+      red_stat S0 C (stat_block_2 Re1 (out_ter S Re2) ts) o
 
   (** Variable declaration *)
 
@@ -206,9 +234,10 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** While statement *)
 
-  | red_stat_while : forall S C e1 t2 o o1,
+  | red_stat_while : forall S C labs e1 t2 o o1,
+      (* TODO: handle labels in while loops *)
       red_stat S C (spec_expr_get_value_conv_stat e1 spec_to_boolean (stat_while_1 e1 t2)) o ->
-      red_stat S C (stat_while e1 t2) o
+      red_stat S C (stat_while labs e1 t2) o
 
   | red_stat_while_1_false : forall S C e1 t2,
       red_stat S C (stat_while_1 e1 t2 false) (out_ter S undef)
@@ -218,100 +247,11 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_2 e1 t2 o1) o ->
       red_stat S0 C (stat_while_1 e1 t2 true) o
 
-  | red_stat_while_2 : forall S0 S C e1 t2 re o,
-      red_stat S C (stat_while e1 t2) o ->
+  | red_stat_while_2 : forall S0 S C labs e1 t2 re o,
+      red_stat S C (stat_while labs e1 t2) o ->
       red_stat S0 C (stat_while_2 e1 t2 (out_ter S re)) o
     (* TODO: handle break and continue in while loops *)
     
-(**------ begin under dvpt --------*)
-
-(* --which version to keep ??
-
-  (** For-in statement *)
-
-  | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
-      v1 = null \/ v1 = undef ->
-      (* todo: replace premise with   [is_null_or_undef v1] *)
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S undef)
-      
-  | red_stat_for_in_2_else : forall o1 S0 S C e1 t v1 o,
-      v1 <> null /\ v1 <> undef ->
-      (* todo: replace premise with  [~ is_null_or_undef v1] *)
-      red_expr S C (spec_to_object v1) o1 ->
-      red_stat S C (stat_for_in_3 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) o  
-      
-      (* todo: rename rules below *)
-
-      (* todo: use notations : 
-        Open Scope set_scope.
-        x \in E   \{}  \{x}  E \u F    E = F \u \{x}   *)
-
-*)
-
-  (** For-in statement *)
-
-  | red_stat_for_in : forall o1 S0 S C e1 e2 t o,
-      red_expr S C (spec_expr_get_value e2) o1 ->
-      red_stat S C (stat_for_in_2 e1 t o1) o ->
-      red_stat S0 C (stat_for_in e1 e2 t) o
-
-  | red_stat_for_in_3_null_undef : forall S0 S C e1 t v1 o,
-      v1 = null \/ v1 = undef ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S ret_or_empty_empty)
-
-  | red_stat_for_in_4 : forall o1 S0 S C e1 t exprValue o,
-      exprValue <> null /\ exprValue <> undef ->
-      red_expr S C (spec_to_object exprValue) o1 ->
-      red_stat S C (stat_for_in_3 e1 t o1) o ->
-      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) o
-
-  | red_stat_for_in_6a_start : forall S0 S C e1 t l initProps o,
-      object_all_enumerable_properties S (value_object l) initProps ->
-      red_stat S C (stat_for_in_4 e1 t l None None initProps (@empty_impl prop_name)) o ->
-      red_stat S0 C (stat_for_in_3 e1 t (out_ter S l)) o
-
-  | red_stat_for_in_6a_done : forall S C e1 t l vret lhsRef initProps visitedProps currentProps,
-      object_all_enumerable_properties S (value_object l) currentProps ->
-      incl_impl currentProps visitedProps ->
-      red_stat S C (stat_for_in_4 e1 t l (Some vret) lhsRef initProps visitedProps) (out_ter S vret)
-
-  (* allow possibility to skip new added property in for-in loop *)
-  | red_stat_for_in_6a_skip_added_property : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
-      object_all_enumerable_properties S (value_object l) currentProps ->
-      x \in (remove_impl (remove_impl currentProps visitedProps) initProps) ->
-      let newVisitedProps := union_impl (single_impl x) visitedProps in
-      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps newVisitedProps) o ->
-      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
-
-  | red_stat_for_in_6a_select_x : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
-      object_all_enumerable_properties S (value_object l) currentProps ->
-      in_impl x (remove_impl currentProps visitedProps) ->
-      let newVisitedProps := union_impl (single_impl x) visitedProps in
-      red_stat S C (stat_for_in_5 e1 t l vret lhsRef initProps newVisitedProps x) o ->
-      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
-
-  (* evaluate new lhdRef *)
-  | red_stat_for_in_6b_evaluate : forall S C e1 t l vret lhdRef initProps visitedProps x o1 o,
-      red_expr S C e1 o1 ->
-      red_stat S C (stat_for_in_6 e1 t l vret (Some o1) initProps visitedProps x) o ->
-      red_stat S C (stat_for_in_5 e1 t l vret lhdRef initProps visitedProps x) o
-
-  (* reuse earlier lhdRef *)
-  | red_stat_for_in_6b_reuse_old : forall S C e1 t l vret lhdRef initProps visitedProps x o,
-      red_stat S C (stat_for_in_6 e1 t l vret (Some lhdRef) initProps visitedProps x) o ->
-      red_stat S C (stat_for_in_5 e1 t l vret (Some lhdRef) initProps visitedProps x) o
-
-  | red_stat_for_in_6c : forall S0 S C e1 t l vret lhdRef initProps visitedProps x o1 o,
-      red_expr S C (spec_put_value lhdRef x) o1 ->
-      red_stat S C (stat_for_in_7 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps o1) o ->
-      red_stat S0 C (stat_for_in_6 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps x) o
-
-  | red_stat_for_in_6d : forall S0 S C e1 t l vret lhdRef initProps visitedProps o1 o,
-      red_stat S C t o1 ->
-      red_stat S C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps o1) o ->
-      red_stat S0 C (stat_for_in_7 e1 t l vret lhdRef initProps visitedProps (out_void S)) o
-
   (** Debugger statement *)
   
   | res_stat_debugger : forall S C,
@@ -434,12 +374,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_try_3 (out_ter S1 re) (Some t1)) o
 
   | red_stat_try_4_after_finally : forall S0 S C re rt,
-      red_stat S0 C (stat_try_4 re (out_ter S (res_normal rt))) (out_ter S re)
-
-  (** Skip statement *)
-
-  | red_stat_skip : forall S C,
-      red_stat S C stat_skip (out_ter S ret_empty)
+      red_stat S0 C (stat_try_4 re (out_ter S (res_normal rt))) (out_ter S re) (* TODO: rename variables using new convention *)
 
   (* Auxiliary forms : [spec_expr_get_value] plus a type conversion 
      for statements *)
@@ -2111,14 +2046,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_execution_ctx_binding_instantiation_function_2 : forall bconfig L S C code args o, (* Step 5 *)
       bconfig = false (* TODO: configurableBindings with eval *) ->
-      let fds := function_declarations code in
+      let fds := prog_funcdecl code in
       red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code bconfig) args L fds bconfig (out_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
 
   (* TODO steps 6-7 *)
 
   | red_expr_execution_ctx_binding_instantiation_3 : forall o1 L S C code bconfig o, (* Step 8 *)
-      let vds := variable_declarations code in
+      let vds := prog_vardecl code in
       red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_3 code bconfig L) o
       
@@ -2667,8 +2602,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_init_throw_type_error : forall O O1 code O2 S' A o1 S C o,
       O = object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty ->
       O1 = object_with_invokation O None (Some builtin_spec_op_function_call) None ->
-      (* TODO : Is this ok? *)
-      code = funcbody_intro (prog_stat (stat_throw (expr_new (expr_identifier "TypeError") nil))) "throw TypeError()" -> 
+      (* TODO : Is this ok? TODO: make it compile*)
+      (* code = funcbody_intro (prog_stat (stat_throw (expr_new (expr_identifier "TypeError") nil))) "throw TypeError()" -> 
+      *)
       O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
       S' = object_write S builtin_function_throw_type_error O2 ->
       A = prop_attributes_create_data JsNumber.zero false false false ->
@@ -2699,3 +2635,103 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
       red_expr S C (spec_create_new_function_in C args bd) o
 .
+
+
+
+
+
+(*******************************************************************************)
+(*******************************************************************************)
+(***************************** LATER *******************************************)
+(*******************************************************************************)
+
+(**------ begin under dvpt --------
+
+(* --which version to keep ??
+
+  (** For-in statement *)
+
+  | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      (* todo: replace premise with   [is_null_or_undef v1] *)
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S undef)
+      
+  | red_stat_for_in_2_else : forall o1 S0 S C e1 t v1 o,
+      v1 <> null /\ v1 <> undef ->
+      (* todo: replace premise with  [~ is_null_or_undef v1] *)
+      red_expr S C (spec_to_object v1) o1 ->
+      red_stat S C (stat_for_in_3 e1 t o1) o ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) o  
+      
+      (* todo: rename rules below *)
+
+      (* todo: use notations : 
+        Open Scope set_scope.
+        x \in E   \{}  \{x}  E \u F    E = F \u \{x}   *)
+
+*)
+
+  (** For-in statement *)
+
+  | red_stat_for_in : forall o1 S0 S C e1 e2 t o,
+      red_expr S C (spec_expr_get_value e2) o1 ->
+      red_stat S C (stat_for_in_2 e1 t o1) o ->
+      red_stat S0 C (stat_for_in e1 e2 t) o
+
+  | red_stat_for_in_3_null_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S ret_or_empty_empty)
+
+  | red_stat_for_in_4 : forall o1 S0 S C e1 t exprValue o,
+      exprValue <> null /\ exprValue <> undef ->
+      red_expr S C (spec_to_object exprValue) o1 ->
+      red_stat S C (stat_for_in_3 e1 t o1) o ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) o
+
+  | red_stat_for_in_6a_start : forall S0 S C e1 t l initProps o,
+      object_all_enumerable_properties S (value_object l) initProps ->
+      red_stat S C (stat_for_in_4 e1 t l None None initProps (@empty_impl prop_name)) o ->
+      red_stat S0 C (stat_for_in_3 e1 t (out_ter S l)) o
+
+  | red_stat_for_in_6a_done : forall S C e1 t l vret lhsRef initProps visitedProps currentProps,
+      object_all_enumerable_properties S (value_object l) currentProps ->
+      incl_impl currentProps visitedProps ->
+      red_stat S C (stat_for_in_4 e1 t l (Some vret) lhsRef initProps visitedProps) (out_ter S vret)
+
+  (* allow possibility to skip new added property in for-in loop *)
+  | red_stat_for_in_6a_skip_added_property : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
+      object_all_enumerable_properties S (value_object l) currentProps ->
+      x \in (remove_impl (remove_impl currentProps visitedProps) initProps) ->
+      let newVisitedProps := union_impl (single_impl x) visitedProps in
+      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps newVisitedProps) o ->
+      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
+
+  | red_stat_for_in_6a_select_x : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
+      object_all_enumerable_properties S (value_object l) currentProps ->
+      in_impl x (remove_impl currentProps visitedProps) ->
+      let newVisitedProps := union_impl (single_impl x) visitedProps in
+      red_stat S C (stat_for_in_5 e1 t l vret lhsRef initProps newVisitedProps x) o ->
+      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
+
+  (* evaluate new lhdRef *)
+  | red_stat_for_in_6b_evaluate : forall S C e1 t l vret lhdRef initProps visitedProps x o1 o,
+      red_expr S C e1 o1 ->
+      red_stat S C (stat_for_in_6 e1 t l vret (Some o1) initProps visitedProps x) o ->
+      red_stat S C (stat_for_in_5 e1 t l vret lhdRef initProps visitedProps x) o
+
+  (* reuse earlier lhdRef *)
+  | red_stat_for_in_6b_reuse_old : forall S C e1 t l vret lhdRef initProps visitedProps x o,
+      red_stat S C (stat_for_in_6 e1 t l vret (Some lhdRef) initProps visitedProps x) o ->
+      red_stat S C (stat_for_in_5 e1 t l vret (Some lhdRef) initProps visitedProps x) o
+
+  | red_stat_for_in_6c : forall S0 S C e1 t l vret lhdRef initProps visitedProps x o1 o,
+      red_expr S C (spec_put_value lhdRef x) o1 ->
+      red_stat S C (stat_for_in_7 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps o1) o ->
+      red_stat S0 C (stat_for_in_6 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps x) o
+
+  | red_stat_for_in_6d : forall S0 S C e1 t l vret lhdRef initProps visitedProps o1 o,
+      red_stat S C t o1 ->
+      red_stat S C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps o1) o ->
+      red_stat S0 C (stat_for_in_7 e1 t l vret lhdRef initProps visitedProps (out_void S)) o
+
+*)

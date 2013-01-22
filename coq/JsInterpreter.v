@@ -743,7 +743,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
         end) S args names
     | None => out_void S
     end (fun S1 re0 =>
-      let fds := function_declarations p in
+      let fds := prog_funcdecl p in
       if_success
       ((fix createExecutionContext S0 (fds : list funcdecl) : result :=
         match fds with
@@ -768,7 +768,7 @@ Definition execution_ctx_binding_instantiation (call : run_call_type) S C (funco
                 if_success (env_record_set_mutable_binding call S2 C L fn (value_object fo) strictp) (fun S3 re3 =>
                   createExecutionContext S3 fds')))
         end) S1 fds) (fun S2 re =>
-        let vds := variable_declarations p in
+        let vds := prog_vardecl p in
         (fix initVariables S0 (vds : list string) : result :=
           match vds with
           | nil => out_void S0

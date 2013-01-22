@@ -309,7 +309,35 @@ Qed.
 (** Inhabitants **)
 
 Global Instance res_inhab : Inhab res.
-Proof. apply prove_Inhab. apply* (ret_value arbitrary). Qed.
+Proof. apply (prove_Inhab (res_break None)). Qed.
+
+
+(**************************************************************)
+(** ** Type [execution_ctx] *)
+
+(** Update the strictness flag of an execution context *)
+
+Definition execution_ctx_with_strict C bstrict :=
+  match C with execution_ctx_intro le ve th bstrict_old =>
+               execution_ctx_intro le ve th bstrict end.
+
+
+(**************************************************************)
+(** ** Type [expr] *)
+
+(** Inhabitants **)
+
+Global Instance expr_inhab : Inhab expr.
+Proof. apply (prove_Inhab expr_this). Qed.
+
+
+(**************************************************************)
+(** ** Type [stat] *)
+
+(** Inhabitants **)
+
+Global Instance stat_inhab : Inhab stat.
+Proof. apply (prove_Inhab (stat_expr arbitrary)). Qed.
 
 
 (**************************************************************)
@@ -318,8 +346,15 @@ Proof. apply prove_Inhab. apply* (ret_value arbitrary). Qed.
 (** Inhabitants **)
 
 Global Instance prog_inhab : Inhab prog.
-Proof. apply prove_Inhab. apply* stat_skip. Qed.
- (* TODO: use an arbitrary for type [stat] *)
+Proof. apply (prove_Inhab (prog_intro true nil)). Qed.
+
+(** Projections **)
+
+Definition prog_strict p :=
+  match p with prog_intro bstrict els => bstrict end.
+
+Definition prog_elements p :=
+  match p with prog_intro bstrict els => els end.
 
 
 (**************************************************************)
@@ -337,37 +372,39 @@ Proof. apply prove_Inhab. apply (funcbody_intro arbitrary arbitrary). Qed.
 (** Inhabitants **)
 
 Global Instance funccode_inhab : Inhab funccode.
-Proof. apply prove_Inhab. apply funccode_code. apply* stat_skip. Qed. 
+Proof. apply (prove_Inhab (funccode_builtin arbitrary)). Qed. 
  (* TODO: use an arbitrary for type [stat] *)
 
 
 (**************************************************************)
 (** Retrieve function and variable declarations from code *)
 
-Fixpoint function_declarations (p : prog) : list funcdecl :=
-  match p with
-  | prog_function_decl name args bd =>
-    funcdecl_intro name args bd :: nil
-  | prog_seq p1 p2 =>
-    function_declarations p1 ++ function_declarations p2
-  | prog_stat _ => nil
+Definition element_funcdecl (el : element) : list funcdecl :=
+  match el with
+  | element_stat _ => nil
+  | element_func_decl name args bd =>
+      funcdecl_intro name args bd :: nil
   end.
 
-Fixpoint variable_declarations (p : prog) : list string :=
-  let fs := (fix fs (t : stat) : list string :=
-    match t with
-    | stat_var_decl nes =>
-      LibList.map fst nes
-    | stat_seq t1 t2 => fs t1 ++ fs t2
-    (* TODO:  stat_for_in_var *)
-    | _ => nil
-    end) in
-  match p with
-  | prog_stat t => fs t
-  | prog_seq p1 p2 =>
-    variable_declarations p1 ++ variable_declarations p2
-  | prog_function_decl _ _ _ => nil
+Definition prog_funcdecl (p : prog) : list funcdecl :=
+  LibList.concat (LibList.map element_funcdecl (prog_elements p)).
+
+Fixpoint stat_vardecl (t : stat) : list string :=
+  match t with
+  | stat_var_decl nes => LibList.map fst nes
+  | stat_block ts => LibList.concat (List.map stat_vardecl ts) (* Note: use List instead of LibList for fixpoint to be accepted *)
+  (* TODO: stat_vardecl : stat_for_in_var *)
+  | _ => nil
   end.
+
+Definition element_vardecl (el : element) : list string :=
+  match el with
+  | element_stat t => stat_vardecl t
+  | element_func_decl name args bd => nil
+  end.
+
+Definition prog_vardecl (p : prog) : list string :=
+  LibList.concat (LibList.map element_vardecl (prog_elements p)).
 
 
 (**************************************************************)

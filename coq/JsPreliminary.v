@@ -821,6 +821,19 @@ Definition execution_ctx_with_lex_this C lex lthis :=
   match C with execution_ctx_intro x1 x2 x3 x4 =>
     execution_ctx_intro lex x2 lthis x4 end.
 
+(** Definition of a lexical context with the global environment *)
+
+Definition lexical_env_initial : lexical_env :=
+  (env_loc_global_env_record)::nil.
+
+(** Definition of the initial execution context *)
+
+Definition execution_ctx_initial bstrict :=
+  {| execution_ctx_lexical_env := lexical_env_initial;
+     execution_ctx_variable_env := lexical_env_initial;
+     execution_ctx_this_binding := builtin_global;
+     execution_ctx_strict := bstrict |}.
+
 
 (**************************************************************)
 (** Grammar of preferred types for use by the default_value
@@ -916,7 +929,7 @@ Definition convert_number_to_integer n :=
 Definition convert_primitive_to_integer w :=
   convert_number_to_integer (convert_prim_to_number w).
 
-(** Convert bool to string *)
+(** Convert boolean to string *)
 
 Definition convert_bool_to_string b :=
   if b then "true" else "false".
@@ -1181,14 +1194,15 @@ Definition object_get_own_property_builder A :=
      writable field set to undefined or no writable field. The
      spec above formalizes the former assumption. *)
 
-(** [object_get_own_property_impl P x An] is an auxilialry definition
+
+(** [object_get_own_property_base P x An] is an auxilialry definition
     used by [object_get_own_property_default P x An]. *)
 
 Inductive object_get_own_property_base : object_properties_type -> prop_name -> prop_descriptor -> Prop :=
-  | object_get_own_property_impl_undef : forall P x,
+  | object_get_own_property_base_undef : forall P x,
       ~ Heap.indom P x ->
       object_get_own_property_base P x prop_descriptor_undef
-  | object_get_own_property_impl_some : forall P x A A',
+  | object_get_own_property_base_some : forall P x A A',
       Heap.binds P x A ->
       A' = object_get_own_property_builder A ->
       object_get_own_property_base P x (prop_descriptor_some A').
@@ -1260,7 +1274,7 @@ Inductive object_get_property : state -> value -> prop_name -> prop_descriptor -
       object_get_property S lproto x An ->
       object_get_property S l x An.
 
-(* TODO: add comment *)
+(* TODO: add comment / fix def *)
 
 Inductive object_all_properties : state -> value -> set prop_name -> Prop :=
   | object_all_properties_null : forall S,
@@ -1272,7 +1286,7 @@ Inductive object_all_properties : state -> value -> set prop_name -> Prop :=
       let obj_properties := Heap.dom (object_properties_ obj) in
       object_all_properties S (value_object l) (union_impl obj_properties proto_properties).
 
-(* TODO: add comment *)
+(* TODO: add comment / fix def  *)
 
 Inductive object_all_enumerable_properties : state -> value -> set prop_name -> Prop :=
   | object_all_enumerable_properties_intro : forall S l props,
@@ -1301,50 +1315,5 @@ Definition string_of_propname (pn : propname) : prop_name :=
 (** Axiomatized parsing relation for eval *)
 
 Axiom parse : string -> prog -> Prop.
-
-
-(**************************************************************)
-(** ** Auxiliary definition for the evaluation of a program code *)
-
-(* TODO: fix or delete
-
-  (** Computing local variables of a statement or a program *)
-
-  (* TODO: problem below if we do Open Scope string_scope (why?).*)
-  (* TODO: rename lx into xs *)
-  Fixpoint defs_stat (lx:list string) (t:stat) : (list string) :=
-    let d := defs_stat lx in
-    match t with
-    | stat_expr e => nil
-    | stat_seq p1 p2 => (d p1) ++ (d p2)
-    | stat_var_decl y oe => ifb In y lx then nil else (y::nil)
-    | stat_if e1 p2 None => d p2
-    | stat_if e1 p2 (Some p3) => d p2 ++ d p3
-    | stat_while e1 p2 => d p2
-    | stat_with e1 p2 => d p2
-    | stat_throw e1 => nil
-    | stat_return eo1 => nil
-    | stat_break => nil
-    | stat_continue => nil
-    | stat_try p1 None None => d p1 (* Should not happen. *)
-    | stat_try p1 None (Some p3) => d p1 ++ d p3
-    | stat_try p1 (Some (x,p2)) None => d p1 ++ d p2
-    | stat_try p1 (Some (x,p2)) (Some p3) => d p1 ++ d p2 ++ d p3
-    | stat_skip => nil
-    | stat_for_in e1 e2 p => d p
-    | stat_for_in_var x e1 e2 p => ifb In x lx then (d p) else (x::(d p))
-    end.
-
-  Fixpoint defs_prog (lx:list string) p :=
-    let d := defs_prog lx in
-    match p with
-    | prog_stat p => defs_stat lx p
-    | prog_seq p1 p2 => d p1 ++ d p2
-    | prog_function_decl _ _ _ => nil
-    end.
-
-  (* TODO: the same thing for function declarations. *)
-
-*)
 
 

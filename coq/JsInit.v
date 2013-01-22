@@ -313,12 +313,3 @@ Definition state_initial :=
      state_env_record_heap := env_record_heap_initial;
      state_fresh_locations := dummy_fresh_locations |}.
 
-
-(**************************************************************)
-(** Initial lexical environment *)
-
-(** Definition of the initial lexical context *)
-
-Definition lexical_env_initial : lexical_env :=
-  (env_loc_global_env_record)::nil.
-
