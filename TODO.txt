@@ -94,6 +94,23 @@ function f() {x: { try { throw 1 } catch (e) { return 3 } finally { 2 } } }; f()
 function f() {x: { try { throw 1 } catch (e) { return 3 } finally { return 2 } } }; f()
 2
 
+function f() {x: { try { throw 1 } catch (e) { return 3 } finally { break x } }; return 2 }; f()
+2
+
+function f() {  try { return 1 } finally { return 2 } }; f()
+2
+function f() {  x : { try { return 1 } finally { break x } }; return 4 }; f()
+4
+function f() {  x : { try { return 1 } finally {  } }; return 4 }; f()
+1
+function f() {  x : { try { break x } finally { 2 } }; return 4 }; f()
+4
+function f() {  x : { try { break x } finally { 2 } ; return 3 }; return 4 }; f()
+4
+
+function f() {  y: { x : { try { break x } catch (e) { break y } finally { 2 } ; return 3 }; return 4 } ; return 5 }; f()
+4
+
 =====
 TEST:
 

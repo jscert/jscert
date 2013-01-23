@@ -138,7 +138,7 @@ Inductive ext_expr :=
 
   (** Extended expressions for conversions *)
 
-  | spec_to_primitive_pref : value -> option preftype -> ext_expr
+  | spec_to_primitive : value -> option preftype -> ext_expr
   | spec_to_boolean : value -> ext_expr
   | spec_to_number : value -> ext_expr
   | spec_to_number_1 : out -> ext_expr
@@ -149,7 +149,9 @@ Inductive ext_expr :=
   | spec_to_object : value -> ext_expr
 
   | spec_to_int32 : value -> (int -> ext_expr) -> ext_expr
+  | spec_to_int32_1 : out -> (int -> ext_expr) -> ext_expr
   | spec_to_uint32 : value -> (int -> ext_expr) -> ext_expr
+  | spec_to_uint32_1 : out -> (int -> ext_expr) -> ext_expr
   | spec_check_object_coercible : value -> ext_expr
 
   | spec_to_default : object_loc -> option preftype -> ext_expr
@@ -157,9 +159,8 @@ Inductive ext_expr :=
   | spec_to_default_2 : object_loc -> preftype -> ext_expr
   | spec_to_default_3 : ext_expr
   | spec_to_default_sub_1 : object_loc -> string -> ext_expr -> ext_expr
-  | spec_to_default_sub_2 : object_loc -> out -> expr -> ext_expr
+  | spec_to_default_sub_2 : object_loc -> out -> ext_expr -> ext_expr
   | spec_to_default_sub_3 : out -> ext_expr -> ext_expr
-  | spec_to_default_sub_4 : value -> ext_expr -> ext_expr
 
   | spec_convert_twice : ext_expr -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
   | spec_convert_twice_1 : out -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
@@ -297,6 +298,8 @@ Inductive ext_expr :=
   | spec_new_object : (object_loc -> ext_expr) -> ext_expr
   | spec_new_object_1 : out -> (object_loc -> ext_expr) -> ext_expr
   
+  | spec_prim_new_object : prim -> ext_expr
+
   (* Auxiliary reduction for creating function object steps 16 - 18 *) 
   | spec_creating_function_object_proto : (out -> ext_expr) -> object_loc -> out -> ext_expr
   | spec_creating_function_object_proto_1 : (out -> ext_expr) -> object_loc -> out -> ext_expr
@@ -425,8 +428,8 @@ Coercion prog_basic : prog >-> ext_prog.
 
 (** Shorthand for calling toPrimitive without prefered type *)
 
-Definition spec_to_primitive v :=
-  spec_to_primitive_pref v None.
+Definition spec_to_primitive_auto v :=
+  spec_to_primitive v None.
 
 
 (**************************************************************)

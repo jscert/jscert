@@ -39,19 +39,6 @@ Implicit Type o : out.
 
 
 
-
-(**************************************************************)
-(**************************************************************)
-(**************************************************************)
-
-
-Parameter alloc_primitive_value :
-  state -> value -> state -> object_loc -> Prop.
-Parameter basic_value_convertible_to_object : value -> Prop.
-
-
-
-
 (**************************************************************)
 (** ** Reduction rules for programs *)
 
@@ -222,13 +209,13 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Continue statement *)
 
-  | red_stat_continue : forall S C labopt,
-      red_stat S C (stat_continue labopt) (out_ter S (res_continue labopt))
+  | red_stat_continue : forall S C labo,
+      red_stat S C (stat_continue labo) (out_ter S (res_continue labo))
 
   (** Break statement *)
 
-  | red_stat_break : forall S C labopt,
-      red_stat S C (stat_break labopt) (out_ter S (res_break labopt))
+  | red_stat_break : forall S C labo,
+      red_stat S C (stat_break labo) (out_ter S (res_break labo))
 
   (** Return statement *)
   
@@ -766,7 +753,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_unary_op_not_1 : forall S0 S C b,
       red_expr S0 C (expr_unary_op_not_1 (out_ter S b)) (out_ter S (neg b))
 
-  (** Binary op -- regular rules *)
+  (** Binary op -- common rules for regular operators *)
 
   | red_expr_binary_op : forall S C op e1 e2 o1 o,
       regular_binary_op op ->
@@ -786,7 +773,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Binary op : addition *)
   
   | red_expr_binary_op_add : forall S C v1 v2 o,
-      red_expr S C (spec_convert_twice (spec_to_primitive v1) (spec_to_primitive v2) expr_binary_op_add_1) o ->
+      red_expr S C (spec_convert_twice (spec_to_primitive_auto v1) (spec_to_primitive_auto v2) expr_binary_op_add_1) o ->
       red_expr S C (expr_binary_op_3 binary_op_add v1 v2) o
 
   | red_expr_binary_op_add_1_string : forall S C v1 v2 o,
@@ -795,7 +782,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_add_1 v1 v2) o
 
   | red_expr_binary_op_add_string_1 : forall S C s1 s2 s o,
-      (* TODO: fix this line s = string_concat s1 s2 ->*) (* Would [s = s1 ++ s2] be correct? -- Martin *)
+      s = string_concat s1 s2 ->
       red_expr S C (expr_binary_op_add_string_1 s1 s2) (out_ter S s)
 
   | red_expr_binary_op_add_1_number : forall S C v1 v2 o,
@@ -838,7 +825,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_3 op v1 v2) o
 
   | red_expr_inequality_op_1 : forall S C v1 v2 b_swap b_neg o,
-      red_expr S C (spec_convert_twice (spec_to_primitive v1) (spec_to_primitive v2) (expr_inequality_op_2 b_swap b_neg)) o ->
+      red_expr S C (spec_convert_twice (spec_to_primitive_auto v1) (spec_to_primitive_auto v2) (expr_inequality_op_2 b_swap b_neg)) o ->
       red_expr S C (expr_inequality_op_1 b_swap b_neg v1 v2) o
 
   | red_expr_inequality_op_2 : forall S C (w1 w2 wa wb wr wr':prim) b (b_swap b_neg : bool),
@@ -862,9 +849,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
-  | red_expr_binary_op_instanceof_normal : forall spec_has_instance_id S C v1 l o,
-      object_has_instance S l (Some spec_has_instance_id) ->
-      red_expr S C (spec_object_has_instance spec_has_instance_id l v1) o ->
+  | red_expr_binary_op_instanceof_normal : forall B S C v1 l o,
+      object_has_instance S l (Some B) ->
+      red_expr S C (spec_object_has_instance B l v1) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
   (** Binary op : in *)
@@ -917,21 +904,21 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
         else If T1 = type_string /\ T2 = type_number then (spec_equal_3 v2 spec_to_number v1)
         else If T1 = type_bool then (spec_equal_3 v2 spec_to_number v1)
         else If T2 = type_bool then (spec_equal_3 v1 spec_to_number v2)
-        else If (T1 = type_string \/ T1 = type_number) /\ T2 = type_object then (spec_equal_3 v1 spec_to_primitive v2)
-        else If T1 = type_object /\ (T2 = type_string \/ T2 = type_number) then (spec_equal_3 v2 spec_to_primitive v1)
+        else If (T1 = type_string \/ T1 = type_number) /\ T2 = type_object then (spec_equal_3 v1 spec_to_primitive_auto v2)
+        else If T1 = type_object /\ (T2 = type_string \/ T2 = type_number) then (spec_equal_3 v2 spec_to_primitive_auto v1)
         else (spec_equal_2 false)) ->
       red_expr S C ext o ->
       red_expr S C (spec_equal_1 T1 T2 v1 v2) o
 
-  | red_spec_equal_2 : forall S C b,
+  | red_spec_equal_2_return : forall S C b,
       red_expr S C (spec_equal_2 b) (out_ter S b)
 
-  | red_spec_equal_3 : forall S C v1 v2 conv o2 o,
+  | red_spec_equal_3_convert_and_recurse : forall S C v1 v2 conv o2 o,
       red_expr S C (conv v2) o2 ->
       red_expr S C (spec_equal_4 v1 o2) o ->
       red_expr S C (spec_equal_3 v1 conv v2) o
 
-  | red_spec_equal_4 : forall S0 S C v1 v2 o,
+  | red_spec_equal_4_recurse : forall S0 S C v1 v2 o,
       red_expr S C (spec_equal v1 v2) o ->    
       red_expr S0 C (spec_equal_4 v1 (out_ter S v2)) o
 
@@ -960,7 +947,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       n = JsNumber.of_int (F k1 k2) ->
       red_expr S C (expr_bitwise_op_2 F k1 k2) (out_ter S n)
 
-  (** Binary op : lazy ops (and, or) *)
+  (** Binary op : lazy ops [and] and [or] (not regular ops) *)
 
   | red_expr_binary_op_lazy : forall S C op b_ret e1 e2 o1 o,
       lazy_op op b_ret ->
@@ -982,11 +969,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_expr_get_value e2) o ->
       red_expr S0 C (expr_lazy_op_2 b_ret v1 (out_ter S b1) e2) o
 
-  (** Binary op : coma *)
-
-  | red_expr_binary_op_coma : forall S C v1 v2,
-      red_expr S C (expr_binary_op_3 binary_op_coma v1 v2) (out_ter S v2)
-
   (** Assignment *)
   
   | red_expr_assign : forall S C opo e1 e2 o o1,
@@ -1004,22 +986,22 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_assign_2 rv o1 op e2) o ->
       red_expr S0 C (expr_assign_1 (out_ter S rv) (Some op) e2) o
 
-  | red_expr_assign_2 : forall S0 S C rv op v1 o2 e2 o,
+  | red_expr_assign_2_compound_get_value : forall S0 S C rv op v1 o2 e2 o,
       red_expr S C (spec_expr_get_value e2) o2 ->
       red_expr S C (expr_assign_3 rv v1 op o2) o ->
       red_expr S0 C (expr_assign_2 rv (out_ter S v1) op e2) o
 
-  | red_expr_assign_3 : forall S0 S C rv op v1 v2 o1 o,
+  | red_expr_assign_3_compound_op : forall S0 S C rv op v1 v2 o1 o,
       red_expr S C (expr_binary_op_3 op v1 v2) o1 ->
       red_expr S C (expr_assign_4 rv o1) o ->
       red_expr S0 C (expr_assign_3 rv v1 op (out_ter S v2)) o
 
-  | red_expr_assign_4 : forall S0 S C rv v o1 o,
+  | red_expr_assign_4_put_value : forall S0 S C rv v o1 o,
       red_expr S C (spec_put_value rv v) o1 ->
       red_expr S C (expr_assign_5 v o1) o ->
       red_expr S0 C (expr_assign_4 rv (out_ter S v)) o
 
-  | red_expr_assign_5 : forall S0 S C rv' v,
+  | red_expr_assign_5_return : forall S0 S C rv' v,
       red_expr S0 C (expr_assign_5 v (out_ter S rv')) (out_ter S v)
 
   (** Conditional operator *)
@@ -1034,12 +1016,71 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_expr_get_value e) o ->
       red_expr S0 C (expr_conditional_1 (out_ter S b) e2 e3) o
 
+  (** Coma (represented as a binary operator) *)
+
+  | red_expr_binary_op_coma : forall S C v1 v2,
+      red_expr S C (expr_binary_op_3 binary_op_coma v1 v2) (out_ter S v2)
+
 
 (**************************************************************)
 (** ** Reduction rules for specification functions *)
 
   (*------------------------------------------------------------*)
   (** ** Conversions *)
+
+  (** Conversion to default value *)
+
+  | red_spec_to_default : forall S C l prefo pref o,
+      pref = unsome_default preftype_number prefo ->
+      (* TODO: unless O is a Date object (see 15.9.6), in which case pref should be preftype_string *)
+      red_expr S C (spec_to_default_1 l pref (other_preftypes pref)) o ->
+      red_expr S C (spec_to_default l prefo) o
+
+  | red_spec_to_default_1 : forall S C l pref1 pref2 o,
+      red_expr S C (spec_to_default_sub_1 l (method_of_preftype pref1) (spec_to_default_2 l pref2)) o ->
+      red_expr S C (spec_to_default_1 l pref1 pref2) o
+
+  | red_spec_to_default_2 : forall S C l pref2 o,
+      red_expr S C (spec_to_default_sub_1 l (method_of_preftype pref2) spec_to_default_3) o ->
+      red_expr S C (spec_to_default_2 l pref2) o
+
+  | red_spec_to_default_3 : forall S C o,
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C spec_to_default_3 o
+
+  | red_spec_to_default_sub_1 : forall o1 S C l x K o,
+      red_expr S C (spec_object_get l x) o1 ->
+      red_expr S C (spec_to_default_sub_2 l o1 K) o ->
+      red_expr S C (spec_to_default_sub_1 l x K) o
+
+  | red_spec_to_default_sub_2_not_callable : forall S0 S C l v K o,
+      callable S v None ->
+      red_expr S C K o ->
+      red_expr S0 C (spec_to_default_sub_2 l (out_ter S v) K) o
+
+  | red_spec_to_default_sub_2_callable : forall S C lfunc l v K o B o1,
+      callable S v (Some B) ->
+      v = value_object lfunc ->
+      red_expr S C (spec_call B (Some lfunc) (Some l) nil) o1 ->
+      red_expr S C (spec_to_default_sub_3 o1 (expr_basic K)) o ->
+      red_expr S C (spec_to_default_sub_2 l (out_ter S v) K) o
+      (* Note: the spec does not say to call [getValue] on the result of the method call *)
+
+  | red_spec_to_default_sub_3_prim : forall S0 S C K w,
+      red_expr S0 C (spec_to_default_sub_3 (out_ter S (value_prim w)) K) (out_ter S w)
+
+  | red_spec_to_default_sub_3_object : forall S0 S C l K o,
+      red_expr S C K o ->
+      red_expr S0 C (spec_to_default_sub_3 (out_ter S (value_object l)) K) o
+
+  (** Conversion to primitive. *)
+
+  | red_spec_to_primitive_pref_prim : forall S C w prefo,
+      red_expr S C (spec_to_primitive (value_prim w) prefo) (out_ter S w)
+
+  | red_spec_to_primitive_pref_obj : forall S C l prefo o,
+      red_expr S C (spec_to_default l prefo) o ->
+      red_expr S C (spec_to_primitive (value_object l) prefo) o
 
   (** Conversion to bool *)
 
@@ -1054,14 +1095,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_to_number (value_prim w)) (out_ter S n)
 
   | red_spec_to_number_object : forall S C l o1 o,
-      red_expr S C (spec_to_primitive_pref (value_object l) (Some preftype_number)) o1 ->
+      red_expr S C (spec_to_primitive (value_object l) (Some preftype_number)) o1 ->
       red_expr S C (spec_to_number_1 o1) o ->
       red_expr S C (spec_to_number (value_object l)) o
 
   | red_spec_to_number_1 : forall S0 S C w n,
       n = convert_prim_to_number w ->
       red_expr S0 C (spec_to_number_1 (out_ter S w)) (out_ter S n)
-      (* TODO--Note: [w] above stands for [res_normal (ret_value (value_prim w))] *)
 
   (** Conversion to integer *)
 
@@ -1074,6 +1114,30 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       n' = convert_number_to_integer n ->
       red_expr S0 C (spec_to_integer_1 (out_ter S n)) (out_ter S n')
 
+  (** Conversion to 32-bit integer *)
+
+  | red_spec_to_int32 : forall S C v  K o1 o,
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (spec_to_int32_1 o1 K) o ->
+      red_expr S C (spec_to_int32 v K) o
+
+  | red_spec_to_int32_1 : forall S0 S C n K o,
+      red_expr S C (K (JsNumber.to_int32 n)) o ->
+      red_expr S0 C (spec_to_int32_1 (out_ter S n) K) o
+
+   (** Conversion to unsigned 32-bit integer *)
+
+  | red_spec_to_uint32 : forall S C v  K o1 o,
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (spec_to_uint32_1 o1 K) o ->
+      red_expr S C (spec_to_uint32 v K) o
+
+  | red_spec_to_int32_1 : forall S0 S C n K o,
+      red_expr S C (K (JsNumber.to_uint32 n)) o ->
+      red_expr S0 C (spec_to_uint32_1 (out_ter S n) K) o
+  
+  (** Conversion to unsigned 16-bit integer : LATER *)
+
   (** Conversion to string *)
 
   | red_spec_to_string_prim : forall S C w s,
@@ -1081,100 +1145,41 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_to_string (value_prim w)) (out_ter S s)
 
   | red_spec_to_string_object : forall S C l o1 o,
-      red_expr S C (spec_to_primitive_pref (value_object l) (Some preftype_string)) o1 ->
+      red_expr S C (spec_to_primitive (value_object l) (Some preftype_string)) o1 ->
       red_expr S C (spec_to_string_1 o1) o ->
       red_expr S C (spec_to_string (value_object l)) o
 
   | red_spec_to_string_1 : forall S0 S C w s,
       s = convert_prim_to_string w ->
       red_expr S0 C (spec_to_string_1 (out_ter S w)) (out_ter S s)
-      (* TODO: note w stand for (res_normal (ret_value (value_prim w)) *)
 
   (** Conversion to object *)
 
-  | red_spec_to_object_undef_or_null : forall S C v,
-      v = prim_null \/ v = prim_undef ->
-      red_expr S C (spec_to_object v) (out_type_error S)
+  | red_spec_to_object_undef_or_null : forall S C v o,
+      v = prim_undef \/ v = prim_null ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (spec_to_object v) o
 
-  | red_spec_to_object_primitive_value : forall S C v l S',
-      basic_value_convertible_to_object v -> (* TODO: define this *)
-      alloc_primitive_value S v S' l -> (* TODO: define this *)
-      red_expr S C (spec_to_object v) (out_ter S' l)
+  | red_spec_to_object_prim : forall S C o,
+      prim_convertible_to_object w ->
+      red_expr S C (spec_prim_new_object w) o ->
+      red_expr S C (spec_to_object (value_prim w)) o
 
   | red_spec_to_object_object : forall S C l,
       red_expr S C (spec_to_object (value_object l)) (out_ter S l)
 
   (** Check object coercible *)
-(* TODO: this is completely wrong -- see 9.10 *)
-  | red_spec_check_object_coercible_undef_or_null : forall S C v,
-      v = prim_null \/ v = prim_undef ->
-      red_expr S C (spec_check_object_coercible v) (out_type_error S)
 
-  | red_spec_check_object_basic : forall S C v o,
-      (* TODO: add a premise to alloc a primitive object Boolean or Number or String *)
-      red_expr S C (spec_check_object_coercible v) o
+  | red_spec_check_object_coercible_undef_or_null : forall S C v o,
+      v = prim_undef \/ v = prim_null ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (spec_to_object v) o
 
-  | red_spec_check_object_object : forall S C l,
-      red_expr S C (spec_check_object_coercible (value_object l)) (out_ter S l)
+  | red_spec_check_object_coercible_return : forall S C v,
+      ~ (v = prim_undef \/ v = prim_null) ->
+      red_expr S C (spec_check_object_coercible v) (out_ter_void S)
 
-  (** Conversion to primitive *)
-
-  | red_spec_to_primitive_pref_prim : forall S C w prefo,
-      red_expr S C (spec_to_primitive_pref (value_prim w) prefo) (out_ter S w)
-
-  | red_spec_to_primitive_pref_obj : forall S C l prefo o,
-      red_expr S C (spec_to_default l prefo) o ->
-      red_expr S C (spec_to_primitive_pref (value_object l) prefo) o
-
-  (** Conversion to default value *)
-
-  | red_spec_to_default : forall S C l prefo pref o,
-      pref = unsome_default preftype_number prefo ->
-      (* TODO:  unless O is a Date object (see 15.9.6), in which case pref should be preftype_string *)
-      red_expr S C (spec_to_default_1 l pref (other_preftypes pref)) o ->
-      red_expr S C (spec_to_default l prefo) o
-
-  | red_spec_to_default_1 : forall S C l pref1 pref2 o,
-      red_expr S C (spec_to_default_sub_1 l (method_of_preftype pref1) (spec_to_default_2 l pref2)) o ->
-      red_expr S C (spec_to_default_1 l pref1 pref2) o
-
-  | red_spec_to_default_2 : forall S C l pref2 o,
-      red_expr S C (spec_to_default_sub_1 l (method_of_preftype pref2) spec_to_default_3) o ->
-      red_expr S C (spec_to_default_2 l pref2) o
-
-  | red_spec_to_default_3 : forall S C,
-      red_expr S C spec_to_default_3 (out_type_error S)
-
-  | red_spec_to_default_sub_1 : forall o1 S C l x K o,
-      red_expr S C (spec_object_get l x) o1 ->
-      red_expr S C (spec_to_default_sub_2 l o1 K) o ->
-      red_expr S C (spec_to_default_sub_1 l x K) o
-
-  | red_spec_to_default_sub_2_not_callable : forall S0 S C l lf K o,
-      callable S lf None ->
-      red_expr S C (expr_basic K) o ->
-      red_expr S0 C (spec_to_default_sub_2 l (out_ter S lf) K) o
-
-  | red_spec_to_default_sub_2_callable : forall lfo S C l lf K o builtinid o1,
-      callable S lf (Some builtinid) ->
-      value_object lfo = lf ->
-      red_expr S C (spec_call builtinid (Some lfo) (Some lf) nil) o1 ->
-      red_expr S C (spec_to_default_sub_3 o1 (expr_basic K)) o ->
-      red_expr S C (spec_to_default_sub_2 l (out_ter S lf) K) o
-
-  | red_spec_to_default_sub_3 : forall S S0 C r v K o,
-      (* TODO: do we need to perform a [get_value S r v] at this point? *)
-      red_expr S C (spec_to_default_sub_4 v K) o ->
-      red_expr S0 C (spec_to_default_sub_3 (out_ter S r) K) o
-
-  | red_spec_to_default_sub_4_prim : forall S C K w,
-      red_expr S C (spec_to_default_sub_4 (value_prim w) K) (out_ter S w)
-
-  | red_spec_to_default_sub_4_object : forall S C l K o,
-      red_expr S C K o ->
-      red_expr S C (spec_to_default_sub_4 (value_object l) K) o
-
-  (** Auxiliary: Conversion of two values *)
+  (** Auxiliary: conversion of two values at once *)
 
   | red_expr_conv_two : forall S C ex1 ex2 o1 K o,
       red_expr S C ex1 o1 ->
@@ -1190,34 +1195,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (K v2) o ->
       red_expr S0 C (spec_convert_twice_2 (out_ter S v2) K) o
 
-  (** Auxiliary: Conversion of two expressions *)
-(* TODO: uniform convention for convert/conv  *)
-
-(* todo: is neeeded?
-  | red_spec_expr_conv_twice : forall S C e1 e2 conv1 conv2 K o1 o,
-      red_expr S C (spec_expr_get_value_1 e1) o1 ->
-      red_expr S C (spec_expr_conv_twice_1 o1 e2 conv1 conv2 K) o ->
-      red_expr S C (spec_expr_conv_twice e1 e2 conv1 conv2 K) o
-
-  | red_spec_expr_conv_twice_1 : forall S0 S C v1 e2 conv1 conv2 K o2 o,
-      red_expr S C (spec_expr_get_value_1 e2) o2 ->
-      red_expr S C (spec_expr_conv_twice_2 v1 o2 conv1 conv2 K) o ->
-      red_expr S0 C (spec_expr_conv_twice_1 (out_ter S v1) e2 conv1 conv2 K) o
-
-  | red_spec_expr_conv_twice_2 : forall S0 S C v1 v2 conv1 conv2 K o2 o,
-      red_expr S C (conv1 v1) o1 ->
-      red_expr S C (spec_expr_conv_twice_3 o1 v2 conv2 K) o ->
-      red_expr S0 C (spec_expr_conv_twice_2 v1 (out_ter S v2) conv1 conv2 K) o
-
-  | red_spec_expr_conv_twice_3 : forall S0 S C v1 v2 conv2 K o2 o,
-      red_expr S C (conv2 v2) o2 ->
-      red_expr S C (spec_expr_conv_twice_4 o2 (K v1)) o ->
-      red_expr S0 C (spec_expr_conv_twice_3 (out_ter S v1) v2 conv2 K) o
-
-  | red_spec_expr_conv_twice_4 : forall S0 S C v2 K o,
-      red_expr S C (K v2) o ->
-      red_expr S0 C (spec_convert_twice_2 (out_ter S v2) K) o
-*)
 
   (*------------------------------------------------------------*)
   (** ** Operations on objects *)

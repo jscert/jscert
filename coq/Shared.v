@@ -474,3 +474,6 @@ Axiom ascii_compare : Ascii.ascii -> Ascii.ascii -> bool.
 Global Instance ascii_comparable : Comparable Ascii.ascii.
 Proof. applys (comparable_beq ascii_compare). skip. Qed. (* I need this for the extraction -- Martin. *)
 Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
+
+(* todo: implement using lib *)
+Parameter string_concat : string -> string -> string.

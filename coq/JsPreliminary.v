@@ -970,6 +970,17 @@ Definition convert_prim_to_string w :=
   | prim_string s => s
   end.
 
+(** Characterize primitive values that can be converted in objects *)
+
+Definition prim_convertible_to_object w :=
+  match w with
+  | prim_undef => False
+  | prim_null => False
+  | prim_bool b => True
+  | prim_number n => True
+  | prim_string s => True
+  end.
+
 
 (**************************************************************)
 (** ** Auxiliary functions for comparisons *)
@@ -1171,6 +1182,10 @@ Definition callable S v Bo :=
 Definition is_callable S v :=
   exists B, callable S v (Some B).
 
+(**************************************************************)
+(** ** Implementation of [SameValue] *)
+
+(** The same value algorithm matches exactly logical equality. *)
 
 (**************************************************************)
 (** ** Auxiliary definitions for reduction of [typeof] *)
