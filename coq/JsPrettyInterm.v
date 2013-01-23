@@ -340,11 +340,14 @@ Inductive ext_expr :=
 
   | spec_call_global_is_nan_1 : out -> ext_expr
   | spec_call_global_is_finite_1 : out -> ext_expr
-  | spec_call_object_constructor_1 : value -> ext_expr
+  | spec_call_object_call_1 : value -> ext_expr
+  | spec_call_object_new_1 : value -> ext_expr
   | spec_call_object_get_prototype_of_1 : value -> ext_expr
   | spec_call_object_proto_to_string_1 : out -> ext_expr
-  | spec_call_builtin_object_proto_is_prototype_of_1 : value -> value -> ext_expr
-  | spec_call_builtin_object_proto_is_prototype_of_2 : out -> value -> ext_expr 
+  | spec_call_builtin_object_proto_is_prototype_of_1 : value -> ext_expr
+  | spec_call_builtin_object_proto_is_prototype_of_2 : out -> object_loc -> ext_expr
+  | spec_call_builtin_object_proto_is_prototype_of_3 : object_loc -> object_loc -> ext_expr 
+  | spec_call_builtin_object_proto_is_prototype_of_4 : object_loc -> object_loc -> value -> ext_expr 
   | spec_constructor_builtin_bool_new : out -> ext_expr (* TODO: rename ? *)
   | spec_call_builtin_bool_proto_to_string_1 : value -> value -> ext_expr
   | spec_call_builtin_bool_proto_value_of_1 : value -> value -> ext_expr
