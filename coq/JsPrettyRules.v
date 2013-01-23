@@ -16,6 +16,7 @@ Implicit Type r : ref.
 Implicit Type T : type.
 
 Implicit Type x : prop_name.
+Implicit Type str : strictness_flag.
 Implicit Type m : mutability.
 Implicit Type A : prop_attributes.
 Implicit Type An : prop_descriptor.
@@ -38,12 +39,6 @@ Implicit Type o : out.
 
 
 
-(**************************************************************)
-(**************************************************************)
-(**************************************************************)
-(** ** TODO *)
-
-
 
 (**************************************************************)
 (**************************************************************)
@@ -54,18 +49,7 @@ Parameter alloc_primitive_value :
   state -> value -> state -> object_loc -> Prop.
 Parameter basic_value_convertible_to_object : value -> Prop.
 
-(**************************************************************)
-(** ** arguments_from. TODO: move! *)
 
-Inductive arguments_from : list value -> list value -> Prop :=
- | arguments_from_nil : forall Vs,
-      arguments_from Vs nil
- | arguments_from_undef : forall Vs: list value,
-      arguments_from nil Vs ->
-      arguments_from nil (undef::Vs)
- | arguments_from_cons : forall Vs1 Vs2 v,
-      arguments_from Vs1 Vs2 ->
-      arguments_from (v::Vs1) (v::Vs2).
 
 
 (**************************************************************)
@@ -75,40 +59,45 @@ Inductive red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
   (** Generic abort rule *)
 
-  | red_prog_abort : forall S C p o, (* TODO: replace "ee" with a better name *)
-      out_of_ext_prog p = Some o ->
+  | red_prog_abort : forall S C extp o,
+      out_of_ext_prog extp = Some o ->
       abort o ->
-      red_prog S C p o
+      ~ abort_intercepted_prog extp ->
+      red_prog S C extp o
 
   (** Program *)
 
-  | red_prog_intro : forall S C0 bstrict pis o,
+  | red_prog_intro : forall S C0 str pis o,
       (* TODO: initialize the execution context with binding instantiation *)
-      red_prog S (execution_ctx_initial bstrict) (prog_1 ret_empty pis) o ->
-      red_prog S C0 (prog_intro bstrict pis) o
+      red_prog S (execution_ctx_initial str) (prog_1 resvalue_empty els) o ->
+      red_prog S C0 (prog_intro str els) o
 
   (** No more source elements *)
 
-  | red_prog_1_nil : forall S C (Re:ret_or_empty),
-      red_prog S C (prog_1 Re nil) (out_ter S Re)
+  | red_prog_1_nil : forall S C rv,
+      red_prog S C (prog_1 rv nil) (out_ter S rv)
 
   (** Source element : statement *)
 
-  | red_prog_1_cons_stat : forall S C t Re els o1 o,
+  | red_prog_1_cons_stat : forall S C t rv els o1 o,
       red_stat S C t o1 ->
-      red_prog S C (prog_2 Re o1 els) o ->
-      red_prog S C (prog_1 Re ((element_stat t)::els)) o
+      red_prog S C (prog_2 rv o1 els) o ->
+      red_prog S C (prog_1 rv ((element_stat t)::els)) o
 
-  | red_prog_2 : forall S0 S C Re Re1 Re2 els o,
-      Re = (If Re2 = ret_empty then Re1 else Re2) ->
-      red_prog S C (prog_1 Re els) o ->
-      red_prog S0 C (prog_2 Re1 (out_ter S Re2) els) o
+  | red_prog_2 : forall S0 S C R rv els o,
+      res_type R <> restype_throw ->
+      red_prog S C (prog_3 (out_ter S (res_overwrite_value_if_empty rv R)) els) o ->
+      red_prog S0 C (prog_2 rv (out_ter S R) els) o
+
+  | red_prog_3 : forall S0 S C rv els o,
+      red_prog S C (prog_1 rv els) o ->
+      red_prog S0 C (prog_3 (out_ter S rv) els) o
 
   (** Source element : function declaration *)
 
-  | red_prog_1_cons_funcdecl : forall S C Re name args bd els o,
-      red_prog S C (prog_1 Re els) o ->
-      red_prog S C (prog_1 Re ((element_func_decl name args bd)::els)) o
+  | red_prog_1_cons_funcdecl : forall S C rv name args bd els o,
+      red_prog S C (prog_1 rv els) o ->
+      red_prog S C (prog_1 rv ((element_func_decl name args bd)::els)) o
 
 
 (**************************************************************)
@@ -118,86 +107,54 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Generic abort rule *)
 
-  | red_stat_abort : forall S C text o,
+  | red_stat_abort : forall S C extt o,
       out_of_ext_stat text = Some o ->
-      ~ abort_intercepted text ->
       abort o ->
-      red_stat S C text o
-
-  (** Expression *)
-
-  | red_stat_expr : forall S C e o,
-      red_expr S C (spec_expr_get_value e) o ->
-      red_stat S C (stat_expr e) o
-
-  (** Labelled statement *)
-
-  | red_stat_label : forall S C lab t o1 o,
-      red_stat S C t o1 ->
-      red_stat S C (stat_label_1 lab o1) o ->
-      red_stat S C (stat_label lab t) o
-
-  | red_stat_label_1_normal : forall S0 S lab C R,
-      red_stat S0 C (stat_label_1 lab (out_ter S R)) (out_ter S R)
-
-  | red_stat_label_1_break_eq : forall S0 S C lab,
-      (* TODO: needs to be changed to simply updating the type of the result *)
-      red_stat S0 C (stat_label_1 lab (out_ter S (res_break (Some lab)))) (out_ter S ret_empty)
+      ~ abort_intercepted_stat extt ->
+      red_stat S C extt o
 
   (** Block statement *)
 
   | red_stat_block : forall S C ts o,
-      red_stat S C (stat_block_1 ret_empty ts) o ->
+      red_stat S C (stat_block_1 res_empty ts) o ->
       red_stat S C (stat_block ts) o
 
-  | red_stat_block_1_nil : forall S C (Re:ret_or_empty),
-      red_stat S C (stat_block_1 Re nil) (out_ter S Re)
+  | red_stat_block_1_nil : forall S C rv,
+      red_stat S C (stat_block_1 rv nil) (out_ter S rv)
 
-  | red_stat_block_1_cons : forall S C (Re:ret_or_empty) ts t o1 o,
+  | red_stat_block_1_cons : forall S C rv t ts o1 o,
       red_stat S C t o1 ->
-      red_stat S C (stat_block_2 Re o1 ts) o ->
-      red_stat S C (stat_block_1 Re (t::ts)) o
+      red_stat S C (stat_block_2 rv o1 ts) o ->
+      red_stat S C (stat_block_1 rv (t::ts)) o
 
-  | red_stat_block_2 : forall S0 S C ts (Re Re1 Re2:ret_or_empty) o,
-      Re = (If Re2 = ret_empty then Re1 else Re2) ->
-      red_stat S C (stat_block_1 Re ts) o ->
-      red_stat S0 C (stat_block_2 Re1 (out_ter S Re2) ts) o
+  | red_stat_block_2 : forall S0 S C ts R rv o,
+      res_type R <> restype_throw ->
+      red_stat S C (stat_block_3 (out_ter S (res_overwrite_value_if_empty rv R)) ts) o ->
+      red_stat S0 C (stat_block_2 rv (out_ter S R) ts) o
+
+  | red_stat_block_3 : forall S0 S C ts rv o,
+      red_stat S C (stat_block_1 rv ts) o ->
+      red_stat S0 C (stat_block_3 (out_ter S rv) ts) o
 
   (** Variable declaration *)
 
-  (* Old def *)
-  (* 
-  | red_stat_var_decl_none : forall S C x,
-      red_stat S C (stat_var_decl x None) (out_ter S undef)
-
-  (* TODO: red_stat_var_decl_some: can we justify that this is equivalent to the spec ?*)
-  | red_stat_var_decl_some : forall S C x e o1 o,
-      red_expr S C (expr_assign (expr_identifier x) None e) o1 ->
-      red_stat S C (stat_var_decl_1 o1) o ->
-      red_stat S C (stat_var_decl x (Some e)) o
-
-  | red_stat_var_decl_1 : forall S0 S r1 C,
-      red_stat S0 C (stat_var_decl_1 (out_ter S r1)) (out_ter S undef)
-  *)
-
   | red_stat_var_decl_nil : forall S C, 
-      red_stat S C (stat_var_decl nil) (out_ter S ret_empty)
+      red_stat S C (stat_var_decl nil) (out_ter S res_empty)
 
   | red_stat_var_decl_cons : forall S C o o1 d ds, 
       red_stat S C (stat_var_decl_item d) o1 ->
       red_stat S C (stat_var_decl_1 o1 ds) o ->
       red_stat S C (stat_var_decl (d::ds)) o
 
-  | red_stat_var_decl_1 : forall S S0 C ds o R, 
+  | red_stat_var_decl_1 : forall S S0 C ds o rv, 
       red_stat S C (stat_var_decl ds) o ->
-      red_stat S0 C (stat_var_decl_1 (out_ter S R) ds) o
+      red_stat S0 C (stat_var_decl_1 (out_ter S rv) ds) o
 
-  (* Daniele: should return undefined instead of x? *)
   | red_stat_var_decl_item_none : forall S C x, 
-      red_stat S C (stat_var_decl_item (x,None)) (out_ter S (*x*) undef)
+      red_stat S C (stat_var_decl_item (x,None)) (out_ter S x)
 
   | red_stat_var_decl_item_some : forall S C x e o o1, 
-      red_expr S C (identifier_resolution C x) o1 ->
+      red_expr S C (spec_identifier_resolution C x) o1 ->
       red_stat S C (stat_var_decl_item_1 x o1 e) o ->
       red_stat S C (stat_var_decl_item (x,Some e)) o
 
@@ -211,9 +168,14 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_var_decl_item_3 x o1) o ->
       red_stat S0 C (stat_var_decl_item_2 x r (out_ter S v)) o
   
-  (* Daniele: should return undefined instead of x? *)
-  | red_stat_var_decl_item_3 : forall S S0 C x r R, 
-      red_stat S0 C (stat_var_decl_item_3 x (out_ter S R)) (out_ter S (*x*) undef)
+  | red_stat_var_decl_item_3 : forall S S0 C x r rv, 
+      red_stat S0 C (stat_var_decl_item_3 x (out_ter S rv)) (out_ter S x)
+
+  (** Expression *)
+
+  | red_stat_expr : forall S C e o,
+      red_expr S C (spec_expr_get_value e) o ->
+      red_stat S C (stat_expr e) o
 
   (** If statement *)
  
@@ -232,7 +194,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_if_1_false_implicit : forall S C t2,
       red_stat S C (stat_if_1 false t2 None) (out_ter S undef)
 
-  (** While statement *)
+  (** Do-while statement: LATER *)
+
+  (** While statement ----TODO *)
 
   | red_stat_while : forall S C labs e1 t2 o o1,
       (* TODO: handle labels in while loops *)
@@ -251,43 +215,33 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while labs e1 t2) o ->
       red_stat S0 C (stat_while_2 e1 t2 (out_ter S re)) o
     (* TODO: handle break and continue in while loops *)
-    
-  (** Debugger statement *)
   
-  | res_stat_debugger : forall S C,
-      red_stat S C stat_debugger (out_ter S ret_empty)
+  (** For statement: LATER *)
 
+  (** For-in statement: LATER *)
 
-(*-- todo: make compile following introduction of ret_or_empty (see JsSyntax) 
+  (** Continue statement *)
 
-  | red_stat_for_in_6e : forall S0 S C e1 t l vret lhdRef initProps visitedProps res o,
-      let vnew := match res with
-        | res_normal R => Some R
-        | _ => vret end
-      in
-      red_stat S C (stat_for_in_9 e1 t l vnew lhdRef initProps visitedProps res) o ->
-      red_stat S0 C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps (out_ter S res)) o
+  | red_stat_continue : forall S C labopt,
+      red_stat S C (stat_continue labopt) (out_ter S (res_continue labopt))
 
-  | red_stat_for_in_6f_break : forall S C e1 t l vret lhdRef initProps visitedProps label,
-      (* TODO: check break label is in current label set *)
-      red_stat S C (stat_for_in_9 e1 t l (Some vret) lhdRef initProps visitedProps (res_break label)) (out_ter S vret)
+  (** Break statement *)
 
-  | red_stat_for_in_6g_exit : forall S C e1 t l vret lhdRef initProps visitedProps res,
-      (* TODO: check continue label is in current label set *)
-      (* TODO: use instead the res_type projection *)
-      ~ (is_res_break res) /\ ~ (is_res_continue res) /\ ~ (is_res_normal res) ->
+  | red_stat_break : forall S C labopt,
+      red_stat S C (stat_break labopt) (out_ter S (res_break labopt))
 
-      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) (out_ter S res)
+  (** Return statement *)
+  
+  | red_stat_return_none : forall S C,
+      red_stat S C (stat_return None) (out_ter S (res_return undef))
 
-  | red_stat_for_in_6g_continue : forall o1 S C e1 t l vret lhdRef initProps visitedProps res o,
-     (* TODO: check continue label is in current label set *)
-      ~ (is_res_break res) /\ ((is_res_continue res) \/ (is_res_normal res)) ->
-      red_stat S C (stat_for_in_4 e1 t l vret lhdRef initProps visitedProps) o ->
-      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) o  
+  | red_stat_return_some : forall S C e o o1,
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_stat S C (stat_return_1 o1) o ->
+      red_stat S C (stat_return (Some e)) o
 
--- end todo *) 
-
-(**------ end under dvpt --------*)
+  | red_stat_return_some_1 : forall S0 S C v,
+      red_stat S0 C (stat_return_1 (out_ter S v)) (out_ter S (res_return v))
 
   (** With statement *)
 
@@ -301,6 +255,23 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       C' = execution_ctx_with_lex_this C lex' l ->
       red_stat S' C' t2 o ->
       red_stat S C (stat_with_1 t2 l) o
+      (* TODO: i'm not sure how to interpret step 7 of 12.10 *)
+
+  (** Switch statement : LATER *)
+
+  (** Labelled statement *)
+
+  | red_stat_label : forall S C lab t o1 o,
+      red_stat S C t o1 ->
+      red_stat S C (stat_label_1 lab o1) o ->
+      red_stat S C (stat_label lab t) o
+
+  | red_stat_label_1_normal : forall S0 S lab C rv,
+      red_stat S0 C (stat_label_1 lab (out_ter S rv)) (out_ter S rv)
+
+  | red_stat_label_1_break_eq : forall S0 S C R rv lab,
+      R = res_intro restype_break rv (Some lab) ->
+      red_stat S0 C (stat_label_1 lab (out_ter S R)) (out_ter S (res_normal rv))
 
  (** Throw statement *)
 
@@ -312,76 +283,61 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_throw_1 : forall S0 S C v,
       red_stat S0 C (stat_throw_1 (out_ter S v)) (out_ter S (res_throw v))
 
- (** Return statement *)
-  
-  | red_stat_return_none : forall S C,
-      red_stat S C (stat_return None) (out_ter S (res_return undef))
-
-  | red_stat_return_some : forall S C e o o1,
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_return_1 o1) o ->
-      red_stat S C (stat_return (Some e)) o
-
-  | red_stat_return_some_1 : forall S0 S C v,
-      red_stat S0 C (stat_return_1 (out_ter S v)) (out_ter S (res_return v))
-
-  (** Break statement *)
-
-  | red_stat_break : forall S C labopt,
-      red_stat S C (stat_break labopt) (out_ter S (res_break labopt))
-
-  (** Continue statement *)
-
-  | red_stat_continue : forall S C labopt,
-      red_stat S C (stat_continue labopt) (out_ter S (res_continue labopt))
-
   (** Try statement *)
 
-  | red_stat_try : forall S C t co fio o o1, (* TODO: rename co and fio *)
+  | red_stat_try : forall S C t co fo o o1,
       red_stat S C t o1 ->
-      red_stat S C (stat_try_1 o1 co fio) o ->
-      red_stat S C (stat_try t co fio) o
+      red_stat S C (stat_try_1 o1 co fo) o ->
+      red_stat S C (stat_try t co fo) o
 
-  | red_stat_try_1_no_catch : forall S0 S C re fio o,
-      red_stat S0 C (stat_try_3 (out_ter S re) fio) o ->
-      red_stat S0 C (stat_try_1 (out_ter S re) None fio) o
+  | red_stat_try_1_no_throw : forall S0 S C R co fo o,
+      res_type R <> restype_throw ->
+      red_stat S0 C (stat_try_4 R fo) o ->
+      red_stat S0 C (stat_try_1 (out_ter S R) co fo) o
 
-  | red_stat_try_1_catch_no_throw : forall S0 S C re x t1 fio o,
-      ~ is_res_throw re ->
-      red_stat S0 C (stat_try_3 (out_ter S re) fio) o ->
-      red_stat S0 C (stat_try_1 (out_ter S re) (Some (x,t1)) fio) o
+  | red_stat_try_1_throw_no_catch : forall S0 S C R co fo o,
+      res_type R = restype_throw ->
+      red_stat S0 C (stat_try_4 R fo) o ->
+      red_stat S0 C (stat_try_1 (out_ter S R) None fo) o
 
-  | red_stat_try_1_catch_throw : forall S0 S S' C lex lex' oldlex L x v t1 fio o1 o,
+  | red_stat_try_1_throw_catch : forall S0 S S' C lex lex' oldlex L x R t1 fo o1 o,
+      res_type R = restype_throw ->
       lex = execution_ctx_lexical_env C ->
       (lex',S') = lexical_env_alloc_decl S lex ->
-      lex' = L::oldlex -> (* Note: oldlex in fact equal to lex *)
-      (* TODO: we would be closer to the spec in red_stat_try_1_catch_throw
-         if lexical environments were not lists, but instead objects with a parent field *)
-      red_expr S' C (spec_env_record_create_set_mutable_binding L x None v throw_irrelevant) o1 ->
-      red_stat S' C (stat_try_2 o1 lex' t1 fio) o ->
-      red_stat S0 C (stat_try_1 (out_ter S (res_throw v)) (Some (x,t1)) fio) o
+      lex' = L::oldlex -> (* Note: oldlex is in fact equal to lex *)
+      red_expr S' C (spec_env_record_create_set_mutable_binding L x None (res_value R) throw_irrelevant) o1 ->
+      red_stat S' C (stat_try_2 o1 lex' t1 fo) o ->
+      red_stat S0 C (stat_try_1 (out_ter S R) (Some (x,t1)) fo) o
 
-  | red_stat_try_2_after_catch_throw : forall C C' S0 S lex' t1 fio o o1,
-      C' = execution_ctx_with_lex C lex' ->
-      red_stat S C' t1 o1 ->
-      red_stat S C' (stat_try_3 o1 fio) o ->
-      red_stat S0 C (stat_try_2 (out_void S) lex' t1 fio) o
+  | red_stat_try_2_catch : forall C S0 S lex' t1 fo o o1,
+      red_stat S (execution_ctx_with_lex C lex') t1 o1 ->
+      red_stat S C (stat_try_3 o1 fo) o ->
+      red_stat S0 C (stat_try_2 (out_ter_void S) lex' t1 fo) o
 
-  | red_stat_try_3_no_finally : forall S C o,
-      red_stat S C (stat_try_3 o None) o
+  | red_stat_try_3_catch_result : forall S C R fo o,
+      red_stat S C (stat_try_4 R fo) o ->
+      red_stat S0 C (stat_try_3 (out_ter S R) fo) o
 
-  | red_stat_try_3_finally : forall S0 S1 C t1 re o o1,
-      red_stat S1 C t1 o1 ->
-      red_stat S1 C (stat_try_4 re o1) o ->
-      red_stat S0 C (stat_try_3 (out_ter S1 re) (Some t1)) o
+  | red_stat_try_4_no_finally : forall S C R,
+      red_stat S C (stat_try_4 R None) (out_ter S R)
 
-  | red_stat_try_4_after_finally : forall S0 S C re rt,
-      red_stat S0 C (stat_try_4 re (out_ter S (res_normal rt))) (out_ter S re) (* TODO: rename variables using new convention *)
+  | red_stat_try_4_finally : forall S C R t1 o o1,
+      red_stat S C t1 o1 ->
+      red_stat S C (stat_try_5 R o1) o ->
+      red_stat S C (stat_try_4 R (Some t1)) o
+
+  | red_stat_try_5_finally_result : forall S0 S C R rv,
+      red_stat S0 C (stat_try_5 R (out_ter S rv)) (out_ter S R) 
+
+  (** Debugger statement *)
+  
+  | res_stat_debugger : forall S C,
+      red_stat S C stat_debugger (out_ter S res_empty)
 
   (* Auxiliary forms : [spec_expr_get_value] plus a type conversion 
      for statements *)
 
-  | red_spec_expr_get_value_conv_stat : forall S C e sc K o o1, 
+  | red_spec_expr_get_value_conv_stat : forall S C e sc K o o1, (* TODO: rename sc *)
       red_expr S C (spec_expr_get_value e) o1 ->
       red_stat S C (spec_expr_get_value_conv_stat_1 o1 sc K) o ->
       red_stat S C (spec_expr_get_value_conv_stat e sc K) o
@@ -403,10 +359,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Generic abort rule *)
 
-  | red_expr_abort : forall S C eext o,
-      out_of_ext_expr eext = Some o ->
+  | red_expr_abort : forall S C exte o,
+      out_of_ext_expr exte = Some o ->
       abort o ->
-      red_expr S C eext o
+      red_expr S C exte o
 
   (** Reduction of lists of expressions *)
 
@@ -436,7 +392,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Identifier *)
 
   | red_expr_identifier : forall S C x o,
-      red_expr S C (identifier_resolution C x) o ->
+      red_expr S C (spec_identifier_resolution C x) o ->
       red_expr S C (expr_identifier x) o
 
   (** Literal *)
@@ -554,7 +510,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
       red_expr S C (spec_creating_function_object args bd scope (funcbody_is_strict bd)) o1 ->
       red_expr S C (expr_function_2 s L o1) o ->
-      red_expr S0 C (expr_function_1 s args bd L scope (out_void S)) o
+      red_expr S0 C (expr_function_1 s args bd L scope (out_ter_void S)) o
       
   | red_expr_function_named_2 : forall o1 S0 S C s L l o,
       red_expr S C (spec_env_record_initialize_immutable_binding L s l) o1 ->
@@ -562,7 +518,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_function_2 s L (out_ter S l)) o  
       
   | red_expr_function_named_3 : forall S0 S C l,
-      red_expr S0 C (expr_function_3 l (out_void S)) (out_ter S l) 
+      red_expr S0 C (expr_function_3 l (out_ter_void S)) (out_ter S l) 
 
   (** Access 11.2.1 *)
 
@@ -730,9 +686,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_delete_2 (ref_name r) (ref_strict r) o1) o ->
       red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
 
-  | red_expr_delete_2 : forall S0 S C x l bstrict o,
-      red_expr S C (spec_object_delete l x bstrict) o ->
-      red_expr S0 C (expr_delete_2 x bstrict (out_ter S l)) o
+  | red_expr_delete_2 : forall S0 S C x l str o,
+      red_expr S C (spec_object_delete l x str) o ->
+      red_expr S0 C (expr_delete_2 x str (out_ter S l)) o
 
   | red_expr_delete_1_ref_env_record : forall S0 S C r L o,
       ref_is_env_record r L ->
@@ -795,7 +751,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_prepost_3 op R (out_ter S n1)) o
  
   | red_expr_prepost_4 : forall S0 S C v R',  
-      red_expr S0 C (expr_prepost_4 v (out_ter S R')) (out_ter S v)  (* todo: do we ignore R' ? is it out_void ? *) 
+      red_expr S0 C (expr_prepost_4 v (out_ter S R')) (out_ter S v)  (* todo: do we ignore R' ? is it out_ter_void ? *) 
 
   (** Unary op : neg *)
 
@@ -1728,7 +1684,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       env_record_binds S L (env_record_decl D) -> (* Note: the spec asserts that there is a binding *)
       ~ decl_env_record_indom D x ->
       S' = env_record_write_decl_env S L x mutability_uninitialized_immutable undef ->
-      red_expr S C (spec_env_record_create_immutable_binding L x) (out_void S')
+      red_expr S C (spec_env_record_create_immutable_binding L x) (out_ter_void S')
 
   (** Initialize immutable binding *)
 
@@ -1736,7 +1692,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       env_record_binds S L (env_record_decl D) ->
       decl_env_record_binds D x mutability_uninitialized_immutable v_old -> (* Note: v_old is always undef *)
       S' = env_record_write_decl_env S L x mutability_immutable v ->
-      red_expr S C (spec_env_record_initialize_immutable_binding L x v) (out_void S')
+      red_expr S C (spec_env_record_initialize_immutable_binding L x v) (out_ter_void S')
 
   (** Create mutable binding *)
 
@@ -1749,7 +1705,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_env_record_create_mutable_binding_1_decl_indom : forall S C L x deletable D S',
       ~ decl_env_record_indom D x ->
       S' = env_record_write_decl_env S L x (mutability_of_bool deletable) undef ->
-      red_expr S C (spec_env_record_create_mutable_binding_1 L x deletable (env_record_decl D)) (out_void S')
+      red_expr S C (spec_env_record_create_mutable_binding_1 L x deletable (env_record_decl D)) (out_ter_void S')
 
   | red_expr_env_record_create_mutable_binding_1_obj : forall o1 S C L x deletable l pt o,
       red_expr S C (spec_object_has_prop l x) o1 ->
@@ -1771,8 +1727,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_env_record_set_mutable_binding_1_decl : forall v_old mu S C L x v (strict : bool) D o,
       decl_env_record_binds D x mu v_old ->  (* Note: spec says that there is a binding *)
       o = (If mutability_is_mutable mu
-            then out_void (env_record_write_decl_env S L x mu v)
-            else (if strict then (out_type_error S) else (out_void S))) ->
+            then out_ter_void (env_record_write_decl_env S L x mu v)
+            else (if strict then (out_type_error S) else (out_ter_void S))) ->
       red_expr S C (spec_env_record_set_mutable_binding_1 L x v strict (env_record_decl D)) o
 
   | red_expr_env_record_set_mutable_binding_1_obj : forall S C L x v strict l pt o,
@@ -1788,7 +1744,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_env_record_create_set_mutable_binding_1 : forall S S0 C L x v strict o,
       red_expr S C (spec_env_record_set_mutable_binding L x v strict) o ->
-      red_expr S0 C (spec_env_record_create_set_mutable_binding_1 (out_void S) L x v strict) o
+      red_expr S0 C (spec_env_record_create_set_mutable_binding_1 (out_ter_void S) L x v strict) o
 
   (** Get binding *)
 
@@ -1915,7 +1871,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_expr_execution_ctx_function_call_2 : forall S0 S C K o,
       red_expr S C K o ->
-      red_expr S0 C (spec_execution_ctx_function_call_2 K (out_void S)) o
+      red_expr S0 C (spec_execution_ctx_function_call_2 K (out_ter_void S)) o
 
   (** Binding instantiation --- TODO: check this section *)
   
@@ -1934,7 +1890,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_instantiation_formal_params K args L (argname::names)) o
 
   | red_expr_binding_instantiation_formal_params_1_declared : forall S S0 C K args L argname names v o,  (* Step 4d iv *)
-      red_expr S C (spec_binding_instantiation_formal_params_2 K args L argname names v (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_formal_params_2 K args L argname names v (out_ter_void S)) o ->
       red_expr S0 C (spec_binding_instantiation_formal_params_1 K args L argname names v (out_ter S true)) o
 
   | red_expr_binding_instantiation_formal_params_1_not_declared : forall o1 S S0 C K args L argname names v o, (* Step 4d iv *)
@@ -1945,23 +1901,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_binding_instantiation_formal_params_2 : forall o1 S S0 C K args L argname names v o,  (* Step 4d v *)
       red_expr S C (spec_env_record_set_mutable_binding L argname v (execution_ctx_strict C)) o1 ->
       red_expr S C (spec_binding_instantiation_formal_params_3 K args L names o1) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_2 K args L argname names v (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_formal_params_2 K args L argname names v (out_ter_void S)) o
 
   | red_expr_binding_instantiation_formal_params_3 : forall o1 S S0 C K args L names o, (* Step 4d loop *)
       red_expr S C (spec_binding_instantiation_formal_params K args L names) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_3 K args L names (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_formal_params_3 K args L names (out_ter_void S)) o
       
   (* Create bindings for function declarations Step 5 *)
   
   | red_expr_spec_binding_instantiation_function_decls_nil : forall o1 L S0 S C K args bconfig o, (* Step 5b *)
       red_expr S C (K L) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls K args L nil bconfig (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_function_decls K args L nil bconfig (out_ter_void S)) o
 
   | red_expr_binding_instantiation_function_decls_cons : forall o1 L S0 S C K args fd fds bconfig o, (* Step 5b *)
       let strict := funcbody_is_strict (funcdecl_body fd) in
       red_expr S C (spec_creating_function_object (funcdecl_parameters fd) (funcdecl_body fd) (execution_ctx_variable_env C) strict) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_1 K args L fd fds strict bconfig o1) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_function_decls K args L (fd::fds) bconfig (out_ter_void S)) o
 
   | red_expr_spec_binding_instantiation_function_decls_1 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5c *)
       red_expr S C (spec_env_record_has_binding L (funcdecl_name fd)) o1 ->
@@ -1992,28 +1948,28 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_spec_binding_instantiation_function_decls_3_false : forall o1 L S C K args fd fds strict fo A configurable bconfig o, (* Step 5e iv *)
      configurable <> Some true ->
       ~ (prop_descriptor_is_accessor A) /\ prop_attributes_writable A = Some true /\ prop_attributes_enumerable A = Some true ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds strict fo bconfig (out_ter_void S)) o ->
       red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds strict fo A configurable bconfig) o
 
   | red_expr_spec_binding_instantiation_function_decls_2_true : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5e *)
       L <> env_loc_global_env_record ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_ter_void S)) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds strict fo bconfig (out_ter S true)) o
 
   | red_expr_spec_binding_instantiation_function_decls_4 : forall o1 L S0 S C K args fd fds strict fo bconfig o, (* Step 5f *)
       red_expr S C (spec_env_record_set_mutable_binding L (funcdecl_name fd) (value_object fo) strict) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig o1) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds strict fo bconfig (out_ter_void S)) o
       
   (* Create bindings for variable declarations Step 8 *)
       
   | red_expr_spec_binding_instantiation_var_decls_non_empty : forall o1 L S0 S C vd vds bconfig o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
       red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds bconfig o1) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig (out_ter_void S)) o
 
   | red_expr_spec_binding_instantiation_var_decls_1_true : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
-      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_ter_void S)) o ->
       red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S true)) o
 
   | red_expr_spec_binding_instantiation_var_decls_1_false : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
@@ -2022,7 +1978,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S false)) o
 
   | red_expr_spec_binding_instantiation_var_decls_empty : forall o1 L S0 S C bconfig o, (* Step 8 *)
-      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig (out_void S)) (out_void S)     
+      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig (out_ter_void S)) (out_ter_void S)     
       
   (* Declaration Binding Instantiation Main Part *)    
 
@@ -2049,14 +2005,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_execution_ctx_binding_instantiation_function_2 : forall bconfig L S C code args o, (* Step 5 *)
       bconfig = false (* TODO: configurableBindings with eval *) ->
       let fds := prog_funcdecl code in
-      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code bconfig) args L fds bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code bconfig) args L fds bconfig (out_ter_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
 
   (* TODO steps 6-7 *)
 
   | red_expr_execution_ctx_binding_instantiation_3 : forall o1 L S C code bconfig o, (* Step 8 *)
       let vds := prog_vardecl code in
-      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_ter_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_3 code bconfig L) o
       
   (** Creating function object *)
@@ -2617,7 +2573,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_init_throw_type_error_1 : forall O S' S0 S C v o,
       object_binds S builtin_function_throw_type_error O ->
       S' = object_write S builtin_function_throw_type_error (object_set_extensible_false O) ->
-      red_expr S0 C (spec_init_throw_type_error_1 (out_ter S v)) (out_void S')
+      red_expr S0 C (spec_init_throw_type_error_1 (out_ter S v)) (out_ter_void S')
 
   (** Auxiliary: creates a new object, then pass its address [l] 
       to a continuation [K]. Used for Object Initialiser expression. *)
@@ -2734,6 +2690,38 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_stat_for_in_6d : forall S0 S C e1 t l vret lhdRef initProps visitedProps o1 o,
       red_stat S C t o1 ->
       red_stat S C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps o1) o ->
-      red_stat S0 C (stat_for_in_7 e1 t l vret lhdRef initProps visitedProps (out_void S)) o
+      red_stat S0 C (stat_for_in_7 e1 t l vret lhdRef initProps visitedProps (out_ter_void S)) o
+
+
+(*-- todo: make compile following introduction of ret_or_empty (see JsSyntax) 
+
+  | red_stat_for_in_6e : forall S0 S C e1 t l vret lhdRef initProps visitedProps res o,
+      let vnew := match res with
+        | res_normal R => Some R
+        | _ => vret end
+      in
+      red_stat S C (stat_for_in_9 e1 t l vnew lhdRef initProps visitedProps res) o ->
+      red_stat S0 C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps (out_ter S res)) o
+
+  | red_stat_for_in_6f_break : forall S C e1 t l vret lhdRef initProps visitedProps label,
+      (* TODO: check break label is in current label set *)
+      red_stat S C (stat_for_in_9 e1 t l (Some vret) lhdRef initProps visitedProps (res_break label)) (out_ter S vret)
+
+  | red_stat_for_in_6g_exit : forall S C e1 t l vret lhdRef initProps visitedProps res,
+      (* TODO: check continue label is in current label set *)
+      (* TODO: use instead the res_type projection *)
+      ~ (is_res_break res) /\ ~ (is_res_continue res) /\ ~ (is_res_normal res) ->
+
+      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) (out_ter S res)
+
+  | red_stat_for_in_6g_continue : forall o1 S C e1 t l vret lhdRef initProps visitedProps res o,
+     (* TODO: check continue label is in current label set *)
+      ~ (is_res_break res) /\ ((is_res_continue res) \/ (is_res_normal res)) ->
+      red_stat S C (stat_for_in_4 e1 t l vret lhdRef initProps visitedProps) o ->
+      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) o  
+
+-- end todo *) 
+
+(**------ end under dvpt --------*)
 
 *)

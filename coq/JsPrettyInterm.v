@@ -356,8 +356,9 @@ with ext_stat :=
 
   (** Extended statements associated with primitive statements *)
 
-  | stat_block_1 : res -> list stat -> ext_stat (* The first statement has been executed. *)
-  | stat_block_2 : res -> out -> list stat -> ext_stat
+  | stat_block_1 : resvalue -> list stat -> ext_stat 
+  | stat_block_2 : resvalue -> out -> list stat -> ext_stat
+  | stat_block_3 : out -> list stat -> ext_stat
 
   | stat_label_1 : label -> out -> ext_stat
 
@@ -373,7 +374,7 @@ with ext_stat :=
   | stat_while_1 : expr -> stat -> value -> ext_stat (* The condition have been executed. *)
   | stat_while_2 : expr -> stat -> out -> ext_stat (* The condition have been executed and converted to a boolean. *)
 
-(*
+(* LATER
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
   | stat_for_in_2 : expr -> stat -> out -> ext_stat
   | stat_for_in_3 : expr -> stat -> out -> ext_stat
@@ -394,7 +395,8 @@ with ext_stat :=
   | stat_try_1 : out -> option (string*stat) -> option stat -> ext_stat (* The try block has been executed. *)
   | stat_try_2 : out -> lexical_env -> stat -> option stat -> ext_stat (* The catch block is actived and will be executed. *)
   | stat_try_3 : out -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
-  | stat_try_4 : res -> out -> ext_stat (* The finally has been executed. *)
+  | stat_try_4 : res -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
+  | stat_try_5 : res -> out -> ext_stat (* The finally has been executed. *)
   
   (* Auxiliary forms for performing [red_expr] then [ref_get_value] and a conversion *)
 
@@ -408,8 +410,9 @@ with ext_stat :=
 with ext_prog :=
  
   | prog_basic : prog -> ext_prog
-  | prog_1 : res -> elements -> ext_prog
-  | prog_2 : res -> out -> elements -> ext_prog
+  | prog_1 : resvalue -> elements -> ext_prog
+  | prog_2 : resvalue -> out -> elements -> ext_prog
+  | prog_3 : out -> elements -> ext_prog
 .
 
 
@@ -516,6 +519,11 @@ Definition out_of_ext_prog (p : ext_prog) : option out :=
 (**************************************************************)
 (** ** Rules for propagating aborting expressions *)
 
+(** Definition of a result of type normal *)
+
+Definition res_is_normal R := 
+  res_type R = restype_normal.
+
 (** Definition of aborting outcomes: diverging outcomes,
     and terminating outcomes that are not of type "normal". *)
 
@@ -523,19 +531,31 @@ Inductive abort : out -> Prop :=
   | abort_div :
       abort out_div
   | abort_not_normal : forall S R,
-      res_type R <> restype_normal ->
+      ~ res_is_normal R ->
       abort (out_ter S R).
 
 (** Definition of the behaviors caught by an exception handler,
     and thus not propagated by the generic abort rule *)
 
-Inductive abort_intercepted : ext_stat -> Prop :=
+Inductive abort_intercepted_prog : ext_prog -> Prop :=
+  | abort_intercepted_prog_block_2 : forall lab S R rv els,
+      res_type R <> restype_throw ->
+      abort_intercepted_prog (prog_2 rv (out_ter S R) els).
+
+Inductive abort_intercepted_stat : ext_stat -> Prop :=
+  | abort_intercepted_stat_block_2 : forall lab S R rv ts,
+      res_type R <> restype_throw ->
+      abort_intercepted_stat (stat_block_2 rv (out_ter S R) ts).
   | abort_intercepted_stat_label_1 : forall lab S R,
       res_type R = restype_break ->
-      abort_intercepted (stat_label_1 lab (out_ter S R)) 
-  | abort_intercepted_stat_try_1 : forall S R cb fio,
+      abort_intercepted_stat (stat_label_1 lab (out_ter S R)) 
+  | abort_intercepted_stat_try_1 : forall S R cb fo,
       res_type R = restype_throw ->
-      abort_intercepted (stat_try_1 (out_ter S R) (Some cb) fio).
+      abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
+  | abort_intercepted_stat_try_3 : forall S R fo,
+      abort_intercepted_stat (stat_try_3 (out_ter S R) fo).
+
+
 
   (* TODO: abort_intercepted check whether we need to add this:
   | abort_intercepted_stat_try_3 : forall S r fio o,
@@ -546,16 +566,30 @@ Inductive abort_intercepted : ext_stat -> Prop :=
 (**************************************************************)
 (** ** Auxiliary definition used in identifier resolution *)
 
-(** [identifier_resolution C x] returns the extended expression
+(** [spec_identifier_resolution C x] returns the extended expression
     which needs to be evaluated in order to perform the lookup
     of name [x] in the execution context [C]. Typically, a
     reduction rule that performs such a lookup would have a
     premise of the form [red_expr S C (identifier_resolution C x) o1]. *)
 
-Definition identifier_resolution C x :=
+Definition spec_identifier_resolution C x :=
   let lex := execution_ctx_lexical_env C in
   let strict := execution_ctx_strict C in
   spec_lexical_env_get_identifier_ref lex x strict.
+
+
+(**************************************************************)
+(** ** Instantiation of arguments in function calls *)
+
+Inductive arguments_from : list value -> list value -> Prop :=
+ | arguments_from_nil : forall Vs,
+      arguments_from Vs nil
+ | arguments_from_undef : forall Vs: list value,
+      arguments_from nil Vs ->
+      arguments_from nil (undef::Vs)
+ | arguments_from_cons : forall Vs1 Vs2 v,
+      arguments_from Vs1 Vs2 ->
+      arguments_from (v::Vs1) (v::Vs2).
 
 
 (**************************************************************)
@@ -589,11 +623,13 @@ Definition out_ref_error_or_undef S (bthrow:bool) :=
 
 (** The "void" result is used by specification-level functions
     which do not produce any javascript value, but only perform
-    side effects. (We return the value [undef] in the implementation.)
+    side effects. 
+    
+    (We return the value [undef] in the implementation.)
     -- TODO : sometimes we used false instead  -- where? fix it.. *)
 
 Definition out_void S :=
-  out_ter S undef.
+  out_ter S res_empty.
 
 (** [out_reject S bthrow] throws a type error if
     [bthrow] is true, else returns the value [false] *)

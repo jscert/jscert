@@ -62,7 +62,7 @@ Definition out_ref_error S :=
     side effects. (We return the value [undef] in the implementation.)
     -- TODO : sometimes we used false instead  -- where? fix it.. *)
 
-Definition out_void S :=
+Definition out_ter_void S :=
   out_ter S undef.
 
 (** [out_reject S bthrow] throws a type error if

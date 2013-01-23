@@ -74,3 +74,15 @@ INVARIANT ON WF
 
   | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
       valid_lhs_for_assign R ->
+
+=====
+BUG:
+
+x: { try { throw 1 } catch (e) { break x } finally { 2 } }
+2
+
+x: { try { throw 1 } catch (e) { break x } finally { } }
+undefined
+
+x: { try { throw 1 } catch (e) { 3; break x } finally { } }
+3

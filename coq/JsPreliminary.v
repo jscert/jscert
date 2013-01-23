@@ -23,6 +23,7 @@ Implicit Type R : res.
 Implicit Type o : out.
 
 Implicit Type x : prop_name.
+Implicit Type str : strictness_flag.
 Implicit Type m : mutability.
 Implicit Type A : prop_attributes.
 Implicit Type An : prop_descriptor.
@@ -43,17 +44,12 @@ Implicit Type t : stat.
 (**************************************************************)
 (** ** Auxiliary functions for results *)
 
-(** Test whether [res] has an empty value *)
-
-Definition res_value_is_empty R :=
-  res_value R = resvalue_empty.
-
 (** Update the value field if it is empty *)
 
-Definition res_overwrite_value_if_empty Rold Rnew :=
-  If res_value_is_empty Rnew
-    then res_with_value Rnew (res_value Rold)
-    else Rnew.
+Definition res_overwrite_value_if_empty rv R :=
+  If res_value R = resvalue_empty
+    then res_with_value R rv
+    else R.
 
 
 (**************************************************************)
@@ -851,11 +847,11 @@ Definition lexical_env_initial : lexical_env :=
 
 (** Definition of the initial execution context *)
 
-Definition execution_ctx_initial bstrict :=
+Definition execution_ctx_initial str :=
   {| execution_ctx_lexical_env := lexical_env_initial;
      execution_ctx_variable_env := lexical_env_initial;
      execution_ctx_this_binding := builtin_global;
-     execution_ctx_strict := bstrict |}.
+     execution_ctx_strict := str |}.
 
 
 (**************************************************************)
