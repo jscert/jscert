@@ -258,9 +258,9 @@ Inductive ext_expr :=
   
   | spec_execution_ctx_eval_call : ext_expr -> funcbody -> ext_expr
   
-  | spec_call_global_eval : value -> ext_expr
-  | spec_call_global_eval_1 : prog -> ext_expr
-  | spec_call_global_eval_2 : out -> ext_expr
+  | spec_call_global_eval_1 : value -> ext_expr
+  | spec_call_global_eval_1_2 : prog -> ext_expr
+  | spec_call_global_eval_1_3 : out -> ext_expr
 
   (** Extended expressions for function calls *)
 
@@ -338,18 +338,19 @@ Inductive ext_expr :=
 
   (** Extended expressions for calling global object builtin functions *)
 
-  | spec_call_global_is_nan : out -> ext_expr
-  | spec_call_global_is_finite : out -> ext_expr
-  | spec_call_object_proto_to_string : out -> ext_expr
-  | spec_call_builtin_object_proto_is_prototype_of : value -> value -> ext_expr
-  | spec_call_builtin_object_proto_is_prototype_of_1 : out -> value -> ext_expr 
+  | spec_call_global_is_nan_1 : out -> ext_expr
+  | spec_call_global_is_finite_1 : out -> ext_expr
+  | spec_call_object_constructor_1 : value -> ext_expr
+  | spec_call_object_get_prototype_of_1 : value -> ext_expr
+  | spec_call_object_proto_to_string_1 : out -> ext_expr
+  | spec_call_builtin_object_proto_is_prototype_of_1 : value -> value -> ext_expr
+  | spec_call_builtin_object_proto_is_prototype_of_2 : out -> value -> ext_expr 
   | spec_constructor_builtin_bool_new : out -> ext_expr (* TODO: rename ? *)
-  | spec_call_builtin_bool_proto_to_string : value -> value -> ext_expr
-  | spec_call_builtin_bool_proto_to_string_1 : value -> ext_expr
-  | spec_call_builtin_bool_proto_value_of : value -> value -> ext_expr
-  | spec_call_builtin_bool_proto_value_of_1 : value -> ext_expr
-  | spec_call_builtin_number_proto_to_string : value -> list value -> ext_expr
-  | spec_call_builtin_number_proto_to_string_1 : value -> out -> ext_expr
+  | spec_call_builtin_bool_proto_to_string_1 : value -> value -> ext_expr
+  | spec_call_builtin_bool_proto_value_of_1 : value -> value -> ext_expr
+  | spec_call_builtin_bool_proto_value_of_2 : value -> ext_expr
+  | spec_call_builtin_number_proto_to_string_1 : value -> list value -> ext_expr
+  | spec_call_builtin_number_proto_to_string_2 : value -> out -> ext_expr
 
   (** Extended expressions for calling Number builtin functions *)   
 
