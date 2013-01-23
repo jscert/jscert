@@ -521,9 +521,9 @@ Inductive res := res_intro {
 
 (** Smart constructors for type [res] *)
 
-Coercion res_ref r := res_intro (restype_normal r) None.
-Coercion res_val v := res_intro (restype_normal v) None.
-Coercion res_normal rv := res_intro (restype_normal rv) None.
+Coercion res_ref r := res_intro restype_normal r None.
+Coercion res_val v := res_intro restype_normal v None.
+Coercion res_normal rv := res_intro restype_normal rv None.
 
 Definition res_empty := res_intro restype_normal resvalue_empty None.
 Definition res_break labopt := res_intro restype_break resvalue_empty labopt.
