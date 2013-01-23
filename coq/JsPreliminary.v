@@ -1354,6 +1354,7 @@ Definition string_of_propname (pn : propname) : prop_name :=
 
 (** Axiomatized parsing relation for eval *)
 
-Axiom parse : string -> prog -> Prop.
+Axiom parse_successful : string -> prog -> Prop.
+Axiom parse_impossible : string -> Prop.
 
 

@@ -186,10 +186,12 @@ Inductive ext_expr :=
   | spec_object_can_put_2 : object_loc -> prop_name -> bool -> ext_expr
   | spec_object_can_put_3 : object_loc -> prop_name -> value -> ext_expr
   | spec_object_can_put_4 : object_loc -> prop_descriptor -> ext_expr
+
   | spec_object_put : object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_1 : object_loc -> prop_name -> value -> bool -> out -> ext_expr
   | spec_object_put_2 : object_loc -> prop_name -> value -> bool -> prop_descriptor -> ext_expr
   | spec_object_put_3 : object_loc -> prop_name -> value -> bool -> prop_descriptor -> ext_expr
+  | spec_object_put_return : out -> ext_expr
   | spec_object_get_special : value -> prop_name -> ext_expr
   | spec_object_get_special_1 : prop_name -> out -> ext_expr
   | spec_object_put_special : value -> prop_name -> value -> bool -> ext_expr
@@ -234,6 +236,7 @@ Inductive ext_expr :=
   | spec_env_record_create_mutable_binding : env_loc -> prop_name -> option bool -> ext_expr
   | spec_env_record_create_mutable_binding_1 : env_loc -> prop_name -> bool -> env_record -> ext_expr
   | spec_env_record_create_mutable_binding_2 : env_loc -> prop_name -> bool -> object_loc -> out -> ext_expr
+  | spec_env_record_create_mutable_binding_2 : out -> ext_expr
   | spec_env_record_set_mutable_binding : env_loc -> prop_name -> value -> bool -> ext_expr
   | spec_env_record_set_mutable_binding_1 : env_loc -> prop_name -> value -> bool -> env_record -> ext_expr
   | spec_env_record_delete_binding : env_loc -> prop_name -> ext_expr
@@ -255,8 +258,9 @@ Inductive ext_expr :=
   
   | spec_execution_ctx_eval_call : ext_expr -> funcbody -> ext_expr
   
-  | spec_call_global_eval : prog -> ext_expr
-  | spec_call_global_eval_1 : out -> ext_expr
+  | spec_call_global_eval : value -> ext_expr
+  | spec_call_global_eval_1 : prog -> ext_expr
+  | spec_call_global_eval_2 : out -> ext_expr
 
   (** Extended expressions for function calls *)
 
@@ -289,6 +293,7 @@ Inductive ext_expr :=
 
   | spec_error : builtin -> ext_expr (* todo: reduction rules *)
   | spec_error_or_cst : bool -> builtin -> value -> ext_expr (* todo: reduction rules *)
+  | spec_error_or_void : bool -> builtin -> ext_expr (* todo: reduction rules *)
   
   | spec_init_throw_type_error : ext_expr
   | spec_init_throw_type_error_1 : out -> ext_expr
@@ -314,7 +319,8 @@ Inductive ext_expr :=
   | spec_create_new_function_in :  execution_ctx -> list string -> funcbody -> ext_expr
 
   (* TODO: Check if object_loc or value could be None *)
-  | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr
+  (* TODO: get rid of this: | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr *)
+  | spec_call : object -> value -> list value -> ext_expr (* ohject with the call method, this value, arguments *)
   
   | spec_call_builtin : builtin -> list value -> ext_expr
   
@@ -348,6 +354,10 @@ Inductive ext_expr :=
   (** Extended expressions for calling Number builtin functions *)   
 
   | spec_constructor_builtin_number_new : out -> ext_expr
+
+  (** Special state for returning an outcome *)   
+
+  | spec_returns : out -> ext_expr
 
 (** Grammar of extended statements *)
 
