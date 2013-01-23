@@ -57,7 +57,7 @@ Parameter basic_value_convertible_to_object : value -> Prop.
 
 Inductive red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
-  (** Generic abort rule *)
+  (** Abort rule for programs *)
 
   | red_prog_abort : forall S C extp o,
       out_of_ext_prog extp = Some o ->
@@ -105,7 +105,7 @@ Inductive red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
 with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
-  (** Generic abort rule *)
+  (** Abort rule for statements *)
 
   | red_stat_abort : forall S C extt o,
       out_of_ext_stat text = Some o ->
@@ -357,7 +357,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
 with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
-  (** Generic abort rule *)
+  (** Abort rule for expressions *)
 
   | red_expr_abort : forall S C exte o,
       out_of_ext_expr exte = Some o ->
@@ -401,150 +401,95 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
 
+  (** Array initializer : LATER *)
+
   (** Object initializer *)
   
-  (* Allocate a new Object, then pass the adress  
-     and the list of propdef to [expr_object_1] *)
   | red_expr_object : forall S C o pds, 
-      red_expr S C (spec_new_object (fun l => expr_object_1 l pds) ) o ->
+      red_expr S C (spec_new_object (fun l => expr_object_1 l pds)) o ->
       red_expr S C (expr_object pds) o
               
-  (* No propdefs. Return the empty object *)
   | red_expr_object_1_nil : forall S C l, 
       red_expr S C (expr_object_1 l nil) (out_ter S l)
   
-  (* Propdefs are given. Convert the first propname to
-     string, then call [expr_obj_2] to evaluate the propbody. *)
   | red_expr_object_1_cons : forall S C x l pn pb pds o, 
       x = string_of_propname pn ->
       red_expr S C (expr_object_2 l x pb pds) o ->
       red_expr S C (expr_object_1 l ((pn,pb)::pds)) o
 
-  (* --- value --- *)
-  (* If the propbody is an expression we evaluate it *)
   | red_expr_object_2_val : forall S C e o o1 l x pds, 
       red_expr S C (spec_expr_get_value e) o1 ->
       red_expr S C (expr_object_3_val l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_val e) pds) o
 
-  (* If the expression terminates then we create a prop descriptor *)
   | red_expr_object_3_val : forall S S0 C l x A v o pds,
       A = prop_attributes_create_data v true true true ->
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_val l x (out_ter S v) pds) o
-
-  (* --- get --- *)
-  (* If the propbody is a getter, we evaluate the function definition *)
   
   | red_expr_object_2_get : forall S C bd l x o o1 pds,
       red_expr S C (spec_create_new_function_in C nil bd) o1 ->
       red_expr S C (expr_object_3_get l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_get bd) pds) o
   
-  (* If the function def terminates, we create an accessor *)
   | red_expr_object_3_get : forall S S0 C A l x v pds o,  
       A = prop_attributes_create_accessor_opt None (Some v) true true ->
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
 
-  (* --- set --- *)
-  (* If the propbody is a setter, we evaluate the function definition *)
   | red_expr_object_2_set : forall S S0 C A l x v pds o o1 bd args,
       red_expr S C (spec_create_new_function_in C args bd) o1 ->
       red_expr S C (expr_object_3_set l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
 
-  (* If the function def terminates, we create an accessor *)
   | red_expr_object_3_set : forall S S0 C A l x v pds o,
       A = prop_attributes_create_accessor_opt (Some v) None true true ->
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
   
-  (* --- Add new property to the object --- *)
-  (* Add the new property into the object *)
-  | red_expr_object_4 : forall S S0 C A l x v pds o o1,
+  | red_expr_object_4_define_own_prop : forall S S0 C A l x v pds o o1,
       red_expr S C (spec_object_define_own_prop l x A false) o1 ->
       red_expr S C (expr_object_5 l pds o1) o ->
       red_expr S C (expr_object_4 l x A pds) o
 
-  (* If the property was added succesfully, we continue 
-     to the next one. *)
-  | red_expr_object_5 : forall S S0 R C A l x v pds o,
+  | red_expr_object_5_next_property : forall S S0 rv C A l x v pds o,
       red_expr S C (expr_object_1 l pds) o ->
-      red_expr S0 C (expr_object_5 l pds (out_ter S R)) o   
-
-(*---begin to clean ---*)
-
-  (*----- TOCLEAN---*)
-
-  (** Array initializer [TODO] *)
-
-  (** Object initializer *)
-
-  (*| red_expr_object : forall S0 S1 C l lx le lxe o,
-      object_fresh S0 l ->
-      S1 = alloc_obj S0 l loc_obj_proto ->
-      (lx,le) = LibList.split lxe ->
-      red_expr S1 C (expr_list_then (expr_object_1 l lx) le) o ->
-      red_expr S0 C (expr_object lxe) o *)
-
-  (*| red_expr_object_1 : forall S0 S1 C l lx lv lfv,
-      Forall3 (fun x v xv => xv = (field_normal x,v)) lx lv lfv ->
-      S1 = write_fields S0 l lfv ->
-      red_expr S0 C (expr_object_1 l lx lv) (out_ter S1 l) *)
-
-  (** Function expression *)
-
-  | red_expr_function_unnamed : forall S C args bd o,
-      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)) o ->
-      red_expr S C (expr_function None args bd) o 
-
-  | red_expr_function_named : forall lex' S' L lextail E o1 S C s args bd o,
-      (lex', S') = lexical_env_alloc_decl S (execution_ctx_lexical_env C) ->
-      lex' = L :: lextail ->
-      env_record_binds S' L E ->
-      red_expr S' C (spec_env_record_create_immutable_binding L s) o1 ->
-      red_expr S' C (expr_function_1 s args bd L lex' o1) o -> 
-      red_expr S C (expr_function (Some s) args bd) o 
-      
-  | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
-      red_expr S C (spec_creating_function_object args bd scope (funcbody_is_strict bd)) o1 ->
-      red_expr S C (expr_function_2 s L o1) o ->
-      red_expr S0 C (expr_function_1 s args bd L scope (out_ter_void S)) o
-      
-  | red_expr_function_named_2 : forall o1 S0 S C s L l o,
-      red_expr S C (spec_env_record_initialize_immutable_binding L s l) o1 ->
-      red_expr S C (expr_function_3 l o1) o ->
-      red_expr S0 C (expr_function_2 s L (out_ter S l)) o  
-      
-  | red_expr_function_named_3 : forall S0 S C l,
-      red_expr S0 C (expr_function_3 l (out_ter_void S)) (out_ter S l) 
-
-  (** Access 11.2.1 *)
-
-  | red_expr_access : forall S C e1 e2 o o1,
-      red_expr S C (spec_expr_get_value e1) o1 ->
-      red_expr S C (expr_access_1 o1 e2) o ->
-      red_expr S C (expr_access e1 e2) o
-      
-  | red_expr_access_1 : forall S0 S C v o o1 e2,
-      red_expr S C (spec_expr_get_value e2) o1 ->
-      red_expr S C (expr_access_2 v o1) o ->
-      red_expr S0 C (expr_access_1 (out_ter S v) e2) o
-      
-  | red_expr_access_2 : forall S0 S C v1 v2 o,
-      red_expr S C (spec_convert_twice (spec_check_object_coercible v1) (spec_to_string v2) expr_access_3) o ->
-      red_expr S0 C (expr_access_2 v1 (out_ter S v2)) o
-
-  | red_expr_ext_expr_access_3 : forall S C v1 x r,
-     r = ref_create_value v1 x (execution_ctx_strict C) ->
-     red_expr S C (expr_access_3 v1 x) (out_ter S r)
+      red_expr S0 C (expr_object_5 l pds (out_ter S rv)) o   
 
   (** Member *)
 
   | red_expr_member : forall x S0 C e1 o,
       red_expr S0 C (expr_access e1 (expr_literal (literal_string x))) o ->
       red_expr S0 C (expr_member e1 x) o
+
+  (** Access *)
+
+  | red_expr_access : forall S C e1 e2 o o1,
+      red_expr S C (spec_expr_get_value e1) o1 ->
+      red_expr S C (expr_access_1 o1 e2) o ->
+      red_expr S C (expr_access e1 e2) o
+      
+  | red_expr_access_1 : forall S0 S C v1 o o1 e2,
+      red_expr S C (spec_expr_get_value e2) o1 ->
+      red_expr S C (expr_access_2 v1 o1) o ->
+      red_expr S0 C (expr_access_1 (out_ter S v1) e2) o
+      
+  | red_expr_access_2 : forall S0 S C v1 v2 o1 o,
+      red_expr S C (spec_check_object_coercible v1) o1 ->
+      red_expr S C (expr_access_3 v1 o1 v2) o ->
+      red_expr S0 C (expr_access_2 v1 (out_ter S v2)) o
+
+  | red_expr_ext_expr_access_3 : forall S0 S C v1 v2 o1 o,
+      red_expr S C (spec_to_string v2) o1 ->
+      red_expr S C (expr_access_4 v1 o1) o ->
+      red_expr S0 C (expr_access_3 v1 (out_ter_void S) v2) o
+
+  | red_expr_ext_expr_access_4 : forall S0 S C v1 x r,
+     r = ref_create_value v1 x (execution_ctx_strict C) ->
+     red_expr S0 C (expr_access_4 v1 (out_ter S x)) (out_ter S r)
+
+
+(*---begin to clean ---*)
 
   (** New *)
 
@@ -554,7 +499,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_basic e1) o1 ->
       red_expr S0 C (expr_new_1 o1 le2) o ->
       red_expr S0 C (expr_new e1 le2) o
-
 
   (* Daniele: we need to throw a 'TypeError' if l1 doesn't have type Object,
      and if it doesn't implement internal method ((Construct)) - ? *)
@@ -601,24 +545,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_call_1 o1 e2s) o2 ->
       red_expr S0 C (expr_call e1 e2s) o2
 
-  | red_expr_call_1 : forall o1 S0 S C o R e2s,
-      red_expr S C (spec_get_value R) o1 ->
-      red_expr S C (expr_call_2 R e2s o1) o ->
-      red_expr S0 C (expr_call_1 (out_ter S R) e2s) o
+  | red_expr_call_1 : forall o1 S0 S C o rv e2s,
+      red_expr S C (spec_get_value rv) o1 ->
+      red_expr S C (expr_call_2 rv e2s o1) o ->
+      red_expr S0 C (expr_call_1 (out_ter S rv) e2s) o
       
-  | red_expr_call_2 : forall S0 S C o R v e2s,
-      red_expr S C (expr_list_then (expr_call_3 R v) e2s) o ->
-      red_expr S0 C (expr_call_2 R e2s (out_ter S v)) o
+  | red_expr_call_2 : forall S0 S C o rv v e2s,
+      red_expr S C (expr_list_then (expr_call_3 rv v) e2s) o ->
+      red_expr S0 C (expr_call_2 rv e2s (out_ter S v)) o
       
-  | red_expr_call_3_not_object : forall S C o R v vs,
+  | red_expr_call_3_not_object : forall S C o rv v vs,
       type_of v <> type_object ->
       red_expr S C (spec_error builtin_type_error) o ->
-      red_expr S C (expr_call_3 R v vs) o
+      red_expr S C (expr_call_3 rv v vs) o
       
-  | red_expr_call_3_not_callable : forall S C o R l vs,
+  | red_expr_call_3_not_callable : forall S C o rv l vs,
       ~ (is_callable S l) ->
       red_expr S C (spec_error builtin_type_error) o ->
-      red_expr S C (expr_call_3 R (value_object l) vs) o
+      red_expr S C (expr_call_3 rv (value_object l) vs) o
       
   | red_expr_call_3_prop : forall v S C o r l vs,
       (is_callable S l) ->
@@ -655,9 +599,65 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_call_4 o3) o ->
       red_expr S0 C (expr_call_3 l0 primitive_eval (g::vs)) o*)
 
+  (** Function expression *)
+
+  | red_expr_function_unnamed : forall S C args bd o,
+      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)) o ->
+      red_expr S C (expr_function None args bd) o 
+
+  | red_expr_function_named : forall lex' S' L lextail E o1 S C s args bd o,
+      (lex', S') = lexical_env_alloc_decl S (execution_ctx_lexical_env C) ->
+      lex' = L :: lextail ->
+      env_record_binds S' L E ->
+      red_expr S' C (spec_env_record_create_immutable_binding L s) o1 ->
+      red_expr S' C (expr_function_1 s args bd L lex' o1) o -> 
+      red_expr S C (expr_function (Some s) args bd) o 
+      
+  | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
+      red_expr S C (spec_creating_function_object args bd scope (funcbody_is_strict bd)) o1 ->
+      red_expr S C (expr_function_2 s L o1) o ->
+      red_expr S0 C (expr_function_1 s args bd L scope (out_ter_void S)) o
+      
+  | red_expr_function_named_2 : forall o1 S0 S C s L l o,
+      red_expr S C (spec_env_record_initialize_immutable_binding L s l) o1 ->
+      red_expr S C (expr_function_3 l o1) o ->
+      red_expr S0 C (expr_function_2 s L (out_ter S l)) o  
+      
+  | red_expr_function_named_3 : forall S0 S C l,
+      red_expr S0 C (expr_function_3 l (out_ter_void S)) (out_ter S l) 
+
 (*---end to clean ---*)
 
-  (** Unary op -- regular rules *)
+  (** Unary op : pre/post incr/decr *)
+
+  | red_expr_prepost : forall S C op e o1 o,
+      prepost_unary_op op ->
+      red_expr S C e o1 ->
+      red_expr S C (expr_prepost_1 op o1) o ->
+      red_expr S C (expr_unary_op op e) o
+
+  | red_expr_prepost_1_valid : forall S0 S C rv op o1 o,
+      red_expr S C (spec_get_value rv) o1 ->
+      red_expr S C (expr_prepost_2 op rv o1) o ->
+      red_expr S0 C (expr_prepost_1 op (out_ter S rv)) o
+ 
+  | red_expr_prepost_2 : forall S0 S C rv op v o1 o,    
+      red_expr S C (spec_to_number v) o1 ->
+      red_expr S C (expr_prepost_3 op rv o1) o ->
+      red_expr S0 C (expr_prepost_2 op rv (out_ter S v)) o
+ 
+  | red_expr_prepost_3 : forall S0 S C rv op number_op is_pre v n1 n2 o1 o,  
+      prepost_op op number_op is_pre ->
+      n2 = number_op n1 ->
+      v = prim_number (if is_pre then n2 else n1) ->
+      red_expr S C (spec_put_value rv n2) o1 ->
+      red_expr S C (expr_prepost_4 v o1) o ->
+      red_expr S0 C (expr_prepost_3 op rv (out_ter S n1)) o
+ 
+  | red_expr_prepost_4 : forall S0 S C v,  
+      red_expr S0 C (expr_prepost_4 v (out_ter_void S)) (out_ter S v)
+
+  (** Unary op -- common rules for regular operators *)
 
   | red_expr_unary_op : forall S C op e o1 o,
       regular_unary_op op ->
@@ -669,89 +669,72 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_unary_op_2 op v) o ->
       red_expr S0 C (expr_unary_op_1 op (out_ter S v)) o
 
-  (** Unary op : delete *)
+  (** Unary op : delete (not a regular op) *)
 
   | red_expr_delete : forall S C e o1 o,
       red_expr S C e o1 ->
       red_expr S C (expr_delete_1 o1) o ->
       red_expr S C (expr_unary_op unary_op_delete e) o
 
-  | red_expr_delete_1_value : forall S0 S C v,
-      red_expr S0 C (expr_delete_1 (out_ter S (ret_value v))) (out_ter S true)
+  | red_expr_delete_1_not_ref : forall S0 S C rv,
+      ~ (resvalue_is_ref rv) ->
+      red_expr S0 C (expr_delete_1 (out_ter S rv)) (out_ter S true)
+
+  | red_expr_delete_1_ref_unresolvable : forall S0 S C rv,
+      ref_is_unresolvable r ->
+      red_expr S0 C (expr_delete_1 (out_ter S r)) (out_ter S true)
 
   | red_expr_delete_1_ref_property : forall S0 S C r v o1 o,
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
       red_expr S C (spec_to_object v) o1 ->
-      red_expr S C (expr_delete_2 (ref_name r) (ref_strict r) o1) o ->
-      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
+      red_expr S C (expr_delete_2 r o1) o ->
+      red_expr S0 C (expr_delete_1 (out_ter S r)) o
 
   | red_expr_delete_2 : forall S0 S C x l str o,
-      red_expr S C (spec_object_delete l x str) o ->
-      red_expr S0 C (expr_delete_2 x str (out_ter S l)) o
+      red_expr S C (spec_object_delete l (ref_name r) (ref_strict r)) o ->
+      red_expr S0 C (expr_delete_2 r (out_ter S l)) o
 
   | red_expr_delete_1_ref_env_record : forall S0 S C r L o,
       ref_is_env_record r L ->
-      red_expr S C (expr_delete_3 r L (ref_strict r)) o ->
-      red_expr S0 C (expr_delete_1 (out_ter S (ret_ref r))) o
-
-  | red_expr_delete_3_nonstrict : forall S C r L o,
       red_expr S C (spec_env_record_delete_binding L (ref_name r)) o ->
-      red_expr S C (expr_delete_3 r L false) o 
+      red_expr S0 C (expr_delete_1 (out_ter S r)) o
     
   (** Unary op : void *)
 
   | red_expr_unary_op_void : forall S C v,
       red_expr S C (expr_unary_op_2 unary_op_void v) (out_ter S undef)
 
-  (** Unary op : typeof *)
+  (** Unary op : typeof (not a regular op) *)
 
   | red_expr_typeof : forall S C e o1 o,
       red_expr S C e o1 ->
       red_expr S C (expr_typeof_1 o1) o ->
       red_expr S C (expr_unary_op unary_op_typeof e) o
 
-  | red_expr_typeof_1_unresolvable : forall S0 S r C,
-      ref_is_unresolvable r ->
-      red_expr S0 C (expr_typeof_1 (out_ter S (ret_ref r))) (out_ter S "undefined")
+  | red_expr_typeof_1_value : forall S0 S C v o,
+      red_expr S C (expr_typeof_2 (out_ter S v)) o ->
+      red_expr S0 C (expr_typeof_1 (out_ter S v)) o
 
-  | red_expr_typeof_1_resolvable : forall S0 S C R o1 o,
-      red_expr S C (spec_get_value R) o1 ->
+  | red_expr_typeof_1_ref_unresolvable : forall S0 S r C,
+      ref_is_unresolvable r ->
+      red_expr S0 C (expr_typeof_1 (out_ter S r)) (out_ter S "undefined")
+
+  | red_expr_typeof_1_ref_resolvable : forall S0 S C rv o1 o,
+      ~ (ref_is_unresolvable r) ->
+      red_expr S C (spec_get_value r) o1 ->
       red_expr S C (expr_typeof_2 o1) o ->
-      red_expr S0 C (expr_typeof_1 (out_ter S R)) o
+      red_expr S0 C (expr_typeof_1 (out_ter S r)) o
 
   | red_expr_typeof_2 : forall S0 S s C v o,
       s = typeof_value S v ->
       red_expr S0 C (expr_typeof_2 (out_ter S v)) (out_ter S s)
 
-  (** Unary op : pre/post incr/decr *)
+  (** Unary op : add *)
 
-  | red_expr_prepost : forall S C op e o1 o,
-      prepost_unary_op op ->
-      red_expr S C e o1 ->
-      red_expr S C (expr_prepost_1 op o1) o ->
-      red_expr S C (expr_unary_op op e) o
-
-  | red_expr_prepost_1_valid : forall S0 S C R op o1 o,
-      red_expr S C (spec_get_value R) o1 ->
-      red_expr S C (expr_prepost_2 op R o1) o ->
-      red_expr S0 C (expr_prepost_1 op (out_ter S R)) o
- 
-  | red_expr_prepost_2 : forall S0 S C R op v o1 o,    
-      red_expr S C (spec_to_number v) o1 ->
-      red_expr S C (expr_prepost_3 op R o1) o ->
-      red_expr S0 C (expr_prepost_2 op R (out_ter S v)) o
- 
-  | red_expr_prepost_3 : forall S0 S C R op number_op is_pre v n1 n2 o1 o,  
-      prepost_op op number_op is_pre ->
-      n2 = number_op n1 ->
-      v = prim_number (if is_pre then n2 else n1) ->
-      red_expr S C (spec_put_value R n2) o1 ->
-      red_expr S C (expr_prepost_4 v o1) o ->
-      red_expr S0 C (expr_prepost_3 op R (out_ter S n1)) o
- 
-  | red_expr_prepost_4 : forall S0 S C v R',  
-      red_expr S0 C (expr_prepost_4 v (out_ter S R')) (out_ter S v)  (* todo: do we ignore R' ? is it out_ter_void ? *) 
+  | red_expr_unary_op_add : forall S C v o,
+      red_expr S C (spec_to_number v) o ->
+      red_expr S C (expr_unary_op_2 unary_op_add v) o
 
   (** Unary op : neg *)
 
@@ -1011,33 +994,33 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_assign_1 o1 opo e2) o ->
       red_expr S C (expr_assign e1 opo e2) o
  
-  | red_expr_assign_1_simple : forall S0 S C R e2 o o1,
+  | red_expr_assign_1_simple : forall S0 S C rv e2 o o1,
       red_expr S C (spec_expr_get_value e2) o1 ->
-      red_expr S C (expr_assign_4 R o1) o ->
-      red_expr S0 C (expr_assign_1 (out_ter S R) None e2) o
+      red_expr S C (expr_assign_4 rv o1) o ->
+      red_expr S0 C (expr_assign_1 (out_ter S rv) None e2) o
 
-  | red_expr_assign_1_compound : forall S0 S C R op e2 o o1,
-      red_expr S C (spec_get_value R) o1 ->
-      red_expr S C (expr_assign_2 R o1 op e2) o ->
-      red_expr S0 C (expr_assign_1 (out_ter S R) (Some op) e2) o
+  | red_expr_assign_1_compound : forall S0 S C rv op e2 o o1,
+      red_expr S C (spec_get_value rv) o1 ->
+      red_expr S C (expr_assign_2 rv o1 op e2) o ->
+      red_expr S0 C (expr_assign_1 (out_ter S rv) (Some op) e2) o
 
-  | red_expr_assign_2 : forall S0 S C R op v1 o2 e2 o,
+  | red_expr_assign_2 : forall S0 S C rv op v1 o2 e2 o,
       red_expr S C (spec_expr_get_value e2) o2 ->
-      red_expr S C (expr_assign_3 R v1 op o2) o ->
-      red_expr S0 C (expr_assign_2 R (out_ter S v1) op e2) o
+      red_expr S C (expr_assign_3 rv v1 op o2) o ->
+      red_expr S0 C (expr_assign_2 rv (out_ter S v1) op e2) o
 
-  | red_expr_assign_3 : forall S0 S C R op v1 v2 o1 o,
+  | red_expr_assign_3 : forall S0 S C rv op v1 v2 o1 o,
       red_expr S C (expr_binary_op_3 op v1 v2) o1 ->
-      red_expr S C (expr_assign_4 R o1) o ->
-      red_expr S0 C (expr_assign_3 R v1 op (out_ter S v2)) o
+      red_expr S C (expr_assign_4 rv o1) o ->
+      red_expr S0 C (expr_assign_3 rv v1 op (out_ter S v2)) o
 
-  | red_expr_assign_4 : forall S0 S C R v o1 o,
-      red_expr S C (spec_put_value R v) o1 ->
+  | red_expr_assign_4 : forall S0 S C rv v o1 o,
+      red_expr S C (spec_put_value rv v) o1 ->
       red_expr S C (expr_assign_5 v o1) o ->
-      red_expr S0 C (expr_assign_4 R (out_ter S v)) o
+      red_expr S0 C (expr_assign_4 rv (out_ter S v)) o
 
-  | red_expr_assign_5 : forall S0 S C R' v,
-      red_expr S0 C (expr_assign_5 v (out_ter S R')) (out_ter S v)
+  | red_expr_assign_5 : forall S0 S C rv' v,
+      red_expr S0 C (expr_assign_5 v (out_ter S rv')) (out_ter S v)
 
   (** Conditional operator *)
 
@@ -1122,7 +1105,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_to_object (value_object l)) (out_ter S l)
 
   (** Check object coercible *)
-
+(* TODO: this is completely wrong -- see 9.10 *)
   | red_spec_check_object_coercible_undef_or_null : forall S C v,
       v = prim_null \/ v = prim_undef ->
       red_expr S C (spec_check_object_coercible v) (out_type_error S)
@@ -1561,11 +1544,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Get value on a reference *)
 
   | red_expr_ref_get_value_value : forall S C v, (* Step 1. *)
-      red_expr S C (spec_get_value (ret_value v)) (out_ter S v)
+      red_expr S C (spec_get_value (resvalue_value v)) (out_ter S v)
 
   | red_expr_ref_get_value_ref_a : forall S C r, (* Steps 2 and 3. *)
       ref_is_unresolvable r ->
-      red_expr S C (spec_get_value (ret_ref r)) (out_ref_error S)
+      red_expr S C (spec_get_value (resvalue_ref r)) (out_ref_error S)
 
   | red_expr_ref_get_value_ref_b: forall ext_get v S C r o, (* Step 4. *)
       ref_is_property r ->
@@ -1574,12 +1557,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
         then spec_object_get_special
         else spec_object_get) ->
       red_expr S C (ext_get v (ref_name r)) o ->
-      red_expr S C (spec_get_value (ret_ref r)) o
+      red_expr S C (spec_get_value (resvalue_ref r)) o
 
   | red_expr_ref_get_value_ref_c : forall L S C r o, (* Step 5. *)
       ref_base r = ref_base_type_env_loc L ->
       red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o ->
-      red_expr S C (spec_get_value (ret_ref r)) o
+      red_expr S C (spec_get_value (resvalue_ref r)) o
 
   | red_expr_object_get_special : forall o1 S C v x o,
       red_expr S C (spec_to_object v) o1 ->
@@ -1597,9 +1580,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_expr_get_value_1 o1) o ->
       red_expr S C (spec_expr_get_value e) o
 
-  | red_spec_expr_get_value_1 : forall S0 S C R o,
-      red_expr S C (spec_get_value R) o ->
-      red_expr S0 C (spec_expr_get_value_1 (out_ter S R)) o
+  | red_spec_expr_get_value_1 : forall S0 S C rv o,
+      red_expr S C (spec_get_value rv) o ->
+      red_expr S0 C (spec_expr_get_value_1 (out_ter S rv)) o
 
   (** Auxiliary: combine [red_expr] and [get_value] and a conversion *)
 
@@ -1640,7 +1623,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_put_value (ret_ref r) vnew) o
   *)
 
-  (* Can we do with just one rule? *)
+  (* Can we do with just one rule? *) (* todo :out_ter_void *)
   | red_expr_ref_put_value_ref_b_special : forall v S C r vnew o, (* Step 4. *)
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->

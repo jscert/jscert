@@ -77,7 +77,8 @@ Inductive ext_expr :=
   
   | expr_access_1 : out -> expr -> ext_expr (* The left expression has been executed *)
   | expr_access_2 : value -> out -> ext_expr (* The right expression is executed. *)
-  | expr_access_3 : value -> value -> ext_expr
+  | expr_access_3 : value -> out -> value -> ext_expr
+  | expr_access_4 : value -> out -> ext_expr
 
   | expr_new_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
   | expr_new_2 : object_loc -> funccode -> list value -> ext_expr (* The arguments too. *)
@@ -91,8 +92,7 @@ Inductive ext_expr :=
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
   | expr_delete_1 : out -> ext_expr
-  | expr_delete_2 : string -> bool -> out -> ext_expr
-  | expr_delete_3 : ref -> env_loc -> bool -> ext_expr
+  | expr_delete_2 : ref -> out -> ext_expr
   | expr_typeof_1 : out -> ext_expr
   | expr_typeof_2 : out -> ext_expr
   | expr_prepost_1 : unary_op -> out -> ext_expr

@@ -29,6 +29,7 @@ Inductive unary_op :=
   | unary_op_post_decr
   | unary_op_pre_incr
   | unary_op_pre_decr
+  | unary_op_add
   | unary_op_neg
   | unary_op_bitwise_not  
   | unary_op_not.

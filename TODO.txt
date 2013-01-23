@@ -86,3 +86,15 @@ undefined
 
 x: { try { throw 1 } catch (e) { 3; break x } finally { } }
 3
+
+
+function f() {x: { try { throw 1 } catch (e) { return 3 } finally { 2 } } }; f()
+3
+
+function f() {x: { try { throw 1 } catch (e) { return 3 } finally { return 2 } } }; f()
+2
+
+=====
+TEST:
+
+delete {}

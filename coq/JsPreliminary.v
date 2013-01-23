@@ -51,6 +51,12 @@ Definition res_overwrite_value_if_empty rv R :=
     then res_with_value R rv
     else R.
 
+(** Characterize results that is a reference *)
+
+Inductive resvalue_is_ref : resvalue -> Prop :=
+  | resvalue_is_ref_intro : forall r,
+      resvalue_is_ref (resvalue_ref r).
+
 
 (**************************************************************)
 (** ** Auxiliary functions for function bodies *)
