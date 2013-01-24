@@ -337,27 +337,25 @@ Inductive ext_expr :=
   | spec_function_constructor_2 : object_loc -> out -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
-
+  (* TODO: rename all the spec_call into spec_builtin *)
+  
   | spec_call_global_is_nan_1 : out -> ext_expr
   | spec_call_global_is_finite_1 : out -> ext_expr
   | spec_call_object_call_1 : value -> ext_expr
   | spec_call_object_new_1 : value -> ext_expr
   | spec_call_object_get_prototype_of_1 : value -> ext_expr
   | spec_call_object_proto_to_string_1 : out -> ext_expr
-  | spec_call_builtin_object_proto_is_prototype_of_1 : value -> ext_expr
-  | spec_call_builtin_object_proto_is_prototype_of_2 : out -> object_loc -> ext_expr
-  | spec_call_builtin_object_proto_is_prototype_of_3 : object_loc -> object_loc -> ext_expr 
-  | spec_call_builtin_object_proto_is_prototype_of_4 : object_loc -> object_loc -> value -> ext_expr 
-  | spec_constructor_builtin_bool_new : out -> ext_expr (* TODO: rename ? *)
-  | spec_call_builtin_bool_proto_to_string_1 : value -> value -> ext_expr
-  | spec_call_builtin_bool_proto_value_of_1 : value -> value -> ext_expr
-  | spec_call_builtin_bool_proto_value_of_2 : value -> ext_expr
-  | spec_call_builtin_number_proto_to_string_1 : value -> list value -> ext_expr
-  | spec_call_builtin_number_proto_to_string_2 : value -> out -> ext_expr
-
-  (** Extended expressions for calling Number builtin functions *)   
-
-  | spec_constructor_builtin_number_new : out -> ext_expr
+  | spec_call_object_proto_is_prototype_of_2_1 : value -> ext_expr
+  | spec_call_object_proto_is_prototype_of_2_2 : out -> object_loc -> ext_expr
+  | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr 
+  | spec_call_object_proto_is_prototype_of_2_4 : object_loc -> value -> ext_expr 
+  | spec_call_bool_new_1 : out -> ext_expr 
+  | spec_call_bool_proto_to_string_1 : value -> value -> ext_expr
+  | spec_call_bool_proto_value_of_1 : value -> value -> ext_expr
+  | spec_call_bool_proto_value_of_2 : value -> ext_expr
+  | spec_call_number_proto_to_string_1 : value -> list value -> ext_expr
+  | spec_call_number_proto_to_string_2 : value -> out -> ext_expr
+  | spec_call_number_new_1 : out -> ext_expr
 
   (** Special state for returning an outcome *)   
 

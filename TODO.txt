@@ -1,4 +1,18 @@
 
+(*---start todo---*)
+
+
+- while loop
+- object_get
+- define own property
+      (* TODO: spec_object_get_using is like spec_object_get except that the this value is different *)
+  (** Special Put method for primitive values : TODO *)
+- section 10.4
+
+
+
+-----
+
 
 
 Martin: I changed & moved the definition of execution_ctx_initial, see JsPreliminary
@@ -35,6 +49,9 @@ Martin: I changed & moved the definition of execution_ctx_initial, see JsPrelimi
 
 (* TODO: abort_intercepted check whether we need to add this:
 
+
+
+
 =====
 LESS URGENT
 
@@ -46,6 +63,7 @@ LESS URGENT
    if lexical environments were not lists, but instead objects with a parent field,
    however this would come at the cost of having a predicate to enforce acyclicity
 
+*) a generic rule for obtaining arguments
 
 =====
 INVARIANT ON SYNTAX
@@ -80,20 +98,15 @@ BUG:
 
 x: { try { throw 1 } catch (e) { break x } finally { 2 } }
 2
-
 x: { try { throw 1 } catch (e) { break x } finally { } }
 undefined
-
 x: { try { throw 1 } catch (e) { 3; break x } finally { } }
 3
 
-
 function f() {x: { try { throw 1 } catch (e) { return 3 } finally { 2 } } }; f()
 3
-
 function f() {x: { try { throw 1 } catch (e) { return 3 } finally { return 2 } } }; f()
 2
-
 function f() {x: { try { throw 1 } catch (e) { return 3 } finally { break x } }; return 2 }; f()
 2
 
@@ -107,7 +120,6 @@ function f() {  x : { try { break x } finally { 2 } }; return 4 }; f()
 4
 function f() {  x : { try { break x } finally { 2 } ; return 3 }; return 4 }; f()
 4
-
 function f() {  y: { x : { try { break x } catch (e) { break y } finally { 2 } ; return 3 }; return 4 } ; return 5 }; f()
 4
 

@@ -396,6 +396,12 @@ Definition object_set_property S l x A :=
 Definition object_rem_property S l x S' :=
   object_heap_map_properties S l (fun P => Heap.rem P x) S'.
 
+(** Smart constructor for building a new object with the default 
+    behavior of the get method, and the extensible property to true. *)
+
+Definition object_new vproto sclass :=
+  object_create vproto sclass true builtin_spec_op_object_get Heap.empty.
+
 
 (**************************************************************)
 (** ** Smart constructors for property descriptors *)
@@ -1264,6 +1270,8 @@ Definition object_get_own_property_default S l x An :=
 
 (* TODO: double check this definition *)
 
+(*---start todo---*)
+
 Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_descriptor -> Prop :=
   | object_get_own_property_not_string : forall S l x An sclass,
       object_class S l sclass ->
@@ -1291,6 +1299,7 @@ Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_des
       )) ->
       object_get_own_property S l x An'.
 
+(*---end todo---*)
 
 (**************************************************************)
 (** ** Auxiliary definition used in the reduction of [get] *)
@@ -1313,6 +1322,8 @@ Inductive object_get_property : state -> value -> prop_name -> prop_descriptor -
       object_proto S l lproto ->
       object_get_property S lproto x An ->
       object_get_property S l x An.
+
+(*---start todo---*)
 
 (* TODO: add comment / fix def *)
 
@@ -1337,6 +1348,7 @@ Inductive object_all_enumerable_properties : state -> value -> set prop_name -> 
          )) in
        object_all_enumerable_properties S l enumerable_props.
 
+(*---end todo---*)
 
 (**************************************************************)
 (** ** Auxiliary definition used by object initializers *)
