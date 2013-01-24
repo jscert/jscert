@@ -187,6 +187,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
 (*---start todo---*)
 
+  (* TODO: handle break and continue in while loops *)
+
   | red_stat_while : forall S C labs e1 t2 o o1,
       (* TODO: handle labels in while loops *)
       red_stat S C (spec_expr_get_value_conv_stat e1 spec_to_boolean (stat_while_1 e1 t2)) o ->
@@ -203,7 +205,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_while_2 : forall S0 S C labs e1 t2 re o,
       red_stat S C (stat_while labs e1 t2) o ->
       red_stat S0 C (stat_while_2 e1 t2 (out_ter S re)) o
-    (* TODO: handle break and continue in while loops *)
   
 (*---end todo---*)
 
@@ -396,14 +397,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Object initializer *)
   
-  | red_expr_object : forall S C o pds, 
-      red_expr S C (spec_new_object (fun l => expr_object_1 l pds)) o ->
+  | red_expr_object : forall S C pds o1 o, 
+      red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
+      red_expr S C (expr_object_1 o1 pds) o ->
       red_expr S C (expr_object pds) o
-              
-  | red_expr_object_1_nil : forall S C l, 
+ 
+  | red_expr_object_0 : forall S0 S C l pds o, 
+      red_expr S C (expr_object_1 l pds) o ->
+      red_expr S0 C (expr_object_0 (out_ter S l) pds) o ->
+          
+  | red_expr_object_1_nil : forall S S C l, 
       red_expr S C (expr_object_1 l nil) (out_ter S l)
   
-  | red_expr_object_1_cons : forall S C x l pn pb pds o, 
+  | red_expr_object_1_cons : forall S0 S C x l pn pb pds o, 
       x = string_of_propname pn ->
       red_expr S C (expr_object_2 l x pb pds) o ->
       red_expr S C (expr_object_1 l ((pn,pb)::pds)) o
@@ -480,7 +486,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      red_expr S0 C (expr_access_4 v1 (out_ter S x)) (out_ter S r)
 
 
-(*---begin to clean ---*)
+(*---start todo---*)
 
   (** New *)
 
@@ -527,9 +533,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       l = obj_of_value v l0 ->
       red_expr S0 C (expr_new_3 l0 (out_ter S1 r)) (out_ter S1 l)*)
 
-
   (** Call 11.2.3 *)
-
 
   | red_expr_call : forall S0 C e1 e2s o1 o2,
       red_expr S0 C e1 o1 ->
@@ -617,7 +621,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_function_named_3 : forall S0 S C l,
       red_expr S0 C (expr_function_3 l (out_ter_void S)) (out_ter S l) 
 
-(*---end to clean ---*)
+(*---end todo---*)
 
   (** Unary op : pre/post incr/decr *)
 
@@ -1865,8 +1869,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_has_instance_1 proto (out_ter S (value_object lo))) o ->
       red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) o
   
-   
-
+  
   (* Auxiliary reductions form Binding instantiation *)
   
   (* Create bindings for formal parameters Step 4d. *)
@@ -2130,6 +2133,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 str l) l o1) o ->
 *)
 
+
+  (** Shortcut: creates a new function object in the given execution context *)
+  (* Daniele: [spec_creating_function_object] requires the function body as
+     a string as the 2nd argument, but we don't have it. *)
+  | red_spec_create_new_function_in : forall S C args bd o,
+      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
+      red_expr S C (spec_create_new_function_in C args bd) o
+
+
+     
+
+
+
 (*---end todo---*)
 
 
@@ -2240,7 +2256,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
  
   | red_spec_call_object_new_1_null_or_undef : forall S C v O l S',
       (v = null \/ v = undef) ->
-      O = object_new builtin_object_proto "Object" true ->
+      O = object_new builtin_object_proto "Object" ->
       (l, S') = object_alloc S O ->
       red_expr S C (spec_call_object_new_1 v) (out_ter S' l)
 
@@ -2372,25 +2388,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_call_bool_proto_to_string_1 (out_ter S b)) (out_ter S s)
 
   (** Boolean.prototype.valueOf() (returns bool)  (15.6.4.3) *)
-  (*  TODO: Remark: an alternative would be to define a predicate
-      [viewable_as_bool S v b] and its negation [forall b, ~ viewable S v b]. *)
 
   | red_spec_call_bool_proto_value_of : forall S C v o args, 
       v = execution_ctx_this_binding C ->
       red_expr S C (spec_call_bool_proto_value_of_1 v) o ->
       red_expr S C (spec_call_builtin builtin_bool_proto_value_of args) o
 
-  | red_spec_call_bool_proto_value_of_1_bool : forall S C b, 
-      red_expr S C (spec_call_bool_proto_value_of_1 b) (out_ter S b)
+  | red_spec_call_bool_proto_value_of_1_bool : forall S C v b,
+      value_viewable_as_prim "Boolean" S v b ->
+      red_expr S C (spec_call_bool_proto_value_of_1 v) (out_ter S b)
 
-  | red_spec_call_bool_proto_value_of_1_object_bool : forall S C l b s o o1,
-      object_class S l "Boolean" ->
-      object_prim_value S l b ->
-      red_expr S C (spec_call_bool_proto_value_of_1 l) (out_ter S b)
-
-   | red_spec_call_bool_proto_value_of_1_error : forall S C b v o,
-      type_of v <> type_bool ->
-      (forall l, v = l -> exists s, object_class S l s /\ s <> "Boolean") ->
+   | red_spec_call_bool_proto_value_of_1_not_bool : forall S C v o,
+      (forall b, ~ value_viewable_as_prim "Boolean" S v b) ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (spec_call_bool_proto_value_of_1 v) o
 
@@ -2432,64 +2441,41 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Number prototype builtin functions *)
 
-(*---start todo---*)
+  (* Number.prototype.toString() : LATER (see bottom of this file) *)
 
-  (* 15.7.4.4: Number.prototype.valueOf() *)
+  (* Number.prototype.valueOf() (returns number)  (15.7.4.4) *)
 
-  (* it throws a TypeError exception if its this value is not a Number or a Number object. *)
-  | red_spec_call_number_proto_value_of_not_number : forall S C v o args, 
-      arguments_from args nil  ->
+  | red_spec_call_number_proto_value_of : forall S C o v args, 
       v = execution_ctx_this_binding C ->
-      not (type_of v = type_number) -> (* ? *)
-      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (spec_call_number_proto_value_of_1 v) o ->
       red_expr S C (spec_call_builtin builtin_number_proto_value_of args) o
 
-  (* Otherwise it returns the Number value itself *)
-  | red_spec_call_number_proto_value_of_number : forall S C v args, 
-      arguments_from args nil  ->
-      v = execution_ctx_this_binding C ->
-      type_of v = type_number ->
-      red_expr S C (spec_call_builtin builtin_number_proto_value_of args) (out_ter S v)
+  | red_spec_call_number_proto_value_of_1_number : forall S C v n,
+      value_viewable_as_prim "Number" S v n ->
+      red_expr S C (spec_call_number_proto_value_of_1 v) (out_ter S n)
 
+   | red_spec_call_number_proto_value_of_1_not_number : forall S C v o,
+      (forall n, ~ value_viewable_as_prim "Number" S v n) ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (spec_call_number_proto_value_of_1 v) o
 
-  (** Throw Type Error Function Object Initialisation *)           
+  (*------------------------------------------------------------*)
+  (** ** Error builtin functions *)
   
-  (* Could we have this not a a reduction, but as simple function in JsInit? *)
-  | red_(spec_error builtin_type_error) : forall O O1 code O2 S' A o1 S C o,
-      O = object_new builtin_function_proto "Function" ->
-      O1 = object_with_invokation O None (Some builtin_spec_op_function_call) None ->
-      (* TODO : Is this ok? TODO: make it compile*)
-      (* code = funcbody_intro (prog_stat (stat_throw (expr_new (expr_identifier "TypeError") nil))) "throw TypeError()" -> 
-      *)
-      O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
-      S' = object_write S builtin_function_throw_type_error O2 ->
-      A = prop_attributes_create_data JsNumber.zero false false false ->
-      red_expr S' C (spec_object_define_own_prop builtin_function_throw_type_error "length" A false) o1 ->
-      red_expr S C ((spec_error builtin_type_error)_1 o1) o ->
-      red_expr S C (spec_error builtin_type_error) o
-  
-  | red_(spec_error builtin_type_error)_1 : forall O S' S0 S C v o,
-      object_binds S builtin_function_throw_type_error O ->
-      S' = object_write S builtin_function_throw_type_error (object_set_extensible_false O) ->
-      red_expr S0 C ((spec_error builtin_type_error)_1 (out_ter S v)) (out_ter_void S')
+  (* TODO: spec_error *)
 
-  (** Auxiliary: creates a new object, then pass its address [l] 
-      to a continuation [K]. Used for Object Initialiser expression. *)
-  | red_spec_new_object : forall S C o o1 K, 
-      red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
-      red_expr S C (spec_new_object_1 o1 K) o ->
-      red_expr S C (spec_new_object K) o
+  (* TODO: call error new *)
 
-  | red_spec_new_object_1 : forall S S0 C l K o, 
-      red_expr S C (K l) o ->
-      red_expr S C (spec_new_object_1 (out_ter S0 l) K) o
+  (* TODO: call error call *)
+
+  (*------------------------------------------------------------*)
+  (** ** Error prototype builtin functions *)
   
-  (** Shortcut: creates a new function object in the given execution context *)
-  (* Daniele: [spec_creating_function_object] requires the function body as
-     a string as the 2nd argument, but we don't have it. *)
-  | red_spec_create_new_function_in : forall S C args bd o,
-      red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
-      red_expr S C (spec_create_new_function_in C args bd) o
+  (** Error.prototype.toString()  (15.11.4.4)  : LATER *)
+
+  (** Error.prototype.valueOf()  : TODO: it's not in the spec! *)
+
+  
 .
 
 
@@ -2569,6 +2555,31 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       not (k < 2 /\ k > 36) -> 
       red_expr S C (spec_to_string v) o -> (* This should be something different *)
       red_expr S C (spec_call_number_proto_to_string_2 v (out_ter S' vr)) o
+
+
+
+  (** Throw Type Error Function Object Initialisation *)           
+  
+  (* Could we have this not a a reduction, but as simple function in JsInit? *)
+  | red_spec_error_type_error : forall O O1 code O2 S' A o1 S C o,
+      O = object_new builtin_function_proto "Function" ->
+      O1 = object_with_invokation O None (Some builtin_spec_op_function_call) None ->
+      (* TODO : Is this ok? TODO: make it compile*)
+      (* code = funcbody_intro (prog_stat (stat_throw (expr_new (expr_identifier "TypeError") nil))) "throw TypeError()" -> 
+      *)
+      O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
+      S' = object_write S builtin_function_throw_type_error O2 ->
+      A = prop_attributes_create_data JsNumber.zero false false false ->
+      red_expr S' C (spec_object_define_own_prop builtin_function_throw_type_error "length" A false) o1 ->
+      red_expr S C (spec_error builtin_type_error_1 o1) o ->
+      red_expr S C (spec_error builtin_type_error) o
+  
+  | red_spec_error_type_error_1 : forall O S' S0 S C v o,
+      object_binds S builtin_function_throw_type_error O ->
+      S' = object_write S builtin_function_throw_type_error (object_set_extensible_false O) ->
+      red_expr S0 C (spec_error builtin_type_error_1 (out_ter S v)) (out_ter_void S')
+
+
 
 ------*)
 

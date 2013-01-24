@@ -68,7 +68,7 @@ Definition funcbody_is_strict fb :=
 (**************************************************************)
 (** ** Auxiliary functions on values and types *)
 
-(** Convert a literal into a primitive *)
+(** Convert a literal into a primitive -- TODO: add section number *)
 
 Definition convert_literal_to_prim (i:literal) :=
   match i with
@@ -83,7 +83,7 @@ Definition convert_literal_to_prim (i:literal) :=
 Definition convert_literal_to_value (i:literal) :=
   value_prim (convert_literal_to_prim i).
 
-(** Specification method that returns the type of a primitive *)
+(** Specification method that returns the type of a primitive (8) *)
 
 Definition type_of_prim w :=
    match w with
@@ -94,7 +94,7 @@ Definition type_of_prim w :=
    | prim_string _ => type_string
    end.
 
-(** Specification method that returns the type of a value *)
+(** Specification method that returns the type of a value (8) *)
 
 Definition type_of v :=
   match v with
@@ -102,7 +102,9 @@ Definition type_of v :=
   | value_object _ => type_object
   end.
 
-(** Definition of the "SameValue" algorithm -- TODO: does not seem to be used *)
+(** Definition of the "SameValue" algorithm 
+    -- TODO: this is not used because samevalue matches
+    logical equality. *)
 
 Definition value_same v1 v2 :=
   let T1 := type_of v1 in
@@ -500,7 +502,7 @@ Definition prop_attributes_convert_to_accessor A := {|
 
 
 (**************************************************************)
-(** ** Classification of property descriptors *)
+(** ** Classification of property descriptors (8.10) *)
 
 (** Characterization of data descriptors *)
 
@@ -584,7 +586,7 @@ Definition prop_attributes_fully_populated An :=
 
 
 (**************************************************************)
-(** ** Auxiliary functions on references *)
+(** ** Auxiliary functions on references (8.7) *)
 
 (** The helper function [ref_kind_of] returns values given
     by the grammar [ref_kind]. This helper functions serves
@@ -696,7 +698,7 @@ Definition mutability_is_mutable mu :=
 
 
 (**************************************************************)
-(** ** Operations on environment records *)
+(** ** Operations on environment records (10.2) *)
 
 (** Update the state by updating the environment record heap *)
 
@@ -750,7 +752,7 @@ Definition env_record_object_default l :=
 
 
 (**************************************************************)
-(** ** Operations on declarative environments *)
+(** ** Operations on declarative environments (10.2) *)
 
 (** The empty declarative environment *)
 
@@ -795,7 +797,7 @@ Definition env_record_write_decl_env S L x mu v :=
 
 
 (**************************************************************)
-(** ** Operations on lexical environment *)
+(** ** Operations on lexical environments (10.2) *)
 
 (** [lexical_env_alloc S lex E] returns a pair [(lex',S')]
     made of lexical environment [le'] that extends the
@@ -829,7 +831,7 @@ Definition lexical_env_alloc_object S lex l pt :=
 
 
 (**************************************************************)
-(** ** Operations on execution contexts *)
+(** ** Operations on execution contexts (10.3) *)
 
 (** A smart constructor for execution contexts whose variable
     context is identical to their lexical context. *)
@@ -902,7 +904,7 @@ Definition throw_irrelevant : strictness_flag := false.
 
 
 (**************************************************************)
-(** ** Auxiliary definitions used for type conversions *)
+(** ** Auxiliary definitions used for type conversions (9) *)
 
 (** Converts a number to a boolean *)
 
@@ -927,13 +929,15 @@ Definition convert_prim_to_boolean w :=
   | prim_string s => convert_string_to_bool s
   end.
 
+(** Convert a value to a boolean (9.2) *)
+
 Definition convert_value_to_boolean v :=
   match v with
   | value_prim p => convert_prim_to_boolean p
   | value_object _ => true
   end.
 
-(** Convert primitive to number *)
+(** Convert primitive to number (9.3) *)
 
 Definition convert_prim_to_number w :=
   match w with
@@ -955,7 +959,7 @@ Definition convert_number_to_integer n :=
   else
     JsNumber.mult (JsNumber.sign n) (JsNumber.floor (JsNumber.absolute n)).
 
-(** Convert primitive to integer *)
+(** Convert primitive to integer (9.4) *)
 
 Definition convert_primitive_to_integer w :=
   convert_number_to_integer (convert_prim_to_number w).
@@ -965,7 +969,7 @@ Definition convert_primitive_to_integer w :=
 Definition convert_bool_to_string b :=
   if b then "true" else "false".
 
-(** Convert primitive to string *)
+(** Convert primitive to string (9.8) *)
 
 Definition convert_prim_to_string w :=
   match w with
@@ -976,23 +980,13 @@ Definition convert_prim_to_string w :=
   | prim_string s => s
   end.
 
-(** Characterize primitive values that can be converted in objects *)
-
-Definition prim_convertible_to_object w :=
-  match w with
-  | prim_undef => False
-  | prim_null => False
-  | prim_bool b => True
-  | prim_number n => True
-  | prim_string s => True
-  end.
-
 
 (**************************************************************)
 (** ** Auxiliary functions for comparisons *)
 
 (** Abstract equality comparison for values of the same type.
-    (the code assumes [v1] and [v2] to both have type [T].) *)
+    (the code assumes [v1] and [v2] to both have type [T].) 
+    (11.9.3) *)
 
 Definition equality_test_for_same_type T v1 v2 :=
   match T with
@@ -1013,7 +1007,7 @@ Definition equality_test_for_same_type T v1 v2 :=
   | type_object => decide (v1 = v2)
   end.
 
-(** Strict equality comparison *)
+(** Strict equality comparison (11.9.6) *)
 
 Definition strict_equality_test v1 v2 :=
   let T1 := type_of v1 in
@@ -1047,7 +1041,7 @@ Fixpoint inequality_test_string s1 s2 : bool :=
        else decide (int_of_char c1 < int_of_char c2)
   end.
 
-(** Inequality comparison *)
+(** Inequality comparison (11.8.5) *)
 
 Definition inequality_test_primitive w1 w2 : prim :=
   match w1, w2 with
@@ -1183,7 +1177,7 @@ Definition callable S v Bo :=
   end.
 
 (** [is_callable S v] asserts that the object [v] is a location
-    describing an object with a Call method. *)
+    describing an object with a Call method. (9.11) *)
 
 Definition is_callable S v :=
   exists B, callable S v (Some B).
@@ -1209,7 +1203,7 @@ Definition typeof_prim w :=
   | prim_string s => "string"
   end.
 
-(** [typeof] for a value *)
+(** [typeof] for a value (11.4.3) *)
 
 Definition typeof_value S v :=
   match v with
@@ -1217,9 +1211,26 @@ Definition typeof_value S v :=
   | value_object l => If is_callable S l then "function" else "object"
   end.
 
+(**************************************************************)
+(** ** Auxiliary definitions for reduction of [valueOf] for primitive  *)
+
+(** [value_viewable_as_prim s S v w] is a generic definition that is
+    used to implement [value_viewable_as_bool] and 
+    [value_viewable_as_number], where [s] is the classname,
+    [S] is the state, [v] the value and [w] the primitive value. 
+    (See 15.6.4.3 and 15.7.4.4) *)
+
+Inductive value_viewable_as : string -> state -> value -> prim -> Prop :=
+  | value_viewable_as_prim : forall s S w,
+      value_viewable_as s S w w
+  | value_viewable_as_object : forall s S l w,
+      object_class S l s ->
+      object_prim_value S l w ->
+      value_viewable_as s S l w.
+
 
 (**************************************************************)
-(** ** Auxiliary definition used in the reduction of [get_own_property] *)
+(** ** Auxiliary definition used in the reduction of [get_own_property] (8.12.1) *)
 
 (** [object_get_own_property_builder A] is an auxiliary definition
     used by [object_get_own_property_impl os  l x An]. *)
@@ -1302,7 +1313,7 @@ Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_des
 (*---end todo---*)
 
 (**************************************************************)
-(** ** Auxiliary definition used in the reduction of [get] *)
+(** ** Auxiliary definition used in the reduction of [get] (8.12.2) *)
 
 (** [object_get_property S l x An] asserts that, in the state [S],
     a call to [get] on the object location [l] and the property name [x]
@@ -1323,6 +1334,8 @@ Inductive object_get_property : state -> value -> prop_name -> prop_descriptor -
       object_get_property S lproto x An ->
       object_get_property S l x An.
 
+
+(**************************************************************)
 (*---start todo---*)
 
 (* TODO: add comment / fix def *)
@@ -1351,7 +1364,7 @@ Inductive object_all_enumerable_properties : state -> value -> set prop_name -> 
 (*---end todo---*)
 
 (**************************************************************)
-(** ** Auxiliary definition used by object initializers *)
+(** ** Auxiliary definition used by object initializers (11.1.5) *)
 
 Definition string_of_propname (pn : propname) : prop_name :=
   match pn with 

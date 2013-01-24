@@ -263,6 +263,16 @@ Definition object_builtin_bool_proto :=
 
 
 (**************************************************************)
+(** Error object *)
+
+(* TODO *)
+
+(**************************************************************)
+(** Error prototype object *)
+
+(* TODO *)
+
+(**************************************************************)
 (** Initial object heap *)
 
 Definition object_heap_initial :=

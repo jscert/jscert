@@ -59,17 +59,15 @@ Inductive ext_expr :=
 
   (** Extended expressions associated with primitive expressions *)
 
-  (*| expr_object_1 : object_loc -> list string -> list value -> ext_expr (* All the expressions of the object have been evaluated. *)*) (* old *)
- 
-  (* TODO : check *)
-  | expr_object_1 : object_loc -> list (propname * propbody) -> ext_expr
-  | expr_object_2 : object_loc -> string -> propbody -> list (propname * propbody) -> ext_expr (* TODO: check the type! *)
-  | expr_object_3 : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
-  | expr_object_3_val : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
-  | expr_object_3_get : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
-  | expr_object_3_set : object_loc -> string -> out -> list (propname * propbody) -> ext_expr
-  | expr_object_4 : object_loc -> string -> prop_attributes -> list (propname * propbody) -> ext_expr
-  | expr_object_5 : object_loc -> list (propname * propbody) -> out -> ext_expr
+  | expr_object_0 : out -> propdefs -> ext_expr
+  | expr_object_1 : object_loc -> propdefs -> ext_expr
+  | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr (* TODO: check the type! *)
+  | expr_object_3 : object_loc -> string -> out -> propdefs -> ext_expr
+  | expr_object_3_val : object_loc -> string -> out -> propdefs -> ext_expr
+  | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
+  | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
+  | expr_object_4 : object_loc -> string -> prop_attributes -> propdefs -> ext_expr
+  | expr_object_5 : object_loc -> propdefs -> out -> ext_expr
   
   | expr_function_1 : string -> list string -> funcbody -> env_loc -> lexical_env -> out -> ext_expr
   | expr_function_2 : string -> env_loc -> out -> ext_expr
@@ -356,6 +354,7 @@ Inductive ext_expr :=
   | spec_call_number_proto_to_string_1 : value -> list value -> ext_expr
   | spec_call_number_proto_to_string_2 : value -> out -> ext_expr
   | spec_call_number_new_1 : out -> ext_expr
+  | spec_call_number_proto_value_of_1 : value -> ext_expr
 
   (** Special state for returning an outcome *)   
 

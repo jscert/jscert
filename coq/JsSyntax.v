@@ -154,6 +154,10 @@ with element :=
   | element_stat : stat -> element
   | element_func_decl : string -> list string -> funcbody -> element.
 
+(** Short names for lists *)
+
+Definition propdefs := list (propname * propbody).
+
 Definition elements := list element.
 
 (** Coercions for grammars *)
