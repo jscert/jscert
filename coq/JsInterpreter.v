@@ -1212,24 +1212,20 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
 
     | expr_assign e1 opo e2 =>
       if_success (run_expr' S C e1) (fun S1 re1 =>
-        match re1 with
-        | ret_or_empty_empty => result_stuck
-        | ret_or_empty_ret re =>
-          let follow S re' :=
-            match re' with
-            | ret_or_empty_ret (ret_value v) =>
-              if_success (ref_put_value run_call' S C re v) (fun S' re2 =>
-               out_ter S' v)
-            | _ => result_stuck
-            end in
-          match opo with
-          | None =>
-            if_success_value (run_expr' S1 C e2) follow
-          | Some op =>
-            if_success_value (out_ter S1 re) (fun S2 v1 =>
-              if_success_value (run_expr' S2 C e2) (fun S3 v2 =>
-                if_success (run_binary_op run_call' S3 C op v1 v2) follow))
-          end
+        let follow S re' :=
+          match re' with
+          | ret_or_empty_ret (ret_value v) =>
+            if_success (ref_put_value run_call' S C re v) (fun S' re2 =>
+             out_ter S' v)
+          | _ => result_stuck
+          end in
+        match opo with
+        | None =>
+          if_success_value (run_expr' S1 C e2) follow
+        | Some op =>
+          if_success_value (out_ter S1 re) (fun S2 v1 =>
+            if_success_value (run_expr' S2 C e2) (fun S3 v2 =>
+              if_success (run_binary_op run_call' S3 C op v1 v2) follow))
         end)
 
     | expr_function None args bd =>
