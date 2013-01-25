@@ -14,13 +14,21 @@ Implicit Type R : res.
 
 (** Builds an object with all optional fields to None *)
 
-Definition object_create vproto sclass bextens builtinget P :=
+Definition object_create vproto sclass bextens P :=
   {| object_proto_ := vproto;
      object_class_ := sclass;
      object_extensible_ := bextens;
-     object_get_ := builtinget;
      object_properties_ := P;
      object_prim_value_ := None;
+     object_get_ := builtin_default_get;
+     object_get_own_property_ := builtin_default_get_own_property;
+     object_get_property_ := builtin_default_get_property;
+     object_put_ := builtin_default_put;
+     object_can_put_ := builtin_default_can_put;
+     object_has_property_ := builtin_default_has_property;
+     object_delete_ := builtin_default_delete;
+     object_default_value_ := builtin_default_default_value;
+     object_define_own_property_ := builtin_default_define_own_property;
      object_construct_ := None;
      object_call_ := None;
      object_has_instance_ := None;
@@ -36,40 +44,48 @@ Definition object_create vproto sclass bextens builtinget P :=
 
 Definition object_set_extensible_false O :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
-    object_intro x1 x2 false x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
-  end.
-
-(** Modifies the property field of an object. *)
-
-Definition object_with_properties O properties :=
-  match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
-    object_intro x1 x2 x3 x4 properties x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 false x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
   end.
 
 (** Modifies the primitive value field of an object *)
 
 Definition object_with_primitive_value O v :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
-    object_intro x1 x2 x3 x4 x5 (Some v) x7 x8 x9 x10 x11 x12 x13 x14 x15 x16
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 x3 (Some v) x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
+  end.
+
+(** Modifies the property field of an object. *)
+
+Definition object_with_properties O properties :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 x3 x4 properties x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
+  end.
+
+(** Modifies the non-optional operations on an object *)
+
+Definition object_with_operations O g go gp p cp hp d dv do :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 x3 x4 x5 g go gp p cp hp d dv do x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
   end.
 
 (** Modifies the construct, call and has_instance fields of an object *)
 
 Definition object_with_invokation O constr call has_instance :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
-    object_intro x1 x2 x3 x4 x5 x6 constr call has_instance x10 x11 x12 x13 x14 x15 x16
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 constr call has_instance x18 x19 x20 x21 x22 x23 x24
   end.
 
 (** Modifies the other parameters of an object *)
 
 Definition object_with_details O scope params code target boundthis boundargs paramsmap :=
   match O with
-  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 =>
-    object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 scope params code target boundthis boundargs paramsmap
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 scope params code target boundthis boundargs paramsmap 
   end.
 
 (** Projection functions for [funcbody] *)
@@ -304,7 +320,7 @@ Qed.
 
 Global Instance object_inhab : Inhab object.
 Proof.
-  apply (prove_Inhab (object_create arbitrary arbitrary arbitrary arbitrary arbitrary)).
+  apply (prove_Inhab (object_create arbitrary arbitrary arbitrary arbitrary)).
 Qed.
 
 

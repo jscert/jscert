@@ -19,6 +19,7 @@ Implicit Type T : type.
 Implicit Type rt : restype.
 Implicit Type rv : resvalue.
 Implicit Type lab : label.
+Implicit Type labs : label_set.
 Implicit Type R : res.
 Implicit Type o : out.
 
@@ -56,6 +57,17 @@ Definition res_overwrite_value_if_empty rv R :=
 Inductive resvalue_is_ref : resvalue -> Prop :=
   | resvalue_is_ref_intro : forall r,
       resvalue_is_ref (resvalue_ref r).
+
+(** Asserts that a result contains a label that belongs to a set *)
+
+(* TODO: use \in to make this work *)
+Parameter set_in : label -> label_set -> Prop.
+
+Definition res_label_in R labs :=
+  match res_label R with
+  | None => True
+  | Some lab => set_in lab labs
+  end.
 
 
 (**************************************************************)
@@ -285,13 +297,6 @@ Definition object_class S l s :=
 
 Definition object_extensible S l b :=
   exists O, object_binds S l O /\ object_extensible_ O = b.
-  
-(** [object_get S l B] asserts that the
-    [[get]] method for the object stored at address [l] 
-    is described by specification function with identifier [B]. *)
-
-Definition object_get S l B :=
-  exists O, object_binds S l O /\ object_get_ O = B.  
 
 (** [object_prim_value S l v] asserts that the primitive value
     field of the object stored at address [l] in [S] contains the
@@ -299,6 +304,19 @@ Definition object_get S l B :=
 
 Definition object_prim_value S l v :=
   exists O, object_binds S l O /\ object_prim_value_ O = Some v.
+
+(** [object_get S l B] asserts that the
+    [[get]] method for the object stored at address [l] 
+    is described by specification function with identifier [B]. *)
+(* TODO: remove this def and use the general case below *)
+
+Definition object_get S l B :=
+  exists O, object_binds S l O /\ object_get_ O = B.  
+
+(** Generalization of the above -- TODO *)
+
+Definition object_method Proj S l B :=
+  exists O, object_binds S l O /\ Proj O = B.
 
 (** [object_call S l fco] asserts that the "primitive value"
     field of the object stored at address [l] in [S] contains
@@ -402,7 +420,7 @@ Definition object_rem_property S l x S' :=
     behavior of the get method, and the extensible property to true. *)
 
 Definition object_new vproto sclass :=
-  object_create vproto sclass true builtin_spec_op_object_get Heap.empty.
+  object_create vproto sclass true Heap.empty.
 
 
 (**************************************************************)
@@ -1283,6 +1301,8 @@ Definition object_get_own_property_default S l x An :=
 
 (*---start todo---*)
 
+(* TODO: change defs from JsPreliminary into reductions *)
+
 Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_descriptor -> Prop :=
   | object_get_own_property_not_string : forall S l x An sclass,
       object_class S l sclass ->
@@ -1320,6 +1340,8 @@ Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_des
     returns the property descriptor [An]. Note that [l] is actually
     of type [value] because it may be null. Note also that the result
     [An] may be undefined. *)
+
+(* TODO: change defs from JsPreliminary into reductions *)
 
 Inductive object_get_property : state -> value -> prop_name -> prop_descriptor -> Prop :=
   | object_get_prop_null : forall S x,

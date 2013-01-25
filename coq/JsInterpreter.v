@@ -455,7 +455,7 @@ Definition constructor_builtin S (builtinid : builtin) (vs : list value) : resul
 
   | builtin_object_new =>
     let nil_case _ :=
-      let O := object_create builtin_object_proto "Object" true builtin_spec_op_object_get Heap.empty in
+      let O := object_create builtin_object_proto "Object" true Heap.empty in
       let (l, S') := object_alloc S O in
       out_ter S' l in
     match vs with
@@ -713,7 +713,7 @@ Definition creating_function_object_proto S l (K : state -> result) : result :=
         K S3))).
 
 Definition creating_function_object S (names : list string) (bd : funcbody) X (strict : strictness_flag) : result :=
-  let O := object_create builtin_function_proto "Function" true builtin_spec_op_function_get Heap.empty in
+  let O := object_create builtin_function_proto "Function" true Heap.empty in
   let O1 := object_with_invokation O
     (Some builtin_spec_op_function_constructor)
     (Some builtin_spec_op_function_call)

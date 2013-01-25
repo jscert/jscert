@@ -384,9 +384,10 @@ with ext_stat :=
 
   | stat_if_1 : value -> stat -> option stat -> ext_stat
 
-  (* TODO: arthur suggests changing the order of the arguments so that expr and stat are always the last two arguments *)
-  | stat_while_1 : expr -> stat -> value -> ext_stat (* The condition have been executed. *)
-  | stat_while_2 : expr -> stat -> out -> ext_stat (* The condition have been executed and converted to a boolean. *)
+  | stat_while_1 : label_set -> expr -> stat -> resvalue -> ext_stat 
+  | stat_while_2 : label_set -> expr -> stat -> resvalue -> value -> ext_stat 
+  | stat_while_3 : label_set -> expr -> stat -> resvalue -> out -> ext_stat 
+  | stat_while_4 : label_set -> expr -> stat -> resvalue -> res -> ext_stat 
 
 (* LATER
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
@@ -562,7 +563,15 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_block_2 rv (out_ter S R) ts)
   | abort_intercepted_stat_label_1 : forall lab S R,
       res_type R = restype_break ->
-      abort_intercepted_stat (stat_label_1 lab (out_ter S R)) 
+      abort_intercepted_stat (stat_label_1 lab (out_ter S R))
+  | abort_intercepted_do_while_3 : forall labs e1 t2 rv S R,
+      res_label_in R labs ->
+      (res_type R = restype_continue \/ res_type R = restype_break) ->
+      abort_intercepted_stat (stat_do_while_2 labs e1 t2 rv (out_ter S R)) 
+  | abort_intercepted_while_3 : forall labs e1 t2 rv S R,
+      res_label_in R labs ->
+      (res_type R = restype_continue \/ res_type R = restype_break) ->
+      abort_intercepted_stat (stat_while_3 labs e1 t2 rv (out_ter S R)) 
   | abort_intercepted_stat_try_1 : forall S R cb fo,
       res_type R = restype_throw ->
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)

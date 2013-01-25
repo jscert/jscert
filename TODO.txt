@@ -6,7 +6,6 @@
 (*---start todo---*)
 
 
-- while loop
 - object_get
 - define own property
 (* TODO: spec_object_get_using is like spec_object_get except that the this value is different *)

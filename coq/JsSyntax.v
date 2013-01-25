@@ -82,7 +82,7 @@ Definition label_opt := option label.
 
 (** A set of label, possibly including the empty label. *)
 
-Definition label_set := set label_opt.
+Definition label_set := set label.
 
 (** Strictness flag *)
 
@@ -132,6 +132,7 @@ with stat :=
   | stat_block : list stat -> stat
   | stat_var_decl : list (string * option expr) -> stat
   | stat_if : expr -> stat -> option stat -> stat
+  | stat_do_while : label_set -> stat -> expr -> stat
   | stat_while : label_set -> expr -> stat -> stat
   | stat_with : expr -> stat -> stat
   | stat_throw : expr -> stat
@@ -178,6 +179,16 @@ Inductive math_op :=
 (** Identifiers for builtin functions and objects *)
 
 Inductive builtin :=
+  
+  | builtin_default_get
+  | builtin_default_get_own_property
+  | builtin_default_get_property
+  | builtin_default_put
+  | builtin_default_can_put
+  | builtin_default_has_property
+  | builtin_default_delete
+  | builtin_default_default_value
+  | builtin_default_define_own_property
 
   | builtin_error
   | builtin_range_error
@@ -193,7 +204,8 @@ Inductive builtin :=
   *)
   | builtin_global_is_nan
   | builtin_global_is_finite
-  
+
+  (* for objects of class Object *)
   | builtin_object
   | builtin_object_new
   | builtin_object_call
@@ -456,9 +468,17 @@ Record object := object_intro {
    object_proto_ : value;
    object_class_ : class_name;
    object_extensible_ : bool;
-   object_get_ : builtin;
-   object_properties_ : object_properties_type;
    object_prim_value_ : option value;
+   object_properties_ : object_properties_type;
+   object_get_ : builtin;
+   object_get_own_property_ : builtin;
+   object_get_property_ : builtin;
+   object_put_ : builtin;
+   object_can_put_ : builtin;
+   object_has_property_ : builtin;
+   object_delete_ : builtin;
+   object_default_value_ : builtin;
+   object_define_own_property_ : builtin;
    object_construct_ : option builtin;
    object_call_ : option builtin;
    object_has_instance_ : option builtin;
