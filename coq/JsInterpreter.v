@@ -168,6 +168,17 @@ Definition if_success_or_return (o : result) (K1 : state -> resvalue -> result) 
   | _ => o
   end.
 
+Definition if_success_or_break (o : result) (K1 : state -> resvalue -> result) (K2 : state -> res -> result) : result :=
+  match o with
+  | out_ter S0 re =>
+    match res_type re with
+    | restype_normal => K1 S0 (res_value re)
+    | restype_break => K2 S0 re
+    | _ => o
+    end
+  | _ => o
+  end.
+
 Definition if_value (o : result) (K : state -> value -> result) : result :=
   if_success o (fun S re =>
     match re with
@@ -1314,6 +1325,7 @@ with run_stat (max_step : nat) S C t : result :=
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
+    let run_block' := run_block max_step' in
     match t with
 
     | stat_expr e =>
@@ -1336,14 +1348,7 @@ with run_stat (max_step : nat) S C t : result :=
         end) S xeos
 
     | stat_block ts =>
-      arbitrary (* TODO
-      if_success (run_stat' S C t1) (fun S1 re1 =>
-        if_success (run_stat' S1 C t2) (fun S2 re2 =>
-          out_ter S2
-            match re2 with
-            | ret_empty => re1
-            | _ => re2
-            end)) *)
+      run_block' S C resvalue_empty ts
 
     | stat_label l t =>
       arbitrary (* TODO *)
@@ -1372,11 +1377,18 @@ with run_stat (max_step : nat) S C t : result :=
             out_ter S undef
           end)
 
-    | stat_while ls (* TODO:  Deal with those labels *) e1 t2 =>
+    | stat_do_while ls t1 e2 =>
+      arbitrary (* TODO *)
+
+    | stat_while ls e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
         if (convert_value_to_boolean v1) then
-          if_success (run_stat' S1 C t2) (fun S2 re2 =>
-            run_stat' S2 C (stat_while ls e1 t2))
+          if_success_or_break (run_stat' S1 C t2) (fun S2 re2 =>
+            run_stat' S2 C (stat_while ls e1 t2)) (fun S2 re2 =>
+              ifb res_label_in re2 ls then
+                out_ter S2 arbitrary (* TODO:  Deal with those [rv]. *)
+              else out_ter S2 (res_throw arbitrary (* Idem. *))
+            )
         else
           out_ter S1 undef)
 
@@ -1538,6 +1550,23 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
 
     | _ =>
       arbitrary (* TODO *)
+
+    end
+  end
+
+with run_block (max_step : nat) S C rv ts : result :=
+  match max_step with
+  | O => result_bottom
+  | S max_step' =>
+    let run_block' := run_block max_step' in
+    let run_stat' := run_stat max_step' in
+    match ts with
+    | nil => out_ter S rv
+    | t :: ts' =>
+
+      if_success (run_stat' S C t) (fun S1 rv1 =>
+        run_block' S1 C
+          (ifb rv1 = resvalue_empty then rv else rv1) ts')
 
     end
   end.

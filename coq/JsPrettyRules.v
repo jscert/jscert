@@ -249,7 +249,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S rv)
 
   | red_stat_while_4_not_break : forall S0 S C labs e1 t2 rv R o,
-      ~ (res_type R = restype_break /\ res_label_in R labs) ->
+      ~ (res_type R = restype_break /\ res_label_in R labs) -> (* This means that a [while] would catch [throw] and [return], isn't it?  I think there lacks some rules there. -- Martin *)
       red_stat S C (stat_while_1 labs e1 t2 rv) o ->      
       red_stat S C (stat_while_4 labs e1 t2 rv R) o
 
