@@ -1214,8 +1214,8 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       if_success (run_expr' S C e1) (fun S1 re1 =>
         let follow S re' :=
           match re' with
-          | ret_or_empty_ret (ret_value v) =>
-            if_success (ref_put_value run_call' S C re v) (fun S' re2 =>
+          | resvalue_value v =>
+            if_success (ref_put_value run_call' S C re1 v) (fun S' re2 =>
              out_ter S' v)
           | _ => result_stuck
           end in
@@ -1223,7 +1223,7 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
         | None =>
           if_success_value (run_expr' S1 C e2) follow
         | Some op =>
-          if_success_value (out_ter S1 re) (fun S2 v1 =>
+          if_success_value (out_ter S1 re1) (fun S2 v1 =>
             if_success_value (run_expr' S2 C e2) (fun S3 v2 =>
               if_success (run_binary_op run_call' S3 C op v1 v2) follow))
         end)
@@ -1253,8 +1253,8 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
                   let builtin := extract_from_option (run_object_call S3 l) in
                   run_call' S3 C builtin (Some l) (Some v) args in
                 match re with
-                | ret_value v => follow undef
-                | ret_ref r =>
+                | resvalue_value v => follow undef
+                | resvalue_ref r =>
                   match ref_base r with
                   | ref_base_type_value v =>
                     ifb ref_is_property r then follow v
@@ -1319,13 +1319,10 @@ with run_stat (max_step : nat) S C t : result :=
     | stat_expr e =>
       run_expr' S C e
 
-    | stat_skip =>
-      out_ter S ret_empty
-
     | stat_var_decl xeos =>
       (fix run_var_decl S0 xeos : result :=
         match xeos with
-        | nil => out_ter S0 ret_empty
+        | nil => out_ter S0 res_empty
         | (x, eo) :: xeos' =>
           if_success (match eo with
             | None => out_ter S0 undef
@@ -1338,14 +1335,18 @@ with run_stat (max_step : nat) S C t : result :=
               run_var_decl S1 xeos')
         end) S xeos
 
-    | stat_seq t1 t2 =>
+    | stat_block ts =>
+      arbitrary (* TODO
       if_success (run_stat' S C t1) (fun S1 re1 =>
         if_success (run_stat' S1 C t2) (fun S2 re2 =>
           out_ter S2
             match re2 with
             | ret_empty => re1
             | _ => re2
-            end))
+            end)) *)
+
+    | stat_label l t =>
+      arbitrary (* TODO *)
 
     | stat_with e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
@@ -1371,11 +1372,11 @@ with run_stat (max_step : nat) S C t : result :=
             out_ter S undef
           end)
 
-    | stat_while e1 t2 =>
+    | stat_while ls (* TODO:  Deal with those labels *) e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
         if (convert_value_to_boolean v1) then
           if_success (run_stat' S1 C t2) (fun S2 re2 =>
-            run_stat' S2 C (stat_while e1 t2))
+            run_stat' S2 C (stat_while ls e1 t2))
         else
           out_ter S1 undef)
 
@@ -1433,14 +1434,14 @@ with run_stat (max_step : nat) S C t : result :=
     | stat_continue so =>
       out_ter S (res_continue so)
 
-    | stat_for_in e1 e2 s =>
+    | stat_for_in ls e1 e2 s =>
       arbitrary (* TODO *)
 
-    | stat_for_in_var x e1o e2 s =>
+    | stat_for_in_var ls x e1o e2 s =>
       arbitrary (* TODO *)
 
     | stat_debugger =>
-      out_ter S ret_empty
+      out_ter S res_empty
 
     end
   end
@@ -1451,6 +1452,8 @@ with run_prog (max_step : nat) S C p : result :=
   | S max_step' =>
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
+    arbitrary
+    (* TODO
     match p with
 
     | prog_stat t =>
@@ -1468,7 +1471,7 @@ with run_prog (max_step : nat) S C p : result :=
     | prog_function_decl f lx P =>
       arbitrary (* TODO *)
 
-    end
+    end *)
   end
 
 with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_loc) (vo : option value) (args : list value) : result :=
@@ -1510,7 +1513,7 @@ with run_call (max_step : nat) S C (builtinid : builtin) (lfo : option object_lo
       ifb type_of v <> type_object then
         result_stuck
       else
-        out_ter S (ret_ref (ref_create_value v "prototype" false))
+        out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
     | builtin_object_proto_to_string =>
       let v := execution_ctx_this_binding C in
