@@ -128,30 +128,50 @@ Definition extract_from_option {B : Type} `{Inhab B} (op : option B) :=
 (**************************************************************)
 (** Monadic constructors *)
 
-Definition if_success (o : result) (K : state -> ret_or_empty -> result) : result :=
+Definition if_success (o : result) (K : state -> resvalue -> result) : result :=
   match o with
-  | out_ter S0 (res_normal re) => K S0 re
+  | out_ter S0 re =>
+    match res_type re with
+    | restype_normal => K S0 (res_value re)
+    | _ => o
+    end
   | _ => o
   end.
 
-Definition if_success_or_throw (o : result) (K1 : state -> res -> result) (K2 : state -> value -> result) : result :=
+Definition if_success_or_throw (o : result) (K1 : state -> resvalue -> result) (K2 : state -> value -> result) : result :=
   match o with
-  | out_ter S0 (res_normal re) => K1 S0 re
-  | out_ter S0 (res_throw v) => K2 S0 v
+  | out_ter S0 re =>
+    match res_type re with
+    | restype_normal => K1 S0 (res_value re)
+    | restype_throw =>
+      match res_value re with
+      | resvalue_value v => K2 S0 v
+      | _ => result_stuck
+      end
+    | _ => o
+    end
   | _ => o
   end.
 
-Definition if_success_or_return (o : result) (K1 : state -> res -> result) (K2 : state -> value -> result) : result :=
+Definition if_success_or_return (o : result) (K1 : state -> resvalue -> result) (K2 : state -> value -> result) : result :=
   match o with
-  | out_ter S0 (res_normal re) => K1 S0 re
-  | out_ter S0 (res_return v) => K2 S0 v
+  | out_ter S0 re =>
+    match res_type re with
+    | restype_normal => K1 S0 (res_value re)
+    | restype_return =>
+      match res_value re with
+      | resvalue_value v => K2 S0 v
+      | _ => result_stuck
+      end
+    | _ => o
+    end
   | _ => o
   end.
 
 Definition if_value (o : result) (K : state -> value -> result) : result :=
   if_success o (fun S re =>
     match re with
-    | ret_value v =>
+    | resvalue_value v =>
       K S v
     | _ => result_stuck
     end).
@@ -183,13 +203,6 @@ Definition if_defined_else {B C : Type} (op : option B) (K : B -> C) (K' : unit 
   | None => K' tt
   | Some a => K a
   end.
-
-Definition if_success_ret (o : result) (K : state -> ret -> result) : result :=
-  if_success o (fun S re =>
-    match re with
-    | ret_or_empty_ret re' => K S re'
-    | _ => result_stuck
-    end).
 
 Definition if_object (o : result) (K : state -> object_loc -> result) : result :=
   if_value o (fun S v =>
@@ -561,10 +574,11 @@ Definition run_call_type : Type :=
 
 (**************************************************************)
 
-Definition ref_get_value S (re : ret) : result :=
+Definition ref_get_value S (re : resvalue) : result :=
   match re with
-  | ret_value v => out_ter S v
-  | ret_ref r =>
+  | resvalue_empty => result_stuck
+  | resvalue_value v => out_ter S v
+  | resvalue_ref r =>
     match ref_kind_of r with
     | ref_kind_null | ref_kind_undef => out_ref_error S
     | ref_kind_primitive_base =>
@@ -614,7 +628,7 @@ Definition env_record_set_mutable_binding (call : run_call_type) S C L x v (stri
   | env_record_decl D =>
     let (mu, v_old) := read D x in
     ifb mutability_is_mutable mu then
-      out_void (env_record_write_decl_env S L x mu v)
+      out_ter (env_record_write_decl_env S L x mu v) undef
     else if strict then
       out_type_error S
     else out_ter S prim_undef
