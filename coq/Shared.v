@@ -488,3 +488,23 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   | Some b => f b
   end.
 
+(* TODO: find more explicit name suggesting that a function is extracted *)
+(* I'm not sure to fully understand that comment:  it does not extract as a function.  If I used a function to implement it, it was to avoid it always raise an exception in the extracted OCaml code :) -- Martin. *)
+Definition extract_from_option {B : Type} `{Inhab B} (op : option B) : B :=
+  morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.
+
+
+(**************************************************************)
+(** ** LATER: move to LibList *)
+
+Fixpoint map_nth {A B : Type} (d : B) (f : A -> B) (i : nat) (s : list A) : B :=
+  match i, s with
+  | O, a :: _ => f a
+  | S i', _ :: s' => map_nth d f i' s'
+  | _, _ => d
+  end.
+
+Definition get_nth {A : Type} (d : A) (i : nat) (s : list A) : A :=
+  map_nth (fun _ : unit => d) (fun (x : A) _ => x) i s tt.
+
+
