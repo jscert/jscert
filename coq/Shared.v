@@ -477,3 +477,14 @@ Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
 
 (* todo: implement using lib *)
 Parameter string_concat : string -> string -> string.
+
+
+(**************************************************************)
+(** ** LATER: move to LibOption *)
+
+Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
+  match op with
+  | None => c
+  | Some b => f b
+  end.
+
