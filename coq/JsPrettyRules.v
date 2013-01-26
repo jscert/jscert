@@ -442,16 +442,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Object initializer *)
   
-  | red_expr_object : forall S C pds o1 o, 
+  | red_expr_object : forall S C pds o1 o,
       red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
       red_expr S C (expr_object_1 o1 pds) o ->
       red_expr S C (expr_object pds) o
- 
-  | red_expr_object_0 : forall S0 S C l pds o, 
+
+  | red_expr_object_0 : forall S0 S C l pds o,
       red_expr S C (expr_object_1 l pds) o ->
       red_expr S0 C (expr_object_0 (out_ter S l) pds) o ->
-          
-  | red_expr_object_1_nil : forall S S C l, 
+
+  | red_expr_object_1_nil : forall S S C l,
       red_expr S C (expr_object_1 l nil) (out_ter S l)
   
   | red_expr_object_1_cons : forall S0 S C x l pn pb pds o, 
