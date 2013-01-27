@@ -1336,18 +1336,18 @@ with run_stat (max_step : nat) S C t : result :=
       run_expr' S C e
 
     | stat_var_decl xeos =>
-      (fix run_var_decl S0 xeos : result :=
+      (fix run_var_decl S0 xeos : result := (* TODO:  Remove this fix and put this in an external function. *)
         match xeos with
         | nil => out_ter S0 res_empty
         | (x, eo) :: xeos' =>
-          if_success_state (match eo with
+          if_success (match eo with
             | None => out_ter S0 undef
             | Some e =>
               if_success_value (run_expr' S0 C e) (fun S1 v =>
                 let ir := identifier_res S1 C x in
-                if_success (ref_put_value run_call' S1 C ir v) (fun S2 R =>
+                if_success (ref_put_value run_call' S1 C ir v) (fun S2 rv =>
                   out_ter S2 undef))
-            end) (fun S1 R =>
+            end) (fun S1 rv =>
               run_var_decl S1 xeos')
         end) S xeos
 
@@ -1359,8 +1359,8 @@ with run_stat (max_step : nat) S C t : result :=
 
     | stat_with e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
-        if_success_state (to_object S1 v1) (fun S2 R2 =>
-          match R2 with
+        if_success (* TODO:  if_success_state? *) (to_object S1 v1) (fun S2 rv2 =>
+          match rv2 with
           | value_object l =>
             let lex := execution_ctx_lexical_env C in
             let (lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
@@ -1378,7 +1378,7 @@ with run_stat (max_step : nat) S C t : result :=
           | Some t3 =>
             run_stat' S1 C t3
           | None =>
-            out_ter S undef
+            out_ter S undef (* TODO:  Reread *)
           end)
 
     | stat_do_while ls t1 e2 =>
@@ -1387,14 +1387,14 @@ with run_stat (max_step : nat) S C t : result :=
     | stat_while ls e1 t2 =>
       if_success_value (run_expr' S C e1) (fun S1 v1 =>
         if (convert_value_to_boolean v1) then
-          if_success_or_break (run_stat' S1 C t2) (fun S2 R2 =>
+          if_success_or_break (run_stat' S1 C t2) (fun S2 rv2 =>
             run_stat' S2 C (stat_while ls e1 t2)) (fun S2 R2 =>
               ifb res_label_in R2 ls then
                 out_ter S2 arbitrary (* TODO:  Deal with those [rv]. *)
               else out_ter S2 (res_throw arbitrary (* Idem. *))
             )
         else
-          out_ter S1 undef)
+          out_ter S1 undef (* TODO:  Reread *))
 
     | stat_throw e =>
       if_success_value (run_expr' S C e) (fun S1 v1 =>
@@ -1407,14 +1407,14 @@ with run_stat (max_step : nat) S C t : result :=
         | Some t3 => fun o =>
           match o with
           | out_ter S1 R =>
-            if_success_state (run_stat' S1 C t3) (fun S2 R' =>
-              out_ter S2 R)
+            if_success (* TODO:  _state *) (run_stat' S1 C t3) (fun S2 rv' =>
+              out_ter S2 R (* TODO:  Reread *))
           | _ => o
           end
         end
       in
-      if_success_or_throw (run_stat' S C t1) (fun S1 R1 =>
-        finally (out_ter S1 R1)) (fun S1 v =>
+      if_success_or_throw (run_stat' S C t1) (fun S1 rv1 =>
+        finally (out_ter S1 rv1)) (fun S1 v =>
         match t2o with
         | None => finally (out_ter S1 (res_throw v))
         | Some (x, t2) =>
@@ -1422,10 +1422,10 @@ with run_stat (max_step : nat) S C t : result :=
           let (lex', S') := lexical_env_alloc_decl S lex in
           match lex' with
           | L :: oldlex =>
-            if_success_state
+            if_success (* TODO:  _state *)
             (env_record_create_set_mutable_binding run_call' S C L x None v throw_irrelevant)
-            (fun S2 R2 =>
-              match R2 with
+            (fun S2 rv2 =>
+              match rv2 with
               | prim_undef =>
                 let C' := execution_ctx_with_lex C lex' in
                 finally (run_stat' S2 C' t2)
@@ -1506,7 +1506,7 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
           out_ter S1 (res_normal undef)
         else (
           let p := run_object_code S1 lf in
-          if_success_or_return (run_prog' S1 C1 (funcbody_prog p)) (fun S2 R =>
+          if_success_or_return (run_prog' S1 C1 (funcbody_prog p)) (fun S2 rv =>
             out_ter S2 (res_normal undef)) (fun S2 v =>
             out_ter S2 (res_normal v))))
 
@@ -1569,7 +1569,7 @@ with run_block (max_step : nat) S C rv ts : result :=
     | t :: ts' =>
 
       if_success_state rv (run_stat' S C t) (fun S1 rv1 =>
-        run_block' S1 C ts')
+        run_block' S1 C rv1 (* TODO:  Reread *) ts')
 
     end
   end.

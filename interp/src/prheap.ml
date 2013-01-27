@@ -184,7 +184,7 @@ let print_to_file f h=
 
 let dump_expr_step = function
   | Expr_this -> "Expr_this"
-  | Expr_variable _ -> "Expr_variable"
+  | Expr_identifier _ -> "Expr_identifier"
   | Expr_literal _ -> "Expr_literal"
   | Expr_object _ -> "Expr_object"
   | Expr_function _ -> "Expr_function"
@@ -202,28 +202,31 @@ let dump_propbody_step = function
   | Propbody_get _ -> "Propbody_get"
   | Propbody_set _ -> "Propbody_set"
 
-let dump_body_step = function
-  | Body_intro _ -> "Body_intro"
+let dump_funcbody_step = function
+  | Funcbody_intro _ -> "Funcbody_intro"
 
 let dump_stat_step = function
   | Stat_expr _ -> "Stat_expr"
-  | Stat_seq _ -> "Stat_seq"
+  | Stat_block _ -> "Stat_block"
+  | Stat_label _ -> "Stat_label"
   | Stat_var_decl _ -> "Stat_var_decl"
   | Stat_if _ -> "Stat_if"
   | Stat_while _ -> "Stat_while"
+  | Stat_do_while _ -> "Stat_do_while"
   | Stat_with _ -> "Stat_with"
   | Stat_throw _ -> "Stat_throw"
   | Stat_return _ -> "Stat_return"
   | Stat_break _ -> "Stat_break"
   | Stat_continue _ -> "Stat_continue"
   | Stat_try _ -> "Stat_try"
-  | Stat_skip -> "Stat_skip"
   | Stat_for_in _ -> "Stat_for_in"
   | Stat_for_in_var _ -> "Stat_for_in_var"
   | Stat_debugger -> "Stat_debugger"
 
 let dump_prog_step = function
-  | Prog_stat _ -> "Prog_stat"
-  | Prog_seq _ -> "Prog_seq"
-  | Prog_function_decl _ -> "Prog_function_decl"
+  | Prog_intro (b, es) ->
+		String.concat " ; "
+		  (List.map (function
+			| Element_stat _ -> "Element_stat"
+			| Element_func_decl _ -> "Element_func_decl") es)
 
