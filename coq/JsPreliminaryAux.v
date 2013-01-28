@@ -220,3 +220,8 @@ Proof.
    skip. (* TODO *)
    typeclass.
 Qed.
+
+Global Instance prepost_unary_op_dec : forall op,
+  Decidable (prepost_unary_op op).
+Proof. introv. destruct op; typeclass. Qed.
+

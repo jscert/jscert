@@ -79,6 +79,7 @@ Extract Constant JsNumber.sub => "(-.)".
 Extract Constant JsNumber.mult => "( *. )".
 Extract Constant JsNumber.div => "(/.)".
 Extract Constant JsNumber.fmod => "mod_float".
+Extract Constant JsNumber.neg => "(~-.)".
 Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
 Extract Constant JsNumber.number_comparable => "(fun n1 n2 -> 0 = compare n1 n2)".
 Extract Constant JsNumber.lt_bool => "(<)".

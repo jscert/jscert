@@ -1112,7 +1112,8 @@ Definition prepost_unary_op op :=
 
 Definition regular_unary_op op :=
   match op with
-  | unary_op_typeof => False
+  | unary_op_typeof
+  | unary_op_delete => False
   | _ => If prepost_unary_op op
            then False
            else True

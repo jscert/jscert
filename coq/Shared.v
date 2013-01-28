@@ -457,6 +457,10 @@ Qed.
 (**************************************************************)
 (** ** LATER: move to LibFunc (?) *)
 
+Global Instance unary_op_inhab : forall P : Type,
+  Inhab (P -> P).
+Proof. introv. apply prove_Inhab. introv. auto*. Qed.
+
 Global Instance binary_op_inhab : forall P : Type,
   Inhab (P -> P -> P).
 Proof. introv. apply prove_Inhab. introv. auto*. Qed.

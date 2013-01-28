@@ -68,6 +68,11 @@ Definition error_or_void S str B :=
   if str then out_ter S (res_throw B)
   else out_ter S (res_normal resvalue_empty).
 
+Definition error_or_cst S str B R :=
+  if str then out_ter S (res_throw B)
+  else out_ter S R.
+
+
 (** The "void" result is used by specification-level functions
     which do not produce any javascript value, but only perform
     side effects. (We return the value [undef] in the implementation.)
@@ -416,6 +421,9 @@ Fixpoint lexical_env_get_identifier_ref S X x str : ref :=
       ref_create_env_loc L x str
     else lexical_env_get_identifier_ref S X' x str
   end.
+
+Definition env_record_delete_binding S L x : result :=
+  arbitrary (* TODO *).
 
 Definition identifier_res S C x :=
   let lex := execution_ctx_lexical_env C in
@@ -875,6 +883,12 @@ Proof.
     skip. (* TODO: tests: (exists a, binds (state_object_heap S) o a). *)
 Qed.
 
+Definition run_typeof_value S v : string := (* TODO:  Put this in JsPreliminary, with the proof of decidability of [is_callable]. *)
+  match v with
+  | value_prim w => typeof_prim w
+  | value_object l => ifb is_callable S l then "function" else "object"
+  end.
+
 (**************************************************************)
 (** Conversions *)
 
@@ -1114,6 +1128,95 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
 
   end.
 
+Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
+  match op with
+  | unary_op_pre_incr => (add_one, true)
+  | unary_op_pre_decr => (sub_one, true)
+  | unary_op_post_incr => (add_one, false)
+  | unary_op_post_decr => (sub_one, false)
+  | _ => arbitrary
+  end.
+
+Definition object_delete S l x str : result :=
+  let B := run_object_method object_delete_ S l in
+  match run_object_get_own_property S l x with
+  | prop_descriptor_undef => out_ter S true
+  | prop_descriptor_some A =>
+    ifb prop_attributes_configurable A = Some true then
+      arbitrary (* TODO: object_rem_prop S l x *)
+    else
+      error_or_cst S str builtin_type_error false
+  end.
+
+Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) S C (op : unary_op) e : result :=
+  ifb prepost_unary_op op then
+    if_success (run_expr' S C e) (fun S1 rv1 =>
+      if_success_value (out_ter S1 rv1) (fun S2 v2 =>
+        if_number (to_number run_call' S2 C v2) (fun S3 n1 =>
+          let (number_op, is_pre) := run_prepost_op op in
+          let n2 := number_op n1 in
+          let v := prim_number (if is_pre then n2 else n1) in
+          if_success (ref_put_value run_call' S3 C rv1 n2) (fun S4 rv2 =>
+            out_ter S4 v))))
+  else
+    match op with
+
+    | unary_op_delete =>
+      if_success (run_expr' S C e) (fun S1 rv =>
+        match rv with
+        | resvalue_value v => out_ter S1 true
+        | resvalue_empty => result_stuck
+        | resvalue_ref r =>
+          ifb ref_is_unresolvable r then
+            out_ter S1 true
+          else
+            match ref_base r with
+            | ref_base_type_value v =>
+              if_object (to_object S1 v) (fun S2 l =>
+                object_delete S2 l (ref_name r) (ref_strict r))
+            | ref_base_type_env_loc L =>
+              env_record_delete_binding S1 L (ref_name r)
+            end
+        end)
+
+    | unary_op_typeof =>
+      if_success (run_expr' S C e) (fun S1 rv =>
+        match rv with
+        | resvalue_value v =>
+          out_ter S1 (run_typeof_value S1 v)
+        | resvalue_ref r =>
+          ifb ref_is_unresolvable r then
+            out_ter S1 "undefined"
+          else
+            if_success_value (out_ter S1 r) (fun S2 v =>
+              out_ter S2 (run_typeof_value S2 v))
+        | resvalue_empty => result_stuck
+        end)
+
+    | _ => (* Regular operators *)
+      if_success_value (run_expr' S C e) (fun S1 v =>
+        match op with
+
+        | unary_op_void => out_ter S1 undef
+
+        | unary_op_add => to_number run_call' S1 C v
+
+        | unary_op_neg =>
+          if_number (to_number run_call' S1 C v) (fun S2 n =>
+            out_ter S2 (JsNumber.neg n))
+
+        | unary_op_bitwise_not =>
+          arbitrary (* TODO *)
+
+        | unary_op_not =>
+          out_ter S (neg (convert_value_to_boolean v))
+
+        | _ => arbitrary
+
+        end)
+
+    end.
+
 End Operators.
 
 
@@ -1182,52 +1285,7 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       out_ter S (identifier_res S C x)
 
     | expr_unary_op op e =>
-      arbitrary
-      (* TODO:
-      match op with
-
-      | unary_op_typeof =>
-        if_success_state (run_expr' h0 s e) (fun h1 r1 =>
-         if_is_null_ref r1 (fun _ =>
-           out_return h1 (value_string "undefined")
-         ) (fun _ =>
-          if_defined h1 (getvalue_comp h1 r1) (fun v1 =>
-            if_defined h1 (typeof_comp h1 v1) (fun str =>
-              out_return h1 (value_string str)))))
-
-     | unary_op_pre_incr | unary_op_pre_decr | unary_op_post_incr | unary_op_post_decr =>
-       if_success_state (run_expr' h0 s e) (fun h1 r1 =>
-         if_is_ref h1 r1 (fun l f =>
-           if_defined h1 (getvalue_comp h1 r1) (fun v =>
-           if_defined h1 (binary_op_comp binary_op_add h0
-               match op with
-               | unary_op_pre_incr | unary_op_post_incr => (number_of_int 1)
-               | unary_op_pre_decr | unary_op_post_decr => (number_of_int (-1)%Z)
-               | _ => arbitrary
-               end v) (fun va =>
-             let vr := match op with
-                       | unary_op_pre_incr | unary_op_pre_decr => va
-                       | unary_op_post_incr | unary_op_post_decr => v
-                       | _ => arbitrary
-                       end in
-             let h2 := update h1 l f va in
-             out_return h2 vr))))
-
-      | unary_op_delete =>
-        if_success_state (run_expr' h0 s e) (fun h1 r =>
-          ifb dont_delete r then (
-            out_return h1 (value_bool false))
-          else (
-            let h2 := dealloc h1 r in
-            out_return h2 (value_bool true)))
-
-      | _ =>
-        if_success_value (run_expr' h0 s e) (fun h1 v1 =>
-          if_defined h1 (unary_op_comp op h1 v1) (fun v =>
-            out_return h1 v))
-
-      end
-      *)
+      run_unary_op run_expr' run_call' S C op e
 
     | expr_binary_op e1 op e2 =>
       match is_lazy_op op with
@@ -1518,7 +1576,7 @@ with run_elements (max_step : nat) S C rv (els : list element) : result :=
         run_elements' S1 C rv1 els')
 
     | element_func_decl name args bd :: els' =>
-      run_elements' S C rv els'
+      (* run_elements' S C rv els' *) arbitrary (* As functions are not declared, in [run_prog], I prefer raise an exception when such a function should have been defined. *) (* TODO: Remove the [arbitrary] as soon as [run_prog] is correct. *)
 
     end
   end
