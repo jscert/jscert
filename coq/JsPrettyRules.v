@@ -1719,7 +1719,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_prim_value_put w x v throw) o
 
   | red_spec_prim_value_put_1 : forall S0 S C w x v throw l o,
-      red_expr S C (spec_object_put_1 builtin_default_put w l x v throw) o ->
+      red_expr S C (spec_object_put_1 builtin_default_put w l x v throw) o -> (* I think that there should be no [w] at this line. *)
       red_expr S0 C (spec_prim_value_put_1 w x v throw (out_ter S l)) o
 
   (** Auxiliary: [spec_expr_get_value] as a combination of [red_expr] and [get_value] *)

@@ -123,11 +123,14 @@ let _ =
 				   print_endline "No result with this throw.") ;
 				 exit_if_test ()
             end
-         | Interpreter.Out_div -> print_endline "\n\nDIV\n"
+         | Interpreter.Out_div ->
+			print_endline "\n\nDIV\n" ;
+			exit_if_test ()
        end;
     | Interpreter.Result_stuck ->
-      	 print_endline "\n\nFIXME:  stuck!\n"
-    | Interpreter.Result_bottom -> print_endline "\n\nBOTTOM\n"
+		print_endline "\n\nFIXME:  stuck!\n" ;
+		exit_if_test ()
+	| Interpreter.Result_bottom -> print_endline "\n\nBOTTOM\n"
   with
   | Assert_failure (file, line, col) ->
 	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) ;
