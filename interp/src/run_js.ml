@@ -44,7 +44,7 @@ let pr_test state =
      | Some v ->
     	  print_endline ("\nA variable [__$ERROR__] is defined at global scope.  Its value is:\n\t"
 		  ^ Prheap.prvalue v ^ "\n") ;
-		  exit (-1)
+		  if !test then exit (-1)
      | None ->
 	    if (not !test) then
 	      print_endline "No variable [__$ERROR__] is defined at global scope.\n")
@@ -52,6 +52,8 @@ let pr_test state =
 
 let _ = 
   arguments ();
+  let exit_if_test _ = if !test then exit (-1) in
+  let print_if_test = if !test then print_string else (fun _ -> ()) in
   try
     let exp = Translate_syntax.coq_syntax_from_file !file in
     let sti = if (!test) then
@@ -99,11 +101,17 @@ let _ =
       	                                        | None -> "Unknown!") ^ "\n")
                      | Interpreter.Resvalue_empty -> 
                         print_endline "\n\nNo result\n"
-                   end;
-                 if (!test) then pr_test state)
-              | Interpreter.Restype_break -> print_endline "\n\nBREAK\n"
-              | Interpreter.Restype_continue -> print_endline "\n\nCONTINUE\n"
-              | Interpreter.Restype_return -> print_endline "\n\nRETURN\n"
+				 end;
+				 pr_test state)
+              | Interpreter.Restype_break ->
+				print_endline "\n\nBREAK\n" ;
+				exit_if_test ()
+              | Interpreter.Restype_continue ->
+				print_endline "\n\nCONTINUE\n" ;
+				exit_if_test ()
+			  | Interpreter.Restype_return ->
+				print_endline "\n\nRETURN\n" ;
+				exit_if_test ()
               | Interpreter.Restype_throw -> 
                  print_endline "\n\nEXCEPTION THROWN\n" ;
                  (match Interpreter.res_value res with
@@ -113,7 +121,7 @@ let _ =
 				   print_endline "With a reference."
 				 | Interpreter.Resvalue_empty ->
 				   print_endline "No result with this throw.") ;
-				 exit (-1)
+				 exit_if_test ()
             end
          | Interpreter.Out_div -> print_endline "\n\nDIV\n"
        end;
@@ -122,7 +130,12 @@ let _ =
     | Interpreter.Result_bottom -> print_endline "\n\nBOTTOM\n"
   with
   | Assert_failure (file, line, col) ->
-	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) (* That way such tests will be considered as successful. *)
+	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) ;
+	print_if_test "\nThis test will be considered as successful."
   | Translate_syntax.CoqSyntaxDoesNotSupport s ->
-	print_string ("\nTranslation of Javascript syntax does not support `" ^ s ^ "'.") (* Idem *)
+	print_string ("\nTranslation of Javascript syntax does not support `" ^ s ^ "' yet.") ;
+	print_if_test "\nThis test will be considered as successful."
+  | Xml.File_not_found file ->
+	print_string ("\nParsing problem with the file `" ^ file ^ "'.") ;
+	exit_if_test ()
 
