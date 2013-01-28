@@ -1250,10 +1250,10 @@ Inductive value_viewable_as : string -> state -> value -> prim -> Prop :=
 (**************************************************************)
 (** ** Auxiliary definition used in the reduction of [get_own_property] (8.12.1) *)
 
-(** [object_get_own_property_builder A] is an auxiliary definition
-    used by [object_get_own_property_impl os  l x An]. *)
+(** [object_get_own_prop_builder A] is an auxiliary definition
+    used by reduction rules for GetOwnProperty. *)
 
-Definition object_get_own_property_builder A :=
+Definition object_get_own_prop_builder A :=
   let if_data {X:Type} (m:option X) (d:X) :=
     ifb prop_attributes_is_data A then Some (unsome_default d m) else None in
   let if_accessor {X:Type} (m:option X) (d:X) :=
@@ -1269,121 +1269,6 @@ Definition object_get_own_property_builder A :=
      writable field set to undefined or no writable field. The
      spec above formalizes the former assumption. *)
 
-
-(** [object_get_own_property_base P x An] is an auxilialry definition
-    used by [object_get_own_property_default P x An]. *)
-
-Inductive object_get_own_property_base : object_properties_type -> prop_name -> prop_descriptor -> Prop :=
-  | object_get_own_property_base_undef : forall P x,
-      ~ Heap.indom P x ->
-      object_get_own_property_base P x prop_descriptor_undef
-  | object_get_own_property_base_some : forall P x A A',
-      Heap.binds P x A ->
-      A' = object_get_own_property_builder A ->
-      object_get_own_property_base P x (prop_descriptor_some A').
-
-(** [object_get_own_property_default S l x An] is an auxilialry definition
-    used by [object_get_own_property S l x An]. *)
-
-Definition object_get_own_property_default S l x An :=
-  exists P, object_properties S l P
-         /\ object_get_own_property_base P x An.
-
-(** [object_get_own_property S l x An] asserts that, in the state [S],
-    a call to [get_own_property] on the object location [l] and the
-    property name [x] returns the property descriptor [An]. Note that
-    the location [l] provided cannot be null. Note also that the result
-    [An] may be undefined. *)
-    (* TODO: should the spec say that the function above always returns
-       a fully populated descriptor or undefined, like it does for getproperty? *)
-
-(* TODO: double check this definition *)
-
-(*---start todo---*)
-
-(* TODO: change defs from JsPreliminary into reductions *)
-
-Inductive object_get_own_property : state -> object_loc -> prop_name -> prop_descriptor -> Prop :=
-  | object_get_own_property_not_string : forall S l x An sclass,
-      object_class S l sclass ->
-      sclass <> "String" ->
-      object_get_own_property_default S l x An ->
-      object_get_own_property S l x An
-  | object_get_own_property_string : forall S l x An An',
-      object_class S l "String" ->
-      object_get_own_property_default S l x An ->
-      (If An <> prop_descriptor_undef
-       then An' = An
-       else
-         (If (prim_string x <> convert_prim_to_string (prim_number (JsNumber.absolute (convert_primitive_to_integer x)))) (* TODO: remove coercion *)
-          then An' = prop_descriptor_undef
-          else (* TODO: make an auxiliary definition for this else branch *)
-            (exists s, exists (i:int),
-                 object_prim_value S l (prim_string s)
-              /\ JsNumber.of_int i = convert_primitive_to_integer x
-              /\ let len : int := String.length s in
-                 If (len <= i)
-                 then An' = prop_descriptor_undef
-                 else (let s' := string_sub s i 1 in
-                       An' = prop_attributes_create_data s' false true false)
-          )
-      )) ->
-      object_get_own_property S l x An'.
-
-(*---end todo---*)
-
-(**************************************************************)
-(** ** Auxiliary definition used in the reduction of [get] (8.12.2) *)
-
-(** [object_get_property S l x An] asserts that, in the state [S],
-    a call to [get] on the object location [l] and the property name [x]
-    returns the property descriptor [An]. Note that [l] is actually
-    of type [value] because it may be null. Note also that the result
-    [An] may be undefined. *)
-
-(* TODO: change defs from JsPreliminary into reductions *)
-
-Inductive object_get_property : state -> value -> prop_name -> prop_descriptor -> Prop :=
-  | object_get_prop_null : forall S x,
-      object_get_property S null x prop_descriptor_undef
-  | object_get_prop_some : forall S l x An,
-      object_get_own_property S l x An ->
-      An <> prop_descriptor_undef ->
-      object_get_property S l x An
-  | object_get_prop_undef : forall S l x lproto An,
-      object_get_own_property S l x prop_descriptor_undef ->
-      object_proto S l lproto ->
-      object_get_property S lproto x An ->
-      object_get_property S l x An.
-
-
-(**************************************************************)
-(*---start todo---*)
-
-(* TODO: add comment / fix def *)
-
-Inductive object_all_properties : state -> value -> set prop_name -> Prop :=
-  | object_all_properties_null : forall S,
-      object_all_properties S null (@empty_impl prop_name)
-  | object_all_properties_proto : forall obj S l lproto proto_properties,
-      object_proto S l lproto ->
-      object_all_properties S lproto proto_properties ->
-      object_binds S l obj ->
-      let obj_properties := Heap.dom (object_properties_ obj) in
-      object_all_properties S (value_object l) (union_impl obj_properties proto_properties).
-
-(* TODO: add comment / fix def  *)
-
-Inductive object_all_enumerable_properties : state -> value -> set prop_name -> Prop :=
-  | object_all_enumerable_properties_intro : forall S l props,
-       object_all_properties S l props ->
-       let enumerable_props := inter_impl props (set_st (fun x => forall A,
-           object_get_property S l x A /\
-           prop_attributes_enumerable A = Some true
-         )) in
-       object_all_enumerable_properties S l enumerable_props.
-
-(*---end todo---*)
 
 (**************************************************************)
 (** ** Auxiliary definition used by object initializers (11.1.5) *)
@@ -1405,3 +1290,30 @@ Axiom parse_successful : string -> prog -> Prop.
 Axiom parse_impossible : string -> Prop.
 
 
+
+
+(**************************************************************)
+(**************************************************************)
+(**************************************************************)
+(* LATER: for for loops
+
+Inductive object_all_properties : state -> value -> set prop_name -> Prop :=
+  | object_all_properties_null : forall S,
+      object_all_properties S null (@empty_impl prop_name)
+  | object_all_properties_proto : forall obj S l lproto proto_properties,
+      object_proto S l lproto ->
+      object_all_properties S lproto proto_properties ->
+      object_binds S l obj ->
+      let obj_properties := Heap.dom (object_properties_ obj) in
+      object_all_properties S (value_object l) (union_impl obj_properties proto_properties).
+
+Inductive object_all_enumerable_properties : state -> value -> set prop_name -> Prop :=
+  | object_all_enumerable_properties_intro : forall S l props,
+       object_all_properties S l props ->
+       let enumerable_props := inter_impl props (set_st (fun x => forall A,
+           object_get_property S l x A /\
+           prop_attributes_enumerable A = Some true
+         )) in
+       object_all_enumerable_properties S l enumerable_props.
+
+*)

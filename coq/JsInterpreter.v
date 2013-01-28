@@ -328,14 +328,14 @@ Qed.
 Definition run_decl_env_record_binds_value D x : value :=
   snd (pick (binds D x)).
 
-Definition run_object_get_own_property_base P x : prop_descriptor :=
+Definition run_object_get_own_prop_base P x : prop_descriptor :=
   match read_option P x with
   | None => prop_descriptor_undef
-  | Some A => prop_descriptor_some (object_get_own_property_builder A)
+  | Some A => prop_descriptor_some (object_get_own_prop_builder A)
   end.
 
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
-  run_object_get_own_property_base (run_object_properties S l) x.
+  run_object_get_own_prop_base (run_object_properties S l) x.
 
 Definition run_object_get_own_property S l x : prop_descriptor :=
   let sclass := run_object_class S l in

@@ -152,13 +152,13 @@ Inductive ext_expr :=
   | spec_to_uint32_1 : out -> (int -> ext_expr) -> ext_expr
   | spec_check_object_coercible : value -> ext_expr
 
-  | spec_to_default : object_loc -> option preftype -> ext_expr
-  | spec_to_default_1 : object_loc -> preftype -> preftype -> ext_expr
-  | spec_to_default_2 : object_loc -> preftype -> ext_expr
-  | spec_to_default_3 : ext_expr
-  | spec_to_default_sub_1 : object_loc -> string -> ext_expr -> ext_expr
-  | spec_to_default_sub_2 : object_loc -> out -> ext_expr -> ext_expr
-  | spec_to_default_sub_3 : out -> ext_expr -> ext_expr
+  | spec_object_default_value : object_loc -> option preftype -> ext_expr
+  | spec_object_default_value_2 : object_loc -> preftype -> preftype -> ext_expr
+  | spec_object_default_value_3 : object_loc -> preftype -> ext_expr
+  | spec_object_default_value_4 : ext_expr
+  | spec_object_default_value_sub_1 : object_loc -> string -> ext_expr -> ext_expr
+  | spec_object_default_value_sub_2 : object_loc -> out -> ext_expr -> ext_expr
+  | spec_object_default_value_sub_3 : out -> ext_expr -> ext_expr
 
   | spec_convert_twice : ext_expr -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
   | spec_convert_twice_1 : out -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
@@ -181,31 +181,31 @@ Inductive ext_expr :=
   | spec_object_function_get_1 : object_loc -> prop_name -> out -> ext_expr
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
   | spec_object_can_put_1 : object_loc -> prop_name -> prop_descriptor -> ext_expr
-  | spec_object_can_put_2 : object_loc -> prop_name -> bool -> ext_expr
-  | spec_object_can_put_3 : object_loc -> prop_name -> value -> ext_expr
-  | spec_object_can_put_4 : object_loc -> prop_descriptor -> ext_expr
+  | spec_object_can_put_3 : object_loc -> prop_name -> bool -> ext_expr
+  | spec_object_can_put_4 : object_loc -> prop_name -> value -> ext_expr
+  | spec_object_can_put_5 : object_loc -> prop_descriptor -> ext_expr
 
   | spec_object_put : object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_1 : object_loc -> prop_name -> value -> bool -> out -> ext_expr
-  | spec_object_put_2 : object_loc -> prop_name -> value -> bool -> prop_descriptor -> ext_expr
   | spec_object_put_3 : object_loc -> prop_name -> value -> bool -> prop_descriptor -> ext_expr
-  | spec_object_put_return : out -> ext_expr
-  | spec_object_get_special : value -> prop_name -> ext_expr
-  | spec_object_get_special_1 : prop_name -> out -> ext_expr
+  | spec_object_put_4 : object_loc -> prop_name -> value -> bool -> prop_descriptor -> ext_expr
+  | spec_object_put_5 : out -> ext_expr
+  | spec_prim_value_get : value -> prop_name -> ext_expr
+  | spec_prim_value_get_1 : prop_name -> out -> ext_expr
   | spec_object_put_special : value -> prop_name -> value -> bool -> ext_expr
   | spec_object_has_prop : object_loc -> prop_name -> ext_expr
   | spec_object_delete : object_loc -> prop_name -> bool -> ext_expr
-  | spec_object_delete_1 : object_loc -> prop_name -> bool -> prop_descriptor -> ext_expr
-  | spec_object_delete_2 : object_loc -> prop_name -> bool -> bool -> ext_expr
+  | spec_object_delete_2 : object_loc -> prop_name -> bool -> prop_descriptor -> ext_expr
+  | spec_object_delete_3 : object_loc -> prop_name -> bool -> bool -> ext_expr
 
   | spec_object_define_own_prop : object_loc -> prop_name -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_1 : object_loc -> prop_name -> prop_descriptor -> prop_attributes -> bool -> bool -> ext_expr
-  | spec_object_define_own_prop_2 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_3 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_4a : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_4b : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_4c : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_3 : object_loc -> prop_name -> prop_descriptor -> prop_attributes -> bool -> bool -> ext_expr
+  | spec_object_define_own_prop_4 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
   | spec_object_define_own_prop_5 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_6a : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_6b : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_6c : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_7 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
 
   (** Extended expressions for operations on references *)
 
@@ -254,7 +254,7 @@ Inductive ext_expr :=
 
   (** Extented expressions for eval *)
   
-  | spec_execution_ctx_eval_call : ext_expr -> funcbody -> ext_expr
+  | spec_entering_eval_code : ext_expr -> funcbody -> ext_expr
   
   | spec_call_global_eval_1 : value -> ext_expr
   | spec_call_global_eval_1_2 : prog -> ext_expr
@@ -262,9 +262,9 @@ Inductive ext_expr :=
 
   (** Extended expressions for function calls *)
 
-  | spec_execution_ctx_function_call : ext_expr -> object_loc -> value -> list value -> ext_expr
-  | spec_execution_ctx_function_call_1 : ext_expr -> object_loc -> list value -> strictness_flag -> out -> ext_expr
-  | spec_execution_ctx_function_call_2 : ext_expr -> out -> ext_expr
+  | spec_entering_func_code : ext_expr -> object_loc -> value -> list value -> ext_expr
+  | spec_entering_func_code_1 : ext_expr -> object_loc -> list value -> strictness_flag -> out -> ext_expr
+  | spec_entering_func_code_2 : ext_expr -> out -> ext_expr
   
   | spec_binding_instantiation_formal_params : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> list string -> ext_expr
   | spec_binding_instantiation_formal_params_1 : (list value -> env_loc -> ext_expr) -> list value -> env_loc -> string -> list string -> value -> out -> ext_expr
@@ -485,11 +485,11 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_to_number_1 o => Some o
   | spec_to_integer_1 o => Some o
   | spec_to_string_1 o => Some o
-  | spec_to_default_1 _ _ _ => None
-  | spec_to_default_2 _ _ => None
-  | spec_to_default_3 => None
-  | spec_to_default_sub_1 _ _ _ => None
-  | spec_to_default_sub_2 _ _ _ => None
+  | spec_object_default_value_1 _ _ _ => None
+  | spec_object_default_value_3 _ _ => None
+  | spec_object_default_value_4 => None
+  | spec_object_default_value_sub_1 _ _ _ => None
+  | spec_object_default_value_sub_2 _ _ _ => None
   | spec_convert_twice _ _ _ => None
   | spec_convert_twice_1 o _ _ => Some o
   | spec_convert_twice_2 o _ => Some o

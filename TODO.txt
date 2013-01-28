@@ -1,62 +1,28 @@
-      O = object_new builtin_object_proto "Object" true -> (* TODO fix this *)
-
-
-
-
-(*---start todo---*)
-
-
-- object_get
-- define own property
-(* TODO: spec_object_get_using is like spec_object_get except that the this value is different *)
-(** Special Put method for primitive values : TODO *)
-- section 10.4
-
-
-
------
-
-
-
-Martin: I changed & moved the definition of execution_ctx_initial, see JsPreliminary
 
 =======
+TODO
 
-*) add label sets on blocks
-*) handle break on stat_label
 
-*) is function_code deprecated
-
-*) factorize syntax of for_in and for_in_var 
-
-*) prog_function_decl : should it be removed since nonstandard?
+(** ---TODO :  Entering eval code (10.4.2) *)    
 
 *) Inductive funccode => deprecated?
 
-*) Definition of the "SameValue" algorithm -- TODO: does not seem to be used 
-
-*) Define [abort] as "not a normal behavior",
-   by taking the negation of being of the form [ter (normal ...)]. *)
-
-*) delete section for errors, since it was already moved to jsprettyinterm
-
 *) resolve ambiguity "propname" vs "prop_name"
-
-*) Factorization of rules for binary operators : move a bunch of these defs into js_pretty_inter 
-
-*) stat_vardecl : stat_for_in_var 
 
 *)  initialize the execution context with binding instantiation 
 
-(* TODO: handle labels in while loops *)
+===
+ONCE INTERPRETER IS STABILIZED
 
-(* TODO: abort_intercepted check whether we need to add this:
-
-
+*) Factorization of rules for binary operators : move a bunch of these defs into js_pretty_inter 
 
 
 =====
 LESS URGENT
+
+*) stat_vardecl : stat_for_in_var 
+
+*) factorize syntax of for_in and for_in_var 
 
 *) Find an order for sections in JsPreliminary
 
@@ -130,3 +96,4 @@ function f() {  y: { x : { try { break x } catch (e) { break y } finally { 2 } ;
 TEST:
 
 delete {}
+

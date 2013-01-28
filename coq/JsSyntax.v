@@ -181,14 +181,14 @@ Inductive math_op :=
 Inductive builtin :=
   
   | builtin_default_get
-  | builtin_default_get_own_property
-  | builtin_default_get_property
+  | builtin_default_get_own_prop
+  | builtin_default_get_prop
   | builtin_default_put
   | builtin_default_can_put
-  | builtin_default_has_property
+  | builtin_default_has_prop
   | builtin_default_delete
   | builtin_default_default_value
-  | builtin_default_define_own_property
+  | builtin_default_define_own_prop
 
   | builtin_error
   | builtin_range_error
@@ -211,10 +211,10 @@ Inductive builtin :=
   | builtin_object_call
   | builtin_object_get_prototype_of
   (* LATER:
-    builtin_object_get_own_property_descriptor
-    builtin_object_get_own_property_name
+    builtin_object_get_own_prop_descriptor
+    builtin_object_get_own_prop_name
     builtin_object_create
-    builtin_object_define_property
+    builtin_object_define_prop
     builtin_object_define_properties *)
   (*
   | builtin_object_seal
@@ -230,9 +230,9 @@ Inductive builtin :=
   | builtin_object_proto
   | builtin_object_proto_to_string
   | builtin_object_proto_value_of
-  | builtin_object_proto_has_own_property
+  | builtin_object_proto_has_own_prop
   | builtin_object_proto_is_prototype_of
-  | builtin_object_proto_property_is_enumerable
+  | builtin_object_proto_prop_is_enumerable
 
   | builtin_function
   | builtin_function_call
@@ -471,14 +471,14 @@ Record object := object_intro {
    object_prim_value_ : option value;
    object_properties_ : object_properties_type;
    object_get_ : builtin;
-   object_get_own_property_ : builtin;
-   object_get_property_ : builtin;
+   object_get_own_prop_ : builtin;
+   object_get_prop_ : builtin;
    object_put_ : builtin;
    object_can_put_ : builtin;
-   object_has_property_ : builtin;
+   object_has_prop_ : builtin;
    object_delete_ : builtin;
    object_default_value_ : builtin;
-   object_define_own_property_ : builtin;
+   object_define_own_prop_ : builtin;
    object_construct_ : option builtin;
    object_call_ : option builtin;
    object_has_instance_ : option builtin;
@@ -492,7 +492,7 @@ Record object := object_intro {
    (* LATER: match for regular expression matching *)
    }.
 
-(** Special modes for [get_own_property] and [set_own_property] *)
+(** Special modes for [get_own_prop] and [set_own_prop] *)
 
 Inductive object_special :=
   | object_special_default
