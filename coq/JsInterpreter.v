@@ -93,8 +93,8 @@ Definition out_ref_error_or_undef S (bthrow:bool) :=
 (**************************************************************)
 (** ** Some functions to be implemented (or extracted differently). *)
 
-(* TODO *)
 Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
+(* It should never return an option, but its result will is a pain to be used... -- Martin *)
 
 
 (**************************************************************)
@@ -242,22 +242,6 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
     | _ => result_stuck
     end).
 
-(**************************************************************)
-
-(* TODO: should be in JsPreliminary *)
-Definition prop_attributes_is_generic_or_data A := (* TODO:  Still needed? *)
-  prop_attributes_is_generic A \/ prop_attributes_is_data A.
-
-Global Instance prop_attributes_is_generic_or_data_dec : forall A,
-  Decidable (prop_attributes_is_generic_or_data A).
-Proof.
-  introv. apply or_decidable.
-   apply and_decidable; apply neg_decidable;
-     apply neg_decidable; apply and_decidable; typeclass.
-  apply neg_decidable; apply and_decidable; typeclass.
-Qed.
-
-
 Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *)
 
 End InterpreterEliminations.
@@ -267,7 +251,8 @@ End InterpreterEliminations.
 
 Section LexicalEnvironments.
 
-(* TODO:  Define [run_object_method] instead. *)
+Definition run_object_method (Proj : object -> builtin) S l : builtin :=
+  Proj (pick (object_binds S l)).
 
 Definition run_object_proto S l : value :=
   object_proto_ (pick (object_binds S l)).
@@ -525,7 +510,7 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
   | prop_descriptor_undef =>
     if extensible then (
       let S' := pick (object_set_property S l x
-        (ifb prop_attributes_is_generic_or_data newpf then
+        (ifb prop_attributes_is_generic newpf \/ prop_attributes_is_data newpf then
           prop_attributes_convert_to_data newpf
         else prop_attributes_convert_to_accessor newpf)) in
       out_ter S' true
@@ -562,9 +547,12 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
   end.
 
 (**************************************************************)
-(** TODO: clarify this ... *)
 
-(* The functions taking such arguments can call any arbitrary code *)
+(* The functions taking such arguments can call any arbitrary code,
+   i.e. can also call arbitrary pogram and expression.  They thus need
+   a pointer to the main functions.  Those types are just the ones of
+   those main functions. *)
+
 Definition run_expr_type : Type :=
   state -> execution_ctx -> expr -> result.
 
@@ -600,11 +588,8 @@ Definition ref_get_value S rv : result :=
     end
   end.
 
-Definition object_put_special v x (vnew : value) (strict : bool) : result :=
-  arbitrary (* TODO *).
-
 Definition object_put (run_call' : run_call_type) S C l x v (throw : bool) : result :=
-  if_success_bool (object_can_put S l x) (fun S =>
+  if_success_bool (object_can_put S l x (* TODO:  Reread *)) (fun S =>
     let AnOwn := run_object_get_own_property S l x in
     ifb prop_descriptor_is_data AnOwn then
       object_define_own_prop S l x (prop_attributes_create_value v) throw
@@ -638,6 +623,10 @@ Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v 
     object_put run_call' S C l x v str
   end.
 
+Definition prim_value_put (run_call' : run_call_type) S C w x (vnew : value) str : result :=
+  if_success (to_object S w) (fun S1 rv1 =>
+    ).
+
 Definition ref_put_value (run_call' : run_call_type) S C rv v : result :=
   match rv with
   | resvalue_value v => out_ref_error S
@@ -651,7 +640,7 @@ Definition ref_put_value (run_call' : run_call_type) S C rv v : result :=
         object_put run_call' S C l (ref_name r) v (ref_strict r)
       | ref_base_type_value (value_prim w) =>
         ifb ref_kind_of r = ref_kind_primitive_base then
-          object_put_special (value_prim w) (ref_name r) v (ref_strict r)
+          prim_value_put run_call' S C w (ref_name r) v (ref_strict r)
         else result_stuck
       | ref_base_type_env_loc L =>
         env_record_set_mutable_binding run_call' S C L (ref_name r) v (ref_strict r)
