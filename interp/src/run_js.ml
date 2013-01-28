@@ -105,14 +105,15 @@ let _ =
               | Interpreter.Restype_continue -> print_endline "\n\nCONTINUE\n"
               | Interpreter.Restype_return -> print_endline "\n\nRETURN\n"
               | Interpreter.Restype_throw -> 
-                 print_endline "\n\nEXCEPTION THROWN\n";
-                 match Interpreter.res_value res with
+                 print_endline "\n\nEXCEPTION THROWN\n" ;
+                 (match Interpreter.res_value res with
                  | Interpreter.Resvalue_value v ->
                    print_endline (Prheap.prvalue v)
 				 | Interpreter.Resvalue_ref _ ->
 				   print_endline "With a reference."
 				 | Interpreter.Resvalue_empty ->
-				   print_endline "No result with this throw."
+				   print_endline "No result with this throw.") ;
+				 exit (-1)
             end
          | Interpreter.Out_div -> print_endline "\n\nDIV\n"
        end;

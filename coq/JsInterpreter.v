@@ -3,7 +3,6 @@ Require Import Shared.
 Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 
-
 (**************************************************************)
 (** ** Implicit Types *)
 
@@ -1466,28 +1465,34 @@ with run_prog (max_step : nat) S C p : result :=
   match max_step with
   | O => result_bottom
   | S max_step' =>
-    let run_stat' := run_stat max_step' in
-    let run_prog' := run_prog max_step' in
-    arbitrary
-    (* TODO
+    let run_elements' := run_elements max_step' in
     match p with
 
-    | prog_stat t =>
-      run_stat' S C t
+    | prog_intro str els =>
+      let C' := execution_ctx_initial str (* TODO *) in
+      run_elements' S C' resvalue_empty els
 
-    | prog_seq p1 p2 =>
-      if_success_state (run_prog' S C p1) (fun S1 R1 =>
-        if_success_state (run_prog' S1 C p2) (fun S2 R2 =>
-          out_ter S2
-            match R2 with
-            | ret_empty => R1
-            | _ => R2
-            end))
+    end
+  end
 
-    | prog_function_decl f lx P =>
-      arbitrary (* TODO *)
+with run_elements (max_step : nat) S C rv (els : list element) : result :=
+  match max_step with
+  | O => result_bottom
+  | S max_step' =>
+    let run_stat' := run_stat max_step' in
+    let run_elements' := run_elements max_step' in
+    match els with
 
-    end *)
+    | nil => out_ter S rv
+
+    | element_stat t :: els' =>
+      if_success_state rv (run_stat' S C t) (fun S1 rv1 =>
+        run_elements' S1 C rv1 els')
+
+    | element_func_decl name args bd :: els' =>
+      run_elements' S C rv els'
+
+    end
   end
 
 with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option value) (args : list value) : result :=
