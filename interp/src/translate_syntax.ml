@@ -22,13 +22,13 @@ let unary_op_to_coq op : Interpreter.unary_op =
   match op with
       | Not -> Interpreter.Unary_op_not
       | TypeOf -> Interpreter.Unary_op_typeof
-      | Positive
-      | Negative -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_unary_op op))
+      | Positive -> Interpreter.Unary_op_add
+      | Negative -> Interpreter.Unary_op_neg
       | Pre_Decr -> Interpreter.Unary_op_pre_decr
       | Post_Decr -> Interpreter.Unary_op_post_decr
       | Pre_Incr -> Interpreter.Unary_op_pre_incr
       | Post_Incr -> Interpreter.Unary_op_post_incr
-      | Bitnot -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_unary_op op))
+      | Bitnot -> Interpreter.Unary_op_bitwise_not
       | Void -> Interpreter.Unary_op_void
 
 let arith_op_to_coq op : Interpreter.binary_op =
@@ -41,9 +41,9 @@ let arith_op_to_coq op : Interpreter.binary_op =
     | Bitand -> Interpreter.Binary_op_bitwise_and
     | Bitor -> Interpreter.Binary_op_bitwise_or
     | Bitxor -> Interpreter.Binary_op_bitwise_xor
-    | Ursh
-    | Lsh
-    | Rsh -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_arith_op op))
+    | Ursh -> Interpreter.Binary_op_unsigned_right_shift
+    | Lsh -> Interpreter.Binary_op_left_shift
+    | Rsh -> Interpreter.Binary_op_right_shift
   end
 
 let bin_op_to_coq op : Interpreter.binary_op =
@@ -165,7 +165,7 @@ and exp_to_stat exp : Interpreter.stat =
       | VarDec vs -> Interpreter.Stat_var_decl (map (fun (v, e) ->
           string_to_coq v, match e with None -> None | Some e -> Some (exp_to_exp e)) vs)
       | Throw e -> Interpreter.Stat_throw (exp_to_exp e)
-      | Label (_, e) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))   
+      | Label (l, e) -> Interpreter.Stat_label (string_to_coq l, f e)
       | While (e1, e2)  -> Interpreter.Stat_while (exp_to_exp e1, f e2)
       | DoWhile (e1, e2) -> Interpreter.Stat_do_while (f e1, exp_to_exp e2)
       | With (e1, e2) -> Interpreter.Stat_with (exp_to_exp e1, f e2) 
@@ -175,7 +175,7 @@ and exp_to_stat exp : Interpreter.stat =
       | Try (e, Some (s, ce), Some fe) -> Interpreter.Stat_try (f e, Some (string_to_coq s, f ce), Some (f fe))  
       | If (e1, e2, Some e3) -> Interpreter.Stat_if (exp_to_exp e1, f e2, Some (f e3))
       | If (e1, e2, None) -> Interpreter.Stat_if (exp_to_exp e1, f e2, None)
-      | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* TODO:  We could actually do something there *)
       | For (e1, e2, e3, e4) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Switch (e1, e2s) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Block es -> Interpreter.Stat_block (List.map f es)

@@ -446,7 +446,7 @@ Definition to_object S v : result :=
   | value_object l => out_ter S l
   end.
 
-Definition object_get_special S v x : result :=
+Definition prim_value_get S v x : result :=
   if_object (to_object S v) (fun S' l =>
     object_get S' l x).
 
@@ -590,14 +590,14 @@ Definition ref_get_value S rv : result :=
   | resvalue_ref r =>
     match ref_kind_of r with
     | ref_kind_null | ref_kind_undef => out_ref_error S
-    | ref_kind_primitive_base =>
+    | ref_kind_primitive_base | ref_kind_object =>
       match ref_base r with
       | ref_base_type_value v =>
-        object_get_special S v (ref_name r)
+        (ifb ref_has_primitive_base r then prim_value_get
+        else object_get) S v (ref_name r)
       | ref_base_type_env_loc L =>
         env_record_get_binding_value S L (ref_name r) (ref_strict r)
       end
-    | ref_kind_object => result_stuck
     | ref_kind_env_record =>
       match ref_base r with
       | ref_base_type_value v => result_stuck
@@ -1148,6 +1148,20 @@ Fixpoint init_object (run_expr' : run_expr_type) S C l (pds : propdefs) : result
     end
   end.
 
+Fixpoint run_var_decl (run_call' : run_call_type) (run_expr' : run_expr_type) S C xeos : result :=
+  match xeos with
+  | nil => out_ter S res_empty
+  | (x, eo) :: xeos' =>
+    if_success (match eo with
+      | None => out_ter S undef
+      | Some e =>
+        if_success_value (run_expr' S C e) (fun S1 v =>
+          let ir := identifier_res S1 C x in
+          if_success (ref_put_value run_call' S1 C ir v) (fun S2 rv =>
+            out_ter S2 undef))
+      end) (fun S1 rv =>
+        run_var_decl run_call' run_expr' S1 C xeos')
+  end.
 
 (**************************************************************)
 (** ** Definition of the interpreter *)
@@ -1360,20 +1374,7 @@ with run_stat (max_step : nat) S C t : result :=
       run_expr' S C e
 
     | stat_var_decl xeos =>
-      (fix run_var_decl S0 xeos : result := (* TODO:  Remove this fix and put this in an external function. *)
-        match xeos with
-        | nil => out_ter S0 res_empty
-        | (x, eo) :: xeos' =>
-          if_success (match eo with
-            | None => out_ter S0 undef
-            | Some e =>
-              if_success_value (run_expr' S0 C e) (fun S1 v =>
-                let ir := identifier_res S1 C x in
-                if_success (ref_put_value run_call' S1 C ir v) (fun S2 rv =>
-                  out_ter S2 undef))
-            end) (fun S1 rv =>
-              run_var_decl S1 xeos')
-        end) S xeos
+      run_var_decl run_call' run_expr' S C xeos
 
     | stat_block ts =>
       run_block' S C resvalue_empty ts
