@@ -213,3 +213,10 @@ Proof.
   repeat apply and_decidable; typeclass.
 Qed.
 
+Global Instance res_label_in_dec : forall R labs,
+  Decidable (res_label_in R labs).
+Proof.
+  introv. unfold res_label_in. destruct (res_label R).
+   skip. (* TODO *)
+   typeclass.
+Qed.

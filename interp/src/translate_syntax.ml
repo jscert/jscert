@@ -4,7 +4,7 @@ open List
 exception CoqSyntaxDoesNotSupport of string
 exception Empty_list
 
-let split_last stmts = 
+let split_last stmts = (* I think that now this function is useless. -- Martin. *)
   match stmts with
     | [] -> raise Empty_list 
     | hd :: tl ->
@@ -87,7 +87,7 @@ let rec exp_to_exp exp : Interpreter.expr =
       
       | RegExp _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | This -> Interpreter.Expr_this
-      | Var v -> Interpreter.Expr_variable (string_to_coq v)
+      | Var v -> Interpreter.Expr_identifier (string_to_coq v)
       | Delete e -> Interpreter.Expr_unary_op (Interpreter.Unary_op_delete, f e)
       | Access (e, v) -> Interpreter.Expr_member (f e, string_to_coq v)
       | Unary_op (op, e) -> Interpreter.Expr_unary_op (unary_op_to_coq op, f e)
@@ -98,9 +98,8 @@ let rec exp_to_exp exp : Interpreter.expr =
       | Comma (e1, e2) -> Interpreter.Expr_binary_op (f e1, Interpreter.Binary_op_coma, f e2)
       | Call (e1, e2s) -> Interpreter.Expr_call (f e1, map (fun e2 -> f e2) e2s)
       | New (e1, e2s) -> Interpreter.Expr_new (f e1, map (fun e2 -> f e2) e2s)
-      | AnnonymousFun (vs, e) -> Interpreter.Expr_function (None, (map string_to_coq vs), Interpreter.Body_intro (exp_to_prog e, []))
-      | NamedFun (n, vs, e) -> Interpreter.Expr_function 
-        (Some (string_to_coq n), (map string_to_coq vs), Interpreter.Body_intro (exp_to_prog e, []))
+      | AnnonymousFun (s, vs, e) -> Interpreter.Expr_function (None, (map string_to_coq vs), exp_to_funcbody e s)
+      | NamedFun (s, n, vs, e) -> Interpreter.Expr_function (Some (string_to_coq n), (map string_to_coq vs), exp_to_funcbody e s)
       | Obj xs -> Interpreter.Expr_object (map (fun (s,e) -> Interpreter.Propname_string (string_to_coq s), Interpreter.Propbody_val (f e)) xs)
       | Array _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | ConditionalOp (e1, e2, e3) -> Interpreter.Expr_conditional (f e1, f e2, f e3)
@@ -114,14 +113,16 @@ let rec exp_to_exp exp : Interpreter.expr =
       | VarDec _ 
       | Throw _  
       | Label _
-      | Seq _
       | While _
+      | DoWhile _
       | With _
       | Try _
       | If _
       | ForIn _
+      | For _
       | Switch _ 
-      | Block _ -> raise Parser.InvalidArgument
+      | Block _ 
+      | Script _ -> raise Parser.InvalidArgument
 
 and exp_to_stat exp : Interpreter.stat =
   let f = exp_to_stat in 
@@ -153,7 +154,7 @@ and exp_to_stat exp : Interpreter.stat =
       | ConditionalOp _ -> Interpreter.Stat_expr (exp_to_exp exp)
 
       (*Statements*)
-      | Skip -> Interpreter.Stat_skip
+	    | Skip -> Interpreter.Stat_block []
       | Return (Some e) -> Interpreter.Stat_return (Some (exp_to_exp e))
       | Return None -> Interpreter.Stat_return None
       | Break (Some l) -> Interpreter.Stat_break (Some (string_to_coq l))
@@ -161,12 +162,12 @@ and exp_to_stat exp : Interpreter.stat =
       | Continue (Some l) -> Interpreter.Stat_continue (Some (string_to_coq l))
       | Continue None -> Interpreter.Stat_continue None
       | Debugger -> Interpreter.Stat_debugger
-      | VarDec (v, None) -> Interpreter.Stat_var_decl [string_to_coq v, None]
-      | VarDec (v, Some e) -> Interpreter.Stat_var_decl [string_to_coq v, Some (exp_to_exp e)]
+      | VarDec vs -> Interpreter.Stat_var_decl (map (fun (v, e) ->
+          string_to_coq v, match e with None -> None | Some e -> Some (exp_to_exp e)) vs)
       | Throw e -> Interpreter.Stat_throw (exp_to_exp e)
       | Label (_, e) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))   
-      | Seq (e1, e2) -> Interpreter.Stat_seq (f e1, f e2)
       | While (e1, e2)  -> Interpreter.Stat_while (exp_to_exp e1, f e2)
+      | DoWhile (e1, e2) -> Interpreter.Stat_do_while (f e1, exp_to_exp e2)
       | With (e1, e2) -> Interpreter.Stat_with (exp_to_exp e1, f e2) 
       | Try (e, None, None) -> Interpreter.Stat_try (f e, None, None)
       | Try (e, None, Some fe) -> Interpreter.Stat_try (f e, None, Some (f fe))
@@ -175,23 +176,28 @@ and exp_to_stat exp : Interpreter.stat =
       | If (e1, e2, Some e3) -> Interpreter.Stat_if (exp_to_exp e1, f e2, Some (f e3))
       | If (e1, e2, None) -> Interpreter.Stat_if (exp_to_exp e1, f e2, None)
       | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | For (e1, e2, e3, e4) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Switch (e1, e2s) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
-      | Block es -> 
-        begin match es with
-	        | [] -> Interpreter.Stat_skip
-	        | stmts ->
-             let last, stmts = split_last stmts in
-	           List.fold_right (fun s1 s2 -> Interpreter.Stat_seq (f s1, s2)) stmts (f last)
-        end
+      | Block es -> Interpreter.Stat_block (List.map f es)
+
+      | Script _ -> raise Parser.InvalidArgument
 
 and exp_to_prog exp : Interpreter.prog =
-  let f = exp_to_prog in
-  let tos = string_to_coq in
   match exp.exp_stx with
-	  | NamedFun (name, args, body) -> 
-      Interpreter.Prog_function_decl (tos name, map tos args, Interpreter.Body_intro (f body, []))
-	  | Seq (e1, e2) -> Interpreter.Prog_seq (f e1, f e2)
-	  | _ -> Interpreter.Prog_stat (exp_to_stat exp)
+    | Script (s, e2s) -> Interpreter.Prog_intro (s, map exp_to_elem e2s)
+    | Block (e2s) -> Interpreter.Prog_intro (false, map exp_to_elem e2s)
+    | _ ->  Interpreter.Prog_intro (false, [exp_to_elem exp])
+
+and exp_to_elem exp : Interpreter.element = 
+    let tos = string_to_coq in
+    match exp.exp_stx with
+      | NamedFun (s, name, args, body) -> Interpreter.Element_func_decl (tos name, map tos args, exp_to_funcbody body s)
+      | _ -> Interpreter.Element_stat (exp_to_stat exp)
+  
+and exp_to_funcbody exp strict : Interpreter.funcbody =
+  let body = match exp_to_prog exp with
+    | Interpreter.Prog_intro (_, elems) -> Interpreter.Prog_intro (strict, elems) in
+  Interpreter.Funcbody_intro (body, [])
 
 let coq_syntax_from_file filename =
   let exp = Parser_main.exp_from_file filename in

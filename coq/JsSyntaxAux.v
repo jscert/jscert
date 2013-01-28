@@ -341,6 +341,35 @@ Definition res_with_value R rv : res :=
   match R with res_intro rt old_rv labopt => res_intro rt rv labopt end.
 
 
+(**************************************************************)
+(** ** Type [resvalue] *)
+
+(** Inhabitants **)
+
+Global Instance resvalue_inhab : Inhab resvalue.
+Proof. apply (prove_Inhab resvalue_empty). Qed.
+
+(** Boolean comparison *)
+
+Definition resvalue_compare rv1 rv2 :=
+  match rv1, rv2 with
+  | resvalue_empty, resvalue_empty => true
+  | resvalue_value v1, resvalue_value v2 =>
+    decide (v1 = v2)
+  | resvalue_ref r1, resvalue_ref r2 =>
+    arbitrary (* TODO *)
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance resvalue_comparable : Comparable resvalue.
+  applys (comparable_beq resvalue_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+  skip. skip. (* There lacks a case in the boolean function. *)
+Qed.
+
 
 (**************************************************************)
 (** ** Type [execution_ctx] *)

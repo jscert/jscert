@@ -249,7 +249,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S rv)
 
   | red_stat_while_4_not_break : forall S0 S C labs e1 t2 rv R o,
-      ~ (res_type R = restype_break /\ res_label_in R labs) ->
+      ~ (res_type R = restype_break /\ res_label_in R labs) -> (* This means that a [while] would catch [throw] and [return], isn't it?  I think there lacks some rules there. -- Martin *)
       red_stat S C (stat_while_1 labs e1 t2 rv) o ->      
       red_stat S C (stat_while_4 labs e1 t2 rv R) o
 
@@ -442,16 +442,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Object initializer *)
   
-  | red_expr_object : forall S C pds o1 o, 
+  | red_expr_object : forall S C pds o1 o,
       red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
       red_expr S C (expr_object_1 o1 pds) o ->
       red_expr S C (expr_object pds) o
- 
-  | red_expr_object_0 : forall S0 S C l pds o, 
+
+  | red_expr_object_0 : forall S0 S C l pds o,
       red_expr S C (expr_object_1 l pds) o ->
       red_expr S0 C (expr_object_0 (out_ter S l) pds) o ->
-          
-  | red_expr_object_1_nil : forall S S C l, 
+
+  | red_expr_object_1_nil : forall S S C l,
       red_expr S C (expr_object_1 l nil) (out_ter S l)
   
   | red_expr_object_1_cons : forall S0 S C x l pn pb pds o, 
@@ -2887,7 +2887,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 (**------ end under dvpt --------*)
 
-  | object_get_own_property_string : forall S l x An An',
+(*  | object_get_own_property_string : forall S l x An An',
       object_class S l "String" ->
       object_get_own_property_default S l x An ->
       (If An <> prop_descriptor_undef
