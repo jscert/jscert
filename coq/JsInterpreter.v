@@ -341,9 +341,9 @@ Definition run_object_get_own_property S l x : prop_descriptor :=
   let sclass := run_object_class S l in
   let An := run_object_get_own_property_default S l x in
   ifb sclass = "String" then (
-    ifb An = prop_descriptor_undef then An
+    ifb An <> prop_descriptor_undef then An
     else let ix := convert_primitive_to_integer x in
-    ifb prim_string x <> convert_prim_to_string (prim_number (JsNumber.absolute ix)) then
+    ifb prim_string x <> convert_prim_to_string (JsNumber.absolute ix) then
       prop_descriptor_undef
     else (
       match run_object_prim_value S l with
