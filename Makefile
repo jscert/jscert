@@ -34,7 +34,7 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 #######################################################
 
 INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC) 
-COQC=$(COQBIN)coqc -dont-load-proofs $(INCLUDES)
+COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 OCAMLOPT=ocamlopt
 
@@ -94,8 +94,10 @@ init:
 #######################################################
 
 .v.vo : .depend
-	$(COQC) -I coq -I $(TLC) $<
+	$(COQC) -dont-load-proofs -I coq -I $(TLC) $<
 
+coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
+	$(COQC) -I coq -I $(TLC) $< # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
 
 
 #######################################################
