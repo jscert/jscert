@@ -5,8 +5,8 @@ let test = ref false
 let arguments () =
   let usage_msg="Usage: -jsparser <path> -file <path>" in
   Arg.parse
-    [ "-jsparser", 
-      Arg.String(fun f -> Parser_main.js_to_xml_parser := f), 
+    [ "-jsparser",
+      Arg.String(fun f -> Parser_main.js_to_xml_parser := f),
       "path to js_parser.jar";
       "-file",
       Arg.String(fun f -> file := f),
@@ -35,7 +35,7 @@ let get_global_value state name =
 	let x = Translate_syntax.string_to_coq name in
 	let r =
 	  Interpreter.ref_create_env_loc
-	    Interpreter.env_loc_global_env_record 
+	    Interpreter.env_loc_global_env_record
 		x true in
 	get_value_ref state r
 
@@ -44,15 +44,15 @@ let pr_test state =
      | Some v ->
     	  print_endline ("\nA variable [__$ERROR__] is defined at global scope.  Its value is:\n\t"
 		  ^ Prheap.prvalue v ^ "\n") ;
-		  if !test then exit (-1)
+		  if !test then exit 1
      | None ->
 	    if (not !test) then
 	      print_endline "No variable [__$ERROR__] is defined at global scope.\n")
 
 
-let _ = 
+let _ =
   arguments ();
-  let exit_if_test _ = if !test then exit (-1) in
+  let exit_if_test _ = if !test then exit 1 in
   let print_if_test = if !test then print_string else (fun _ -> ()) in
   try
     let exp = Translate_syntax.coq_syntax_from_file !file in
@@ -65,7 +65,7 @@ let _ =
                           (Translate_syntax.coq_syntax_from_file !test_prelude)
                   with
                   | Interpreter.Result_normal (
-                      Interpreter.Out_ter (state, 
+                      Interpreter.Out_ter (state,
 						{ Interpreter.res_type = Interpreter.Restype_normal ;
 						  Interpreter.res_value =
 						    Interpreter.Resvalue_empty })) ->
@@ -99,7 +99,7 @@ let _ =
       	                                       (match get_value_ref state re with
       	                                        | Some v -> Prheap.prvalue v
       	                                        | None -> "Unknown!") ^ "\n")
-                     | Interpreter.Resvalue_empty -> 
+                     | Interpreter.Resvalue_empty ->
                         print_endline "\n\nNo result\n"
 				 end;
 				 pr_test state)
@@ -112,7 +112,7 @@ let _ =
 			  | Interpreter.Restype_return ->
 				print_endline "\n\nRETURN\n" ;
 				exit_if_test ()
-              | Interpreter.Restype_throw -> 
+              | Interpreter.Restype_throw ->
                  print_endline "\n\nEXCEPTION THROWN\n" ;
                  (match Interpreter.res_value res with
                  | Interpreter.Resvalue_value v ->
@@ -134,10 +134,10 @@ let _ =
   with
   | Assert_failure (file, line, col) ->
 	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) ;
-	print_if_test "\nThis test will be considered as successful."
+	exit 2
   | Translate_syntax.CoqSyntaxDoesNotSupport s ->
 	print_string ("\nTranslation of Javascript syntax does not support `" ^ s ^ "' yet.") ;
-	print_if_test "\nThis test will be considered as successful."
+	exit 2
   | Xml.File_not_found file ->
 	print_string ("\nParsing problem with the file `" ^ file ^ "'.") ;
 	exit_if_test ()
