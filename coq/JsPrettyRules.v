@@ -2266,12 +2266,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_global_eval_1 v) (out_ter S v)  
       
   | red_spec_call_global_eval_1_string_not_parse : forall s S C o,
-      parse_impossible s ->
+      parse s None ->
       red_expr S C (spec_error builtin_syntax_error) o -> 
       red_expr S C (spec_call_global_eval_1 s) o 
       
   | red_spec_call_global_eval_1_string_parse : forall s p S C o,
-      parse_successful s p ->
+      parse s (Some p) ->
       (* TODO: the entering is no longer in cps form
       red_expr S C (spec_entering_eval_code (spec_call_global_eval_1_2 p) (funcbody_intro p s)) o -> 
       *)
