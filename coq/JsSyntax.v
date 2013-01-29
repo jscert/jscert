@@ -17,7 +17,7 @@ Notation "'number'" := (JsNumber.number).
 (** * Javascript: Syntax *)
 
 (**************************************************************)
-(** ** Representation of syntax *)
+(** ** Representation of syntax (11, 12, 13 and 14) *)
 
 (* Unary operator *)
 
@@ -310,7 +310,7 @@ Inductive builtin :=
 
 
 (**************************************************************)
-(** ** Representation of values and types *)
+(** ** Representation of values and types (8.1 to 8.5) *)
 
 (** Locations of objects *)
 
@@ -359,31 +359,62 @@ Coercion value_object : object_loc >-> value.
 
 
 (**************************************************************)
-(** ** Representation of execution contexts *)
+(** ** Representation of property attributes (8.6.1) *)
 
-(** Representation of the names of a property *)
+(** Named data property attributes *)
 
-Definition prop_name := string.
+Record attributes_data := attributes_data_intro {
+   attributes_data_value : value;
+   attributes_data_writable : bool;
+   attributes_data_enumerable : bool;
+   attributes_data_configurable : bool }.
+
+(** Named accessor property attributes *)
+
+Record attributes_accessor := attributes_accessor_intro {
+   attributes_accessor_get : value;
+   attributes_accessor_set : value;
+   attributes_accessor_enumerable : bool;
+   attributes_accessor_configurable : bool }.
 
 (** Property attributes *)
 
-Record prop_attributes := prop_attributes_intro {
-   prop_attributes_value : option value;
-   prop_attributes_writable : option bool;
-   prop_attributes_get : option value;
-   prop_attributes_set : option value;
-   prop_attributes_enumerable : option bool;
-   prop_attributes_configurable : option bool }.
+Inductive attributes := 
+  | attributes_data_of : attributes_data -> attributes
+  | attributes_accessor_of : attributes_accessor -> attributes.
 
-(** Possibly-null property descriptor *)
+(** Coercions for property attributes *)
 
-Inductive prop_descriptor :=
-  | prop_descriptor_undef : prop_descriptor
-  | prop_descriptor_some : prop_attributes -> prop_descriptor.
+Coercion attributes_data_of : attributes_data >-> attributes.
+Coercion attributes_accessor_of : attributes_accessor >-> attributes.
+
+
+(**************************************************************)
+(** ** Representation of property descriptors (8.10) *)
+
+(** Property descriptor *)
+
+Record descriptor := descriptor_intro {
+   descriptor_value : option value;
+   descriptor_writable : option bool;
+   descriptor_get : option value;
+   descriptor_set : option value;
+   descriptor_enumerable : option bool;
+   descriptor_configurable : option bool }.
+
+(** Fully-populated property descriptor (possibly undefined) *)
+
+Inductive full_descriptor :=
+  | full_descriptor_undef : full_descriptor
+  | full_descriptor_some : attributes -> full_descriptor.
 
 (** Coercion for non-null property descriptors *)
 
-Coercion prop_descriptor_some : prop_attributes >-> prop_descriptor.
+Coercion full_descriptor_some : attributes >-> full_descriptor.
+
+
+(**************************************************************)
+(** ** Representation of environment records and lexical environments (10.2) *)
 
 (** Mutability flags used by declarative environment records *)
 
@@ -424,6 +455,10 @@ Parameter env_loc_global_env_record : env_loc.
 
 Definition lexical_env := list env_loc.
 
+
+(**************************************************************)
+(** ** Representation of execution contexts (10.3) *)
+
 (** Representation of execution contexts *)
 
 Record execution_ctx := execution_ctx_intro {
@@ -434,7 +469,11 @@ Record execution_ctx := execution_ctx_intro {
 
 
 (**************************************************************)
-(** ** Representation of references *)
+(** ** Representation of references (8.7) *)
+
+(** Representation of the names of a property *)
+
+Definition prop_name := string.
 
 (** Representation of the base value of a reference *)
 
@@ -451,7 +490,7 @@ Record ref := ref_intro {
 
 
 (**************************************************************)
-(** ** Representation of objects *)
+(** ** Representation of objects (8.6.2) *)
 
 (** Representation of the class name *)
 
@@ -460,7 +499,7 @@ Definition class_name := string.
 (** Representation of the map from properties to attributes *)
 
 Definition object_properties_type :=
-  Heap.heap prop_name prop_attributes.
+  Heap.heap prop_name attributes.
 
 (** Representation of objects *)
 
@@ -492,13 +531,6 @@ Record object := object_intro {
    (* LATER: match for regular expression matching *)
    }.
 
-(** Special modes for [get_own_prop] and [set_own_prop] *)
-
-Inductive object_special :=
-  | object_special_default
-  | object_special_string
-  | object_special_array.
-
 
 (**************************************************************)
 (** ** Representation of the state *)
@@ -516,7 +548,7 @@ Record state := state_intro {
 (**************************************************************)
 (**************************************************************)
 (****************************************************************)
-(** ** Definition of outcomes *)
+(** ** Definition of outcomes (8.9) *)
 
 (** Kind of results *)
 

@@ -4,7 +4,7 @@ Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 
 (**************************************************************)
-(** ** Implicit Types *)
+(** ** Implicit Types -- copied from JsPreliminary *)
 
 Implicit Type b : bool.
 Implicit Type n : number.
@@ -23,15 +23,20 @@ Implicit Type rv : resvalue.
 Implicit Type lab : label.
 Implicit Type labs : label_set.
 Implicit Type R : res.
+Implicit Type o : out.
 
 Implicit Type x : prop_name.
 Implicit Type str : strictness_flag.
 Implicit Type m : mutability.
-Implicit Type A : prop_attributes.
-Implicit Type An : prop_descriptor.
+Implicit Type Ad : attributes_data.
+Implicit Type Aa : attributes_accessor.
+Implicit Type A : attributes.
+Implicit Type Desc : descriptor.
+Implicit Type D : full_descriptor.
+
 Implicit Type L : env_loc.
 Implicit Type E : env_record.
-Implicit Type D : decl_env_record.
+Implicit Type Ed : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
 Implicit Type S : state.
@@ -334,13 +339,13 @@ Qed.
 (**************************************************************)
 (** Operations on environments *)
 
-Definition run_decl_env_record_binds_value D x : value :=
-  snd (pick (binds D x)).
+Definition run_decl_env_record_binds_value Ed x : value :=
+  snd (pick (binds Ed x)).
 
 Definition run_object_get_own_prop_base P x : prop_descriptor :=
   match read_option P x with
-  | None => prop_descriptor_undef
-  | Some A => prop_descriptor_some (object_get_own_prop_builder A)
+  | None => prop_full_descriptor_undef
+  | Some A => prop_full_descriptor_some (object_get_own_prop_builder A)
   end.
 
 Definition run_object_get_own_property_default S l x : prop_descriptor :=
@@ -350,18 +355,18 @@ Definition run_object_get_own_property S l x : prop_descriptor :=
   let sclass := run_object_class S l in
   let An := run_object_get_own_property_default S l x in
   ifb sclass = "String" then (
-    ifb An <> prop_descriptor_undef then An
+    ifb An <> prop_full_descriptor_undef then An
     else let ix := convert_primitive_to_integer x in
     ifb prim_string x <> convert_prim_to_string (JsNumber.absolute ix) then
-      prop_descriptor_undef
+      prop_full_descriptor_undef
     else (
       match run_object_prim_value S l with
       | prim_string s =>
         let len : int := String.length s in
         let i := JsNumber_to_int ix in
-        ifb len <= i then prop_descriptor_undef
+        ifb len <= i then prop_full_descriptor_undef
         else let s' := string_sub s i 1 in
-          prop_attributes_create_data s' false true false
+          attributes_data_intro s' false true false
       | _ => arbitrary
       end
     )
@@ -370,11 +375,11 @@ Definition run_object_get_own_property S l x : prop_descriptor :=
 Definition object_get_property_body run_object_get_property S v x : prop_descriptor :=
   match v with
   | value_prim w =>
-    ifb v = null then prop_descriptor_undef
+    ifb v = null then prop_full_descriptor_undef
     else arbitrary
   | value_object l =>
     let An := run_object_get_own_property S l x in
-    ifb An = prop_descriptor_undef then (
+    ifb An = prop_full_descriptor_undef then (
       let lproto := run_object_proto S l in
       run_object_get_property S lproto x
     ) else An
@@ -384,7 +389,7 @@ Definition run_object_get_property := FixFun3 object_get_property_body.
 
 Definition object_has_prop S l x : bool :=
   let An := run_object_get_property S (value_object l) x in
-  decide (An <> prop_descriptor_undef).
+  decide (An <> prop_full_descriptor_undef).
 
 Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
   match run_object_proto S  l  with
@@ -406,8 +411,8 @@ Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
 Definition env_record_has_binding S L x : bool :=
   env_record_lookup (fun _ : unit => arbitrary) S L (fun er _ =>
     match er with
-    | env_record_decl D =>
-      decide (decl_env_record_indom D x)
+    | env_record_decl Ed =>
+      decide (decl_env_record_indom Ed x)
     | env_record_object l pt =>
       object_has_prop S l x
     end) tt.
@@ -432,8 +437,8 @@ Definition identifier_res S C x :=
 
 Definition object_get S v x : result :=
   match run_object_get_property S v x with
-  | prop_descriptor_undef => out_ter S undef
-  | prop_descriptor_some A =>
+  | prop_full_descriptor_undef => out_ter S undef
+  | prop_full_descriptor_some A =>
     ifb prop_attributes_is_data A then
       morph_option result_stuck (out_ter S : value -> _) (prop_attributes_value A)
     else result_stuck
@@ -491,8 +496,8 @@ Definition constructor_builtin S B (vs : list value) : result :=
 Definition env_record_get_binding_value S L x str : result :=
   env_record_lookup result_stuck S L (fun er =>
     match er with
-    | env_record_decl D =>
-      let (mu, v) := read D x in
+    | env_record_decl Ed =>
+      let (mu, v) := read Ed x in
       ifb mu = mutability_uninitialized_immutable then
         out_ref_error_or_undef S str
       else out_ter S v
@@ -506,21 +511,21 @@ Definition object_can_put S l x : result :=
   let An := run_object_get_own_property S l x in
   let oe := run_object_extensible S l in
   match An with
-  | prop_descriptor_some A =>
+  | prop_full_descriptor_some A =>
     ifb prop_attributes_is_accessor A then
       out_ter S (decide (prop_attributes_set A = Some undef
         \/ prop_attributes_set A = None))
     else ifb prop_attributes_is_data A then
       out_ter S (morph_option undef prim_bool (prop_attributes_writable A))
     else result_stuck
-  | prop_descriptor_undef =>
+  | prop_full_descriptor_undef =>
     let lproto := run_object_proto S l in
     ifb lproto = null then out_ter S oe
     else (
       let Anproto := run_object_get_property S lproto x in
       match Anproto with
-      | prop_descriptor_undef => out_ter S oe
-      | prop_descriptor_some A =>
+      | prop_full_descriptor_undef => out_ter S oe
+      | prop_full_descriptor_some A =>
         ifb prop_attributes_is_accessor A then
           out_ter S (decide (prop_attributes_set A = Some undef \/ prop_attributes_set A = None))
         else ifb prop_attributes_is_data A then
@@ -534,7 +539,7 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
   let oldpd := run_object_get_own_property S l x in
   let extensible := run_object_extensible S l in
   match oldpd with
-  | prop_descriptor_undef =>
+  | prop_full_descriptor_undef =>
     if extensible then (
       let S' := pick (object_set_property S l x
         (ifb prop_attributes_is_generic newpf \/ prop_attributes_is_data newpf then
@@ -542,12 +547,12 @@ Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool)
         else prop_attributes_convert_to_accessor newpf)) in
       out_ter S' true
     ) else out_reject S throw
-  | prop_descriptor_some oldpf =>
+  | prop_full_descriptor_some oldpf =>
     let fman S' :=
       let S'' := pick (object_set_property S' l x (prop_attributes_transfer oldpf newpf)) in
       out_ter S'' true in
     if extensible then (
-      ifb prop_attributes_contains oldpf newpf then
+      ifb descriptor_contains oldpf newpf then
         out_ter S true
       else ifb change_enumerable_attributes_on_non_configurable oldpf newpf then
         out_reject S throw
@@ -627,8 +632,8 @@ Definition object_put (run_call' : run_call_type) S C (B : option builtin) l x v
         let An := run_object_get_property S' (value_object l) x in
           ifb prop_descriptor_is_accessor An then (
             match An with
-            | prop_descriptor_undef => arbitrary
-            | prop_descriptor_some A =>
+            | prop_full_descriptor_undef => arbitrary
+            | prop_full_descriptor_some A =>
               match extract_from_option (prop_attributes_set A) with
               | value_object fsetter =>
                 let fc := extract_from_option (run_object_call S' fsetter) in
@@ -636,7 +641,7 @@ Definition object_put (run_call' : run_call_type) S C (B : option builtin) l x v
               | _ => result_stuck
               end
             end) else (
-              let A' := prop_attributes_create_data v true true true in
+              let A' := attributes_data_intro v true true true in
               object_define_own_prop S' l x A' str)))
       (fun S' => error_or_void S str builtin_type_error)
 
@@ -646,8 +651,8 @@ Definition object_put (run_call' : run_call_type) S C (B : option builtin) l x v
 
 Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v str : result :=
   match pick (env_record_binds S L) with
-  | env_record_decl D =>
-    let (mu, v_old) := read D x in
+  | env_record_decl Ed =>
+    let (mu, v_old) := read Ed x in
     ifb mutability_is_mutable mu then
       out_ter_void (env_record_write_decl_env S L x mu v)
     else if str then
@@ -694,14 +699,14 @@ Definition if_success_value (o : result) (K : state -> value -> result) : result
 Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : result :=
   let deletable := unsome_default false deletable_opt in
   match pick (env_record_binds S L) with
-  | env_record_decl D =>
-    ifb decl_env_record_indom D x then result_stuck
+  | env_record_decl Ed =>
+    ifb decl_env_record_indom Ed x then result_stuck
     else
       let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
       out_ter_void S'
   | env_record_object l pt =>
     if object_has_prop S l x then result_stuck
-    else let A := prop_attributes_create_data undef true true deletable in
+    else let A := attributes_data_intro undef true true deletable in
       object_define_own_prop S l x A throw_true
   end.
 
@@ -715,8 +720,8 @@ Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C
 
 Definition env_record_create_immutable_binding S L x : result :=
   match pick (env_record_binds S L) with
-  | env_record_decl D =>
-    ifb decl_env_record_indom D x then result_stuck
+  | env_record_decl Ed =>
+    ifb decl_env_record_indom Ed x then result_stuck
     else out_ter_void (
       env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
   | _ => result_stuck
@@ -724,17 +729,17 @@ Definition env_record_create_immutable_binding S L x : result :=
 
 Definition env_record_initialize_immutable_binding  S L x v : result :=
   match pick (env_record_binds S L) with
-  | env_record_decl D =>
-    let v_old := run_decl_env_record_binds_value D x in
+  | env_record_decl Ed =>
+    let v_old := run_decl_env_record_binds_value Ed x in
     out_ter_void (env_record_write_decl_env S L x mutability_immutable v)
   | _ => result_stuck
   end.
 
 Definition creating_function_object_proto S l (K : state -> result) : result :=
   if_object (constructor_builtin S builtin_object_new nil) (fun S1 lproto =>
-    let A1 := prop_attributes_create_data (value_object l) true false true in
+    let A1 := attributes_data_intro (value_object l) true false true in
     if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 rv1 =>
-      let A2 := prop_attributes_create_data (value_object lproto) true false false in
+      let A2 := attributes_data_intro (value_object lproto) true false false in
       if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 rv2 =>
         K S3))).
 
@@ -746,13 +751,13 @@ Definition creating_function_object S (names : list string) (bd : funcbody) X st
     (Some builtin_spec_op_function_has_instance) in
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
-  let A1 := prop_attributes_create_data (JsNumber.of_int (List.length names)) false false false in
+  let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 rv1 =>
     creating_function_object_proto S2 l (fun S3 =>
       if negb str then out_ter S3 l
       else (
         let vthrower := value_object builtin_function_throw_type_error in
-        let A2 := prop_attributes_create_accessor vthrower vthrower false false in
+        let A2 := attributes_accessor_intro vthrower vthrower false false in
         if_success (object_define_own_prop S3 l "caller" A2 false) (fun S4 rv2 =>
           if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
@@ -782,10 +787,10 @@ Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : r
       let hb := env_record_has_binding S L fn in
       if_success (if hb then
         match run_object_get_property S builtin_global fn with
-        | prop_descriptor_undef => result_stuck
-        | prop_descriptor_some A =>
+        | prop_full_descriptor_undef => result_stuck
+        | prop_full_descriptor_some A =>
           ifb prop_attributes_configurable A = Some true then (
-            let A' := prop_attributes_create_data undef true true false in (* To be reread *)
+            let A' := attributes_data_intro undef true true false in (* To be reread *)
             object_define_own_prop S1 builtin_global fn A' true
           ) else ifb prop_descriptor_is_accessor A \/ prop_attributes_writable A <> Some true \/ prop_attributes_enumerable A <> Some true then
           out_type_error S1
@@ -946,7 +951,7 @@ Definition to_string (run_call' : run_call_type) S C v : result :=
 
 Definition env_record_implicit_this_value S L : value :=
   match pick (env_record_binds S L) with
-  | env_record_decl D => undef
+  | env_record_decl Ed => undef
   | env_record_object l provide_this =>
       if provide_this
         then value_object l
@@ -1140,8 +1145,8 @@ Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
 Definition object_delete S l x str : result :=
   let B := run_object_method object_delete_ S l in
   match run_object_get_own_property S l x with
-  | prop_descriptor_undef => out_ter S true
-  | prop_descriptor_some A =>
+  | prop_full_descriptor_undef => out_ter S true
+  | prop_full_descriptor_some A =>
     ifb prop_attributes_configurable A = Some true then
       arbitrary (* TODO: object_rem_prop S l x *)
     else
@@ -1238,15 +1243,15 @@ Fixpoint init_object (run_expr' : run_expr_type) S C l (pds : propdefs) : result
     match pb with
     | propbody_val e0 =>
       if_success_value (run_expr' S C e0) (fun S1 v0 =>
-        let A := prop_attributes_create_data v0 true true true in
+        let A := attributes_data_intro v0 true true true in
         follows S1 A)
     | propbody_get bd =>
       if_value (create_new_function_in S nil bd) (fun S1 v0 =>
-        let A := prop_attributes_create_accessor_opt None (Some v0) true true in
+        let A := attributes_accessor_intro undef v0 true true in
         follows S1 A)
     | propbody_set args bd =>
       if_value (create_new_function_in S args bd) (fun S1 v0 =>
-        let A := prop_attributes_create_accessor_opt (Some v0) None true true in
+        let A := attributes_accessor_intro v0 undef true true in
         follows S1 A)
     end
   end.

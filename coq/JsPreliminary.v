@@ -26,11 +26,15 @@ Implicit Type o : out.
 Implicit Type x : prop_name.
 Implicit Type str : strictness_flag.
 Implicit Type m : mutability.
-Implicit Type A : prop_attributes.
-Implicit Type An : prop_descriptor.
+Implicit Type Ad : attributes_data.
+Implicit Type Aa : attributes_accessor.
+Implicit Type A : attributes.
+Implicit Type Desc : descriptor.
+Implicit Type D : full_descriptor.
+
 Implicit Type L : env_loc.
 Implicit Type E : env_record.
-Implicit Type D : decl_env_record.
+Implicit Type Ed : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
 Implicit Type S : state.
@@ -114,122 +118,33 @@ Definition type_of v :=
   | value_object _ => type_object
   end.
 
-(** Definition of the "SameValue" algorithm 
-    -- TODO: this is not used because samevalue matches
-    logical equality. *)
+(** Definition of the "SameValue" algorithm, which appears to
+    be equivalent to logical equality. The spec states:
 
-Definition value_same v1 v2 :=
-  let T1 := type_of v1 in
-  let T2 := type_of v2 in
-  ifb T1 <> T2 then False else
-  match T1 with
-  | type_undef => True
-  | type_null => True
-  | type_number =>
-      ifb   v1 = (prim_number JsNumber.nan)
-         /\ v2 = (prim_number JsNumber.nan) then True
-      else ifb    v1 = (prim_number JsNumber.zero)
-              /\ v2 = (prim_number JsNumber.neg_zero) then False
-      else ifb    v1 = (prim_number JsNumber.neg_zero)
-              /\ v2 = (prim_number JsNumber.zero) then False
-      else (v1 = v2)
-  | type_string => (v1 = v2)
-  | type_bool => (v1 = v2)
-  | type_object => (v1 = v2)
-  end.
+    Definition value_same v1 v2 :=
+      let T1 := type_of v1 in
+      let T2 := type_of v2 in
+      ifb T1 <> T2 then False else
+      match T1 with
+      | type_undef => True
+      | type_null => True
+      | type_number =>
+          ifb   v1 = (prim_number JsNumber.nan)
+             /\ v2 = (prim_number JsNumber.nan) then True
+          else ifb    v1 = (prim_number JsNumber.zero)
+                  /\ v2 = (prim_number JsNumber.neg_zero) then False
+          else ifb    v1 = (prim_number JsNumber.neg_zero)
+                  /\ v2 = (prim_number JsNumber.zero) then False
+          else (v1 = v2)
+      | type_string => (v1 = v2)
+      | type_bool => (v1 = v2)
+      | type_object => (v1 = v2)
+      end.
 
+    Which is equivalent to:
+*)
 
-(**************************************************************)
-(** ** Auxiliary definitions for reduction of [get_own_property]  *)
-
-(** The 4 following definitions are used to define when
-    a property descriptor contains another one. *)
-
-Definition if_some_then_same (A:Type) F (oldf newf : option A) :=
-  match newf, oldf with
-  | Some v1, Some v2 => F v1 v2
-  | Some v1, None => False
-  | None, _ => True
-  end.
-
-Definition if_some_value_then_same :=
-  if_some_then_same value_same.
-
-Definition if_some_bool_then_same :=
-  if_some_then_same (A := bool)eq.
-
-Definition prop_attributes_contains oldpf newpf :=
-  match oldpf, newpf with
-  | prop_attributes_intro ov ow og os oe oc,
-    prop_attributes_intro nv nw ng ns ne nc =>
-       if_some_value_then_same ov nv
-    /\ if_some_bool_then_same ow nw
-    /\ if_some_value_then_same og ng
-    /\ if_some_value_then_same os ns
-    /\ if_some_bool_then_same oe ne
-    /\ if_some_bool_then_same oc nc
-  end.
-
-(** The 2 following definitions are used to define what
-    it means to copy the defined attributes of a property
-    descriptors into another descriptor. *)
-
-Definition option_transfer (A:Type) (oldopt newopt : option A) :=
-  match newopt with
-  | None => oldopt
-  | _ => newopt
-  end.
-
-Definition prop_attributes_transfer oldpf newpf :=
-  match oldpf, newpf with
-  | prop_attributes_intro ov ow og os oe oc,
-    prop_attributes_intro nv nw ng ns ne nc =>
-    prop_attributes_intro
-      (option_transfer ov nv)
-      (option_transfer ow nw)
-      (option_transfer og ng)
-      (option_transfer os ns)
-      (option_transfer oe ne)
-      (option_transfer oc nc)
-  end.
-
-(** The 8 following definitions are used to describe the
-    cases in which the define_own_property specification method
-    performs an illegal operation. *)
-
-Definition some_compare (A:Type) F (o1 o2 : option A) :=
-  match o1, o2 with
-  | Some v1, Some v2 => F v1 v2
-  | _, _ => False
-  end.
-
-Definition some_not_same_value :=
-   some_compare (fun v1 v2 => ~ value_same v1 v2).
-
-Definition some_not_same_bool :=
-   some_compare (fun b1 b2 => b1 <> b2).
-
-Definition change_enumerable_attributes_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_configurable oldpf = Some false
-  /\ (   prop_attributes_configurable newpf = Some true
-      \/ some_not_same_bool (prop_attributes_enumerable newpf) (prop_attributes_enumerable oldpf)).
-
-Definition change_writable_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_writable oldpf = Some false
-  /\ prop_attributes_writable newpf = Some true.
-
-Definition change_value_on_non_writable oldpf newpf : Prop :=
-     prop_attributes_writable oldpf = Some false
-  /\ some_not_same_value (prop_attributes_value newpf) (prop_attributes_value oldpf).
-
-Definition change_data_attributes_on_non_configurable oldpf newpf : Prop :=
-     change_writable_on_non_configurable oldpf newpf
-  \/ change_value_on_non_writable oldpf newpf.
-
-Definition change_accessor_on_non_configurable oldpf newpf : Prop :=
-     prop_attributes_configurable oldpf = Some false
-  /\ (   some_not_same_value (prop_attributes_set newpf) (prop_attributes_set oldpf)
-      \/ some_not_same_value (prop_attributes_get newpf) (prop_attributes_get oldpf)).
+Definition same_value v1 v2 := (v1 = v2).
 
 
 (**************************************************************)
@@ -424,99 +339,76 @@ Definition object_new vproto sclass :=
 
 
 (**************************************************************)
-(** ** Smart constructors for property descriptors *)
+(** ** Auxiliary definitions for attributes *)
 
-(** Constructs a property descriptor with only the value field set *)
+(** Returns the value of the configurable field of an attribute *)
 
-Definition prop_attributes_create_value v := {|
-   prop_attributes_value := Some v;
-   prop_attributes_writable := None;
-   prop_attributes_get := None;
-   prop_attributes_set := None;
-   prop_attributes_enumerable := None;
-   prop_attributes_configurable := None |}.
+Definition attributes_configurable A :=
+  match A with
+  | attributes_data_of Ad => attributes_data_configurable Ad
+  | attributes_accessor_of Aa => attributes_accessor_configurable Aa
+  end.
 
-(** Constructs a fully-populated data property descriptor *)
+(** Returns the value of the enumerable field of an attribute *)
 
-Definition prop_attributes_create_data v bw be bc := {|
-   prop_attributes_value := Some v;
-   prop_attributes_writable := Some bw;
-   prop_attributes_get := None;
-   prop_attributes_set := None;
-   prop_attributes_enumerable := Some be;
-   prop_attributes_configurable := Some bc |}.
+Definition attributes_enumerable A :=
+  match A with
+  | attributes_data_of Ad => attributes_data_enumerable Ad
+  | attributes_accessor_of Aa => attributes_accessor_enumerable Aa
+  end.
 
-(** Constructs a fully-populated data property descriptor
+
+(**************************************************************)
+(** ** Smart constructors for property attributes *)
+
+(** Constructs a named data property attributes
     for a constant value *)
 
-Definition prop_attributes_create_data_constant v :=
-   prop_attributes_create_data v false false false.
+Definition attributes_data_intro_constant v :=
+   attributes_data_intro v false false false.
 
-(** Constructs a fully-populated data property descriptor
+(** Constructs a named data property attributes
     for a writable value *)
 
-Definition prop_attributes_create_data_writable v :=
-   prop_attributes_create_data v true false false.
+Definition attributes_data_intro_writable v :=
+   attributes_data_intro v true false false.
 
-(** Constructs a fully-populated data property descriptor
+(** Constructs a named data property attributes
     for a writable and configurable value *)
 
-Definition prop_attributes_create_data_configurable v :=
-   prop_attributes_create_data v true false true.
+Definition attributes_data_intro_configurable v :=
+   attributes_data_intro v true false true.
 
-(** Constructs a fully-populated accessor property descriptor *)
+(** Constructs a named data property attributes
+    for a writable and configurable, enumerable value *)
 
-Definition prop_attributes_create_accessor vset vget be bc := {|
-   prop_attributes_value := None;
-   prop_attributes_writable := None;
-   prop_attributes_get := Some vget;
-   prop_attributes_set := Some vset;
-   prop_attributes_enumerable := Some be;
-   prop_attributes_configurable := Some bc |}.
+Definition attributes_data_intro_all_true v :=
+   attributes_data_intro v true true true.
 
-(* LATER: get rid of "prop_attributes_create_accessor" and use everywhere
-   the function below which is slightly more general *)
-Definition prop_attributes_create_accessor_opt vseto vgeto be bc := {|
-   prop_attributes_value := None;
-   prop_attributes_writable := None;
-   prop_attributes_get := vgeto;
-   prop_attributes_set := vseto;
-   prop_attributes_enumerable := Some be;
-   prop_attributes_configurable := Some bc |}.
 
-(** Two auxiliary functions for the subsequently-defined functions *)
+(**************************************************************)
+(** ** Smart constructors for property descriptors *)
 
-Definition prop_attributes_field_or_false F A :=
-  match F A with
-  | None => false
-  | Some b => b
-  end.
+(** Builds a property descriptor that corresponds to a fully-populated data descriptor *)
 
-Definition prop_attributes_field_or_undef F A :=
-  match F A with
-  | None => undef
-  | Some b => b
-  end.
+Definition descriptor_intro_data v bw be bc := 
+  {| descriptor_value := Some v;
+     descriptor_writable := Some bw;
+     descriptor_get := None;
+     descriptor_set := None;
+     descriptor_enumerable := Some be;
+     descriptor_configurable := Some bc |}.
 
-(** Converts a property descriptor into a data descriptor *)
+(** Builds a property descriptor that corresponds to a fully-populated accessor descriptor;
+    with optional getter and setter fields. *)
 
-Definition prop_attributes_convert_to_data A := {|
-   prop_attributes_value := Some (prop_attributes_field_or_undef prop_attributes_value A);
-   prop_attributes_writable := Some (prop_attributes_field_or_false prop_attributes_writable A);
-   prop_attributes_get := None;
-   prop_attributes_set := None;
-   prop_attributes_enumerable := Some (prop_attributes_field_or_false prop_attributes_enumerable A);
-   prop_attributes_configurable := Some (prop_attributes_field_or_false prop_attributes_configurable A) |}.
-
-(** Converts a property descriptor into an accessor descriptor *)
-
-Definition prop_attributes_convert_to_accessor A := {|
-   prop_attributes_value := None;
-   prop_attributes_writable := None;
-   prop_attributes_get := Some (prop_attributes_field_or_undef prop_attributes_get A);
-   prop_attributes_set := Some (prop_attributes_field_or_undef prop_attributes_set A);
-   prop_attributes_enumerable := Some (prop_attributes_field_or_false prop_attributes_enumerable A);
-   prop_attributes_configurable := Some (prop_attributes_field_or_false prop_attributes_configurable A) |}.
+Definition descriptor_intro_accessor vg vs be bc := 
+  {| descriptor_value := None;
+     descriptor_writable := None;
+     descriptor_get := Some vg;
+     descriptor_set := Some vs;
+     descriptor_enumerable := Some be;
+     descriptor_configurable := Some bc |}.
 
 
 (**************************************************************)
@@ -524,83 +416,191 @@ Definition prop_attributes_convert_to_accessor A := {|
 
 (** Characterization of data descriptors *)
 
-Definition prop_attributes_is_data A :=
- ~ (   prop_attributes_value A = None
-    /\ prop_attributes_writable A = None).
-
-(** Characterization of non-null data descriptors *)
-
-Definition prop_descriptor_is_data An :=
-  match An with
-  | prop_descriptor_undef => False
-  | prop_descriptor_some A => prop_attributes_is_data A
-  end.
+Definition descriptor_is_data Desc :=
+  ~ (descriptor_value Desc = None /\ descriptor_writable Desc = None).
 
 (** Characterization of accessor descriptors *)
 
-Definition prop_attributes_is_accessor A :=
- ~ (   prop_attributes_get A = None
-    /\ prop_attributes_set A = None).
+Definition descriptor_is_accessor Desc :=
+  ~ (descriptor_get Desc = None /\ descriptor_set Desc = None).
 
-(** Characterization of non-null accessor descriptors *)
+(** Characterization of generic descriptors,
+    which could also be defined as:
+         descriptor_value Desc = None 
+      /\ descriptor_writable Desc = None
+      /\ descriptor_get Desc = None 
+      /\ descriptor_set Desc = None. *)
 
-Definition prop_descriptor_is_accessor An :=
-  match An with
-  | prop_descriptor_undef => False
-  | prop_descriptor_some A => prop_attributes_is_accessor A
+Definition descriptor_is_generic Desc :=
+  (~ descriptor_is_data Desc) /\ (~ descriptor_is_accessor Desc).
+
+
+(**************************************************************)
+(** ** Conversion used in the semantics of DefinedOwnProperty *)
+
+(** Default data property attributes *)
+
+Definition attributes_data_default := {|
+   attributes_data_value := undef;
+   attributes_data_writable := false;
+   attributes_data_enumerable := false;
+   attributes_data_configurable := false |}.
+
+(** Default accessor property attributes *)
+
+Definition attributes_accessor_default := {|
+   attributes_accessor_get := undef;
+   attributes_accessor_set := undef;
+   attributes_accessor_enumerable := false;
+   attributes_accessor_configurable := false |}.
+
+(** Convert a data property attributes into an accessor property attributes *)
+
+Definition attributes_accessor_of_attributes_data Ad := {|
+   attributes_accessor_get := attributes_accessor_get attributes_accessor_default;
+   attributes_accessor_set := attributes_accessor_set attributes_accessor_default;
+   attributes_accessor_enumerable := attributes_data_enumerable Ad;
+   attributes_accessor_configurable := attributes_data_configurable Ad |}.
+
+(** Convert an accessor property attributes into a data property attributes *)
+
+Definition attributes_data_of_attributes_accessor Aa := {|
+   attributes_data_value := attributes_data_value attributes_data_default;
+   attributes_data_writable := attributes_data_writable attributes_data_default;
+   attributes_data_enumerable := attributes_accessor_enumerable Aa;
+   attributes_data_configurable := attributes_accessor_configurable Aa |}.
+
+(** Updates a data property attributes with a property descriptor *)
+
+Definition attributes_data_update Ad Desc := {|
+   attributes_data_value := unsome_default (attributes_data_value Ad) (descriptor_value Desc);
+   attributes_data_writable := unsome_default (attributes_data_writable Ad) (descriptor_writable Desc);
+   attributes_data_enumerable := unsome_default (attributes_data_enumerable Ad) (descriptor_enumerable Desc);
+   attributes_data_configurable := unsome_default (attributes_data_configurable Ad) (descriptor_configurable Desc) |}.
+
+(** Updates an accessor property attributes with a property descriptor *)
+
+Definition attributes_accessor_update Aa Desc := {|
+   attributes_accessor_get := unsome_default (attributes_accessor_get Aa) (descriptor_get Desc);
+   attributes_accessor_set := unsome_default (attributes_accessor_set Aa) (descriptor_set Desc);
+   attributes_accessor_enumerable := unsome_default (attributes_accessor_enumerable Aa) (descriptor_enumerable Desc);
+   attributes_accessor_configurable := unsome_default (attributes_accessor_configurable Aa) (descriptor_configurable Desc) |}.
+
+(** Updates a property attributes with a property descriptor *)
+
+Definition attributes_update A Desc : attributes := 
+  match A with
+  | attributes_data_of Ad => attributes_data_update Ad Desc
+  | attributes_accessor_of Aa => attributes_accessor_update Aa Desc
   end.
 
-(** Characterization of generic descriptors *)
+(** Converts a property descriptor into a data property attributes  *)
 
-Definition prop_attributes_is_generic A :=
-     ~ prop_attributes_is_accessor A
-  /\ ~ prop_attributes_is_data A.
+Definition attributes_data_of_descriptor Desc :=
+  attributes_data_update attributes_data_default Desc.
 
-(** Characterization of non-null generic descriptors *)
+(** Converts a property descriptor into an accessor property attributes  *)
 
-Definition prop_descriptor_is_generic An :=
-  match An with
-  | prop_descriptor_undef => False
-  | prop_descriptor_some A => prop_attributes_is_generic A
+Definition attributes_accessor_of_descriptor Desc :=
+  attributes_accessor_update attributes_accessor_default Desc.
+
+(** Converts a property attributes into an property descriptor *)
+
+Definition descriptor_of_attributes A :=
+  match A with
+  | attributes_data_of Ad =>
+    {| descriptor_value := Some (attributes_data_value Ad);
+       descriptor_writable := Some (attributes_data_writable Ad);
+       descriptor_get := None;
+       descriptor_set := None;
+       descriptor_enumerable := Some (attributes_data_enumerable Ad);
+       descriptor_configurable := Some (attributes_data_configurable Ad) |}
+  | attributes_accessor_of Aa =>
+    {| descriptor_value := None;
+       descriptor_writable := None;
+       descriptor_get := Some (attributes_accessor_get Aa);
+       descriptor_set := Some (attributes_accessor_set Aa);
+       descriptor_enumerable := Some (attributes_accessor_enumerable Aa);
+       descriptor_configurable := Some (attributes_accessor_configurable Aa) |}
   end.
 
-(** Characterization of fully-populated data descriptors *)
 
-Definition prop_attributes_fully_populated_data A :=
-     prop_attributes_value A <> None
-  /\ prop_attributes_writable A <> None
-  /\ prop_attributes_enumerable A <> None
-  /\ prop_attributes_configurable A <> None.
+(**************************************************************)
+(** ** Auxiliary definitions for reduction of [get_own_property]  *)
 
-(** Characterization of non-null fully-populated data descriptors *)
+(** The following definitions are used to define when
+    a property descriptor contains another one. *)
 
-Definition prop_descriptor_fully_populated_data An :=
-  match An with
-  | prop_descriptor_undef => False
-  | prop_descriptor_some A => prop_attributes_fully_populated_data A
+Definition if_some_then_same (A:Type) F (oldval newval : option A) :=
+  match newval, oldval with
+  | Some v1, Some v2 => F v1 v2
+  | Some v1, None => False
+  | None, _ => True
   end.
 
-(** Characterization of fully-populated accessor descriptors *)
+Definition if_some_value_then_same :=
+  if_some_then_same same_value.
 
-Definition prop_attributes_fully_populated_accessor A :=
-     prop_attributes_get A <> None
-  /\ prop_attributes_set A <> None
-  /\ prop_attributes_enumerable A <> None
-  /\ prop_attributes_configurable A <> None.
+Definition if_some_bool_then_same :=
+  if_some_then_same (@eq bool).
 
-(** Characterization of non-null fully-populated accessor descriptors *)
-
-Definition prop_descriptor_fully_populated_accessor An :=
-  match An with
-  | prop_descriptor_undef => False
-  | prop_descriptor_some A => prop_attributes_fully_populated_accessor A
+Definition descriptor_contains Desc_old Desc_new :=
+  match Desc_old, Desc_new with
+  | descriptor_intro ov ow og os oe oc,
+    descriptor_intro nv nw ng ns ne nc =>
+       if_some_value_then_same ov nv
+    /\ if_some_bool_then_same ow nw
+    /\ if_some_value_then_same og ng
+    /\ if_some_value_then_same os ns
+    /\ if_some_bool_then_same oe ne
+    /\ if_some_bool_then_same oc nc
   end.
 
-(** Characterization of fully-populated descriptors *)
+(** The following definitions are used below. *)
 
-Definition prop_attributes_fully_populated An :=
-    (prop_descriptor_is_data An /\ prop_descriptor_fully_populated_data An)
- \/ (prop_descriptor_is_accessor An /\ prop_descriptor_fully_populated_accessor An).
+Definition descriptor_enumerable_not_same A Desc :=
+   match descriptor_enumerable Desc with
+   | None => True
+   | Some b => b <> (attributes_enumerable A)
+   end.
+
+Definition descriptor_value_not_same Ad Desc :=
+   match descriptor_value Desc with
+   | None => True
+   | Some v => ~ same_value v (attributes_data_value Ad)
+   end.
+
+Definition descriptor_get_not_same Aa Desc :=
+   match descriptor_get Desc with
+   | None => True
+   | Some v => ~ same_value v (attributes_accessor_get Aa)
+   end.
+
+Definition descriptor_set_not_same Aa Desc :=
+   match descriptor_set Desc with
+   | None => True
+   | Some v => ~ same_value v (attributes_accessor_set Aa)
+   end.
+
+(** The following definitions are used to describe the
+    cases in which the DefineOwnProperty specification method
+    performs an illegal operation. *)
+
+Definition attributes_change_enumerable_on_non_configurable A Desc : Prop := (* 8.12.9 step 7 *)
+     attributes_configurable A = false
+  /\ (   (descriptor_configurable Desc = Some true)
+      \/ (descriptor_enumerable_not_same A Desc)).
+
+Definition attributes_change_data_on_non_configurable Ad Desc : Prop := (* 8.12.9 step 10.a *)
+     attributes_configurable Ad = false
+  /\ attributes_data_writable Ad = false
+  /\ (   descriptor_writable Desc = Some true
+      /\ descriptor_value_not_same Ad Desc).
+
+Definition attributes_change_accessor_on_non_configurable Aa Desc : Prop := (* 8.12.9 step 11.a *)
+     attributes_configurable Aa = false
+  /\ (   descriptor_get_not_same Aa Desc
+      \/ descriptor_set_not_same Aa Desc).
 
 
 (**************************************************************)
@@ -777,38 +777,38 @@ Definition env_record_object_default l :=
 Definition decl_env_record_empty : decl_env_record :=
   Heap.empty.
 
-(** [decl_env_record_binds D x mu v] asserts that the
-    declarative environment [D] maps the property name
+(** [decl_env_record_binds Ed x mu v] asserts that the
+    declarative environment [Ed] maps the property name
     [x] to the value [v] with the mutability flag [mu] *)
 
-Definition decl_env_record_binds D x (mu : mutability) v :=
-  Heap.binds D x (mu, v).
+Definition decl_env_record_binds Ed x (mu : mutability) v :=
+  Heap.binds Ed x (mu, v).
 
-(** [decl_env_record_indom D x] asserts that the
-    declarative environment [D] binds the property name [x]. *)
+(** [decl_env_record_indom Ed x] asserts that the
+    declarative environment [Ed] binds the property name [x]. *)
 
-Definition decl_env_record_indom D x :=
-  Heap.indom (D:decl_env_record) x.
+Definition decl_env_record_indom Ed x :=
+  Heap.indom (Ed:decl_env_record) x.
 
-(** [decl_env_record_write D x mu v] returns an updated
+(** [decl_env_record_write Ed x mu v] returns an updated
     declarative enviromnent with a new binding from [x] to
     [v] with mutability flag [mu]. *)
 
-Definition decl_env_record_write D x mu v : decl_env_record :=
-  Heap.write D x (mu, v).
+Definition decl_env_record_write Ed x mu v : decl_env_record :=
+  Heap.write Ed x (mu, v).
 
-(** [decl_env_record_rem D x] returns an updated declarative
+(** [decl_env_record_rem Ed x] returns an updated declarative
     enviromnent with a new binding for [x] removed. *)
 
-Definition decl_env_record_rem D x : decl_env_record :=
-  Heap.rem (D:decl_env_record) x.
+Definition decl_env_record_rem Ed x : decl_env_record :=
+  Heap.rem (Ed:decl_env_record) x.
 
 (** TODO: Change the following definition to a relation. *)
 
 Definition env_record_write_decl_env S L x mu v :=
   match Heap.read (state_env_record_heap S) L with
-  | env_record_decl D =>
-     let env' := decl_env_record_write D x mu v in
+  | env_record_decl Ed =>
+     let env' := decl_env_record_write Ed x mu v in
      env_record_write S L (env_record_decl env')
   | env_record_object _ _ => S (* It should never happen *)
   end.
@@ -1246,29 +1246,6 @@ Inductive value_viewable_as : string -> state -> value -> prim -> Prop :=
       object_class S l s ->
       object_prim_value S l w ->
       value_viewable_as s S l w.
-
-
-(**************************************************************)
-(** ** Auxiliary definition used in the reduction of [get_own_property] (8.12.1) *)
-
-(** [object_get_own_prop_builder A] is an auxiliary definition
-    used by reduction rules for GetOwnProperty. *)
-
-Definition object_get_own_prop_builder A :=
-  let if_data {X:Type} (m:option X) (d:X) :=
-    ifb prop_attributes_is_data A then Some (unsome_default d m) else None in
-  let if_accessor {X:Type} (m:option X) (d:X) :=
-    ifb prop_attributes_is_accessor A then Some (unsome_default d m) else None in
-  {| prop_attributes_value := if_data (prop_attributes_value A) undef;
-     prop_attributes_writable := if_data (prop_attributes_writable A) false;
-     prop_attributes_get := if_accessor (prop_attributes_get A) undef;
-     prop_attributes_set := if_accessor (prop_attributes_set A) undef;
-     prop_attributes_enumerable := Some (unsome_default false (prop_attributes_enumerable A));
-     prop_attributes_configurable := Some (unsome_default false (prop_attributes_configurable A)) |}.
-  (* TODO: the spec is not very clear when A has a field value
-     but not a field writable whether the result should have a
-     writable field set to undefined or no writable field. The
-     spec above formalizes the former assumption. *)
 
 
 (**************************************************************)

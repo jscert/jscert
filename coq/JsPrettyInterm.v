@@ -2,7 +2,7 @@ Set Implicit Arguments.
 Require Export JsSyntax JsSyntaxAux JsPreliminary.
 
 (**************************************************************)
-(** ** Implicit Types *)
+(** ** Implicit Types -- copied from JsPreliminary *)
 
 Implicit Type b : bool.
 Implicit Type n : number.
@@ -19,16 +19,22 @@ Implicit Type T : type.
 Implicit Type rt : restype.
 Implicit Type rv : resvalue.
 Implicit Type lab : label.
+Implicit Type labs : label_set.
 Implicit Type R : res.
 Implicit Type o : out.
 
 Implicit Type x : prop_name.
+Implicit Type str : strictness_flag.
 Implicit Type m : mutability.
-Implicit Type A : prop_attributes.
-Implicit Type An : prop_descriptor.
+Implicit Type Ad : attributes_data.
+Implicit Type Aa : attributes_accessor.
+Implicit Type A : attributes.
+Implicit Type Desc : descriptor.
+Implicit Type D : full_descriptor.
+
 Implicit Type L : env_loc.
-Implicit Type E : env_record. 
-Implicit Type D : decl_env_record.
+Implicit Type E : env_record.
+Implicit Type Ed : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
 Implicit Type S : state.
@@ -152,14 +158,6 @@ Inductive ext_expr :=
   | spec_to_uint32_1 : out -> (int -> ext_expr) -> ext_expr
   | spec_check_object_coercible : value -> ext_expr
 
-  | spec_object_default_value : object_loc -> option preftype -> ext_expr
-  | spec_object_default_value_2 : object_loc -> preftype -> preftype -> ext_expr
-  | spec_object_default_value_3 : object_loc -> preftype -> ext_expr
-  | spec_object_default_value_4 : ext_expr
-  | spec_object_default_value_sub_1 : object_loc -> string -> ext_expr -> ext_expr
-  | spec_object_default_value_sub_2 : object_loc -> out -> ext_expr -> ext_expr
-  | spec_object_default_value_sub_3 : out -> ext_expr -> ext_expr
-
   | spec_convert_twice : ext_expr -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
   | spec_convert_twice_1 : out -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
   | spec_convert_twice_2 : out -> (value -> ext_expr) -> ext_expr
@@ -173,39 +171,66 @@ Inductive ext_expr :=
 
   (** Extended expressions for operations on objects *)
 
+  (* todo *)
+  | spec_object_get_own_prop_1 
+  | spec_object_get_own_prop_2 
+  | spec_object_get_prop_1
+  | spec_object_get_prop_2
+  | spec_object_get_prop_3
   | spec_object_get : value -> prop_name -> ext_expr
-  | spec_object_object_get : object_loc -> prop_name -> ext_expr
-  | spec_object_object_get_1 : object_loc -> prop_descriptor -> ext_expr
-  | spec_object_object_get_2 : object_loc -> option value -> ext_expr
-  | spec_object_function_get : object_loc -> prop_name -> ext_expr
-  | spec_object_function_get_1 : object_loc -> prop_name -> out -> ext_expr
+  | spec_object_get_1
+  | spec_object_get_2
+  | spec_object_get_3
+
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
-  | spec_object_can_put_1 : object_loc -> prop_name -> prop_descriptor -> ext_expr
+  | spec_object_can_put_1 : object_loc -> prop_name -> full_descriptor -> ext_expr
   | spec_object_can_put_3 : object_loc -> prop_name -> bool -> ext_expr
   | spec_object_can_put_4 : object_loc -> prop_name -> value -> ext_expr
-  | spec_object_can_put_5 : object_loc -> prop_descriptor -> ext_expr
+  | spec_object_can_put_5 : object_loc -> full_descriptor -> ext_expr
+  | spec_object_can_put_6 : attributes_data -> bool -> ext_expr
 
   | spec_object_put : object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_1 : object_loc -> prop_name -> value -> bool -> out -> ext_expr
-  | spec_object_put_3 : object_loc -> prop_name -> value -> bool -> prop_descriptor -> ext_expr
-  | spec_object_put_4 : object_loc -> prop_name -> value -> bool -> prop_descriptor -> ext_expr
+  | spec_object_put_3 : object_loc -> prop_name -> value -> bool -> descriptor -> ext_expr
+  | spec_object_put_4 : object_loc -> prop_name -> value -> bool -> descriptor -> ext_expr
   | spec_object_put_5 : out -> ext_expr
-  | spec_prim_value_get : value -> prop_name -> ext_expr
-  | spec_prim_value_get_1 : prop_name -> out -> ext_expr
-  | spec_object_put_special : value -> prop_name -> value -> bool -> ext_expr
+
   | spec_object_has_prop : object_loc -> prop_name -> ext_expr
+  spec_object_has_prop_1
+  spec_object_has_prop_2
+
   | spec_object_delete : object_loc -> prop_name -> bool -> ext_expr
-  | spec_object_delete_2 : object_loc -> prop_name -> bool -> prop_descriptor -> ext_expr
+  | spec_object_delete_2 : object_loc -> prop_name -> bool -> descriptor -> ext_expr
   | spec_object_delete_3 : object_loc -> prop_name -> bool -> bool -> ext_expr
 
+  | spec_object_default_value : object_loc -> option preftype -> ext_expr
+  | spec_object_default_value_2 : object_loc -> preftype -> preftype -> ext_expr
+  | spec_object_default_value_3 : object_loc -> preftype -> ext_expr
+  | spec_object_default_value_4 : ext_expr
+  | spec_object_default_value_sub_1 : object_loc -> string -> ext_expr -> ext_expr
+  | spec_object_default_value_sub_2 : object_loc -> out -> ext_expr -> ext_expr
+  | spec_object_default_value_sub_3 : out -> ext_expr -> ext_expr
+
   | spec_object_define_own_prop : object_loc -> prop_name -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_3 : object_loc -> prop_name -> prop_descriptor -> prop_attributes -> bool -> bool -> ext_expr
+  | spec_object_define_own_prop_3 : object_loc -> prop_name -> descriptor -> prop_attributes -> bool -> bool -> ext_expr
   | spec_object_define_own_prop_4 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
   | spec_object_define_own_prop_5 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
   | spec_object_define_own_prop_6a : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
   | spec_object_define_own_prop_6b : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
   | spec_object_define_own_prop_6c : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
   | spec_object_define_own_prop_7 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
+ (*
+  | spec_prim_value_get : value -> prop_name -> ext_expr
+  | spec_prim_value_get_1 : prop_name -> out -> ext_expr
+  | spec_object_put_special : value -> prop_name -> value -> bool -> ext_expr
+
+  | spec_object_object_get : object_loc -> prop_name -> ext_expr
+  | spec_object_object_get_1 : object_loc -> full_descriptor -> ext_expr
+  | spec_object_object_get_2 : object_loc -> option value -> ext_expr
+  | spec_object_function_get : object_loc -> prop_name -> ext_expr
+  | spec_object_function_get_1 : object_loc -> prop_name -> out -> ext_expr
+  *)
+
 
   (** Extended expressions for operations on references *)
 

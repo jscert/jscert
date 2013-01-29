@@ -102,20 +102,24 @@ Qed.
 
 
 (**************************************************************)
-(** ** Type [prop_attributes] *)
+(** ** Type [attributes] *)
 
-(** Boolean comparison *)
+(* --TODO: used?
 
-Definition prop_attributes_compare A1 A2 :=
-  decide (prop_attributes_contains A1 A2 /\ prop_attributes_contains A2 A1).
+  (** Boolean comparison *)
 
-(** Decidable comparison *)
+  Definition prop_attributes_compare A1 A2 :=
+    decide (prop_attributes_contains A1 A2 /\ prop_attributes_contains A2 A1).
 
-Global Instance prop_attributes_comparable : Comparable prop_attributes.
-Proof.
-  applys (comparable_beq prop_attributes_compare). intros x y.
-  skip. (* TODO:  The magical tactic here does not work as it requires to destruct all option types in the context before doing all those congruence stuff. *)
-Qed.
+  (** Decidable comparison *)
+
+  Global Instance prop_attributes_comparable : Comparable prop_attributes.
+  Proof.
+    applys (comparable_beq prop_attributes_compare). intros x y.
+    skip. (* TODO:  The magical tactic here does not work as it requires to destruct all option types in the context before doing all those congruence stuff. *)
+  Qed.
+
+--*)
 
 
 (**************************************************************)

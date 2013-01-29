@@ -20,13 +20,25 @@ Implicit Type r : ref.
 Implicit Type B : builtin.
 Implicit Type T : type.
 
+Implicit Type rt : restype.
+Implicit Type rv : resvalue.
+Implicit Type lab : label.
+Implicit Type labs : label_set.
+Implicit Type R : res.
+Implicit Type o : out.
+
 Implicit Type x : prop_name.
+Implicit Type str : strictness_flag.
 Implicit Type m : mutability.
-Implicit Type A : prop_attributes.
-Implicit Type An : prop_descriptor.
+Implicit Type Ad : attributes_data.
+Implicit Type Aa : attributes_accessor.
+Implicit Type A : attributes.
+Implicit Type Df : descriptor_fields.
+Implicit Type D : descriptor.
+
 Implicit Type L : env_loc.
-Implicit Type E : env_record. (* TODO: suggested using R *)
-Implicit Type D : decl_env_record.
+Implicit Type E : env_record.
+Implicit Type Ed : decl_env_record.
 Implicit Type X : lexical_env.
 Implicit Type O : object.
 Implicit Type S : state.

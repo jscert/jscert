@@ -310,10 +310,6 @@ Qed.
 
 
 (**************************************************************)
-(** ** Type [prop_attributes] and [prop_descriptor]: see PreliminaryAux.v *)
-
-
-(**************************************************************)
 (** ** Type [object] *)
 
 (** Inhabitants **)
@@ -437,6 +433,8 @@ Proof. apply (prove_Inhab (funccode_builtin arbitrary)). Qed.
 
 (**************************************************************)
 (** Retrieve function and variable declarations from code *)
+
+(* TODO: move into JsPreliminary ? *)
 
 Definition element_funcdecl (el : element) : list funcdecl :=
   match el with
