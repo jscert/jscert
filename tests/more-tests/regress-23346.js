@@ -1,3 +1,5 @@
+// @negative
+
 var CALL_CALLED = \"PASSED\";
 
 call = function ()

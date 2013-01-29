@@ -31,3 +31,4 @@ if (eval("while(true){try {3} finally {4; break}}") !== 3) {
 if (eval("while(true){try {3; break} finally {4; break}}") !== 3) {
     $ERROR('#4: (while(true){try {3; break} finally {4; break}}) !== 4')
 }
+

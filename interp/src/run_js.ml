@@ -53,7 +53,6 @@ let pr_test state =
 let _ =
   arguments ();
   let exit_if_test _ = if !test then exit 1 in
-  let print_if_test = if !test then print_string else (fun _ -> ()) in
   try
     let exp = Translate_syntax.coq_syntax_from_file !file in
     let sti = if (!test) then

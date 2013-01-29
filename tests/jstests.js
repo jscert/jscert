@@ -55,3 +55,7 @@ x = null; y = null; z = null; f = function(w){x = v; v = 4; var v; y = v;}; v = 
 
 % with
 a = {b:1}; with (a){f=function(c){return b}}; a = {b:2}; f(null) % res: 1
+
+
+% @negative (I’m just adding this to avoid this test to be marked as “failed” where it should actually fail ☺ -- Martin)
+

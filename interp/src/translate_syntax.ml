@@ -147,14 +147,15 @@ and exp_to_stat exp : Interpreter.stat =
       | Comma _
       | Call _
       | New _
-      | AnnonymousFun _
-      | NamedFun _ 
       | Obj _
       | Array _ 
       | ConditionalOp _ -> Interpreter.Stat_expr (exp_to_exp exp)
 
+      | AnnonymousFun _
+      | NamedFun _ -> raise Parser.InvalidArgument (* If a function appears in the middle of a statement, it shall not be interpreted as an expression function, but as a function declaration and thus be rejected by the parser. *)
+
       (*Statements*)
-	    | Skip -> Interpreter.Stat_block []
+	  | Skip -> Interpreter.Stat_block []
       | Return (Some e) -> Interpreter.Stat_return (Some (exp_to_exp e))
       | Return None -> Interpreter.Stat_return None
       | Break (Some l) -> Interpreter.Stat_break (Some (string_to_coq l))
