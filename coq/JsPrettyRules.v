@@ -607,7 +607,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ~ (is_callable S l) ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (expr_call_3 rv (value_object l) vs) o
-      
+
   | red_expr_call_3_prop : forall v S C o r l vs,
       (is_callable S l) ->
       ref_is_property r -> 
