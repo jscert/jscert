@@ -13,7 +13,7 @@ library by hand).
 *********************************************************************
 INSTALLATION AND COMPILATION
 
-1) Run "make init" to install TLC and Flocq (requires subversion)
+1) Run "make init" to install the parser, TLC, and Flocq (requires subversion)
 
 2) Run "make" to compile the files (ignore the warnings),
    Run "make -j 2" if your machine has two cores.
