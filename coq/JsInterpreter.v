@@ -342,29 +342,29 @@ Qed.
 Definition run_decl_env_record_binds_value Ed x : value :=
   snd (pick (binds Ed x)).
 
-Definition run_object_get_own_prop_base P x : prop_descriptor :=
+Definition run_object_get_own_prop_base P x : full_descriptor :=
   match read_option P x with
-  | None => prop_full_descriptor_undef
-  | Some A => prop_full_descriptor_some (object_get_own_prop_builder A)
+  | None => full_descriptor_undef
+  | Some A => arbitrary (* TODO:  What's the new version of `full_descriptor_some (object_get_own_prop_builder A)'? *)
   end.
 
-Definition run_object_get_own_property_default S l x : prop_descriptor :=
+Definition run_object_get_own_property_default S l x : full_descriptor :=
   run_object_get_own_prop_base (run_object_properties S l) x.
 
-Definition run_object_get_own_property S l x : prop_descriptor :=
+Definition run_object_get_own_property S l x : full_descriptor :=
   let sclass := run_object_class S l in
   let An := run_object_get_own_property_default S l x in
   ifb sclass = "String" then (
-    ifb An <> prop_full_descriptor_undef then An
+    ifb An <> full_descriptor_undef then An
     else let ix := convert_primitive_to_integer x in
     ifb prim_string x <> convert_prim_to_string (JsNumber.absolute ix) then
-      prop_full_descriptor_undef
+      full_descriptor_undef
     else (
       match run_object_prim_value S l with
       | prim_string s =>
         let len : int := String.length s in
         let i := JsNumber_to_int ix in
-        ifb len <= i then prop_full_descriptor_undef
+        ifb len <= i then full_descriptor_undef
         else let s' := string_sub s i 1 in
           attributes_data_intro s' false true false
       | _ => arbitrary
@@ -372,14 +372,14 @@ Definition run_object_get_own_property S l x : prop_descriptor :=
     )
   ) else An.
 
-Definition object_get_property_body run_object_get_property S v x : prop_descriptor :=
+Definition object_get_property_body run_object_get_property S v x : full_descriptor :=
   match v with
   | value_prim w =>
-    ifb v = null then prop_full_descriptor_undef
+    ifb v = null then full_descriptor_undef
     else arbitrary
   | value_object l =>
     let An := run_object_get_own_property S l x in
-    ifb An = prop_full_descriptor_undef then (
+    ifb An = full_descriptor_undef then (
       let lproto := run_object_proto S l in
       run_object_get_property S lproto x
     ) else An
@@ -389,7 +389,7 @@ Definition run_object_get_property := FixFun3 object_get_property_body.
 
 Definition object_has_prop S l x : bool :=
   let An := run_object_get_property S (value_object l) x in
-  decide (An <> prop_full_descriptor_undef).
+  decide (An <> full_descriptor_undef).
 
 Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
   match run_object_proto S  l  with
@@ -437,11 +437,11 @@ Definition identifier_res S C x :=
 
 Definition object_get S v x : result :=
   match run_object_get_property S v x with
-  | prop_full_descriptor_undef => out_ter S undef
-  | prop_full_descriptor_some A =>
-    ifb prop_attributes_is_data A then
-      morph_option result_stuck (out_ter S : value -> _) (prop_attributes_value A)
-    else result_stuck
+  | full_descriptor_undef => out_ter S undef
+  | full_descriptor_some (attributes_data_of Ad) =>
+    out_ter S (attributes_data_value Ad)
+  | full_descriptor_some (attributes_accessor_of Aa) =>
+    result_stuck
   end.
 
 Definition run_alloc_primitive_value S w : state * object_loc :=
@@ -511,26 +511,27 @@ Definition object_can_put S l x : result :=
   let An := run_object_get_own_property S l x in
   let oe := run_object_extensible S l in
   match An with
-  | prop_full_descriptor_some A =>
-    ifb prop_attributes_is_accessor A then
-      out_ter S (decide (prop_attributes_set A = Some undef
-        \/ prop_attributes_set A = None))
-    else ifb prop_attributes_is_data A then
-      out_ter S (morph_option undef prim_bool (prop_attributes_writable A))
-    else result_stuck
-  | prop_full_descriptor_undef =>
+  | full_descriptor_some A =>
+    match A with
+    | attributes_accessor_of Aa =>
+      out_ter S (decide (attributes_accessor_set Aa = undef))
+    | attributes_data_of Ad =>
+      out_ter S (prim_bool (attributes_data_writable Ad))
+    end
+  | full_descriptor_undef =>
     let lproto := run_object_proto S l in
     ifb lproto = null then out_ter S oe
     else (
       let Anproto := run_object_get_property S lproto x in
       match Anproto with
-      | prop_full_descriptor_undef => out_ter S oe
-      | prop_full_descriptor_some A =>
-        ifb prop_attributes_is_accessor A then
-          out_ter S (decide (prop_attributes_set A = Some undef \/ prop_attributes_set A = None))
-        else ifb prop_attributes_is_data A then
-          out_ter S (if oe then false else morph_option undef prim_bool (prop_attributes_writable A))
-        else result_stuck
+      | full_descriptor_undef => out_ter S oe
+      | full_descriptor_some A =>
+        match A with
+        | attributes_accessor_of Aa =>
+          out_ter S (decide (attributes_accessor_set Aa = undef))
+        | attributes_data_of Ad =>
+          out_ter S (if oe then false else prim_bool (attributes_data_writable Ad))
+        end
       end
     )
   end.
