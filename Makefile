@@ -81,7 +81,8 @@ tags: $(JS_SRC)
 #######################################################
 # EXTERNAL LIBRARIES: TLC and Flocq
 
-init: 
+init:
+	cd ../../../; git submodule init; git submodule update 
 	svn checkout -r 214 svn://scm.gforge.inria.fr/svn/tlc/branches/v3.1 tlc
 	tar -xzf flocq-2.1.0.tar.gz 
 	mv flocq-2.1.0 flocq
