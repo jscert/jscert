@@ -643,9 +643,11 @@ Definition object_put (run_call' : run_call_type) S C (Bo : option builtin) l x 
 
   | builtin_default_put =>
     if_success_bool (object_can_put S l x) (fun S' =>
-      match run_object_get_own_property S' l x with
+      match run_object_get_own_property S' l x with (* TODO:  Fix this after the rules will be. *)
       | full_descriptor_some (attributes_data_of Ad) =>
-        object_define_own_prop S' l x (prop_attributes_create_value v) str
+        let Desc := descriptor_intro (Some v) None None None None None in
+        if_success (object_define_own_prop S' l x Desc str) (fun S2 rv =>
+          out_ter_void S2)
       | full_descriptor_some (attributes_accessor_of Aa) =>
         let D := run_object_get_property S' (value_object l) x in
         match D with

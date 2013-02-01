@@ -1249,8 +1249,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_put : forall S C l x v throw B o,
       object_method object_put_ S l B ->
-      red_expr S C (spec_object_put_1 B l x v throw) o ->
-      red_expr S C (spec_object_put l x v throw) o  
+      red_expr S C (spec_object_put_1 B l x v throw) o -> (* There lacks the [this] part there. -- Martin. *)
+      red_expr S C (spec_object_put l x v throw) o
 
   (** HasProperty (returns bool) *)
 
@@ -1402,7 +1402,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Put  (8.12.5) and (8.7.2)
       Note: rules are generalized so as to also handle the Put method on primitive values *)
   (* TODO: j'ai voulu faire le malin, en factorisant les règles de (8.12.5) and (8.7.2), 
-           mais c'était pas forcément une bonne idée, donc hésite pas à utiliser des
+           mais c'était pas forcément une bonne idée, donc n'hésites pas à utiliser des
            fonctions séparées dans ton interpréteur. *)
 
   | red_spec_object_put_1_default : forall S C vthis l x v throw o1 o, (* Step 1 *)
