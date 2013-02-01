@@ -1547,17 +1547,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       A = (If (descriptor_is_generic Desc \/ descriptor_is_data Desc)
             then attributes_data_of_descriptor Desc
             else attributes_accessor_of_descriptor Desc) ->
-      object_set_prop S l x A' S' ->
+      object_set_property S l x A S' ->
       red_expr S C (spec_object_define_own_prop_3 l x Desc throw full_descriptor_undef true) (out_ter S' true)
 
-  | red_spec_object_define_own_prop_3_includes : forall S C l x A Desc throw, (* Step 6 (subsumes 5) *)
+  | red_spec_object_define_own_prop_3_includes : forall S C l x A Desc throw bext, (* Step 6 (subsumes 5) *)
       descriptor_contains (descriptor_of_attributes A) Desc ->
-      red_expr S C (spec_object_define_own_prop_3 l x Desc throw (full_descriptor_some A) true) (out_ter S true)
+      red_expr S C (spec_object_define_own_prop_3 l x Desc throw (full_descriptor_some A) bext) (out_ter S true)
 
-  | red_spec_object_define_own_prop_3_not_include : forall S C l x A Desc throw o, (* Steps 6 else branch *)
+  | red_spec_object_define_own_prop_3_not_include : forall S C l x A Desc throw o bext, (* Steps 6 else branch *)
       ~ descriptor_contains (descriptor_of_attributes A) Desc ->
       red_expr S C (spec_object_define_own_prop_4 l x A Desc throw) o ->
-      red_expr S C (spec_object_define_own_prop_3 l x Desc throw (full_descriptor_some A) true) o
+      red_expr S C (spec_object_define_own_prop_3 l x Desc throw (full_descriptor_some A) bext) o
 
   | red_spec_object_define_own_prop_4_reject : forall S C l x A Desc throw o, (* Step 7 *)
       attributes_change_enumerable_on_non_configurable A Desc ->
@@ -1590,11 +1590,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
            | attributes_data_of Ad => attributes_accessor_of_attributes_data Ad
            | attributes_accessor_of Aa => attributes_data_of_attributes_accessor Aa
            end ->
+      object_set_property S l x A' S' ->
       red_expr S' C (spec_object_define_own_prop_write l x A' Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_6a l x A throw) o
 
   | red_spec_object_define_own_prop_5_b : forall S C l x Ad Desc throw o, (* Step 10 *)
-      descriptor_data Desc ->
+      descriptor_is_data Desc ->
       red_expr S C (spec_object_define_own_prop_6b l x Ad Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_5 l x (attributes_data_of Ad) Desc throw) o
 
@@ -1609,7 +1610,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_6b l x Ad Desc throw) o
 
   | red_spec_object_define_own_prop_5_c : forall S C l x Aa Desc throw o, (* Step 11 *)
-      prop_attributes_is_accessor Desc ->
+      descriptor_is_accessor Desc ->
       red_expr S C (spec_object_define_own_prop_6c l x Aa Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_5 l x (attributes_accessor_of Aa) Desc throw) o
 

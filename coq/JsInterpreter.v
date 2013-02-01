@@ -331,8 +331,9 @@ Proof.
   introv. applys pickable_make (run_object_heap_map_properties S l F).
   introv [a [O [B E]]]. exists O. splits~.
   unfolds run_object_heap_map_properties.
-  skip. (* binds is a functionnal construction. *)
-  (* TODO: use LibHeap.binds_func *)
+  fequals. fequals.
+  applys @binds_func B; try typeclass.
+  apply pick_spec. eexists. apply* B.
 Qed.
 
 
@@ -345,7 +346,7 @@ Definition run_decl_env_record_binds_value Ed x : value :=
 Definition run_object_get_own_prop_base P x : full_descriptor :=
   match read_option P x with
   | None => full_descriptor_undef
-  | Some A => arbitrary (* TODO:  What's the new version of `full_descriptor_some (object_get_own_prop_builder A)'? *)
+  | Some A => full_descriptor_some A
   end.
 
 Definition run_object_get_own_property_default S l x : full_descriptor :=
@@ -409,8 +410,8 @@ Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
   end.
 
 Definition env_record_has_binding S L x : bool :=
-  env_record_lookup (fun _ : unit => arbitrary) S L (fun er _ =>
-    match er with
+  env_record_lookup (fun _ : unit => arbitrary) S L (fun E _ =>
+    match E with
     | env_record_decl Ed =>
       decide (decl_env_record_indom Ed x)
     | env_record_object l pt =>
@@ -428,7 +429,22 @@ Fixpoint lexical_env_get_identifier_ref S X x str : ref :=
   end.
 
 Definition env_record_delete_binding S L x : result :=
-  arbitrary (* TODO *).
+  env_record_lookup (fun _ : unit => arbitrary : result) S L (fun E _ =>
+    match E with
+    | env_record_decl Ed =>
+      match read_option Ed x with
+      | None =>
+        out_ter S true
+      | Some (mutability_nondeletable, v) =>
+        out_ter S false
+      | Some (mu, v) =>
+        out_ter (state_with_env_record_heap S
+          (write (state_env_record_heap S) L
+            (env_record_decl (rem Ed x)))) true
+      end
+    | env_record_object l pt =>
+      result_stuck
+    end) tt.
 
 Definition identifier_res S C x :=
   let lex := execution_ctx_lexical_env C in
@@ -446,6 +462,7 @@ Definition object_get S v x : result :=
 
 Definition run_alloc_primitive_value S w : state * object_loc :=
   arbitrary (* TODO *).
+
 
 (**************************************************************)
 (** Conversions *)
@@ -490,6 +507,7 @@ Definition constructor_builtin S B (vs : list value) : result :=
   | _ => arbitrary (* TODO *)
 
   end.
+
 
 (**************************************************************)
 
@@ -536,48 +554,61 @@ Definition object_can_put S l x : result :=
     )
   end.
 
-Definition object_define_own_prop S l x (newpf : prop_attributes) (throw : bool) : result :=
+Definition object_define_own_prop S l x Desc str : result :=
   let oldpd := run_object_get_own_property S l x in
   let extensible := run_object_extensible S l in
+  (* Note that Array will have a special case there. *)
   match oldpd with
-  | prop_full_descriptor_undef =>
+  | full_descriptor_undef =>
     if extensible then (
-      let S' := pick (object_set_property S l x
-        (ifb prop_attributes_is_generic newpf \/ prop_attributes_is_data newpf then
-          prop_attributes_convert_to_data newpf
-        else prop_attributes_convert_to_accessor newpf)) in
+      let A :=
+        ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
+        then attributes_data_of_descriptor Desc
+        else attributes_accessor_of_descriptor Desc in
+      let S' := pick (object_set_property S l x A) in
       out_ter S' true
-    ) else out_reject S throw
-  | prop_full_descriptor_some oldpf =>
-    let fman S' :=
-      let S'' := pick (object_set_property S' l x (prop_attributes_transfer oldpf newpf)) in
+    ) else out_reject S str
+  | full_descriptor_some A =>
+    let dop_write S' A' :=
+      let A'' := attributes_update A Desc in
+      let S'' := pick (object_set_property S' l x A'') in
       out_ter S'' true in
-    if extensible then (
-      ifb descriptor_contains oldpf newpf then
-        out_ter S true
-      else ifb change_enumerable_attributes_on_non_configurable oldpf newpf then
-        out_reject S throw
-      else ifb prop_attributes_is_generic newpf then (
-        fman S
-      ) else ifb prop_attributes_is_data oldpf <> prop_attributes_is_data newpf then (
-       ifb prop_attributes_configurable oldpf = Some false then
-         out_reject S throw
-       else let S' := pick (object_set_property S l x
-        (ifb prop_attributes_is_data oldpf then
-          prop_attributes_convert_to_accessor oldpf
-        else prop_attributes_convert_to_data oldpf)) in
-        fman S'
-     ) else ifb prop_attributes_is_data oldpf /\ prop_attributes_is_data newpf then (
-       ifb prop_attributes_configurable oldpf = Some false /\ change_data_attributes_on_non_configurable oldpf newpf then
-         out_reject S throw
-       else fman S
-     ) else ifb prop_attributes_is_accessor oldpf /\ prop_attributes_is_accessor newpf then
-       ifb change_accessor_on_non_configurable oldpf newpf then
-         out_reject S throw
-       else fman S
-     else result_stuck
-    ) else result_stuck
+    ifb descriptor_contains (descriptor_of_attributes A) Desc then
+      out_ter S true
+    else ifb attributes_change_enumerable_on_non_configurable A Desc then
+      out_reject S str
+    else ifb prop_attributes_is_generic Desc then
+      dop_write S A
+    else ifb attributes_is_data A <> descriptor_is_data Desc then (
+     if neg (attributes_configurable A) then
+       out_reject S str
+     else (
+      let A':=
+        match A with
+        | attributes_data_of Ad => attributes_accessor_of_attributes_data Ad
+        | attributes_accessor_of Aa => attributes_data_of_attributes_accessor Aa
+        end in
+      let S' := pick (object_set_property S l x A') in
+      dop_write S' A'
+    )) else
+      match A with
+      | attributes_data_of Ad =>
+        ifb descriptor_is_data Desc then (
+          ifb attributes_change_data_on_non_configurable Ad Desc then
+            out_reject S str
+          else
+            dop_write S Ad
+        ) else result_stuck
+      | attributes_accessor_of Aa =>
+        ifb descriptor_is_accessor Desc then (
+          ifb attributes_change_accessor_on_non_configurable Aa Desc then
+            out_reject S str
+          else
+            dop_write S Aa
+        ) else result_stuck
+      end
   end.
+
 
 (**************************************************************)
 
@@ -594,6 +625,7 @@ Definition run_prog_type : Type :=
 
 Definition run_call_type : Type :=
   state -> execution_ctx -> builtin -> option object_loc -> option value -> list value -> result.
+
 
 (**************************************************************)
 
