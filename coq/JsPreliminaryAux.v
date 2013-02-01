@@ -73,15 +73,42 @@ Qed.
 (**************************************************************)
 (** ** Type [attributes_data] *)
 
+(** Boolean comparison *)
+
+Definition attributes_data_compare Ad1 Ad2 :=
+  match Ad1, Ad2 with
+  | attributes_data_intro v1 w1 e1 c1, attributes_data_intro v2 w2 e2 c2 =>
+    decide (v1 = v2 /\ w1 = w2 /\ e1 = e2 /\ c1 = c2)
+  end.
+
+(** Decidable comparison *)
+
 Global Instance attributes_data_comparable : Comparable attributes_data.
-Admitted. (* TODO *)
+Proof.
+  applys (comparable_beq attributes_data_compare). intros x y.
+  skip. (* The classical proof does not work as [x] and [y] has t be destructed recursively.
+           However, please do not admit this proof as the interpreter needs it. -- Martin *)
+Qed.
 
 
 (**************************************************************)
 (** ** Type [attributes_accessor] *)
 
+(** Boolean comparison *)
+
+Definition attributes_accessor_compare Aa1 Aa2 :=
+  match Aa1, Aa2 with
+  | attributes_accessor_intro v1 w1 e1 c1, attributes_accessor_intro v2 w2 e2 c2 =>
+    decide (v1 = v2 /\ w1 = w2 /\ e1 = e2 /\ c1 = c2)
+  end.
+
+(** Decidable comparison *)
+
 Global Instance attributes_accessor_comparable : Comparable attributes_accessor.
-Admitted. (* TODO *)
+Proof.
+  applys (comparable_beq attributes_accessor_compare). intros x y.
+  skip. (* idem. -- Martin *)
+Qed.
 
 
 (**************************************************************)
@@ -197,4 +224,76 @@ Global Instance prepost_unary_op_dec : forall op,
   Decidable (prepost_unary_op op).
 Proof. introv. destruct op; typeclass. Qed.
 
+Global Instance attributes_is_data_dec : forall A,
+  Decidable (attributes_is_data A).
+Proof.
+  intro A. destruct A; typeclass.
+Qed.
+
+
+Definition run_object_heap_map_properties S l F : state :=
+  let O := pick (object_binds S l) in
+  object_write S l (object_map_properties O F).
+
+Global Instance object_heap_map_properties_pickable : forall S l F,
+  Pickable (object_heap_map_properties S l F).
+Proof.
+  introv. applys pickable_make (run_object_heap_map_properties S l F).
+  introv [a [O [B E]]]. exists O. splits~.
+  unfolds run_object_heap_map_properties.
+  fequals. fequals.
+  applys @binds_func B; try typeclass.
+  apply pick_spec. eexists. apply* B.
+Qed.
+
+Global Instance object_set_property_pickable : forall S l x A,
+  Pickable (object_set_property S l x A).
+Proof. typeclass. Qed.
+
+Global Instance descriptor_contains_dec : forall Desc1 Desc2,
+  Decidable (descriptor_contains Desc1 Desc2).
+Proof.
+  intros Desc1 Desc2. destruct Desc1; destruct Desc2.
+  simpl. repeat apply and_decidable; try typeclass.
+Qed.
+
+Global Instance descriptor_enumerable_not_same_dec : forall A Desc,
+   Decidable (descriptor_enumerable_not_same A Desc).
+Proof.
+  introv. unfolds descriptor_enumerable_not_same.
+  destruct (descriptor_enumerable Desc); try typeclass.
+Qed.
+
+Global Instance descriptor_value_not_same_dec : forall Ad Desc,
+   Decidable (descriptor_value_not_same Ad Desc).
+Proof.
+  introv. unfolds descriptor_value_not_same.
+  destruct (descriptor_value Desc); try typeclass.
+Qed.
+
+Global Instance descriptor_get_not_same_dec : forall Aa Desc,
+   Decidable (descriptor_get_not_same Aa Desc).
+Proof.
+  introv. unfolds descriptor_get_not_same.
+  destruct (descriptor_get Desc); try typeclass.
+Qed.
+
+Global Instance descriptor_set_not_same_dec : forall Aa Desc,
+   Decidable (descriptor_set_not_same Aa Desc).
+Proof.
+  introv. unfolds descriptor_set_not_same.
+  destruct (descriptor_set Desc); try typeclass.
+Qed.
+
+Global Instance attributes_change_enumerable_on_non_configurable_dec : forall A Desc,
+  Decidable (attributes_change_enumerable_on_non_configurable A Desc).
+Proof. introv. apply and_decidable; try typeclass. Qed.
+
+Global Instance attributes_change_data_on_non_configurable_dec : forall Ad Desc,
+  Decidable (attributes_change_data_on_non_configurable Ad Desc).
+Proof. introv. repeat apply and_decidable; try typeclass. Qed.
+
+Global Instance attributes_change_accessor_on_non_configurable_dec : forall Aa Desc,
+  Decidable (attributes_change_accessor_on_non_configurable Aa Desc).
+Proof. introv. typeclass. Qed.
 

@@ -321,21 +321,6 @@ Definition run_object_heap_set_properties S l P' : state :=
   let O := pick (object_binds S l) in
   object_write S l (object_with_properties O P').
 
-Definition run_object_heap_map_properties S l F : state :=
-  let O := pick (object_binds S l) in
-  object_write S l (object_map_properties O F).
-
-Global Instance object_heap_map_properties_pickable : forall S l F,
-  Pickable (object_heap_map_properties S l F).
-Proof.
-  introv. applys pickable_make (run_object_heap_map_properties S l F).
-  introv [a [O [B E]]]. exists O. splits~.
-  unfolds run_object_heap_map_properties.
-  fequals. fequals.
-  applys @binds_func B; try typeclass.
-  apply pick_spec. eexists. apply* B.
-Qed.
-
 
 (**************************************************************)
 (** Operations on environments *)
@@ -563,7 +548,7 @@ Definition object_define_own_prop S l x Desc str : result :=
     if extensible then (
       let A :=
         ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
-        then attributes_data_of_descriptor Desc
+        then attributes_data_of_descriptor Desc : attributes
         else attributes_accessor_of_descriptor Desc in
       let S' := pick (object_set_property S l x A) in
       out_ter S' true
@@ -577,14 +562,14 @@ Definition object_define_own_prop S l x Desc str : result :=
       out_ter S true
     else ifb attributes_change_enumerable_on_non_configurable A Desc then
       out_reject S str
-    else ifb prop_attributes_is_generic Desc then
+    else ifb descriptor_is_generic Desc then
       dop_write S A
     else ifb attributes_is_data A <> descriptor_is_data Desc then (
      if neg (attributes_configurable A) then
        out_reject S str
      else (
       let A':=
-        match A with
+        match A return attributes with
         | attributes_data_of Ad => attributes_accessor_of_attributes_data Ad
         | attributes_accessor_of Aa => attributes_data_of_attributes_accessor Aa
         end in

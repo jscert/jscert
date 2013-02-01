@@ -357,6 +357,14 @@ Definition attributes_enumerable A :=
   | attributes_accessor_of Aa => attributes_accessor_enumerable Aa
   end.
 
+(** True is its argument is a data *)
+
+Definition attributes_is_data A : Prop :=
+  match A with
+  | attributes_data_of Ad => True
+  | attributes_accessor_of Aa => False
+  end.
+
 
 (**************************************************************)
 (** ** Smart constructors for property attributes *)
