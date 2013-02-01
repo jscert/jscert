@@ -339,9 +339,9 @@ Definition run_object_get_own_property_default S l x : full_descriptor :=
 
 Definition run_object_get_own_property S l x : full_descriptor :=
   let sclass := run_object_class S l in
-  let An := run_object_get_own_property_default S l x in
+  let D := run_object_get_own_property_default S l x in
   ifb sclass = "String" then (
-    ifb An <> full_descriptor_undef then An
+    ifb D <> full_descriptor_undef then D
     else let ix := convert_primitive_to_integer x in
     ifb prim_string x <> convert_prim_to_string (JsNumber.absolute ix) then
       full_descriptor_undef
@@ -356,7 +356,7 @@ Definition run_object_get_own_property S l x : full_descriptor :=
       | _ => arbitrary
       end
     )
-  ) else An.
+  ) else D.
 
 Definition object_get_property_body run_object_get_property S v x : full_descriptor :=
   match v with
@@ -364,18 +364,18 @@ Definition object_get_property_body run_object_get_property S v x : full_descrip
     ifb v = null then full_descriptor_undef
     else arbitrary
   | value_object l =>
-    let An := run_object_get_own_property S l x in
-    ifb An = full_descriptor_undef then (
+    let D := run_object_get_own_property S l x in
+    ifb D = full_descriptor_undef then (
       let lproto := run_object_proto S l in
       run_object_get_property S lproto x
-    ) else An
+    ) else D
   end.
 
 Definition run_object_get_property := FixFun3 object_get_property_body.
 
 Definition object_has_prop S l x : bool :=
-  let An := run_object_get_property S (value_object l) x in
-  decide (An <> full_descriptor_undef).
+  let D := run_object_get_property S (value_object l) x in
+  decide (D <> full_descriptor_undef).
 
 Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
   match run_object_proto S  l  with
@@ -390,7 +390,7 @@ Definition run_object_proto_is_prototype_of := FixFun3 object_proto_is_prototype
 
 Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
   match read_option (state_env_record_heap S) L with
-  | Some er => K er
+  | Some E => K E
   | None => d
   end.
 
@@ -432,9 +432,9 @@ Definition env_record_delete_binding S L x : result :=
     end) tt.
 
 Definition identifier_res S C x :=
-  let lex := execution_ctx_lexical_env C in
-  let strict := execution_ctx_strict C in
-  lexical_env_get_identifier_ref S lex x strict.
+  let X := execution_ctx_lexical_env C in
+  let str := execution_ctx_strict C in
+  lexical_env_get_identifier_ref S X x str.
 
 Definition object_get S v x : result :=
   match run_object_get_property S v x with
@@ -511,9 +511,9 @@ Definition env_record_get_binding_value S L x str : result :=
     end).
 
 Definition object_can_put S l x : result :=
-  let An := run_object_get_own_property S l x in
+  let D := run_object_get_own_property S l x in
   let oe := run_object_extensible S l in
-  match An with
+  match D with
   | full_descriptor_some A =>
     match A with
     | attributes_accessor_of Aa =>
@@ -540,10 +540,10 @@ Definition object_can_put S l x : result :=
   end.
 
 Definition object_define_own_prop S l x Desc str : result :=
-  let oldpd := run_object_get_own_property S l x in
+  let D := run_object_get_own_property S l x in
   let extensible := run_object_extensible S l in
   (* Note that Array will have a special case there. *)
-  match oldpd with
+  match D with
   | full_descriptor_undef =>
     if extensible then (
       let A :=
@@ -638,29 +638,30 @@ Definition ref_get_value S rv : result :=
     end
   end.
 
-Definition object_put (run_call' : run_call_type) S C (B : option builtin) l x v str : result :=
-  match morph_option (run_object_method object_put_ S l) id B with
+Definition object_put (run_call' : run_call_type) S C (Bo : option builtin) l x v str : result :=
+  match morph_option (run_object_method object_put_ S l) id Bo with
 
   | builtin_default_put =>
     if_success_bool (object_can_put S l x) (fun S' =>
-      let AnOwn := run_object_get_own_property S' l x in
-      ifb prop_descriptor_is_data AnOwn then
+      match run_object_get_own_property S' l x with
+      | full_descriptor_some (attributes_data_of Ad) =>
         object_define_own_prop S' l x (prop_attributes_create_value v) str
-      else (
-        let An := run_object_get_property S' (value_object l) x in
-          ifb prop_descriptor_is_accessor An then (
-            match An with
-            | prop_full_descriptor_undef => arbitrary
-            | prop_full_descriptor_some A =>
-              match extract_from_option (prop_attributes_set A) with
-              | value_object fsetter =>
-                let fc := extract_from_option (run_object_call S' fsetter) in
-                run_call' S' C fc (Some fsetter) (Some (value_object l)) (v :: nil)
-              | _ => result_stuck
-              end
-            end) else (
-              let A' := attributes_data_intro v true true true in
-              object_define_own_prop S' l x A' str)))
+      | full_descriptor_some (attributes_accessor_of Aa) =>
+        let D := run_object_get_property S' (value_object l) x in
+        match D with
+        | full_descriptor_undef => result_stuck
+        | full_descriptor_some A =>
+          match extract_from_option (prop_attributes_set A) with
+          | value_object fsetter =>
+            let fc := extract_from_option (run_object_call S' fsetter) in
+            run_call' S' C fc (Some fsetter) (Some (value_object l)) (v :: nil)
+          | _ => result_stuck
+          end
+        end
+      | full_descriptor_undef =>
+        let Ad := attributes_data_intro v true true true in
+        object_define_own_prop S' l x Ad str
+      end)
       (fun S' => error_or_void S str builtin_type_error)
 
     | _ => arbitrary (* TODO *)
