@@ -294,6 +294,7 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_global_is_nan (object_create_builtin_function builtin_global_is_nan_call 1 Heap.empty) in
   let h := Heap.write h builtin_global_is_finite (object_create_builtin_function builtin_global_is_finite_call 1 Heap.empty) in
   let h := Heap.write h builtin_object object_builtin_object in
+  let h := Heap.write h builtin_object_get_prototype_of (object_create_builtin_function builtin_object_get_prototype_of_call 1 Heap.empty)
   let h := Heap.write h builtin_object_proto object_builtin_object_proto in
   let h := Heap.write h builtin_bool object_builtin_bool in
   let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in

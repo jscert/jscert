@@ -201,7 +201,9 @@ Inductive builtin :=
   | builtin_global_eval_call          (* id for calling eval *)
   (*
   | builtin_global_parse_int
+  | builtin_global_parse_int_call
   | builtin_global_parse_float
+  | builtin_global_parse_float_call
   *)
   | builtin_global_is_nan            (* location to isNan function object *)
   | builtin_global_is_nan_call       (* id for calling isNan *)
@@ -212,23 +214,36 @@ Inductive builtin :=
   | builtin_object
   | builtin_object_new
   | builtin_object_call
-  | builtin_object_get_prototype_of
+  | builtin_object_get_prototype_of      (* location to getPrototypeOf function object *)
+  | builtin_object_get_prototype_of_call (* id for calling getPrototypeOf *)
   (* LATER:
     builtin_object_get_own_prop_descriptor
+    builtin_object_get_own_prop_descriptor_call
     builtin_object_get_own_prop_name
+    builtin_object_get_own_prop_name_call
     builtin_object_create
+    builtin_object_create_call
     builtin_object_define_prop
-    builtin_object_define_properties *)
+    builtin_object_define_prop_call
+    builtin_object_define_properties
+    builtin_object_define_properties_call *)
   (*
   | builtin_object_seal
+  | builtin_object_seal_call
   | builtin_object_freeze
+  | builtin_object_freeze_call
   | builtin_object_prevent_extensions
+  | builtin_object_prevent_extensions_call
   | builtin_object_is_sealed
+  | builtin_object_is_sealed_call
   | builtin_object_is_frozen
+  | builtin_object_is_frozen_call
   | builtin_object_is_extensible
+  | builtin_object_is_extensible_call
   *)
   (* LATER:
-    builtin_object_keys *)
+  | builtin_object_keys
+  | builtin_object_keys_call *)
 
   | builtin_object_proto
   | builtin_object_proto_to_string
