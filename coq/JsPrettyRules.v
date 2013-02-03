@@ -2385,7 +2385,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_proto_to_string : forall S C args o, 
       red_expr S C (spec_call_object_proto_to_string_1 (execution_ctx_this_binding C)) o ->
-      red_expr S C (spec_call_builtin builtin_object_proto_to_string args) o
+      red_expr S C (spec_call_builtin builtin_object_proto_to_string_call args) o
 
   | red_spec_call_object_proto_to_string_1_undef : forall S C, 
       red_expr S C (spec_call_object_proto_to_string_1 undef) (out_ter S "[object Undefined]"%string)
@@ -2408,14 +2408,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_proto_value_of : forall S C args o,   
       red_expr S C (spec_to_object (execution_ctx_this_binding C)) o ->
-      red_expr S C (spec_call_builtin builtin_object_proto_value_of args) o 
+      red_expr S C (spec_call_builtin builtin_object_proto_value_of_call args) o 
 
    (** Object.prototype.isPrototypeOf() (returns bool)  (15.2.4.6) *)
 
    | red_spec_call_object_proto_is_prototype_of_not_object : forall S C args v o, (* Step 0 *)
       arguments_from args (v::nil)  ->
       red_expr S C (spec_call_builtin spec_call_object_proto_is_prototype_of_2_1 v) o ->
-      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of args) o
+      red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of_call args) o
 
    | red_spec_call_object_proto_is_prototype_of_1_not_object : forall S C v, (* Step 1 *)
       type_of v <> type_object ->

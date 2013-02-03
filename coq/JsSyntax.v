@@ -247,10 +247,19 @@ Inductive builtin :=
 
   | builtin_object_proto
   | builtin_object_proto_to_string
+  | builtin_object_proto_to_string_call
   | builtin_object_proto_value_of
+  | builtin_object_proto_value_of_call
+  (* TODO
   | builtin_object_proto_has_own_prop
+  | builtin_object_proto_has_own_prop_call
+  *)
   | builtin_object_proto_is_prototype_of
+  | builtin_object_proto_is_prototype_of_call
+  (* TODO 
   | builtin_object_proto_prop_is_enumerable
+  | builtin_object_proto_prop_is_enumerable_call
+  *)
 
   | builtin_function
   | builtin_function_call

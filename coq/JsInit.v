@@ -174,10 +174,10 @@ Definition object_builtin_object :=
 
 Definition object_builtin_object_proto :=
   let P := Heap.empty in
-  let P := write_constant P "constructor" builtin_object_new in
-  let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in
-  let P := write_native P "toString" builtin_object_proto_to_string in  
+  let P := write_native P "constructor" builtin_object in
+  let P := write_native P "toString" builtin_object_proto_to_string in 
   let P := write_native P "valueOf" builtin_object_proto_value_of in 
+  let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in 
   object_create_builtin null "Object" P.
 
 
@@ -296,6 +296,9 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_object object_builtin_object in
   let h := Heap.write h builtin_object_get_prototype_of (object_create_builtin_function builtin_object_get_prototype_of_call 1 Heap.empty)
   let h := Heap.write h builtin_object_proto object_builtin_object_proto in
+  let h := Heap.write h builtin_object_proto_to_string (object_create_builtin_function builtin_object_proto_to_string_call 0 Heap.empty)
+  let h := Heap.write h builtin_object_proto_value_of (object_create_builtin_function builtin_object_proto_value_of_call 0 Heap.empty)
+  let h := Heap.write h builtin_object_proto_is_prototype_of (object_create_builtin_function builtin_object_proto_is_prototype_of_call 1 Heap.empty)
   let h := Heap.write h builtin_bool object_builtin_bool in
   let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in
   let h := Heap.write h builtin_number object_builtin_number in
