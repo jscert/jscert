@@ -308,18 +308,21 @@ Definition object_builtin_bool_proto :=
 (**************************************************************)
 (** Initial object heap *)
 
-Definition object_heap_initial :=
-  let h : Heap.heap object_loc object := Heap.empty in
-  let h := Heap.write h builtin_global object_builtin_global in
+Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
   let h := Heap.write h builtin_global_eval eval_function_object in
   let h := Heap.write h builtin_global_is_nan is_nan_function_object in
   let h := Heap.write h builtin_global_is_finite is_finite_function_object in
-  let h := Heap.write h builtin_object object_builtin_object in
-  let h := Heap.write h builtin_object_get_prototype_of get_prototype_of_function_object in
-  let h := Heap.write h builtin_object_proto object_builtin_object_proto in
   let h := Heap.write h builtin_object_proto_to_string object_proto_to_string_function_object in
   let h := Heap.write h builtin_object_proto_value_of object_proto_value_of_function_object in
   let h := Heap.write h builtin_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
+  h.
+
+Definition object_heap_initial :=
+  let h : Heap.heap object_loc object := Heap.empty in
+  let h := Heap.write h builtin_global object_builtin_global in
+  let h := Heap.write h builtin_object object_builtin_object in
+  let h := Heap.write h builtin_object_get_prototype_of get_prototype_of_function_object in
+  let h := Heap.write h builtin_object_proto object_builtin_object_proto in
   let h := Heap.write h builtin_bool object_builtin_bool in
   let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in
   let h := Heap.write h builtin_number object_builtin_number in
@@ -335,7 +338,7 @@ Definition object_heap_initial :=
   let h := Heap.write h builtin_syntax_error object_builtin_syntax_error in
   let h := Heap.write h builtin_type_error object_builtin_type_error in
   *)
-  h.
+  object_heap_initial_function_objects h.
 
 
 (**************************************************************)
