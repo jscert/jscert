@@ -153,6 +153,15 @@ Definition object_builtin_global :=
     object_builtin_global_proto
     object_builtin_global_class
     object_builtin_global_properties.
+    
+Definition eval_function_object :=
+  object_create_builtin_function builtin_global_eval_call 1 Heap.empty.
+  
+Definition is_nan_function_object := 
+  object_create_builtin_function builtin_global_is_nan_call 1 Heap.empty.
+  
+Definition is_finite_function_object :=
+  object_create_builtin_function builtin_global_is_finite_call 1 Heap.empty.
 
 (**************************************************************)
 (** Object object *)
@@ -165,6 +174,9 @@ Definition object_builtin_object :=
   let P := write_native P "get_prototype_of" builtin_object_get_prototype_of in
   (* LATER: complete list *)
   object_create_builtin_constructor builtin_object_call builtin_object_new 1 P.
+  
+Definition get_prototype_of_function_object :=
+  object_create_builtin_function builtin_object_get_prototype_of_call 1 Heap.empty.
 
 
 (**************************************************************)
@@ -179,6 +191,15 @@ Definition object_builtin_object_proto :=
   let P := write_native P "valueOf" builtin_object_proto_value_of in 
   let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in 
   object_create_builtin null "Object" P.
+  
+Definition object_proto_to_string_function_object :=
+  object_create_builtin_function builtin_object_proto_to_string_call 0 Heap.empty.
+  
+Definition object_proto_value_of_function_object :=
+  object_create_builtin_function builtin_object_proto_value_of_call 0 Heap.empty.
+  
+Definition object_proto_is_prototype_of_function_object :=
+  object_create_builtin_function builtin_object_proto_is_prototype_of_call 1 Heap.empty.
 
 
 (**************************************************************)
@@ -290,15 +311,15 @@ Definition object_builtin_bool_proto :=
 Definition object_heap_initial :=
   let h : Heap.heap object_loc object := Heap.empty in
   let h := Heap.write h builtin_global object_builtin_global in
-  let h := Heap.write h builtin_global_eval (object_create_builtin_function builtin_global_eval_call 1 Heap.empty) in
-  let h := Heap.write h builtin_global_is_nan (object_create_builtin_function builtin_global_is_nan_call 1 Heap.empty) in
-  let h := Heap.write h builtin_global_is_finite (object_create_builtin_function builtin_global_is_finite_call 1 Heap.empty) in
+  let h := Heap.write h builtin_global_eval eval_function_object in
+  let h := Heap.write h builtin_global_is_nan is_nan_function_object in
+  let h := Heap.write h builtin_global_is_finite is_finite_function_object in
   let h := Heap.write h builtin_object object_builtin_object in
-  let h := Heap.write h builtin_object_get_prototype_of (object_create_builtin_function builtin_object_get_prototype_of_call 1 Heap.empty)
+  let h := Heap.write h builtin_object_get_prototype_of get_prototype_of_function_object in
   let h := Heap.write h builtin_object_proto object_builtin_object_proto in
-  let h := Heap.write h builtin_object_proto_to_string (object_create_builtin_function builtin_object_proto_to_string_call 0 Heap.empty)
-  let h := Heap.write h builtin_object_proto_value_of (object_create_builtin_function builtin_object_proto_value_of_call 0 Heap.empty)
-  let h := Heap.write h builtin_object_proto_is_prototype_of (object_create_builtin_function builtin_object_proto_is_prototype_of_call 1 Heap.empty)
+  let h := Heap.write h builtin_object_proto_to_string object_proto_to_string_function_object in
+  let h := Heap.write h builtin_object_proto_value_of object_proto_value_of_function_object in
+  let h := Heap.write h builtin_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
   let h := Heap.write h builtin_bool object_builtin_bool in
   let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in
   let h := Heap.write h builtin_number object_builtin_number in
