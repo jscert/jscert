@@ -265,13 +265,14 @@ Inductive builtin :=
   | builtin_function_call
   | builtin_function_new
   | builtin_function_proto
-  (* 13.2.3 Unique function object *)
-  | builtin_function_throw_type_error
   (*
   | builtin_function_proto_apply
   | builtin_function_proto_call
   | builtin_function_proto_to_string
   *)
+  
+  (* 13.2.3 Unique function object *)
+  | builtin_function_throw_type_error
 
   (* LATER:
   | builtin_function_proto_bind ... etc... *)

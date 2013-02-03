@@ -186,7 +186,7 @@ Definition object_builtin_object_proto :=
 
 Definition object_builtin_function :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" builtin_function_proto in
+  let P := write_constant P "prototype" (value_object builtin_function_proto) in
   let P := write_native P "get_prototype_of" builtin_object_get_prototype_of in
   (* LATER: complete list *)
   object_create_builtin_constructor builtin_function_call builtin_function_new 1 P.
