@@ -196,14 +196,17 @@ Inductive builtin :=
   | builtin_syntax_error
   | builtin_type_error
 
-  | builtin_global
-  | builtin_global_eval
+  | builtin_global                    (* location to global object *)
+  | builtin_global_eval               (* location to eval function object *)
+  | builtin_global_eval_call          (* id for calling eval *)
   (*
   | builtin_global_parse_int
   | builtin_global_parse_float
   *)
-  | builtin_global_is_nan
-  | builtin_global_is_finite
+  | builtin_global_is_nan            (* location to isNan function object *)
+  | builtin_global_is_nan_call       (* id for calling isNan *)
+  | builtin_global_is_finite         (* location to isFinite function object *)
+  | builtin_global_is_finite_call    (* id for calling isFinite *)
 
   (* for objects of class Object *)
   | builtin_object

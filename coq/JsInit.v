@@ -33,8 +33,8 @@ Implicit Type m : mutability.
 Implicit Type Ad : attributes_data.
 Implicit Type Aa : attributes_accessor.
 Implicit Type A : attributes.
-Implicit Type Df : descriptor_fields.
-Implicit Type D : descriptor.
+Implicit Type Desc : descriptor.
+Implicit Type D : full_descriptor.
 
 Implicit Type L : env_loc.
 Implicit Type E : env_record.
@@ -57,12 +57,13 @@ Implicit Type t : stat.
     that is non writable, non configurable and non enumerable. *)
 
 Definition prop_attributes_for_global_object v :=
-   prop_attributes_create_data v true false true.
+   attributes_data_intro v true false true.
 
 (** Shorthand notation for building a property attributes
     that is non writable, non configurable and non enumerable. *)
 
-Notation "'attrib_constant'" := prop_attributes_create_data_constant.
+Definition attrib_constant v := 
+  attributes_data_intro v false false false.
 
 (** Shorthand notation for building a property attributes
     that is non writable, non configurable and non enumerable. *)
@@ -289,6 +290,9 @@ Definition object_builtin_bool_proto :=
 Definition object_heap_initial :=
   let h : Heap.heap object_loc object := Heap.empty in
   let h := Heap.write h builtin_global object_builtin_global in
+  let h := Heap.write h builtin_global_eval (object_create_builtin_function builtin_global_eval_call 1 Heap.empty) in
+  let h := Heap.write h builtin_global_is_nan (object_create_builtin_function builtin_global_is_nan_call 1 Heap.empty) in
+  let h := Heap.write h builtin_global_is_finite (object_create_builtin_function builtin_global_is_finite_call 1 Heap.empty) in
   let h := Heap.write h builtin_object object_builtin_object in
   let h := Heap.write h builtin_object_proto object_builtin_object_proto in
   let h := Heap.write h builtin_bool object_builtin_bool in

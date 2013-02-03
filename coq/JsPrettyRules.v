@@ -2260,7 +2260,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_global_eval : forall S C args v o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_global_eval_1 v) o ->
-      red_expr S C (spec_call_builtin builtin_global_eval args) o
+      red_expr S C (spec_call_builtin builtin_global_eval_call args) o
 
   | red_spec_call_global_eval_1_not_string : forall S C v,
       type_of v <> type_string ->
@@ -2300,7 +2300,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       arguments_from args (v::nil)  -> 
       red_expr S C (spec_to_number v) o1 ->
       red_expr S C (spec_call_global_is_nan_1 o1) o ->
-      red_expr S C (spec_call_builtin builtin_global_is_nan args) o
+      red_expr S C (spec_call_builtin builtin_global_is_nan_call args) o
 
   | red_spec_call_global_is_nan_1 : forall S S0 C b n,
       b = (If n = JsNumber.nan then true else false) ->
@@ -2312,7 +2312,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       arguments_from args (v::nil)  ->
       red_expr S C (spec_to_number v) o1 ->
       red_expr S C (spec_call_global_is_finite_1 o1) o ->
-      red_expr S C (spec_call_builtin builtin_global_is_finite args) o
+      red_expr S C (spec_call_builtin builtin_global_is_finite_call args) o
 
   | red_spec_call_global_is_finite_1 : forall S S0 C b n,
       b = (If (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity) then false else true) ->
