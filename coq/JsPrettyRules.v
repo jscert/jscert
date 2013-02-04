@@ -2450,6 +2450,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (*------------------------------------------------------------*)
   (** ** Function builtin functions *)
+  
+  (** Function.prototype() -- always return undefined  (15.3.4) *)
+
+  | red_spec_call_function_proto_invoked : forall S C args,
+      red_expr S C (spec_call_builtin builtin_function_proto_invoked args) (out_ter S undef)
 
 (*---start todo---*)
 

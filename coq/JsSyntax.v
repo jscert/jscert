@@ -265,10 +265,12 @@ Inductive builtin :=
   | builtin_function_call
   | builtin_function_new
   | builtin_function_proto
+  (* Couldn't use the name builtin_function_proto_call for Function.prototype() since there is Function.prototype.call() *)
+  | builtin_function_proto_invoked  
   (*
+  | builtin_function_proto_to_string
   | builtin_function_proto_apply
   | builtin_function_proto_call
-  | builtin_function_proto_to_string
   *)
   
   (* 13.2.3 Unique function object *)

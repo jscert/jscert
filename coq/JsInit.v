@@ -218,9 +218,12 @@ Definition object_builtin_function :=
 
 Definition object_builtin_function_proto :=
   let P := Heap.empty in
+  let P := write_native P "constructor" builtin_function in
+  let P := Heap.write P "length" (attrib_constant 0) in
   (* let P := write_native P "toString" builtin_function_proto_to_string in *) (* TODO *)
   (* LATER: complete list *)
-  object_create_builtin builtin_object_proto "Function" P.
+  let O := object_create_builtin builtin_object_proto "Function" P in
+  object_with_invokation O None (Some builtin_function_proto_invoked) None.
 
 
 (**************************************************************)
