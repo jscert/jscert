@@ -649,20 +649,20 @@ Definition object_put (run_call' : run_call_type) S C (Bo : option builtin) l x 
         if_success (object_define_own_prop S' l x Desc str) (fun S2 rv =>
           out_ter_void S2)
       | full_descriptor_some (attributes_accessor_of Aa) =>
-        let D := run_object_get_property S' (value_object l) x in
-        match D with
-        | full_descriptor_undef => result_stuck
-        | full_descriptor_some A =>
-          match extract_from_option (prop_attributes_set A) with
-          | value_object fsetter =>
-            let fc := extract_from_option (run_object_call S' fsetter) in
-            run_call' S' C fc (Some fsetter) (Some (value_object l)) (v :: nil)
+        match run_object_get_property S' (value_object l) x with
+        | full_descriptor_some (attributes_accessor_of Aa) =>
+          match attributes_accessor_set Aa with
+          | value_object lfsetter =>
+            arbitrary (* Waiting for the spec.  TODO:  run_call' S' C lfsetter *)
           | _ => result_stuck
           end
+        | full_descriptor_some (attributes_data_of Ad) =>
+          arbitrary (* TODO *)
+        | full_descriptor_none => result_stuck
         end
       | full_descriptor_undef =>
         let Ad := attributes_data_intro v true true true in
-        object_define_own_prop S' l x Ad str
+        object_define_own_prop S' l x (descriptor_of_attributes Ad) str
       end)
       (fun S' => error_or_void S str builtin_type_error)
 
@@ -728,7 +728,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
   | env_record_object l pt =>
     if object_has_prop S l x then result_stuck
     else let A := attributes_data_intro undef true true deletable in
-      object_define_own_prop S l x A throw_true
+      object_define_own_prop S l x (descriptor_of_attributes A) throw_true
   end.
 
 Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C L x (deletable_opt : option bool) v str : result :=
@@ -759,9 +759,9 @@ Definition env_record_initialize_immutable_binding  S L x v : result :=
 Definition creating_function_object_proto S l (K : state -> result) : result :=
   if_object (constructor_builtin S builtin_object_new nil) (fun S1 lproto =>
     let A1 := attributes_data_intro (value_object l) true false true in
-    if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 rv1 =>
+    if_success (object_define_own_prop S1 lproto "constructor" (descriptor_of_attributes A1) false) (fun S2 rv1 =>
       let A2 := attributes_data_intro (value_object lproto) true false false in
-      if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 rv2 =>
+      if_success (object_define_own_prop S2 l "prototype" (descriptor_of_attributes A2) false) (fun S3 rv2 =>
         K S3))).
 
 Definition creating_function_object S (names : list string) (bd : funcbody) X str : result :=
@@ -773,14 +773,14 @@ Definition creating_function_object S (names : list string) (bd : funcbody) X st
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
-  if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 rv1 =>
+  if_success (object_define_own_prop S1 l "length" (descriptor_of_attributes A1) false) (fun S2 rv1 =>
     creating_function_object_proto S2 l (fun S3 =>
       if negb str then out_ter S3 l
       else (
         let vthrower := value_object builtin_function_throw_type_error in
         let A2 := attributes_accessor_intro vthrower vthrower false false in
-        if_success (object_define_own_prop S3 l "caller" A2 false) (fun S4 rv2 =>
-          if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 rv3 =>
+        if_success (object_define_own_prop S3 l "caller" (descriptor_of_attributes A2) false) (fun S4 rv2 =>
+          if_success (object_define_own_prop S4 l "arguments" (descriptor_of_attributes A2) false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
 Fixpoint execution_ctx_binding_instantiation_set_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result :=
@@ -808,12 +808,12 @@ Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : r
       let hb := env_record_has_binding S L fn in
       if_success (if hb then
         match run_object_get_property S builtin_global fn with
-        | prop_full_descriptor_undef => result_stuck
-        | prop_full_descriptor_some A =>
-          ifb prop_attributes_configurable A = Some true then (
+        | full_descriptor_undef => result_stuck
+        | full_descriptor_some A =>
+          if attributes_configurable A then (
             let A' := attributes_data_intro undef true true false in (* To be reread *)
-            object_define_own_prop S1 builtin_global fn A' true
-          ) else ifb prop_descriptor_is_accessor A \/ prop_attributes_writable A <> Some true \/ prop_attributes_enumerable A <> Some true then
+            object_define_own_prop S1 builtin_global fn (descriptor_of_attributes A') true
+          ) else ifb descriptor_is_accessor A \/ attributes_writable A <> Some true \/ attributes_enumerable A <> Some true then (* TODO:  This rule has unfortunately no meaning.  Read it directly from the specifiaction 5e iv of execution_ctx_binding_instantiation. *)
           out_type_error S1
           else out_ter_void S1
         end else env_record_create_mutable_binding S1 L fn (Some false)) (fun S2 rv2 =>

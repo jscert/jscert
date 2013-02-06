@@ -365,6 +365,15 @@ Definition attributes_is_data A : Prop :=
   | attributes_accessor_of Aa => False
   end.
 
+(** Returns the value of the writable field of an attribute *)
+
+Definition attributes_writable A : bool :=
+  match A with
+  | attributes_data_of Ad => attributes_data_writable Ad
+  | attributes_accessor_of Aa => false
+  end.
+(* Even if it's used in the semantics, is that wanted? -- Martin *)
+
 
 (**************************************************************)
 (** ** Smart constructors for property attributes *)
