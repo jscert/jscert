@@ -218,11 +218,11 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o
 
   | red_stat_do_while_5_false : forall S C labs t1 e2 rv,
-      red_stat S C (stat_do_while_5 labs t1 e2 rv false)) (out_ter S rv)
+      red_stat S C (stat_do_while_5 labs t1 e2 rv false) (out_ter S rv)
 
   | red_stat_do_while_5_true : forall S C labs t1 e2 rv o,
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o ->
-      red_stat S C (stat_do_while_5 labs t1 e2 rv true)) o
+      red_stat S C (stat_do_while_5 labs t1 e2 rv true) o
 
   (** While statement (recall [abort_intercepted_stat]) *)
 
@@ -235,12 +235,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_1 labs e1 t2 rv) o
 
   | red_stat_while_2_false : forall S C labs e1 t2 rv,
-      red_stat S C (stat_while_2 labs e1 t2 rv false)) (out_ter S rv)
+      red_stat S C (stat_while_2 labs e1 t2 rv false) (out_ter S rv)
 
   | red_stat_while_2_true : forall S C labs e1 t2 rv o1 o,
       red_stat S C t2 o1 ->
       red_stat S C (stat_while_3 labs e1 t2 rv o1) o ->
-      red_stat S C (stat_while_2 labs e1 t2 rv true)) o
+      red_stat S C (stat_while_2 labs e1 t2 rv true) o
 
   | red_stat_while_3_true : forall S0 S C labs e1 t2 rv_old rv o1 o,
       rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
@@ -453,7 +453,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_object_0 : forall S0 S C l pds o,
       red_expr S C (expr_object_1 l pds) o ->
-      red_expr S0 C (expr_object_0 (out_ter S l) pds) o ->
+      red_expr S0 C (expr_object_0 (out_ter S l) pds) o
 
   | red_expr_object_1_nil : forall S S C l,
       red_expr S C (expr_object_1 l nil) (out_ter S l)
@@ -1350,7 +1350,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_get_3_accessor_object : forall B S C vthis l lf o, (* Step 6 *)
       object_call S lf (Some B) ->
       red_expr S C (spec_call B lf vthis nil) o ->
-      red_expr S C (spec_object_get_3 vthis l lf)) o
+      red_expr S C (spec_object_get_3 vthis l lf) o
       
   (** CanPut  (8.12.4) *)
 
@@ -1624,7 +1624,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_write l x Aa Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_6c l x Aa Desc throw) o
 
-  | red_spec_object_define_own_prop_write : forall S S' C l x A Desc throw A' -> 
+  | red_spec_object_define_own_prop_write : forall S S' C l x A Desc throw A', 
       A' = attributes_update A Desc ->
       object_set_property S l x A' S' ->
       red_expr S C (spec_object_define_own_prop_write l x A Desc throw) (out_ter S' true)
@@ -2371,7 +2371,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_get_prototype_of_1_not_object : forall S C v o, 
       type_of v <> type_object ->
       red_expr S C (spec_error builtin_type_error) o ->
-      red_expr S C (spec_call_object_get_prototype_of_1 v) o ->
+      red_expr S C (spec_call_object_get_prototype_of_1 v) o
           
   | red_spec_call_object_get_prototype_of_1_object : forall S C l v, 
       object_proto S l v ->
@@ -2428,24 +2428,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
    | red_spec_call_object_proto_is_prototype_of_2 : forall S0 S C l lthis o,
       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o ->
-      red_expr S0 C (spec_call_object_proto_is_prototype_of_2_2 (out_ter S lthis) l)) o
+      red_expr S0 C (spec_call_object_proto_is_prototype_of_2_2 (out_ter S lthis) l) o
 
    | red_spec_call_object_proto_is_prototype_of_3 : forall S C l lthis vproto o, (* Step 3.a *)
       object_proto S l vproto -> 
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis vproto) o ->
-      red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l)) o
+      red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o
 
    | red_spec_call_object_proto_is_prototype_of_4_null : forall S C lthis o, (* Step 3.b *)
-      red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis null)) (out_ter S false)
+      red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis null) (out_ter S false)
 
    | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C lthis o, (* Step 3.c *)
-      red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lthis)) (out_ter S true)
+      red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lthis) (out_ter S true)
   
    | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C l lthis lproto o, (* Look back to step 3 *)
       (* Note: we implicitly enforce the fact that a proto can only be a location or null *)
       lproto <> lthis -> 
-      red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis lproto)) o ->
-      red_expr S C ( lthis lproto)) o
+      red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis lproto) o ->
+      red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lproto) o
 
 
   (*------------------------------------------------------------*)
