@@ -249,11 +249,18 @@ Definition object_builtin_number :=
 
 Definition object_builtin_number_proto :=
   let P := Heap.empty in
+  let P := write_native P "constructor" builtin_number in
   let P := write_native P "toString" builtin_number_proto_to_string in   
   let P := write_native P "valueOf" builtin_number_proto_value_of in
   (* TODO: complete list *)
-
-  object_create_builtin builtin_object_proto "Number" P.
+  let O := object_create_builtin builtin_object_proto "Number" P in
+  object_with_primitive_value O JsNumber.zero.
+  
+Definition number_proto_to_string_function_object :=
+  object_create_builtin_function builtin_number_proto_to_string_call 0 Heap.empty.
+  
+Definition number_proto_value_of_function_object :=
+  object_create_builtin_function builtin_number_proto_value_of_call 0 Heap.empty.
 
 
 (**************************************************************)
@@ -345,6 +352,10 @@ Definition object_heap_initial_function_objects (h : Heap.heap object_loc object
   (* Function objects of Boolean.prototype *)
   let h := Heap.write h builtin_bool_proto_to_string bool_proto_to_string_function_object in
   let h := Heap.write h builtin_bool_proto_value_of bool_proto_value_of_function_object in
+  
+  (* Function objects of Number.prototype *)
+  let h := Heap.write h builtin_number_proto_to_string number_proto_to_string_function_object in
+  let h := Heap.write h builtin_number_proto_value_of number_proto_value_of_function_object in 
   h.
 
 Definition object_heap_initial :=

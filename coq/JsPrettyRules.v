@@ -2630,7 +2630,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_number_proto_value_of : forall S C o v args, 
       v = execution_ctx_this_binding C ->
       red_expr S C (spec_call_number_proto_value_of_1 v) o ->
-      red_expr S C (spec_call_builtin builtin_number_proto_value_of args) o
+      red_expr S C (spec_call_builtin builtin_number_proto_value_of_call args) o
 
   | red_spec_call_number_proto_value_of_1_number : forall S C v n,
       value_viewable_as_prim "Number" S v n ->
@@ -2684,26 +2684,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       v = execution_ctx_this_binding C ->
       not (type_of v = type_number) -> (* Daniele: check last lines of [15.7.4.2]. *)
       red_expr S C (spec_error builtin_type_error) o ->
-      red_expr S C (spec_call_builtin builtin_number_proto_to_string args) o
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string_call args) o
 
   (* if [this] is a number we proceed to the next stages *)
   | red_spec_call_number_proto_to_string_number : forall S C s b o v args, 
       v = execution_ctx_this_binding C ->
       type_of v = type_number -> 
       red_expr S C (spec_call_number_proto_to_string_1 v args) o ->
-      red_expr S C (spec_call_builtin builtin_number_proto_to_string args) o
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string_call args) o
 
   (* The [radix] parameter is not there: use 10 as default *)
   | red_spec_call_number_proto_to_string_number_1_no_radix : forall S C v o args, 
       args = nil ->
-      red_expr S C (spec_call_builtin builtin_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string_call (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
       red_expr S C (spec_call_number_proto_to_string_1 v args) o 
 
   (* The [radix] parameter is undefined: use 10 as default *)
   | red_spec_call_number_proto_to_string_number_1_undef_radix : forall S C v vr args o, 
       arguments_from args (vr::nil) ->
       vr = undef ->
-      red_expr S C (spec_call_builtin builtin_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_builtin builtin_number_proto_to_string_call (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
       red_expr S C (spec_call_number_proto_to_string_1 v args) o 
 
   (* TODO: factorize the previous 2? *)

@@ -310,7 +310,9 @@ Inductive builtin :=
   | builtin_number_new
   | builtin_number_proto
   | builtin_number_proto_to_string
+  | builtin_number_proto_to_string_call
   | builtin_number_proto_value_of
+  | builtin_number_proto_value_of_call
   (* LATER:
   | builtin_number_proto_to_fixed
   | builtin_number_proto_to_exponential
