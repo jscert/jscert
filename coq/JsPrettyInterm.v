@@ -72,7 +72,7 @@ Inductive ext_expr :=
   | expr_object_3_val : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
-  | expr_object_4 : object_loc -> string -> prop_attributes -> propdefs -> ext_expr
+  | expr_object_4 : object_loc -> string -> attributes -> propdefs -> ext_expr
   | expr_object_5 : object_loc -> propdefs -> out -> ext_expr
   
   | expr_function_1 : string -> list string -> funcbody -> env_loc -> lexical_env -> out -> ext_expr
@@ -196,8 +196,8 @@ Inductive ext_expr :=
   | spec_object_put_5 : out -> ext_expr
 
   | spec_object_has_prop : object_loc -> prop_name -> ext_expr
-  spec_object_has_prop_1
-  spec_object_has_prop_2
+  | spec_object_has_prop_1 : builtin -> object_loc -> prop_name -> ext_expr
+  | spec_object_has_prop_2 : full_descriptor -> ext_expr
 
   | spec_object_delete : object_loc -> prop_name -> bool -> ext_expr
   | spec_object_delete_2 : object_loc -> prop_name -> bool -> descriptor -> ext_expr
@@ -211,14 +211,14 @@ Inductive ext_expr :=
   | spec_object_default_value_sub_2 : object_loc -> out -> ext_expr -> ext_expr
   | spec_object_default_value_sub_3 : out -> ext_expr -> ext_expr
 
-  | spec_object_define_own_prop : object_loc -> prop_name -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_3 : object_loc -> prop_name -> descriptor -> prop_attributes -> bool -> bool -> ext_expr
-  | spec_object_define_own_prop_4 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_5 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_6a : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_6b : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_6c : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
-  | spec_object_define_own_prop_7 : object_loc -> prop_name -> prop_attributes -> prop_attributes -> bool -> ext_expr
+  | spec_object_define_own_prop : object_loc -> prop_name -> attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_3 : object_loc -> prop_name -> descriptor -> attributes -> bool -> bool -> ext_expr
+  | spec_object_define_own_prop_4 : object_loc -> prop_name -> attributes -> attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_5 : object_loc -> prop_name -> attributes -> attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_6a : object_loc -> prop_name -> attributes -> attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_6b : object_loc -> prop_name -> attributes -> attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_6c : object_loc -> prop_name -> attributes -> attributes -> bool -> ext_expr
+  | spec_object_define_own_prop_7 : object_loc -> prop_name -> attributes -> attributes -> bool -> ext_expr
  (*
   | spec_prim_value_get : value -> prop_name -> ext_expr
   | spec_prim_value_get_1 : prop_name -> out -> ext_expr
@@ -259,7 +259,7 @@ Inductive ext_expr :=
   | spec_env_record_create_mutable_binding : env_loc -> prop_name -> option bool -> ext_expr
   | spec_env_record_create_mutable_binding_1 : env_loc -> prop_name -> bool -> env_record -> ext_expr
   | spec_env_record_create_mutable_binding_2 : env_loc -> prop_name -> bool -> object_loc -> out -> ext_expr
-  | spec_env_record_create_mutable_binding_2 : out -> ext_expr
+  | spec_env_record_create_mutable_binding_3 : out -> ext_expr
   | spec_env_record_set_mutable_binding : env_loc -> prop_name -> value -> bool -> ext_expr
   | spec_env_record_set_mutable_binding_1 : env_loc -> prop_name -> value -> bool -> env_record -> ext_expr
   | spec_env_record_delete_binding : env_loc -> prop_name -> ext_expr
@@ -298,7 +298,7 @@ Inductive ext_expr :=
   | spec_binding_instantiation_function_decls : (env_loc -> ext_expr) -> list value -> env_loc -> list funcdecl -> bool -> out -> ext_expr
   | spec_binding_instantiation_function_decls_1 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
   | spec_binding_instantiation_function_decls_2 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> prop_attributes -> option bool -> bool -> ext_expr
+  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> attributes -> option bool -> bool -> ext_expr
   | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> out -> ext_expr
@@ -413,6 +413,12 @@ with ext_stat :=
   | stat_while_2 : label_set -> expr -> stat -> resvalue -> value -> ext_stat 
   | stat_while_3 : label_set -> expr -> stat -> resvalue -> out -> ext_stat 
   | stat_while_4 : label_set -> expr -> stat -> resvalue -> res -> ext_stat 
+  
+  | stat_do_while_1 : label_set -> stat ->  expr -> resvalue -> ext_stat 
+  | stat_do_while_2 : label_set -> stat ->  expr -> resvalue -> out -> ext_stat
+  | stat_do_while_3 : label_set -> stat ->  expr -> resvalue -> res -> ext_stat 
+  | stat_do_while_4 : label_set -> stat ->  expr -> resvalue -> ext_stat
+  | stat_do_while_5 : label_set -> stat ->  expr -> resvalue -> bool -> ext_stat
 
 (* LATER
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
@@ -592,7 +598,7 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
   | abort_intercepted_do_while_3 : forall labs e1 t2 rv S R,
       res_label_in R labs ->
       (res_type R = restype_continue \/ res_type R = restype_break) ->
-      abort_intercepted_stat (stat_do_while_2 labs e1 t2 rv (out_ter S R)) 
+      abort_intercepted_stat (stat_do_while_2 labs t2 e1 rv (out_ter S R)) 
   | abort_intercepted_while_3 : forall labs e1 t2 rv S R,
       res_label_in R labs ->
       (res_type R = restype_continue \/ res_type R = restype_break) ->
