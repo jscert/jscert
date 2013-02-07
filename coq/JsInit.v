@@ -276,7 +276,10 @@ Definition object_builtin_number_proto :=
 
 Definition object_builtin_bool :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" builtin_function_proto in
+  (* Daiva: I've changed to write_native instead of write_constant since the spec does not say anything special
+            about this field -- so default attributes for built-in things apply. *)
+  let P := write_native P "prototype" builtin_function_proto in
+  let P := write_constant P "prototype" builtin_bool_proto in
   (* TODO: complete list *)
   object_create_builtin_constructor builtin_bool_call builtin_bool_new 1 P.
 
