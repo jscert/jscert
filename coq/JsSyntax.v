@@ -301,7 +301,9 @@ Inductive builtin :=
   | builtin_bool_call
   | builtin_bool_new
   | builtin_bool_proto_to_string
+  | builtin_bool_proto_to_string_call
   | builtin_bool_proto_value_of
+  | builtin_bool_proto_value_of_call
 
   | builtin_number
   | builtin_number_call

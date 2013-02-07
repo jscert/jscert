@@ -289,10 +289,19 @@ Definition object_builtin_bool :=
 
 Definition object_builtin_bool_proto :=
   let P := Heap.empty in
+  let P := write_native P "constructor" builtin_bool in
   let P := write_native P "toString" builtin_bool_proto_to_string in   
   let P := write_native P "valueOf" builtin_bool_proto_value_of in
   (* TODO: complete list *)
-  object_create_builtin builtin_object_proto "Boolean" P. 
+  let O := object_create_builtin builtin_object_proto "Boolean" P in
+  (* The spec does not say explicitly that [[PrimitiveValue]] is false. It says that object's value is false (15.6.4). *)
+  object_with_primitive_value O false.
+  
+Definition bool_proto_to_string_function_object :=
+  object_create_builtin_function builtin_bool_proto_to_string_call 0 Heap.empty. 
+  
+Definition bool_proto_value_of_function_object :=
+  object_create_builtin_function builtin_bool_proto_value_of_call 0 Heap.empty. 
 
 
 (**************************************************************)
@@ -327,6 +336,10 @@ Definition object_heap_initial_function_objects (h : Heap.heap object_loc object
   let h := Heap.write h builtin_object_proto_to_string object_proto_to_string_function_object in
   let h := Heap.write h builtin_object_proto_value_of object_proto_value_of_function_object in
   let h := Heap.write h builtin_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
+  
+  (* Function objects of Boolean.prototype *)
+  let h := Heap.write h builtin_bool_proto_to_string bool_proto_to_string_function_object in
+  let h := Heap.write h builtin_bool_proto_value_of bool_proto_value_of_function_object in
   h.
 
 Definition object_heap_initial :=

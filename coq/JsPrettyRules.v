@@ -2561,9 +2561,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       Note: behavior encoded using valueOf and conversion to string *)
 
   | red_spec_call_bool_proto_to_string : forall S C args o1 o, 
-      red_expr S C (spec_call_builtin builtin_bool_proto_value_of args) o1 ->
+      red_expr S C (spec_call_builtin builtin_bool_proto_value_of_call args) o1 ->
       red_expr S C (spec_call_bool_proto_to_string_1 o1) o ->
-      red_expr S C (spec_call_builtin builtin_bool_proto_to_string args) o
+      red_expr S C (spec_call_builtin builtin_bool_proto_to_string_call args) o
 
   | red_spec_call_bool_proto_to_string_1 : forall S0 S C s b, 
       s = (convert_bool_to_string b) ->
@@ -2574,7 +2574,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_bool_proto_value_of : forall S C v o args, 
       v = execution_ctx_this_binding C ->
       red_expr S C (spec_call_bool_proto_value_of_1 v) o ->
-      red_expr S C (spec_call_builtin builtin_bool_proto_value_of args) o
+      red_expr S C (spec_call_builtin builtin_bool_proto_value_of_call args) o
 
   | red_spec_call_bool_proto_value_of_1_bool : forall S C v b,
       value_viewable_as_prim "Boolean" S v b ->
