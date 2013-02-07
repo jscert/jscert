@@ -234,7 +234,12 @@ Definition object_builtin_function_proto :=
 Definition object_builtin_number :=
   let P := Heap.empty in
   (* TODO: what does this mean? --:: Daniele: use [builtin_function_proto] when available *)
-  let P := write_constant P "prototype" builtin_function_proto in
+  (* Daiva: The spec says that Number.prototype is Number prototype object defined in 15.7.4 -- not a function prototype
+            object. *)
+  let P := write_constant P "prototype" builtin_number_proto in
+  let P := write_constant P "NaN" JsNumber.nan in
+  let P := write_constant P "NEGATIVE_INFINITY" JsNumber.neg_infinity in
+  let P := write_constant P "POSITIVE_INFINITY" JsNumber.infinity in
   (* TODO: complete list *)
   object_create_builtin_constructor builtin_number_call builtin_number_new 1 P.
 
