@@ -154,13 +154,13 @@ Definition object_builtin_global :=
     object_builtin_global_class
     object_builtin_global_properties.
     
-Definition eval_function_object :=
+Definition global_eval_function_object :=
   object_create_builtin_function builtin_global_eval_call 1 Heap.empty.
   
-Definition is_nan_function_object := 
+Definition global_is_nan_function_object := 
   object_create_builtin_function builtin_global_is_nan_call 1 Heap.empty.
   
-Definition is_finite_function_object :=
+Definition global_is_finite_function_object :=
   object_create_builtin_function builtin_global_is_finite_call 1 Heap.empty.
 
 (**************************************************************)
@@ -175,7 +175,7 @@ Definition object_builtin_object :=
   (* LATER: complete list *)
   object_create_builtin_constructor builtin_object_call builtin_object_new 1 P.
   
-Definition get_prototype_of_function_object :=
+Definition object_get_prototype_of_function_object :=
   object_create_builtin_function builtin_object_get_prototype_of_call 1 Heap.empty.
 
 
@@ -312,9 +312,15 @@ Definition object_builtin_bool_proto :=
 (** Initial object heap *)
 
 Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
-  let h := Heap.write h builtin_global_eval eval_function_object in
-  let h := Heap.write h builtin_global_is_nan is_nan_function_object in
-  let h := Heap.write h builtin_global_is_finite is_finite_function_object in
+  (* Function objects of Global object *)
+  let h := Heap.write h builtin_global_eval global_eval_function_object in
+  let h := Heap.write h builtin_global_is_nan global_is_nan_function_object in
+  let h := Heap.write h builtin_global_is_finite global_is_finite_function_object in
+  
+  (* Function objects of Object *)
+  let h := Heap.write h builtin_object_get_prototype_of object_get_prototype_of_function_object in
+  
+  (* Function objects of Object.prototype *)
   let h := Heap.write h builtin_object_proto_to_string object_proto_to_string_function_object in
   let h := Heap.write h builtin_object_proto_value_of object_proto_value_of_function_object in
   let h := Heap.write h builtin_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
@@ -324,7 +330,6 @@ Definition object_heap_initial :=
   let h : Heap.heap object_loc object := Heap.empty in
   let h := Heap.write h builtin_global object_builtin_global in
   let h := Heap.write h builtin_object object_builtin_object in
-  let h := Heap.write h builtin_object_get_prototype_of get_prototype_of_function_object in
   let h := Heap.write h builtin_object_proto object_builtin_object_proto in
   let h := Heap.write h builtin_bool object_builtin_bool in
   let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in
