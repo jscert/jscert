@@ -1218,6 +1218,7 @@ Definition callable S v Bo :=
 Definition is_callable S v :=
   exists B, callable S v (Some B).
 
+
 (**************************************************************)
 (** ** Implementation of [SameValue] *)
 
@@ -1241,10 +1242,10 @@ Definition typeof_prim w :=
 
 (** [typeof] for a value (11.4.3) *)
 
-Definition typeof_value S v :=
+Definition typeof_value S v `{forall S0 v0, Decidable (is_callable S0 v0)} (* This assertion is proved in JsPreliminaryAux. -- Martin *) :=
   match v with
   | value_prim w => typeof_prim w
-  | value_object l => If is_callable S l then "function" else "object"
+  | value_object l => ifb is_callable S l then "function" else "object"
   end.
 
 (**************************************************************)

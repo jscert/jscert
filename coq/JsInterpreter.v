@@ -798,6 +798,7 @@ Fixpoint execution_ctx_binding_instantiation_set_args (run_call' : run_call_type
   end.
 
 Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : run_call_type) S C L (fds : list funcdecl) : result :=
+  arbitrary (* TODO
   match fds with
   | nil => out_ter_void S
   | fd :: fds' =>
@@ -819,7 +820,7 @@ Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : r
         end else env_record_create_mutable_binding S1 L fn (Some false)) (fun S2 rv2 =>
           if_success (env_record_set_mutable_binding run_call' S2 C L fn (value_object fo) strb) (fun S3 rv3 =>
             execution_ctx_binding_instantiation_create_execution_ctx run_call' S3 C L fds')))
-  end.
+  end *).
 
 Fixpoint execution_ctx_binding_instantiation_init_vars (run_call' : run_call_type) S C L (vds : list string) str : result :=
   match vds with
@@ -892,28 +893,6 @@ Definition run_spec_object_has_instance (max_step : nat) B S l v : result :=
 
   end.
 
-Definition run_callable S v : option builtin :=
-  match v with
-  | value_prim w => None
-  | value_object l => run_object_call S l
-  end.
-
-Global Instance is_callable_dec : forall S v,
-  Decidable (is_callable S v).
-Proof.
-  introv. applys decidable_make
-    (morph_option false (fun _ => true) (run_callable S v)).
-  destruct v; simpls.
-   rewrite~ isTrue_false. introv [b H]. inverts H.
-   lets (p&H): binds_pickable (state_object_heap S) o; try typeclass.
-    skip. (* TODO: tests: (exists a, binds (state_object_heap S) o a). *)
-Qed.
-
-Definition run_typeof_value S v : string := (* TODO:  Put this in JsPreliminary, with the proof of decidability of [is_callable]. *)
-  match v with
-  | value_prim w => typeof_prim w
-  | value_object l => ifb is_callable S l then "function" else "object"
-  end.
 
 (**************************************************************)
 (** Conversions *)
@@ -1166,13 +1145,14 @@ Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
 Definition object_delete S l x str : result :=
   let B := run_object_method object_delete_ S l in
   match run_object_get_own_property S l x with
-  | prop_full_descriptor_undef => out_ter S true
-  | prop_full_descriptor_some A =>
-    ifb prop_attributes_configurable A = Some true then
-      arbitrary (* TODO: object_rem_prop S l x *)
+  | full_descriptor_undef => out_ter S true
+  | full_descriptor_some A =>
+    if attributes_configurable A then
+      out_ter (pick (object_rem_property S l x)) true
     else
       error_or_cst S str builtin_type_error false
   end.
+
 
 Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) S C (op : unary_op) e : result :=
   ifb prepost_unary_op op then
@@ -1209,13 +1189,13 @@ Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) 
       if_success (run_expr' S C e) (fun S1 rv =>
         match rv with
         | resvalue_value v =>
-          out_ter S1 (run_typeof_value S1 v)
+          out_ter S1 (typeof_value S1 v)
         | resvalue_ref r =>
           ifb ref_is_unresolvable r then
             out_ter S1 "undefined"
           else
             if_success_value (out_ter S1 r) (fun S2 v =>
-              out_ter S2 (run_typeof_value S2 v))
+              out_ter S2 (typeof_value S2 v))
         | resvalue_empty => result_stuck
         end)
 
@@ -1259,7 +1239,7 @@ Fixpoint init_object (run_expr' : run_expr_type) S C l (pds : propdefs) : result
   | (pn, pb) :: pds' =>
     let x := string_of_propname pn in
     let follows S1 A :=
-      if_success (object_define_own_prop S1 l x A false) (fun S2 rv =>
+      if_success (object_define_own_prop S1 l x (descriptor_of_attributes A) false) (fun S2 rv =>
         init_object run_expr' S2 C l pds') in
     match pb with
     | propbody_val e0 =>
@@ -1291,6 +1271,7 @@ Fixpoint run_var_decl (run_call' : run_call_type) (run_expr' : run_expr_type) S 
       end) (fun S1 rv =>
         run_var_decl run_call' run_expr' S1 C xeos')
   end.
+
 
 (**************************************************************)
 (** ** Definition of the interpreter *)
@@ -1487,7 +1468,7 @@ with run_stat (max_step : nat) S C t : result :=
           | Some t3 =>
             run_stat' S1 C t3
           | None =>
-            out_ter S undef
+            out_ter S resvalue_empty
           end)
 
     | stat_do_while ls t1 e2 =>
@@ -1514,13 +1495,13 @@ with run_stat (max_step : nat) S C t : result :=
     | stat_try t1 t2o t3o =>
       let finally : result -> result :=
         match t3o with
-        | None => fun o => o
-        | Some t3 => fun o =>
-          match o with
+        | None => fun res => res
+        | Some t3 => fun res =>
+          match res with
           | out_ter S1 R =>
             if_success (run_stat' S1 C t3) (fun S2 rv' =>
               out_ter S2 R)
-          | _ => o (* stuck or bottom *)
+          | _ => res (* stuck or bottom *)
           end
         end
       in

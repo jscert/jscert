@@ -297,3 +297,29 @@ Global Instance attributes_change_accessor_on_non_configurable_dec : forall Aa D
   Decidable (attributes_change_accessor_on_non_configurable Aa Desc).
 Proof. introv. typeclass. Qed.
 
+
+(** Decidable instance for [is_callable] *)
+
+Definition run_callable S v : option builtin :=
+  match v with
+  | value_prim w => None
+  | value_object l => object_call_ (pick (object_binds S l))
+  end.
+
+Global Instance is_callable_dec : forall S v,
+  Decidable (is_callable S v).
+Proof.
+  introv. applys decidable_make
+    (morph_option false (fun _ => true) (run_callable S v)).
+  destruct v; simpls.
+   rewrite~ isTrue_false. introv [b H]. inverts H.
+   lets (p&H): binds_pickable (state_object_heap S) o; try typeclass.
+    tests C: (is_callable S o).
+     rewrite~ isTrue_true. fold_bool.
+      lets (b&p2&(B&E)): C. forwards~: (rm H). exists* p2.
+      forwards: @pick_spec (object_binds S o). exists* p2.
+      forwards: (binds_func H B). substs. rewrite~ E.
+     rewrite~ isTrue_false. fold_bool.
+      skip. (* We need the fact that the value [v] is correct at this point. *)
+Qed.
+

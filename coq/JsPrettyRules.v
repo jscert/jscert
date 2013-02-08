@@ -1473,7 +1473,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_delete_2_some_configurable : forall S C l x throw A S' o, (* Step 3 *)
       attributes_configurable A = true ->
-      object_rem_prop S l x S' ->
+      object_rem_property S l x S' ->
       red_expr S C (spec_object_delete_2 l x throw (full_descriptor_some A)) (out_ter S' true)
 
   | red_spec_object_delete_3_some_non_configurable : forall S C l x throw A o, (* Steps 4 and 5 *)
