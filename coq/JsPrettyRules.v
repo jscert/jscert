@@ -1253,7 +1253,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_put : forall S C l x v throw B o,
       object_method object_put_ S l B ->
-      red_expr S C (spec_object_put_1 B l x v throw) o -> (* There lacks the [this] part there. -- Martin. *)
+      (* TODO: Daiva: Double check [this] value *)
+      red_expr S C (spec_object_put_1 B l l x v throw) o -> (* There lacks the [this] part there. -- Martin. *)
       red_expr S C (spec_object_put l x v throw) o
 
   (** HasProperty (returns bool) *)
@@ -1274,15 +1275,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_default_value : forall S C l prefo B o,
       object_method object_default_value_ S l B ->
-      red_expr S C (spec_object_default_value_2 B l prefo) o ->
+      red_expr S C (spec_object_default_value_1 B l prefo) o ->
       red_expr S C (spec_object_default_value l prefo) o
 
   (** DefineOwnProperty (returns bool) *)
 
-  | red_spec_object_define_own_prop : forall S C l x D throw B o,
+  | red_spec_object_define_own_prop : forall S C l x Desc throw B o,
       object_method object_define_own_prop_ S l B ->
-      red_expr S C (spec_object_define_own_prop_1 B l x D throw) o ->
-      red_expr S C (spec_object_define_own_prop l x D throw) o
+      red_expr S C (spec_object_define_own_prop_1 B l x Desc throw) o ->
+      red_expr S C (spec_object_define_own_prop l x Desc throw) o
 
 
   (*------------------------------------------------------------*)
@@ -1345,20 +1346,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_get_2 vthis l (attributes_data_of Ad)) (out_ter S v)
 
   | red_spec_object_get_2_accessor : forall S C vthis l Aa o, (* Step 4 *)
-      red_expr S C (spec_object_get_3 l (attributes_accessor_get Ad)) o ->
+      red_expr S C (spec_object_get_3 vthis l (attributes_accessor_get Aa)) o ->
       red_expr S C (spec_object_get_2 vthis l (attributes_accessor_of Aa)) o
 
   | red_spec_object_get_3_accessor_undef : forall S C vthis l, (* Step 5 *)
       red_expr S C (spec_object_get_3 vthis l undef) (out_ter S undef) 
 
   | red_spec_object_get_3_accessor_object : forall B S C vthis l lf o, (* Step 6 *)
-      object_call S lf (Some B) ->
-      red_expr S C (spec_call B lf vthis nil) o ->
+      red_expr S C (spec_call lf (value_object vthis) nil) o ->
       red_expr S C (spec_object_get_3 vthis l lf) o
       
   (** CanPut  (8.12.4) *)
 
-  | red_spec_object_can_put_1_default : forall An S C l x o, (* Step 1 *)
+  | red_spec_object_can_put_1_default : forall S C l x o, (* Step 1 *)
       red_expr S C (spec_object_get_own_prop l x (spec_object_can_put_2 l x)) o ->      
       red_expr S C (spec_object_can_put_1 builtin_default_can_put l x) o  
 
@@ -1379,7 +1379,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_extensible S l b ->
       red_expr S C (spec_object_can_put_4 l x null) (out_ter S b)
 
-  | red_spec_object_can_put_4_not_null : forall S C l x o lproto Anproto, (* Step 5 *)
+  | red_spec_object_can_put_4_not_null : forall S C l x o lproto, (* Step 5 *)
       red_expr S C (spec_object_get_prop lproto x (spec_object_can_put_5 l)) o ->
       red_expr S C (spec_object_can_put_4 l x lproto) o
 
@@ -1393,7 +1393,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_can_put_5_data : forall S C l x Ad bext o, (* Step 8 *)
       object_extensible S l bext ->
-      red_expr S C (spec_object_can_put_6 l Ad bext) o ->
+      red_expr S C (spec_object_can_put_6 Ad bext) o ->
       red_expr S C (spec_object_can_put_5 l (attributes_data_of Ad)) o
 
   | red_spec_object_can_put_6_extens_false : forall S C Ad, (* Step 8.a *)
@@ -1419,42 +1419,43 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put_2 vthis l x v throw (out_ter S false)) o
 
   | red_spec_object_put_2_true : forall S C vthis l x v throw o, (* Step 2 *)
-      red_expr S C (spec_object_get_own_prop l x (spec_object_put_3 l x v throw)) o ->      
+      red_expr S C (spec_object_get_own_prop l x (spec_object_put_3 vthis l x v throw)) o ->      
       red_expr S C (spec_object_put_2 vthis l x v throw (out_ter S true)) o
 
-  | red_spec_object_put_3_data_object : forall S C (lthis:loc) l x v throw Ad Desc o1 o, (* Step 3 *)
+  | red_spec_object_put_3_data_object : forall S C (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 3 *)
       Desc = descriptor_intro (Some v) None None None None None ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S C (spec_object_put_3 lthis l x v throw (attributes_data_of Ad)) o
 
-  | red_spec_object_put_3_data_prim : forall S C (wthis:prim) l x v throw Aold o, (* Step 3, for prim values *)
+  | red_spec_object_put_3_data_prim : forall S C (wthis:prim) l x v throw Ad o, (* Step 3, for prim values *)
       red_expr S C (spec_error_or_void throw builtin_type_error) o ->
       red_expr S C (spec_object_put_3 wthis l x v throw (attributes_data_of Ad)) o
 
-  | red_spec_object_put_3_not_data : forall Aold S C vthis l x v throw o, (* Step 4 *)
-      red_expr S C (spec_object_get_prop S (value_object l) x (spec_object_put_4 vthis l x v throw)) o ->
+  | red_spec_object_put_3_not_data : forall S C vthis l x v throw Aa o, (* Step 4 *)
+      red_expr S C (spec_object_get_prop l x (spec_object_put_4 vthis l x v throw)) o ->
       red_expr S C (spec_object_put_3 vthis l x v throw (attributes_accessor_of Aa)) o
 
-  | red_spec_object_put_4_accessor : forall (lfsetter:loc) S C vthis l x v throw Aa o1 o, (* Step 5 *)
-      lfsetter = attributes_accessor_set Aa ->
-      lfsetter <> undef -> (* Note: this premise is a derived fact *)
+  | red_spec_object_put_4_accessor : forall vsetter lfsetter S C vthis l x v throw Aa o1 o, (* Step 5 *)
+      vsetter = attributes_accessor_set Aa ->
+      vsetter <> undef -> (* Note: this premise is a derived fact *)
+      vsetter = value_object lfsetter ->
       red_expr S C (spec_call lfsetter vthis (v::nil)) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S C (spec_object_put_4 vthis l x v throw (attributes_accessor_of Aa)) o
 
-  | red_spec_object_put_4_not_accessor_object : forall S C (lthis:loc) l x v throw Ad Desc o1 o, (* Step 6 *)
+  | red_spec_object_put_4_not_accessor_object : forall S C (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
       Desc = descriptor_intro_data v true true true ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S C (spec_object_put_4 lthis l x v throw (attributes_data_of Ad)) o
 
-  | red_spec_object_put_4_not_accessor_prim : forall S C (wthis:prim) l x v throw An o, (* Step 6, for prim values *)
+  | red_spec_object_put_4_not_accessor_prim : forall S C (wthis:prim) l x v throw Ad o, (* Step 6, for prim values *)
       red_expr S C (spec_error_or_void throw builtin_type_error) o ->
       red_expr S C (spec_object_put_4 wthis l x v throw (attributes_data_of Ad)) o
 
   | red_spec_object_put_5_return : forall S C rv, (* Steps 3.c and 7 *)
-      red_expr S C (spec_object_put_5 (out_ter S rv)) (out_ter_void S)
+      red_expr S C (spec_object_put_5 (out_ter S rv)) (out_void S)
 
   (** HasProperty  (8.12.6) *)
 
