@@ -341,21 +341,24 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) None fo) o
 
-  | red_stat_try_1_throw_catch : forall S0 S S' C lex lex' oldlex L x R t1 fo o1 o,
+  | red_stat_try_1_throw_catch : forall v S0 S S' C lex lex' oldlex L x R t1 fo o1 o,
       res_type R = restype_throw ->
       lex = execution_ctx_lexical_env C ->
       (lex',S') = lexical_env_alloc_decl S lex ->
       lex' = L::oldlex -> (* Note: oldlex is in fact equal to lex *)
-      red_expr S' C (spec_env_record_create_set_mutable_binding L x None (res_value R) throw_irrelevant) o1 ->
+      (* TODO : Can the res_value R be empty value or reference value? 
+                We need to change the type of create/set mutable binding then *)
+      res_value R = resvalue_value v ->
+      red_expr S' C (spec_env_record_create_set_mutable_binding L x None v throw_irrelevant) o1 ->
       red_stat S' C (stat_try_2 o1 lex' t1 fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) (Some (x,t1)) fo) o
 
   | red_stat_try_2_catch : forall C S0 S lex' t1 fo o o1,
       red_stat S (execution_ctx_with_lex C lex') t1 o1 ->
       red_stat S C (stat_try_3 o1 fo) o ->
-      red_stat S0 C (stat_try_2 (out_ter_void S) lex' t1 fo) o
+      red_stat S0 C (stat_try_2 (out_void S) lex' t1 fo) o
 
-  | red_stat_try_3_catch_result : forall S C R fo o,
+  | red_stat_try_3_catch_result : forall S0 S C R fo o,
       red_stat S C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_3 (out_ter S R) fo) o
 
@@ -448,7 +451,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   
   | red_expr_object : forall S C pds o1 o,
       red_expr S C (spec_constructor_builtin builtin_object_new nil) o1 ->
-      red_expr S C (expr_object_1 o1 pds) o ->
+      red_expr S C (expr_object_0 o1 pds) o ->
       red_expr S C (expr_object pds) o
 
   | red_expr_object_0 : forall S0 S C l pds o,
@@ -489,7 +492,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
 
   | red_expr_object_3_set : forall S S0 C A l x v pds o,
-      A = prop_attributes_create_accessor_opt v undef true true ->
+      A = attributes_accessor_intro v undef true true ->
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
   
@@ -528,7 +531,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_ext_expr_access_3 : forall S0 S C v1 v2 o1 o,
       red_expr S C (spec_to_string v2) o1 ->
       red_expr S C (expr_access_4 v1 o1) o ->
-      red_expr S0 C (expr_access_3 v1 (out_ter_void S) v2) o
+      red_expr S0 C (expr_access_3 v1 (out_void S) v2) o
 
   | red_expr_ext_expr_access_4 : forall S0 S C v1 x r,
      r = ref_create_value v1 x (execution_ctx_strict C) ->
@@ -613,22 +616,21 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ref_is_property r -> 
       ref_is_value r v ->
       red_expr S C (expr_call_4 l vs (out_ter S v)) o ->
-      red_expr S C (expr_call_3 (ret_ref r) (value_object l) vs) o
+      red_expr S C (expr_call_3 (resvalue_ref r) (value_object l) vs) o
       
   | red_expr_call_3_env : forall L o1 S C o r l vs,
       (is_callable S l) ->
       ref_is_env_record r L -> 
       red_expr S C (spec_env_record_implicit_this_value L) o1 -> 
       red_expr S C (expr_call_4 l vs o1) o ->
-      red_expr S C (expr_call_3 (ret_ref r) (value_object l) vs) o
+      red_expr S C (expr_call_3 (resvalue_ref r) (value_object l) vs) o
 
   | red_expr_call_3_not_ref : forall S C v l vs o,
       red_expr S C (expr_call_4 l vs (out_ter S undef)) o ->
-      red_expr S C (expr_call_3 (ret_value v) (value_object l) vs) o
+      red_expr S C (expr_call_3 (resvalue_value v) (value_object l) vs) o
    
-  | red_expr_call_4 : forall builtin S0 S C l vs v o,
-      object_call S l (Some builtin) ->
-      red_expr S C (spec_call builtin (Some l) (Some v) vs) o ->
+  | red_expr_call_4 : forall S0 S C l vs v o,
+      red_expr S C (spec_call l v vs) o ->
       red_expr S0 C (expr_call_4 l vs (out_ter S v)) o    
       
   (* TODO: eval call *)     
@@ -660,7 +662,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
       red_expr S C (spec_creating_function_object args bd scope (funcbody_is_strict bd)) o1 ->
       red_expr S C (expr_function_2 s L o1) o ->
-      red_expr S0 C (expr_function_1 s args bd L scope (out_ter_void S)) o
+      red_expr S0 C (expr_function_1 s args bd L scope (out_void S)) o
       
   | red_expr_function_named_2 : forall o1 S0 S C s L l o,
       red_expr S C (spec_env_record_initialize_immutable_binding L s l) o1 ->
@@ -668,7 +670,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_function_2 s L (out_ter S l)) o  
       
   | red_expr_function_named_3 : forall S0 S C l,
-      red_expr S0 C (expr_function_3 l (out_ter_void S)) (out_ter S l) 
+      red_expr S0 C (expr_function_3 l (out_void S)) (out_ter S l) 
 
 (*---end todo---*)
 
@@ -699,7 +701,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_prepost_3 op rv (out_ter S n1)) o
  
   | red_expr_prepost_4 : forall S0 S C v,  
-      red_expr S0 C (expr_prepost_4 v (out_ter_void S)) (out_ter S v)
+      red_expr S0 C (expr_prepost_4 v (out_void S)) (out_ter S v)
 
   (** Unary op -- common rules for regular operators *)
 
@@ -724,7 +726,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ~ (resvalue_is_ref rv) ->
       red_expr S0 C (expr_delete_1 (out_ter S rv)) (out_ter S true)
 
-  | red_expr_delete_1_ref_unresolvable : forall S0 S C rv,
+  | red_expr_delete_1_ref_unresolvable : forall S0 S C r,
       ref_is_unresolvable r ->
       red_expr S0 C (expr_delete_1 (out_ter S r)) (out_ter S true)
 
@@ -735,7 +737,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_delete_2 r o1) o ->
       red_expr S0 C (expr_delete_1 (out_ter S r)) o
 
-  | red_expr_delete_2 : forall S0 S C x l str o,
+  | red_expr_delete_2 : forall S0 S C r l o,
       red_expr S C (spec_object_delete l (ref_name r) (ref_strict r)) o ->
       red_expr S0 C (expr_delete_2 r (out_ter S l)) o
 
@@ -764,7 +766,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ref_is_unresolvable r ->
       red_expr S0 C (expr_typeof_1 (out_ter S r)) (out_ter S "undefined")
 
-  | red_expr_typeof_1_ref_resolvable : forall S0 S C rv o1 o,
+  | red_expr_typeof_1_ref_resolvable : forall S0 S C r o1 o,
       ~ (ref_is_unresolvable r) ->
       red_expr S C (spec_get_value r) o1 ->
       red_expr S C (expr_typeof_2 o1) o ->
@@ -1178,8 +1180,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (spec_to_object v) o
 
-  | red_spec_to_object_prim : forall S C o,
-      prim_convertible_to_object w ->
+  | red_spec_to_object_prim : forall S C w o,
+      (* TODO : Daiva: I couldn't find in spec why we need to check if the prim value can be convertible to object. *)
+      (* prim_convertible_to_object w -> *)
+      (* TODO *)
       red_expr S C (spec_prim_new_object w) o ->
       red_expr S C (spec_to_object (value_prim w)) o
 
@@ -1195,7 +1199,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_check_object_coercible_return : forall S C v,
       ~ (v = prim_undef \/ v = prim_null) ->
-      red_expr S C (spec_check_object_coercible v) (out_ter_void S)
+      red_expr S C (spec_check_object_coercible v) (out_void S)
 
   (** Auxiliary: conversion of two values at once (passes two values to the continuation) *)
 
@@ -2170,14 +2174,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_creating_function_object_3 : forall o1 S0 S C l b o, 
       red_expr S0 C (spec_creating_function_object_3 l (out_ter S b)) (out_ter S l)
       
+  | red_spec_call : forall builtin A C l this args o,
+      object_call S l (Some builtin) ->
+      red_expr S C (spec_call_1 builtin l this args) ->
+      red_expr S C (spec_call l this args) o
+      
   | red_spec_call_builtin: forall S C builtinid lo this args o,
       builtinid <> builtin_spec_op_function_call /\ builtinid <> builtin_spec_op_function_bind_call ->
       red_expr S C (spec_call_builtin builtinid args) o -> 
-      red_expr S C (spec_call builtinid lo this args) o
+      red_expr S C (spec_call_1 builtinid lo this args) o
       
   | red_spec_call_p: forall S C l this args o,
       red_expr S C (spec_op_function_call l this args) o -> 
-      red_expr S C (spec_call builtin_spec_op_function_call (Some l) (Some this) args) o
+      red_expr S C (spec_call_1 builtin_spec_op_function_call l this args) o
       
   | red_spec_call_prog: forall S C l this args o1 o,      
       red_expr S C (spec_entering_func_code l this args) o1 ->
