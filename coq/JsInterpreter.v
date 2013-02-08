@@ -440,7 +440,7 @@ Definition object_get S v x : result :=
   | full_descriptor_some (attributes_data_of Ad) =>
     out_ter S (attributes_data_value Ad)
   | full_descriptor_some (attributes_accessor_of Aa) =>
-    result_stuck
+    arbitrary (* TODO *)
   end.
 
 
@@ -1469,7 +1469,7 @@ with run_stat (max_step : nat) S C t : result :=
       run_expr' S C e
 
     | stat_var_decl xeos =>
-      run_var_decl run_call' run_expr' S C xeos
+      (* run_var_decl run_call' run_expr' S C xeos *) arbitrary (* As variables are not declared in [run_prog], I prefer raise an exception when such a variable should have been defined. *) (* TODO: Remove the [arbitrary] as soon as [run_prog] is correct. *)
 
     | stat_block ts =>
       run_block' S C resvalue_empty ts
@@ -1613,7 +1613,7 @@ with run_elements (max_step : nat) S C rv (els : list element) : result :=
         run_elements' S1 C rv1 els')
 
     | element_func_decl name args bd :: els' =>
-      (* run_elements' S C rv els' *) arbitrary (* As functions are not declared, in [run_prog], I prefer raise an exception when such a function should have been defined. *) (* TODO: Remove the [arbitrary] as soon as [run_prog] is correct. *)
+      (* run_elements' S C rv els' *) arbitrary (* As functions are not declared in [run_prog], I prefer raise an exception when such a function should have been defined. *) (* TODO: Remove the [arbitrary] as soon as [run_prog] is correct. *)
 
     end
   end
