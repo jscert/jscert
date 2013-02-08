@@ -1,5 +1,36 @@
 #/bin/bash
 
+globalFileName=/tmp/JsCert_run_tests.tmp
+
+if [[ $1 == '-init' ]]
+then
+	printf '' > $globalFileName
+	exit 0
+fi
+
+function end_message {
+	sleep 0.1
+	printf '\nFailed tests:\n'
+	all_failed_tests=`cat $globalFileName`
+
+	if [[ $all_failed_tests == '' ]]
+	then
+		printf '\tNone\n'
+	else
+		printf "$all_failed_tests\n"
+	fi
+
+	exit 0
+}
+
+if [[ $1 == '-makefile' ]]
+then
+	all_failed_tests=`cat $globalFileName`
+	shift
+
+	trap end_message SIGINT
+fi
+
 if [[ $1 == '' ]]
 then
 	printf 'Needs a JavaScript file as argument.\n'
@@ -39,6 +70,7 @@ case $ret in
 	exit 0 ;;
 1)
 	printf ': \033[31mFailed\033[00m\n'
+	printf "\t$1\n" >> $globalFileName
 	exit 1 ;;
 2)
 	printf ': \033[33mAbandon\033[00m\n'

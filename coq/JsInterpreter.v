@@ -48,7 +48,7 @@ Implicit Type p : prog.
 Implicit Type t : stat.
 
 
-
+(*
 (**************************************************************)
 (** Macros for exceptional behaviors in reduction rules *)
 
@@ -73,17 +73,11 @@ Definition error_or_void S str B :=
   if str then out_ter S (res_throw B)
   else out_ter S (res_normal resvalue_empty).
 
-Definition error_or_cst S str B R :=
-  if str then out_ter S (res_throw B)
-  else out_ter S R.
 
 
 (** The "void" result is used by specification-level functions
     which do not produce any javascript value, but only perform
     side effects. (We return the value [undef] in the implementation.) *)
-
-Definition out_ter_void S :=
-  out_ter S undef.
 
 (** [out_reject S bthrow] throws a type error if
     [bthrow] is true, else returns the value [false] *)
@@ -100,7 +94,7 @@ Definition out_ref_error_or_undef S (bthrow:bool) :=
   if bthrow
     then (out_ref_error S)
     else (out_ter S undef).
-
+*)
 
 
 (**************************************************************)
@@ -529,12 +523,12 @@ Definition env_record_get_binding_value S L x str : result :=
     | env_record_decl Ed =>
       let (mu, v) := read Ed x in
       ifb mu = mutability_uninitialized_immutable then
-        out_ref_error_or_undef S str
+        out_error_or_cst S str builtin_ref_error undef
       else out_ter S v
     | env_record_object l pt =>
       if object_has_prop S l x then
         object_get S l x
-      else out_ref_error_or_undef S str
+      else out_error_or_cst S str builtin_ref_error undef
     end).
 
 Definition object_can_put S l x : result :=
@@ -674,7 +668,7 @@ Definition object_put (run_call' : run_call_type) S C (Bo : option builtin) l x 
       | full_descriptor_some (attributes_data_of Ad) =>
         let Desc := descriptor_intro (Some v) None None None None None in
         if_success (object_define_own_prop S' l x Desc str) (fun S2 rv =>
-          out_ter_void S2)
+          out_void S2)
       | full_descriptor_some (attributes_accessor_of Aa) =>
         match run_object_get_property S' (value_object l) x with
         | full_descriptor_some (attributes_accessor_of Aa) =>
@@ -691,7 +685,7 @@ Definition object_put (run_call' : run_call_type) S C (Bo : option builtin) l x 
         let Ad := attributes_data_intro v true true true in
         object_define_own_prop S' l x Ad str
       end)
-      (fun S' => error_or_void S str builtin_type_error)
+      (fun S' => out_error_or_void S str builtin_type_error)
 
     | _ => arbitrary (* TODO *)
 
@@ -702,7 +696,7 @@ Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v 
   | env_record_decl Ed =>
     let (mu, v_old) := read Ed x in
     ifb mutability_is_mutable mu then
-      out_ter_void (env_record_write_decl_env S L x mu v)
+      out_void (env_record_write_decl_env S L x mu v)
     else if str then
       out_type_error S
     else out_ter S prim_undef
@@ -751,7 +745,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
     ifb decl_env_record_indom Ed x then result_stuck
     else
       let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
-      out_ter_void S'
+      out_void S'
   | env_record_object l pt =>
     if object_has_prop S l x then result_stuck
     else let A := attributes_data_intro undef true true deletable in
@@ -770,16 +764,25 @@ Definition env_record_create_immutable_binding S L x : result :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
     ifb decl_env_record_indom Ed x then result_stuck
-    else out_ter_void (
+    else out_void (
       env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
   | _ => result_stuck
   end.
 
-Definition env_record_initialize_immutable_binding  S L x v : result :=
+Definition env_record_initialize_immutable_binding S L x v : result :=
+  match pick (env_record_binds S L) with
+  | env_record_decl Ed =>
+    (* In contrary to the rules, no check is performed there, is that a problem? -- Martin *)
+    let S' := env_record_write_decl_env S L x mutability_immutable v in
+    out_void S'
+  | _ => result_stuck
+  end.
+
+Definition env_record_void  S L x v : result :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
     let v_old := run_decl_env_record_binds_value Ed x in
-    out_ter_void (env_record_write_decl_env S L x mutability_immutable v)
+    out_void (env_record_write_decl_env S L x mutability_immutable v)
   | _ => result_stuck
   end.
 
@@ -812,12 +815,12 @@ Definition creating_function_object S C (names : list string) (bd : funcbody) X 
 
 Fixpoint execution_ctx_binding_instantiation_set_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result :=
   match names with
-  | nil => out_ter_void S
+  | nil => out_void S
   | argname :: names' =>
     let v := hd undef args in
     let hb := env_record_has_binding S L argname in
     if_success
-      (if hb then out_ter_void S
+      (if hb then out_void S
       else env_record_create_mutable_binding S L argname None) (fun S1 rv1 =>
         if_success (env_record_set_mutable_binding run_call' S1 C L argname v str)
         (fun S2 rv2 =>
@@ -827,7 +830,7 @@ Fixpoint execution_ctx_binding_instantiation_set_args (run_call' : run_call_type
 Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : run_call_type) S C L (fds : list funcdecl) : result :=
   arbitrary (* TODO
   match fds with
-  | nil => out_ter_void S
+  | nil => out_void S
   | fd :: fds' =>
     let fb := funcdecl_body fd in
     let fn := funcdecl_name fd in
@@ -843,7 +846,7 @@ Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : r
             object_define_own_prop S1 builtin_global fn A' true
           ) else ifb descriptor_is_accessor A \/ attributes_writable A <> Some true \/ attributes_enumerable A <> Some true then (* TODO:  This rule has unfortunately no meaning.  Read it directly from the specifiaction 5e iv of execution_ctx_binding_instantiation. *)
           out_type_error S1
-          else out_ter_void S1
+          else out_void S1
         end else env_record_create_mutable_binding S1 L fn (Some false)) (fun S2 rv2 =>
           if_success (env_record_set_mutable_binding run_call' S2 C L fn (value_object fo) strb) (fun S3 rv3 =>
             execution_ctx_binding_instantiation_create_execution_ctx run_call' S3 C L fds')))
@@ -851,7 +854,7 @@ Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : r
 
 Fixpoint execution_ctx_binding_instantiation_init_vars (run_call' : run_call_type) S C L (vds : list string) str : result :=
   match vds with
-  | nil => out_ter_void S
+  | nil => out_void S
   | vd :: vds' =>
     if env_record_has_binding S L vd then
       execution_ctx_binding_instantiation_init_vars run_call' S C L vds' str
@@ -869,7 +872,7 @@ Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (
       let names_option := run_object_formal_parameters S func in
       let names := unsome_default nil names_option in
       execution_ctx_binding_instantiation_set_args run_call' S C L args names str
-    | None => out_ter_void S
+    | None => out_void S
     end (fun S1 re0 =>
       let fds := prog_funcdecl p in
       if_success (execution_ctx_binding_instantiation_create_execution_ctx run_call' S1 C L fds) (fun S2 rv =>
@@ -1177,7 +1180,7 @@ Definition object_delete S l x str : result :=
     if attributes_configurable A then
       out_ter (pick (object_rem_property S l x)) true
     else
-      error_or_cst S str builtin_type_error false
+      out_error_or_cst S str builtin_type_error false
   end.
 
 

@@ -105,7 +105,8 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 # INTERPRETER
 
 run_tests: interpreter
-	find tests/ -type f -name \*.js -exec interp/run.sh {} \;
+	interp/run.sh -init
+	find tests/ -type f -name \*.js -exec interp/run.sh -makefile {} \;
 
 interpreter:  interp/run_js
 
