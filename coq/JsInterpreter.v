@@ -468,27 +468,41 @@ Definition prim_value_get S v x : result :=
   if_object (to_object S v) (fun S' l =>
     object_get S' l x).
 
+Definition run_value_viewable_as_prim s S v : option prim :=
+  match v with
+  | value_prim w => Some w
+  | value_object l =>
+    let s := run_object_class S l in
+    match run_object_prim_value S l with
+    | value_prim w => Some w
+    | _ => None
+    end
+  end.
+
 
 (**************************************************************)
 (** Built-in constructors *)
 
-Definition constructor_builtin S B (args : list value) : result :=
-  let call_object_new S v :=
-    match type_of v return result with
-    | type_object => out_ter S v
-    | type_string | type_bool | type_number =>
-      to_object S v
-    | type_null | type_undef =>
-      let O := object_new builtin_object_proto "Object" in
-      let (l, S') := object_alloc S O in
-      out_ter S' l
-    end in
+Definition call_object_new S v : result :=
+  match type_of v return result with
+  | type_object => out_ter S v
+  | type_string | type_bool | type_number =>
+    to_object S v
+  | type_null | type_undef =>
+    let O := object_new builtin_object_proto "Object" in
+    let (l, S') := object_alloc S O in
+    out_ter S' l
+  end.
 
+Definition bool_proto_value_of_call S C : result :=
+  let v := execution_ctx_this_binding C in
+  match run_value_viewable_as_prim "Boolean" S v with
+  | Some (prim_bool b) => out_ter S b
+  | _ => out_type_error S
+  end.
+
+Definition constructor_builtin S C B (args : list value) : result :=
   match B with
-
-  | builtin_object_new =>
-    let v := get_arg 0 args in
-    call_object_new S v
 
   | builtin_object_call =>
     let v := get_arg 0 args in
@@ -498,7 +512,11 @@ Definition constructor_builtin S B (args : list value) : result :=
     | _ => to_object S v
     end
 
-  | _ => arbitrary (* TODO *)
+  | builtin_object_new =>
+    let v := get_arg 0 args in
+    call_object_new S v
+
+  | _ => arbitrary (* TODO:  Which ones of them return [result_bottom]? *)
 
   end.
 
@@ -765,15 +783,15 @@ Definition env_record_initialize_immutable_binding  S L x v : result :=
   | _ => result_stuck
   end.
 
-Definition creating_function_object_proto S l (K : state -> result) : result :=
-  if_object (constructor_builtin S builtin_object_new nil) (fun S1 lproto =>
+Definition creating_function_object_proto S C l (K : state -> result) : result :=
+  if_object (constructor_builtin S C builtin_object_new nil) (fun S1 lproto =>
     let A1 := attributes_data_intro (value_object l) true false true in
     if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 rv1 =>
       let A2 := attributes_data_intro (value_object lproto) true false false in
       if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 rv2 =>
         K S3))).
 
-Definition creating_function_object S (names : list string) (bd : funcbody) X str : result :=
+Definition creating_function_object S C (names : list string) (bd : funcbody) X str : result :=
   let O := object_create builtin_function_proto "Function" true Heap.empty in
   let O1 := object_with_invokation O
     (Some builtin_spec_op_function_constructor)
@@ -783,7 +801,7 @@ Definition creating_function_object S (names : list string) (bd : funcbody) X st
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 rv1 =>
-    creating_function_object_proto S2 l (fun S3 =>
+    creating_function_object_proto S2 C l (fun S3 =>
       if negb str then out_ter S3 l
       else (
         let vthrower := value_object builtin_function_throw_type_error in
@@ -876,7 +894,7 @@ Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
   match max_step with
   | O => result_bottom
   | S max_step' =>
-  
+
     match run_object_proto S lv with
     | null => out_ter S false
     | value_object proto =>
@@ -889,7 +907,7 @@ Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
 
 Definition run_spec_object_has_instance (max_step : nat) B S l v : result :=
   match B with
- 
+
   | builtin_spec_op_function_has_instance =>
     match v with
     | value_prim w => out_ter S false
@@ -897,7 +915,7 @@ Definition run_spec_object_has_instance (max_step : nat) B S l v : result :=
       if_object (object_get S l "prototype") (fun S1 lo =>
         run_spec_object_has_instance_loop max_step S1 lv lo)
     end
- 
+
   | _ => arbitrary (* TODO *)
 
   end.
@@ -1242,7 +1260,7 @@ Section Interpreter.
 
 Fixpoint init_object (run_expr' : run_expr_type) S C l (pds : propdefs) : result :=
   let create_new_function_in S0 args bd :=
-  creating_function_object S0 args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
+  creating_function_object S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
   match pds with
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
@@ -1319,7 +1337,7 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       end
 
     | expr_object pds =>
-      if_object (constructor_builtin S builtin_object_new nil) (fun S1 l =>
+      if_object (constructor_builtin S C builtin_object_new nil) (fun S1 l =>
         init_object run_expr' S1 C l pds)
 
     | expr_member e1 f =>
@@ -1353,14 +1371,14 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
         end)
 
     | expr_function None args bd =>
-      creating_function_object S args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)
+      creating_function_object S C args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)
 
     | expr_function (Some fn) args bd =>
       let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
       let follow L :=
         let E := pick (env_record_binds S' L) in
         if_success (env_record_create_immutable_binding S' L fn) (fun S1 rv1 =>
-          if_object (creating_function_object S1 args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
+          if_object (creating_function_object S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
             if_success (env_record_initialize_immutable_binding S2 L fn l) (fun S3 rv2 =>
               out_ter S3 l))) in
       map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt
@@ -1620,6 +1638,7 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
     | builtin_spec_op_function_bind_call =>
       arbitrary (* TODO *)
 
+    (* call builtin *)
 
     | builtin_global_is_nan =>
       let v := get_arg 0 args in
@@ -1637,6 +1656,14 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
         result_stuck
       else
         out_ter S (resvalue_ref (ref_create_value v "prototype" false))
+
+    | builtin_object_get_prototype_of_call =>
+      let v := get_arg 0 args in
+        match v with
+        | value_object l =>
+          out_ter S (run_object_proto S l)
+        | _ => out_type_error S
+        end
 
     | builtin_object_proto_to_string =>
       let v := execution_ctx_this_binding C in
@@ -1658,6 +1685,23 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
         if_object (to_object S vt) (fun S1 lo =>
           run_object_proto_is_prototype_of S1 lo l)
       end
+
+    | builtin_bool_call =>
+      let v := get_arg 0 args in
+      let b := convert_value_to_boolean v in
+      let O1 := object_new builtin_bool_proto "Boolean" in
+      let O := object_with_primitive_value O1 b in
+      let (l, S') := object_alloc S O in
+      out_ter S' l
+
+    | builtin_bool_proto_to_string_call =>
+      let follow b S :=
+        out_ter S (convert_bool_to_string b) in
+      if_success_bool (bool_proto_value_of_call S C)
+        (follow true) (follow false)
+
+    | builtin_bool_proto_value_of_call =>
+      bool_proto_value_of_call S C
 
     | _ =>
       arbitrary (* TODO *)

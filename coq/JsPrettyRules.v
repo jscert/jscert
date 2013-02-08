@@ -2367,7 +2367,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_get_prototype_of : forall S C v r args, 
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_get_prototype_of_1 v) o ->
-      red_expr S C (spec_constructor_builtin builtin_object_get_prototype_of_call args) o
+      red_expr S C (spec_constructor_builtin builtin_object_get_prototype_of_call args) o (* Isn't that a [spec_call_builtin] instead of [spec_constructor_builtin]? -- Martin *)
 
   | red_spec_call_object_get_prototype_of_1_not_object : forall S C v o, 
       type_of v <> type_object ->
