@@ -60,7 +60,7 @@ Inductive red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
   (** Program  (10.4.1) *)
 
-  | red_prog_intro : forall S C0 str pis o,
+  | red_prog_intro : forall S C0 str els o,
       (* TODO: initialize the execution context with binding instantiation *)
       red_prog S (execution_ctx_initial str) (prog_1 resvalue_empty els) o ->
       red_prog S C0 (prog_intro str els) o
@@ -101,7 +101,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** Abort rule for statements *)
 
   | red_stat_abort : forall S C extt o,
-      out_of_ext_stat text = Some o ->
+      out_of_ext_stat extt = Some o ->
       abort o ->
       ~ abort_intercepted_stat extt ->
       red_stat S C extt o
@@ -109,7 +109,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** Block statement (recall [abort_intercepted_stat]) *)
 
   | red_stat_block : forall S C ts o,
-      red_stat S C (stat_block_1 res_empty ts) o ->
+      red_stat S C (stat_block_1 resvalue_empty ts) o ->
       red_stat S C (stat_block ts) o
 
   | red_stat_block_1_nil : forall S C rv,
@@ -198,7 +198,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_2 labs t1 e2 rv o1) o ->
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o
 
-  | red_stat_do_while_2_true : forall S0 S C labs t1 e2 rv_old rv o1 o,
+  | red_stat_do_while_2_true : forall rv o1 S0 S C labs t1 e2 rv_old R o,
       rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o ->
       red_stat S0 C (stat_do_while_2 labs t1 e2 rv_old (out_ter S R)) o 
@@ -242,7 +242,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_3 labs e1 t2 rv o1) o ->
       red_stat S C (stat_while_2 labs e1 t2 rv true) o
 
-  | red_stat_while_3_true : forall S0 S C labs e1 t2 rv_old rv o1 o,
+  | red_stat_while_3_true : forall rv S0 S C labs e1 t2 rv_old R o,
       rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) o ->
       red_stat S0 C (stat_while_3 labs e1 t2 rv_old (out_ter S R)) o 
@@ -336,7 +336,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) co fo) o
 
-  | red_stat_try_1_throw_no_catch : forall S0 S C R co fo o,
+  | red_stat_try_1_throw_no_catch : forall S0 S C R fo o,
       res_type R = restype_throw ->
       red_stat S0 C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) None fo) o
@@ -1150,7 +1150,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_to_uint32_1 o1 K) o ->
       red_expr S C (spec_to_uint32 v K) o
 
-  | red_spec_to_int32_1 : forall S0 S C n K o,
+  | red_spec_to_uint32_1 : forall S0 S C n K o,
       red_expr S C (K (JsNumber.to_uint32 n)) o ->
       red_expr S0 C (spec_to_uint32_1 (out_ter S n) K) o
   
@@ -2442,7 +2442,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
    | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C lthis o, (* Step 3.c *)
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lthis) (out_ter S true)
   
-   | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C l lthis lproto o, (* Look back to step 3 *)
+   | red_spec_call_object_proto_is_prototype_of_4_not_equal : forall S C l lthis lproto o, (* Look back to step 3 *)
       (* Note: we implicitly enforce the fact that a proto can only be a location or null *)
       lproto <> lthis -> 
       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis lproto) o ->

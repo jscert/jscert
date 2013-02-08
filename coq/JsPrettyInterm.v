@@ -418,7 +418,7 @@ with ext_stat :=
   | stat_do_while_2 : label_set -> stat ->  expr -> resvalue -> out -> ext_stat
   | stat_do_while_3 : label_set -> stat ->  expr -> resvalue -> res -> ext_stat 
   | stat_do_while_4 : label_set -> stat ->  expr -> resvalue -> ext_stat
-  | stat_do_while_5 : label_set -> stat ->  expr -> resvalue -> bool -> ext_stat
+  | stat_do_while_5 : label_set -> stat ->  expr -> resvalue -> value -> ext_stat
 
 (* LATER
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
