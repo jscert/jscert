@@ -541,6 +541,10 @@ Definition descriptor_of_attributes A :=
        descriptor_configurable := Some (attributes_accessor_configurable Aa) |}
   end.
 
+(* Coercion associated to [descriptor_of_attributes] *) (* I've added it as I used it a lot in the interpreter and it seems it does not add conflicts. -- Martin *)
+
+Coercion descriptor_of_attributes : attributes >-> descriptor.
+
 
 (**************************************************************)
 (** ** Auxiliary definitions for reduction of [get_own_property]  *)

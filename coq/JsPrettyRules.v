@@ -1,4 +1,4 @@
-Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm (* JsPrettyIntermAux *).
+Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux.
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -1551,11 +1551,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_3 l x Desc throw full_descriptor_undef true) (out_ter S' true)
 
   | red_spec_object_define_own_prop_3_includes : forall S C l x A Desc throw bext, (* Step 6 (subsumes 5) *)
-      descriptor_contains (descriptor_of_attributes A) Desc ->
+      descriptor_contains A Desc ->
       red_expr S C (spec_object_define_own_prop_3 l x Desc throw (full_descriptor_some A) bext) (out_ter S true)
 
   | red_spec_object_define_own_prop_3_not_include : forall S C l x A Desc throw o bext, (* Steps 6 else branch *)
-      ~ descriptor_contains (descriptor_of_attributes A) Desc ->
+      ~ descriptor_contains A Desc ->
       red_expr S C (spec_object_define_own_prop_4 l x A Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_3 l x Desc throw (full_descriptor_some A) bext) o
 
@@ -2335,6 +2335,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_call_1 v) o
 
   | red_spec_call_object_call_1_other : forall S C v o,
+      v <> null /\ v <> undef ->
       red_expr S C (spec_to_object v) o ->
       red_expr S C (spec_call_object_call_1 v) o
 

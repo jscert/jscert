@@ -80,8 +80,7 @@ Definition error_or_cst S str B R :=
 
 (** The "void" result is used by specification-level functions
     which do not produce any javascript value, but only perform
-    side effects. (We return the value [undef] in the implementation.)
-    -- TODO : sometimes we used false instead  -- where? fix it... *)
+    side effects. (We return the value [undef] in the implementation.) *)
 
 Definition out_ter_void S :=
   out_ter S undef.
@@ -114,10 +113,10 @@ Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 (**************************************************************)
 (** ** Some types used by the interpreter *)
 
-Inductive result := 
-  | result_normal : out -> result 
-  | result_stuck : result 
-  | result_bottom : result.
+Inductive result :=
+  | result_normal : out -> result
+  | result_stuck
+  | result_bottom.
 
 (* Coercion *)
 
@@ -133,6 +132,11 @@ Proof. applys prove_Inhab result_stuck. Qed.
 (** ** Helper functions for the interpreter *)
 
 Section InterpreterEliminations.
+
+(**************************************************************)
+(** Generic constructions *)
+
+Definition get_arg := get_nth undef.
 
 (**************************************************************)
 (** Monadic constructors *)
@@ -414,8 +418,8 @@ Fixpoint lexical_env_get_identifier_ref S X x str : ref :=
   end.
 
 Definition env_record_delete_binding S L x : result :=
-  env_record_lookup (fun _ : unit => arbitrary : result) S L (fun E _ =>
-    match E with
+  env_record_lookup (fun _ : unit => arbitrary) S L (fun E _ =>
+    match E return result with
     | env_record_decl Ed =>
       match read_option Ed x with
       | None =>
@@ -445,19 +449,18 @@ Definition object_get S v x : result :=
     result_stuck
   end.
 
-Definition run_alloc_primitive_value S w : state * object_loc :=
-  arbitrary (* TODO *).
-
 
 (**************************************************************)
 (** Conversions *)
+
+Definition prim_new_object S w : result :=
+  arbitrary (* TODO *).
 
 Definition to_object S v : result :=
   match v with
   | prim_null | prim_undef => out_type_error S
   | value_prim w =>
-    let (S', l) := run_alloc_primitive_value S w in
-    out_ter S' l
+    prim_new_object S w
   | value_object l => out_ter S l
   end.
 
@@ -469,24 +472,30 @@ Definition prim_value_get S v x : result :=
 (**************************************************************)
 (** Built-in constructors *)
 
-Definition constructor_builtin S B (vs : list value) : result :=
+Definition constructor_builtin S B (args : list value) : result :=
+  let call_object_new S v :=
+    match type_of v return result with
+    | type_object => out_ter S v
+    | type_string | type_bool | type_number =>
+      to_object S v
+    | type_null | type_undef =>
+      let O := object_new builtin_object_proto "Object" in
+      let (l, S') := object_alloc S O in
+      out_ter S' l
+    end in
+
   match B with
 
   | builtin_object_new =>
-    let nil_case _ :=
-      let O := object_create builtin_object_proto "Object" true Heap.empty in
-      let (l, S') := object_alloc S O in
-      out_ter S' l in
-    match vs with
-    | nil => nil_case tt
-    | v :: vs' =>
-      match type_of v with
-      | type_object => out_ter S v
-      | type_null | type_undef =>
-        nil_case tt
-      | type_string | type_bool | type_number =>
-        to_object S v
-      end
+    let v := get_arg 0 args in
+    call_object_new S v
+
+  | builtin_object_call =>
+    let v := get_arg 0 args in
+    match v with
+    | null | undef =>
+      call_object_new S v
+    | _ => to_object S v
     end
 
   | _ => arbitrary (* TODO *)
@@ -558,7 +567,7 @@ Definition object_define_own_prop S l x Desc str : result :=
       let A'' := attributes_update A Desc in
       let S'' := pick (object_set_property S' l x A'') in
       out_ter S'' true in
-    ifb descriptor_contains (descriptor_of_attributes A) Desc then
+    ifb descriptor_contains A Desc then
       out_ter S true
     else ifb attributes_change_enumerable_on_non_configurable A Desc then
       out_reject S str
@@ -662,7 +671,7 @@ Definition object_put (run_call' : run_call_type) S C (Bo : option builtin) l x 
         end
       | full_descriptor_undef =>
         let Ad := attributes_data_intro v true true true in
-        object_define_own_prop S' l x (descriptor_of_attributes Ad) str
+        object_define_own_prop S' l x Ad str
       end)
       (fun S' => error_or_void S str builtin_type_error)
 
@@ -728,7 +737,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
   | env_record_object l pt =>
     if object_has_prop S l x then result_stuck
     else let A := attributes_data_intro undef true true deletable in
-      object_define_own_prop S l x (descriptor_of_attributes A) throw_true
+      object_define_own_prop S l x A throw_true
   end.
 
 Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C L x (deletable_opt : option bool) v str : result :=
@@ -759,9 +768,9 @@ Definition env_record_initialize_immutable_binding  S L x v : result :=
 Definition creating_function_object_proto S l (K : state -> result) : result :=
   if_object (constructor_builtin S builtin_object_new nil) (fun S1 lproto =>
     let A1 := attributes_data_intro (value_object l) true false true in
-    if_success (object_define_own_prop S1 lproto "constructor" (descriptor_of_attributes A1) false) (fun S2 rv1 =>
+    if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 rv1 =>
       let A2 := attributes_data_intro (value_object lproto) true false false in
-      if_success (object_define_own_prop S2 l "prototype" (descriptor_of_attributes A2) false) (fun S3 rv2 =>
+      if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 rv2 =>
         K S3))).
 
 Definition creating_function_object S (names : list string) (bd : funcbody) X str : result :=
@@ -773,14 +782,14 @@ Definition creating_function_object S (names : list string) (bd : funcbody) X st
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
-  if_success (object_define_own_prop S1 l "length" (descriptor_of_attributes A1) false) (fun S2 rv1 =>
+  if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 rv1 =>
     creating_function_object_proto S2 l (fun S3 =>
       if negb str then out_ter S3 l
       else (
         let vthrower := value_object builtin_function_throw_type_error in
         let A2 := attributes_accessor_intro vthrower vthrower false false in
-        if_success (object_define_own_prop S3 l "caller" (descriptor_of_attributes A2) false) (fun S4 rv2 =>
-          if_success (object_define_own_prop S4 l "arguments" (descriptor_of_attributes A2) false) (fun S5 rv3 =>
+        if_success (object_define_own_prop S3 l "caller" A2 false) (fun S4 rv2 =>
+          if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
 Fixpoint execution_ctx_binding_instantiation_set_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result :=
@@ -813,7 +822,7 @@ Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : r
         | full_descriptor_some A =>
           if attributes_configurable A then (
             let A' := attributes_data_intro undef true true false in (* To be reread *)
-            object_define_own_prop S1 builtin_global fn (descriptor_of_attributes A') true
+            object_define_own_prop S1 builtin_global fn A' true
           ) else ifb descriptor_is_accessor A \/ attributes_writable A <> Some true \/ attributes_enumerable A <> Some true then (* TODO:  This rule has unfortunately no meaning.  Read it directly from the specifiaction 5e iv of execution_ctx_binding_instantiation. *)
           out_type_error S1
           else out_ter_void S1
@@ -867,7 +876,7 @@ Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
   match max_step with
   | O => result_bottom
   | S max_step' =>
-   
+  
     match run_object_proto S lv with
     | null => out_ter S false
     | value_object proto =>
@@ -880,7 +889,7 @@ Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
 
 Definition run_spec_object_has_instance (max_step : nat) B S l v : result :=
   match B with
-  
+ 
   | builtin_spec_op_function_has_instance =>
     match v with
     | value_prim w => out_ter S false
@@ -888,7 +897,7 @@ Definition run_spec_object_has_instance (max_step : nat) B S l v : result :=
       if_object (object_get S l "prototype") (fun S1 lo =>
         run_spec_object_has_instance_loop max_step S1 lv lo)
     end
-  
+ 
   | _ => arbitrary (* TODO *)
 
   end.
@@ -1007,14 +1016,14 @@ Definition convert_twice {A : Type} (ifv : result -> (state -> A -> result) -> r
       K S2 vc1 vc2)).
 
 Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state -> value -> result) S v1 v2 : result :=
-  let checkTypesThen S0 v1 v2 K :=
+  let checkTypesThen S0 v1 v2 (K : type -> type -> result) :=
     let T1 := type_of v1 in
     let T2 := type_of v2 in
     ifb T1 = T2 then
       out_ter S0 (equality_test_for_same_type T1 v1 v2) : result
     else K T1 T2 in
   checkTypesThen S v1 v2 (fun T1 T2 =>
-    let dc_conv v1 F v2 : result :=
+    let dc_conv v1 F v2 :=
       if_value (F S v2) (fun S0 v2' =>
         match max_depth with
         | O => arbitrary
@@ -1047,7 +1056,7 @@ Definition run_equal :=
      - number, number.
   *).
 
-Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : binary_op) v1 v2 : result := 
+Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : binary_op) v1 v2 : result :=
   (* TODO: move these as definitions outside the body *)
   let conv_primitive S v :=
     to_primitive run_call' S C v None in
@@ -1096,7 +1105,7 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
   | binary_op_instanceof =>
     match v2 with
     | value_object l =>
-      morph_option (fun _ : unit => out_type_error S : result)
+      morph_option (fun _ => out_type_error S : result)
       (fun has_instance_id _ =>
         run_spec_object_has_instance max_step has_instance_id S l v1)
       (run_object_has_instance S l) tt
@@ -1239,7 +1248,7 @@ Fixpoint init_object (run_expr' : run_expr_type) S C l (pds : propdefs) : result
   | (pn, pb) :: pds' =>
     let x := string_of_propname pn in
     let follows S1 A :=
-      if_success (object_define_own_prop S1 l x (descriptor_of_attributes A) false) (fun S2 rv =>
+      if_success (object_define_own_prop S1 l x A false) (fun S2 rv =>
         init_object run_expr' S2 C l pds') in
     match pb with
     | propbody_val e0 =>
@@ -1613,17 +1622,17 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
 
 
     | builtin_global_is_nan =>
-      let v := get_nth undef 0 args in
+      let v := get_arg 0 args in
       if_number (to_number run_call' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan))))
 
     | builtin_global_is_finite =>
-      let v := get_nth undef 0 args in
+      let v := get_arg 0 args in
       if_number (to_number run_call' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
     | builtin_object_get_prototype_of =>
-      let v := get_nth undef 0 args in
+      let v := get_arg 0 args in
       ifb type_of v <> type_object then
         result_stuck
       else
@@ -1641,7 +1650,7 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
       end
 
     | builtin_object_proto_is_prototype_of =>
-      let v := get_nth undef 0 args in
+      let v := get_arg 0 args in
       match v with
       | value_prim w => out_ter S false
       | value_object l =>
