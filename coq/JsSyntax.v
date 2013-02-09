@@ -609,6 +609,9 @@ Inductive res := res_intro {
   res_type : restype;
   res_value : resvalue;
   res_label : label_opt }.
+  
+Definition abrupt_res R :=
+  res_type R <> restype_normal.
 
 (** Smart constructors for type [res] *)
 
