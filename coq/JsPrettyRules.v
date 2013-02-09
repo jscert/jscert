@@ -2035,47 +2035,47 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds str fo bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds str fo bconfig (out_ter S false)) o
 
-  | red_spec_binding_inst_function_decls_2_true_global : forall A o1 L S0 S C K args fd fds str fo bconfig o, (* Step 5e ii *)
-      (*todo: red *) spec_object_get_prop S builtin_global (funcdecl_name fd) (full_descriptor_some A) ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds str fo A (attributes_configurable A) bconfig) o ->
+  | red_spec_binding_inst_function_decls_2_true_global : forall K1 A o1 L S0 S C K args fd fds str fo bconfig o, (* Step 5e ii *)
+      K1 = spec_binding_instantiation_function_decls_3 K args fd fds str fo (attributes_configurable A) bconfig ->
+      red_expr S C (spec_object_get_prop builtin_global (funcdecl_name fd) K1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args env_loc_global_env_record fd fds str fo bconfig (out_ter S true)) o
 
   | red_spec_binding_inst_function_decls_3_true : forall o1 L S C K args fd fds str fo bconfig o, (* Step 5e iii *)
       let A := attributes_data_intro undef true true bconfig in
       red_expr S C (spec_object_define_own_prop builtin_global (funcdecl_name fd) A true) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds str fo bconfig o1) o ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds str fo A (Some true) bconfig) o
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds str fo true bconfig A) o
 
   | red_spec_binding_inst_function_decls_3_false_type_error : forall o1 L S C K args fd fds str fo A configurable bconfig o, (* Step 5e iv *)
-      configurable <> Some true ->
-      prop_descriptor_is_accessor A \/ (attributes_writable A = false \/ attributes_enumerable A = false) ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds str fo A configurable bconfig) (out_type_error S)
+      configurable <> true ->
+      descriptor_is_accessor A \/ (attributes_writable A = false \/ attributes_enumerable A = false) ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds str fo configurable bconfig A) (out_type_error S)
 
   | red_spec_binding_inst_function_decls_3_false : forall o1 L S C K args fd fds str fo A configurable bconfig o, (* Step 5e iv *)
-     configurable <> Some true ->
-      ~ (prop_descriptor_is_accessor A) /\ attributes_writable A = true /\ attributes_enumerable A = true ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds str fo bconfig (out_ter_void S)) o ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds str fo A configurable bconfig) o
+     configurable <> true ->
+      ~ (descriptor_is_accessor A) /\ attributes_writable A = true /\ attributes_enumerable A = true ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args env_loc_global_env_record fd fds str fo bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_3 K args fd fds str fo configurable bconfig A) o
 
   | red_spec_binding_inst_function_decls_2_true : forall o1 L S0 S C K args fd fds str fo bconfig o, (* Step 5e *)
       L <> env_loc_global_env_record ->
-      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds str fo bconfig (out_ter_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls_4 K args L fd fds str fo bconfig (out_void S)) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds str fo bconfig (out_ter S true)) o
 
   | red_spec_binding_inst_function_decls_4 : forall o1 L S0 S C K args fd fds str fo bconfig o, (* Step 5f *)
       red_expr S C (spec_env_record_set_mutable_binding L (funcdecl_name fd) (value_object fo) str) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig o1) o ->
-      red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds str fo bconfig (out_ter_void S)) o
+      red_expr S0 C (spec_binding_instantiation_function_decls_4 K args L fd fds str fo bconfig (out_void S)) o
       
   (* Create bindings for variable declarations Step 8 *)
       
   | red_spec_binding_inst_var_decls_non_empty : forall o1 L S0 S C vd vds bconfig o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
       red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds bconfig o1) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig (out_ter_void S)) o
+      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig (out_void S)) o
 
   | red_spec_binding_inst_var_decls_1_true : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
-      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_ter_void S)) o ->
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
       red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S true)) o
 
   | red_spec_binding_inst_var_decls_1_false : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
@@ -2084,7 +2084,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S false)) o
 
   | red_spec_binding_inst_var_decls_empty : forall o1 L S0 S C bconfig o, (* Step 8 *)
-      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig (out_ter_void S)) (out_ter_void S)     
+      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig (out_void S)) (out_void S)     
       
   (* Declaration Binding Instantiation Main Part *)    
 
@@ -2111,14 +2111,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_execution_ctx_binding_instantiation_function_2 : forall bconfig L S C code args o, (* Step 5 *)
       bconfig = false (* TODO: configurableBindings with eval *) ->
       let fds := prog_funcdecl code in
-      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code bconfig) args L fds bconfig (out_ter_void S)) o ->
+      red_expr S C (spec_binding_instantiation_function_decls (spec_execution_ctx_binding_instantiation_3 code bconfig) args L fds bconfig (out_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
 
   (* TODO steps 6-7 *)
 
   | red_spec_execution_ctx_binding_instantiation_3 : forall o1 L S C code bconfig o, (* Step 8 *)
       let vds := prog_vardecl code in
-      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_ter_void S)) o ->
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_3 code bconfig L) o
       
   (** Creating function object *)
@@ -2175,9 +2175,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_creating_function_object_3 : forall o1 S0 S C l b o, 
       red_expr S0 C (spec_creating_function_object_3 l (out_ter S b)) (out_ter S l)
       
-  | red_spec_call : forall builtin A C l this args o,
+  | red_spec_call : forall builtin S C l this args o,
       object_call S l (Some builtin) ->
-      red_expr S C (spec_call_1 builtin l this args) ->
+      red_expr S C (spec_call_1 builtin l this args) o ->
       red_expr S C (spec_call l this args) o
       
   | red_spec_call_builtin: forall S C builtinid lo this args o,
@@ -2197,13 +2197,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_prog_1_empty: forall S0 S C l,
       (* TODO: check if red_prog return (normal, undef, empty) if function body is empty *)
       object_code S l None ->
-      red_expr S0 C (spec_op_function_call_1 l (out_ter_void S)) (out_ter S (res_normal undef))
+      red_expr S0 C (spec_op_function_call_1 l (out_void S)) (out_ter S (res_normal undef))
       
   | red_spec_call_prog_1_prog: forall S0 S C l bd o1 o,
       object_code S l (Some bd) ->
       red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_op_function_call_2 o1) o ->
-      red_expr S0 C (spec_op_function_call_1 l (out_ter_void S)) o
+      red_expr S0 C (spec_op_function_call_1 l (out_void S)) o
       
   | red_spec_call_prog_2_throw: forall S C v,
       red_expr S C (spec_op_function_call_2 (out_ter S (res_throw v))) (out_ter S (res_throw v))
@@ -2228,12 +2228,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_function_constructor_1 l args o1) o ->
       red_expr S C (spec_function_constructor l args) o
       
-  | red_spec_function_constructor_1 : forall l' vproto O S' builtinid o1 S0 S C l args v o,
+  | red_spec_function_constructor_1 : forall l' vproto O S' o1 S0 S C l args v o,
       vproto = (If (type_of v) = type_object then v else builtin_object_proto) ->
-      O = object_new vproto "Object" true ->
+      O = object_new vproto "Object" ->
       (l', S') = object_alloc S O ->
-      object_call S' l (Some builtinid) ->
-      red_expr S' C (spec_call builtinid (Some l) (Some (value_object l')) args) o1 ->
+      red_expr S' C (spec_call l (value_object l') args) o1 ->
       red_expr S' C (spec_function_constructor_2 l' o1) o ->
       red_expr S0 C (spec_function_constructor_1 l args (out_ter S v)) o
       
@@ -2334,7 +2333,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Object([value]) (returns object_loc)  (15.2.1.1)  *)
 
-  | red_spec_call_object_call : forall S C args v,
+  | red_spec_call_object_call : forall S C args v o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_call_1 v) o ->
       red_expr S C (spec_constructor_builtin builtin_object_call args) o
@@ -2351,7 +2350,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** new Object([value]) (returns object_loc)  (15.2.2.1) *)
   
-  | red_spec_call_object_new : forall S C args v,
+  | red_spec_call_object_new : forall S C args v o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_new_1 v) o ->
       red_expr S C (spec_constructor_builtin builtin_object_new args) o
@@ -2374,7 +2373,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** GetPrototypeOf (returns value)  (15.2.3.2) *)
   
-  | red_spec_call_object_get_prototype_of : forall S C v r args, 
+  | red_spec_call_object_get_prototype_of : forall S C v r args o, 
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_get_prototype_of_1 v) o ->
       red_expr S C (spec_constructor_builtin builtin_object_get_prototype_of_call args) o (* Isn't that a [spec_call_builtin] instead of [spec_constructor_builtin]? -- Martin *)
@@ -2425,7 +2424,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
    | red_spec_call_object_proto_is_prototype_of_not_object : forall S C args v o, (* Step 0 *)
       arguments_from args (v::nil)  ->
-      red_expr S C (spec_call_builtin spec_call_object_proto_is_prototype_of_2_1 v) o ->
+      red_expr S C (spec_call_object_proto_is_prototype_of_2_1 v) o ->
       red_expr S C (spec_call_builtin builtin_object_proto_is_prototype_of_call args) o
 
    | red_spec_call_object_proto_is_prototype_of_1_not_object : forall S C v, (* Step 1 *)
@@ -2588,11 +2587,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_builtin builtin_bool_proto_value_of_call args) o
 
   | red_spec_call_bool_proto_value_of_1_bool : forall S C v b,
-      value_viewable_as_prim "Boolean" S v b ->
+      value_viewable_as "Boolean" S v b ->
       red_expr S C (spec_call_bool_proto_value_of_1 v) (out_ter S b)
 
    | red_spec_call_bool_proto_value_of_1_not_bool : forall S C v o,
-      (forall b, ~ value_viewable_as_prim "Boolean" S v b) ->
+      (forall b, ~ value_viewable_as "Boolean" S v b) ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (spec_call_bool_proto_value_of_1 v) o
 
@@ -2613,7 +2612,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** new Number([value]) (returns object_loc)  (15.7.2.1) *)
   
-  | red_spec_call_number_new_nil : forall S C args,
+  | red_spec_call_number_new_nil : forall S C o,
       red_expr S C (spec_call_number_new_1 (out_ter S JsNumber.zero)) o ->
       red_expr S C (spec_constructor_builtin builtin_number_new nil) o
 
@@ -2644,11 +2643,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_builtin builtin_number_proto_value_of_call args) o
 
   | red_spec_call_number_proto_value_of_1_number : forall S C v n,
-      value_viewable_as_prim "Number" S v n ->
+      value_viewable_as "Number" S v n ->
       red_expr S C (spec_call_number_proto_value_of_1 v) (out_ter S n)
 
    | red_spec_call_number_proto_value_of_1_not_number : forall S C v o,
-      (forall n, ~ value_viewable_as_prim "Number" S v n) ->
+      (forall n, ~ value_viewable_as "Number" S v n) ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (spec_call_number_proto_value_of_1 v) o
 
@@ -2777,7 +2776,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 ------*)
 
 
-(**------ begin under dvpt --------
+(**------ begin under dvpt -------- 
 
 (* --which version to keep ??
 
@@ -2896,7 +2895,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 -- end todo *) 
 
-(**------ end under dvpt --------*)
+------ end under dvpt --------**)
 
 (*  | object_get_own_property_string : forall S l x An An',
       object_class S l "String" ->

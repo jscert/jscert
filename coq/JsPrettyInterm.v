@@ -313,7 +313,7 @@ Inductive ext_expr :=
   | spec_binding_instantiation_function_decls : (env_loc -> ext_expr) -> list value -> env_loc -> list funcdecl -> bool -> out -> ext_expr
   | spec_binding_instantiation_function_decls_1 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
   | spec_binding_instantiation_function_decls_2 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> attributes -> option bool -> bool -> ext_expr
+  | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> bool -> full_descriptor -> ext_expr
   | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> out -> ext_expr
@@ -358,12 +358,13 @@ Inductive ext_expr :=
 
   (* TODO: Check if object_loc or value could be None *)
   (* TODO: get rid of this: | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr *)
-  | spec_call : object_loc -> value -> list value -> ext_expr (* ohject with the call method, this value, arguments *)
+  | spec_call : object_loc -> value -> list value -> ext_expr (* object with the call method, this value, arguments *)
+  | spec_call_1 : builtin -> object_loc -> value -> list value -> ext_expr
   
   | spec_call_builtin : builtin -> list value -> ext_expr
   
   | spec_op_function_call : object_loc -> value -> list value -> ext_expr
-  | spec_op_function_call_1 : object_loc -> ext_expr
+  | spec_op_function_call_1 : object_loc -> out -> ext_expr
   | spec_op_function_call_2 : out -> ext_expr
   
   | spec_constructor : builtin -> option object_loc -> list value -> ext_expr
@@ -382,14 +383,15 @@ Inductive ext_expr :=
   | spec_call_object_call_1 : value -> ext_expr
   | spec_call_object_new_1 : value -> ext_expr
   | spec_call_object_get_prototype_of_1 : value -> ext_expr
-  | spec_call_object_proto_to_string_1 : out -> ext_expr
+  | spec_call_object_proto_to_string_1 : value -> ext_expr
+  | spec_call_object_proto_to_string_2 : out -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_1 : value -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_2 : out -> object_loc -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr 
   | spec_call_object_proto_is_prototype_of_2_4 : object_loc -> value -> ext_expr 
   | spec_call_bool_new_1 : out -> ext_expr 
-  | spec_call_bool_proto_to_string_1 : value -> value -> ext_expr
-  | spec_call_bool_proto_value_of_1 : value -> value -> ext_expr
+  | spec_call_bool_proto_to_string_1 : out -> ext_expr
+  | spec_call_bool_proto_value_of_1 : value -> ext_expr
   | spec_call_bool_proto_value_of_2 : value -> ext_expr
   | spec_call_number_proto_to_string_1 : value -> list value -> ext_expr
   | spec_call_number_proto_to_string_2 : value -> out -> ext_expr
