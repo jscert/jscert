@@ -27,6 +27,7 @@ Definition number_mult : number -> number -> number :=
 Definition number_div : number -> number -> number :=
   Fappli_IEEE_bits.b64_div Fappli_IEEE.mode_NE.
 
+
 (* Here stands some commands to extract relatively correctly the interpreter to Ocaml. *)
 Extraction Language Ocaml.
 
@@ -84,6 +85,17 @@ Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
 Extract Constant JsNumber.number_comparable => "(fun n1 n2 -> 0 = compare n1 n2)".
 Extract Constant JsNumber.lt_bool => "(<)".
 
+Extract Constant JsNumber.to_int32 => "(int_of_float)".
+Extract Constant JsNumber.to_uint32 => "(int_of_float (* TODO:  Replace by the right operation. *))".
+Extract Constant JsNumber.modulo_32 => "(fun x -> x (* TODO:  To be reread. *))".
+Extract Constant JsNumber.int32_bitwise_not => "(lnot)".
+Extract Constant JsNumber.int32_bitwise_and => "(land)".
+Extract Constant JsNumber.int32_bitwise_or => "(lor)".
+Extract Constant JsNumber.int32_bitwise_xor => "(lxor)".
+Extract Constant JsNumber.int32_left_shift => "(lsl)".
+Extract Constant JsNumber.int32_right_shift => "(asr (* TODO:  To be reread. *))".
+Extract Constant JsNumber.uint32_right_shift => "(lsr (* TODO:  To be reread. *))".
+
 Extract Constant int_of_char => "int_of_char".
 
 Extract Constant builtin_compare => "(=)".
@@ -92,6 +104,11 @@ Extract Constant le_int_decidable => "(<=)".
 Extract Constant int_lt_dec => "(<)".
 
 Extract Constant env_loc_global_env_record => "0".
+
+
+(* Sets *)
+Extract Constant set_in_lab_dec => "(fun l -> assert false (* TODO:  How to make extract those `label_set'? *))".
+
 
 (* The following functions make pattern matches with floats and shall thus be removed. *)
 Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bits.b64_plus.

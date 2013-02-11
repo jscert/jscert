@@ -48,54 +48,6 @@ Implicit Type p : prog.
 Implicit Type t : stat.
 
 
-(*
-(**************************************************************)
-(** Macros for exceptional behaviors in reduction rules *)
-
-(* TODO: the macros for errors need to allocate error objects *)
-
-(** "Syntax error" behavior *)
-
-Definition out_syntax_error S :=
-  out_ter S (res_throw builtin_syntax_error).
-
-(** "Type error" behavior *)
-
-Definition out_type_error S :=
-  out_ter S (res_throw builtin_type_error).
-
-(** "Reference error" behavior *)
-
-Definition out_ref_error S :=
-  out_ter S (res_throw builtin_ref_error).
-
-Definition error_or_void S str B :=
-  if str then out_ter S (res_throw B)
-  else out_ter S (res_normal resvalue_empty).
-
-
-
-(** The "void" result is used by specification-level functions
-    which do not produce any javascript value, but only perform
-    side effects. (We return the value [undef] in the implementation.) *)
-
-(** [out_reject S bthrow] throws a type error if
-    [bthrow] is true, else returns the value [false] *)
-
-Definition out_reject S bthrow :=
-  ifb bthrow = true
-    then (out_type_error S)
-    else (out_ter S false).
-
-(** [out_ref_error_or_undef S bthrow] throws a type error if
-    [bthrow] is true, else returns the value [undef] *)
-
-Definition out_ref_error_or_undef S (bthrow:bool) :=
-  if bthrow
-    then (out_ref_error S)
-    else (out_ter S undef).
-*)
-
 
 (**************************************************************)
 (** ** Some functions to be implemented (or extracted differently). *)
@@ -443,6 +395,31 @@ Definition object_get S v x : result :=
     arbitrary (* TODO *)
   end.
 
+(* TODO:  Understand this function.
+Definition object_get (run_call' : run_call_type) S C v x : result :=
+  match v with
+  | value_object l =>
+    let vthis := v in
+    match run_object_method object_get_ S l with
+    | builtin_default_get =>
+      match run_object_get_property S l x with
+      | full_descriptor_undef => out_ter S undef
+      | attributes_data_of Ad =>
+        out_ter S (attributes_data_value Ad)
+      | attributes_accessor_of Aa =>
+        match attributes_accessor_get Aa with
+        | undef => out_ter S undef
+        | value_object lf =>
+          run_call' S C
+        end
+      end
+    | _ =>
+      arbitrary (* TODO *)
+    end
+  | value_prim _ => result_stuck
+  end.
+*)
+
 
 (**************************************************************)
 (** Conversions *)
@@ -665,19 +642,19 @@ Definition object_put (run_call' : run_call_type) S C (Bo : option builtin) l x 
   | builtin_default_put =>
     if_success_bool (object_can_put S l x) (fun S' =>
       match run_object_get_own_property S' l x with (* TODO:  Fix this after the rules will be. *)
-      | full_descriptor_some (attributes_data_of Ad) =>
+      | attributes_data_of Ad =>
         let Desc := descriptor_intro (Some v) None None None None None in
         if_success (object_define_own_prop S' l x Desc str) (fun S2 rv =>
           out_void S2)
-      | full_descriptor_some (attributes_accessor_of Aa) =>
+      | attributes_accessor_of Aa =>
         match run_object_get_property S' (value_object l) x with
-        | full_descriptor_some (attributes_accessor_of Aa) =>
+        | attributes_accessor_of Aa =>
           match attributes_accessor_set Aa with
           | value_object lfsetter =>
             arbitrary (* Waiting for the spec.  TODO:  run_call' S' C lfsetter *)
           | _ => result_stuck
           end
-        | full_descriptor_some (attributes_data_of Ad) =>
+        | attributes_data_of Ad =>
           arbitrary (* TODO *)
         | full_descriptor_none => result_stuck
         end
@@ -970,6 +947,14 @@ Definition to_integer (run_call' : run_call_type) S C v : result :=
     | _ => result_stuck
     end).
 
+Definition to_int32 (run_call' : run_call_type) S C v (K : state -> int -> result) : result :=
+  if_number (to_number run_call' S C v) (fun S' n =>
+    K S' (JsNumber.to_int32 n)).
+
+Definition to_uint32 (run_call' : run_call_type) S C v (K : state -> int -> result) : result :=
+  if_number (to_number run_call' S C v) (fun S' n =>
+    K S' (JsNumber.to_uint32 n)).
+
 Definition to_string (run_call' : run_call_type) S C v : result :=
   match v with
   | value_prim w =>
@@ -1030,6 +1015,23 @@ Definition get_inequality_op (op : binary_op) : bool * bool :=
   | binary_op_ge => (false, true)
   | _ => arbitrary
   end.
+
+Definition get_shift_op (op : binary_op) : bool * (int -> int -> int) :=
+  match op with
+  | binary_op_left_shift => (false, JsNumber.int32_left_shift)
+  | binary_op_right_shift => (false, JsNumber.int32_right_shift)
+  | binary_op_unsigned_right_shift => (true, JsNumber.uint32_right_shift)
+  | _ => arbitrary
+  end.
+
+Definition get_bitwise_op (op : binary_op) : int -> int -> int :=
+  match op with
+  | binary_op_bitwise_and => JsNumber.int32_bitwise_and
+  | binary_op_bitwise_or => JsNumber.int32_bitwise_or
+  | binary_op_bitwise_xor => JsNumber.int32_bitwise_xor
+  | _ => arbitrary
+  end.
+
 
 Definition convert_twice {A : Type} (ifv : result -> (state -> A -> result) -> result) (KC : state -> value -> result) S v1 v2 (K : state -> A -> A -> result) :=
   ifv (KC S v1) (fun S1 vc1 =>
@@ -1109,10 +1111,17 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
 
   | binary_op_and | binary_op_or => result_stuck (* Lazy operators are already dealt with at this point. *)
 
-  | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift => arbitrary (* TODO *)
+  | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift =>
+    let (b_unsigned, F) := get_shift_op op in
+    (if b_unsigned then to_uint32 else to_int32) run_call' S C v1 (fun S1 k1 =>
+      to_uint32 run_call' S1 C v2 (fun S2 k2 =>
+        let k2' := JsNumber.modulo_32 k2 in
+        out_ter S2 (JsNumber.of_int (F k1 k2'))))
 
   | binary_op_bitwise_and | binary_op_bitwise_or | binary_op_bitwise_xor =>
-    arbitrary (* TODO *)
+    to_int32 run_call' S C v1 (fun S1 k1 =>
+      to_int32 run_call' S1 C v2 (fun S2 k2 =>
+        out_ter S2 (JsNumber.of_int (get_bitwise_op op k1 k2))))
 
   | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
     let (b_swap, b_neg) := get_inequality_op op in
