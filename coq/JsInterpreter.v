@@ -487,7 +487,7 @@ Definition constructor_builtin S C B (args : list value) : result :=
     let v := get_arg 0 args in
     call_object_new S v
 
-  | _ => arbitrary (* TODO:  Which ones of them return [result_bottom]? *)
+  | _ => arbitrary (* TODO:  Which ones of them return [result_stuck]? *)
 
   end.
 
