@@ -512,3 +512,33 @@ Definition get_nth {A : Type} (d : A) (i : nat) (s : list A) : A :=
   map_nth (fun _ : unit => d) (fun (x : A) _ => x) i s tt.
 
 
+(**************************************************************)
+(** ** LATER: move to LibReflect *)
+
+Global Instance istrue_dec : forall b : bool,
+  Decidable (b).
+Proof. introv. rewrite~ istrue_def. typeclass. Qed.
+
+
+(**************************************************************)
+(** ** LATER: move to LibList *)
+
+Global Instance Forall_dec : forall (A : Type) (P : A -> Prop),
+  (forall a : A, Decidable (P a)) -> forall l : list A,
+  Decidable (Forall P l).
+Proof.
+  introv H; introv. applys decidable_make
+    (fold_left (fun a b => and b (decide (P a))) true l).
+  tests: (Forall P l).
+   rewrite~ isTrue_true. fold_bool.
+    induction~ C. simpl. cases_if~.
+   rewrite~ isTrue_false. fold_bool.
+    induction~ l.
+     false C. constructor~.
+     simpl. cases_if~.
+      apply~ IHl. intro F; apply C. constructor~.
+      clear C IHl. induction* l.
+Qed.
+
+
+
