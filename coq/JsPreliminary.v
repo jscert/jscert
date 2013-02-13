@@ -64,13 +64,10 @@ Inductive resvalue_is_ref : resvalue -> Prop :=
 
 (** Asserts that a result contains a label that belongs to a set *)
 
-(* TODO: use \in to make this work *)
-Parameter set_in : label -> label_set -> Prop.
-
 Definition res_label_in R labs :=
   match res_label R with
-  | None => True
-  | Some lab => set_in lab labs
+  | None => true
+  | Some lab => decide (lab \in labs)
   end.
 
 

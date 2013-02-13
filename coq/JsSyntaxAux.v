@@ -432,6 +432,17 @@ Proof. apply (prove_Inhab (funccode_builtin arbitrary)). Qed.
 
 
 (**************************************************************)
+(** ** Type [label_set] *)
+
+Global Instance label_bag : BagIn label label_set.
+Proof. apply in_inst. Qed.
+
+Global Instance label_set_dec : forall lab labs,
+  Decidable (lab \in labs).
+Admitted.
+
+
+(**************************************************************)
 (** Retrieve function and variable declarations from code *)
 
 (* TODO: move into JsPreliminary ? *)
@@ -466,3 +477,4 @@ Definition prog_vardecl (p : prog) : list string :=
 
 (**************************************************************)
 (** TODO: complete this file *)
+
