@@ -395,6 +395,11 @@ Inductive ext_expr :=
   | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr 
   | spec_call_object_proto_is_prototype_of_2_4 : object_loc -> value -> ext_expr 
  
+  | spec_call_object_proto_prop_is_enumerable_1 : value -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_2 : out -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_4 : full_descriptor -> ext_expr
+      
   | spec_call_bool_new_1 : out -> ext_expr 
   | spec_call_bool_proto_to_string_1 : out -> ext_expr
   | spec_call_bool_proto_value_of_1 : value -> ext_expr

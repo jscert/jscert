@@ -2432,6 +2432,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_sealed_1 l) (out_ter S b1)
   
   (** IsFrozen (returns bool)  (15.2.3.12) *)
+    (* Daniele: similar to IsSealed. Same question. *)
     (* TODO *)
 
   
@@ -2521,6 +2522,32 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lproto) o
 
 
+   (** Object.prototype.propertyIsEnumerable(V) (returns bool)  (15.2.4.7) *)
+   | red_spec_call_object_proto_prop_is_enumerable : forall S C v o args,  
+       arguments_from args (v::nil)  ->
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_1 v) o ->
+       red_expr S C (spec_call_builtin builtin_object_proto_prop_is_enumerable args) o
+
+   | red_spec_call_object_proto_prop_is_enumerable_1 : forall S C v o o1, 
+       red_expr S C (spec_to_string v) o1 ->
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_2 o1) o -> 
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_1 v) o
+
+   | red_spec_call_object_proto_prop_is_enumerable_2 : forall S S' C s o o1, 
+       red_expr S C (spec_to_object (execution_ctx_this_binding C)) o1 ->
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_3 o1 s) o ->
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_2 (out_ter S' s)) o
+       
+   | red_spec_call_object_proto_prop_is_enumerable_3 : forall S S' C l x o,  
+       red_expr S C (spec_object_get_own_prop l x spec_call_object_proto_prop_is_enumerable_4) o ->
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_3 (out_ter S' l) x) o
+
+   | red_spec_call_object_proto_prop_is_enumerable_4_undef : forall S C, 
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_4 full_descriptor_undef) (out_ter S false)
+
+   | red_spec_call_object_proto_prop_is_enumerable_4_not_undef : forall S C A b, 
+       b = attributes_enumerable A ->
+       red_expr S C (spec_call_object_proto_prop_is_enumerable_4 A) (out_ter S b)
   (*------------------------------------------------------------*)
   (** ** Function builtin functions *)
   

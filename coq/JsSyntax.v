@@ -260,8 +260,8 @@ Inductive builtin :=
   *)
   | builtin_object_proto_is_prototype_of
   | builtin_object_proto_is_prototype_of_call
-  (* TODO 
   | builtin_object_proto_prop_is_enumerable
+  (* TODO  
   | builtin_object_proto_prop_is_enumerable_call
   *)
 
