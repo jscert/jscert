@@ -232,7 +232,9 @@ Inductive builtin :=
   | builtin_object_seal_call
   | builtin_object_freeze
   | builtin_object_freeze_call
+  *)
   | builtin_object_prevent_extensions
+  (*
   | builtin_object_prevent_extensions_call
   *)
   | builtin_object_is_sealed

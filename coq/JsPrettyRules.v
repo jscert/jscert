@@ -2451,6 +2451,28 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_extensible S l b -> 
       red_expr S C (spec_call_object_is_extensible_1 l) (out_ter S b)
   
+  (** preventExtensions(O) (returns object)  (15.2.3.10) *)
+  
+
+  | red_spec_call_object_prevent_extensions : forall S C v o args,
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_call_object_prevent_extensions_1 v) o ->
+      red_expr S C (spec_call_builtin builtin_object_prevent_extensions args) o
+
+  | red_spec_call_object_prevent_extensions_not_object : forall S C v o,  
+      type_of v <> type_object ->
+      red_expr S C (spec_error builtin_type_error) o ->
+      red_expr S C (spec_call_object_prevent_extensions_1 v) o
+
+  (* Daniele: I have the location [l] of an object, how do I get the object itself?
+     (i.e. the record)) *)
+
+  | red_spec_call_object_prevent_extensions_object : forall S S' C O l b, 
+      object_binds S l O ->
+      let O1 := object_with_primitive_value O b in
+      S' = object_write S l O ->
+      red_expr S C (spec_call_object_prevent_extensions_1 l) (out_ter S' l)
+
 
 (*------------------------------------------------------------*)
 (** ** Object prototype builtin functions (15.2.3) *)

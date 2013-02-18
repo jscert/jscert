@@ -56,6 +56,14 @@ Definition object_with_primitive_value O v :=
     object_intro x1 x2 x3 (Some v) x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
   end.
 
+(** Modifies the extensible field of an object *)
+
+Definition object_with_extension O b :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 b x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
+  end.
+
 (** Modifies the property field of an object. *)
 
 Definition object_with_properties O properties :=

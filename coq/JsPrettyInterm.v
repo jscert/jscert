@@ -387,6 +387,7 @@ Inductive ext_expr :=
   | spec_call_object_is_extensible_1 : value -> ext_expr
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : full_descriptor -> ext_expr
+  | spec_call_object_prevent_extensions_1 : value -> ext_expr
 
   | spec_call_object_proto_to_string_1 : value -> ext_expr
   | spec_call_object_proto_to_string_2 : out -> ext_expr
