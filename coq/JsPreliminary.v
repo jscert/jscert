@@ -206,7 +206,7 @@ Definition object_proto S l v :=
 Definition object_class S l s :=
   exists O, object_binds S l O /\ object_class_ O = s.
 
-(** [object_extensible S l v] asserts that the extensible field
+(** [object_extensible S l b] asserts that the extensible field
     of the object stored at address [l] in [S] contains the
     value [b]. *)
 
