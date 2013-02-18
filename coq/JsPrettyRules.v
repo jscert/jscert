@@ -2396,7 +2396,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_get_prototype_of_1 l) (out_ter S v)
 
   (** IsSealed (returns bool)  (15.2.3.11) *)  
-
+  (*
   | red_spec_call_object_is_sealed : forall S C v o args, 
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_is_sealed_1 v) o ->
@@ -2430,10 +2430,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_extensible S l b -> 
       b1 = if b = false then true else false -> 
       red_expr S C (spec_call_object_is_sealed_1 l) (out_ter S b1)
-
+  *)
   (** IsFrozen (returns bool)  (15.2.3.12) *)
     (* TODO *)
 
+  (*
   (** IsExtensible (returns bool)  (15.2.3.13) *)
   | red_spec_call_object_is_extensible : forall S C v o args, 
       arguments_from args (v::nil) ->
@@ -2448,7 +2449,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_extensible_1_object : forall S C l b, 
       object_extensible S l b -> 
       red_expr S C (spec_call_object_is_extensible_1 l) (out_ter S b)
-
+  *)
 
 (*------------------------------------------------------------*)
 (** ** Object prototype builtin functions (15.2.3) *)
