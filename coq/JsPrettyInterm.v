@@ -380,23 +380,31 @@ Inductive ext_expr :=
   
   | spec_call_global_is_nan_1 : out -> ext_expr
   | spec_call_global_is_finite_1 : out -> ext_expr
+ 
   | spec_call_object_call_1 : value -> ext_expr
   | spec_call_object_new_1 : value -> ext_expr
   | spec_call_object_get_prototype_of_1 : value -> ext_expr
+  | spec_call_object_is_extensible_1 : value -> ext_expr
+  | spec_call_object_is_sealed_1 : value -> ext_expr
+  | spec_call_object_is_sealed_2 : full_descriptor -> ext_expr
+
   | spec_call_object_proto_to_string_1 : value -> ext_expr
   | spec_call_object_proto_to_string_2 : out -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_1 : value -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_2 : out -> object_loc -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr 
   | spec_call_object_proto_is_prototype_of_2_4 : object_loc -> value -> ext_expr 
+ 
   | spec_call_bool_new_1 : out -> ext_expr 
   | spec_call_bool_proto_to_string_1 : out -> ext_expr
   | spec_call_bool_proto_value_of_1 : value -> ext_expr
   | spec_call_bool_proto_value_of_2 : value -> ext_expr
+ 
   | spec_call_number_proto_to_string_1 : value -> list value -> ext_expr
   | spec_call_number_proto_to_string_2 : value -> out -> ext_expr
   | spec_call_number_new_1 : out -> ext_expr
   | spec_call_number_proto_value_of_1 : value -> ext_expr
+ 
 
   (** Special state for returning an outcome *)   
 

@@ -240,7 +240,9 @@ Inductive builtin :=
   | builtin_object_is_sealed_call
   | builtin_object_is_frozen
   | builtin_object_is_frozen_call
+  *)  
   | builtin_object_is_extensible
+  (*
   | builtin_object_is_extensible_call
   *)
   (* LATER:

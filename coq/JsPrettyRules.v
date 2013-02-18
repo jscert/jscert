@@ -2396,7 +2396,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_get_prototype_of_1 l) (out_ter S v)
 
   (** IsSealed (returns bool)  (15.2.3.11) *)  
-  (*
+  
   | red_spec_call_object_is_sealed : forall S C v o args, 
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_is_sealed_1 v) o ->
@@ -2414,7 +2414,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
        b. If desc.[[Configurable]] is true, then return false. *)
 
   | red_spec_call_object_is_sealed_1_object_has_configurable_prop : forall S C l x o, 
-      object_has_property S l x
+      object_has_property S l x ->
       red_expr S C (spec_object_get_own_prop l x spec_call_object_is_sealed_2) o ->
       o = (out_ter S true) ->
       red_expr S C (spec_call_object_is_sealed_1 l) (out_ter S false)
@@ -2428,13 +2428,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_is_sealed_1_has_no_configurable_prop : forall S C l b b1,  
       object_extensible S l b -> 
-      b1 = if b = false then true else false -> 
+      b1 = (If b = false then true else false) -> 
       red_expr S C (spec_call_object_is_sealed_1 l) (out_ter S b1)
-  *)
+  
   (** IsFrozen (returns bool)  (15.2.3.12) *)
     (* TODO *)
 
-  (*
+  
   (** IsExtensible (returns bool)  (15.2.3.13) *)
   | red_spec_call_object_is_extensible : forall S C v o args, 
       arguments_from args (v::nil) ->
@@ -2449,7 +2449,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_extensible_1_object : forall S C l b, 
       object_extensible S l b -> 
       red_expr S C (spec_call_object_is_extensible_1 l) (out_ter S b)
-  *)
+  
 
 (*------------------------------------------------------------*)
 (** ** Object prototype builtin functions (15.2.3) *)
