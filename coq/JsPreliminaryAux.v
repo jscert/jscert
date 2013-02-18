@@ -212,10 +212,6 @@ Global Instance descriptor_is_generic_dec : forall Desc,
   Decidable (descriptor_is_generic Desc).
 Proof. typeclass. Qed.
 
-Global Instance set_in_lab_dec : forall lab labs,
-  Decidable (set_in lab labs).
-Admitted.
-
 Global Instance res_label_in_dec : forall R labs,
   Decidable (res_label_in R labs).
 Proof.

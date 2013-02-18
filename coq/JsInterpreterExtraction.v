@@ -107,7 +107,7 @@ Extract Constant env_loc_global_env_record => "0".
 
 
 (* Sets *)
-Extract Constant set_in_lab_dec => "(fun l -> assert false (* TODO:  How to make extract those `label_set'? *))".
+Extract Constant label_set_dec => "(fun l -> assert false (* TODO:  How to make extract those `label_set'? *))".
 
 
 (* The following functions make pattern matches with floats and shall thus be removed. *)

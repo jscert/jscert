@@ -541,4 +541,13 @@ Proof.
 Qed.
 
 
+(**************************************************************)
+(** ** LATER: move to LibUnit *)
+
+Global Instance unit_comparable : Comparable unit.
+Proof.
+  apply make_comparable. intros [x]. destruct x.
+  rewrite* prop_eq_True_back. typeclass.
+Qed.
+
 
