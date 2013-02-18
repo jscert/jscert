@@ -2464,13 +2464,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (spec_call_object_prevent_extensions_1 v) o
 
-  (* Daniele: I have the location [l] of an object, how do I get the object itself?
-     (i.e. the record)) *)
 
   | red_spec_call_object_prevent_extensions_object : forall S S' C O l b, 
       object_binds S l O ->
-      let O1 := object_with_primitive_value O b in
-      S' = object_write S l O ->
+      let O1 := object_with_extension O false in
+      S' = object_write S l O1 ->
       red_expr S C (spec_call_object_prevent_extensions_1 l) (out_ter S' l)
 
 
