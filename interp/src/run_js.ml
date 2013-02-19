@@ -65,9 +65,7 @@ let _ =
                   with
                   | Interpreter.Result_normal (
                       Interpreter.Out_ter (state,
-						{ Interpreter.res_type = Interpreter.Restype_normal ;
-						  Interpreter.res_value =
-						    Interpreter.Resvalue_empty })) ->
+						{ Interpreter.res_type = Interpreter.Restype_normal })) ->
                      state
                   | _ -> assert false
                   end

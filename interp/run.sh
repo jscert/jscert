@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 globalFileName=/tmp/JsCert_run_tests.tmp
 
@@ -40,7 +40,7 @@ fi
 printf "\033[35m$1\033[00m"
 
 # Running the interpreter.
-interp/run_js -jsparser interp/parser/lib/js_parser.jar -test_prelude interp/test_prelude.js  -file $1
+interp/run_js -jsparser interp/parser/lib/js_parser.jar -test_prelude interp/test_prelude2.js  -file $1
 
 ret=$?
 
