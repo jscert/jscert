@@ -44,6 +44,7 @@ Extract Inductive Fappli_IEEE.binary_float => float [
   "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
 ].
 Extract Constant number_of_int => float_of_int.
+
 (* Optimal fixpoint. *)
 Extraction Inline FixFun3 FixFun3Mod FixFun4 FixFun4Mod FixFunMod curry3 uncurry3 curry4 uncurry4.
 (* As classical logic statements are now unused, they should not be extracted
@@ -70,11 +71,17 @@ Extract Constant JsNumber.infinity => "infinity".
 Extract Constant JsNumber.neg_infinity => "(-.infinity)".
 Extract Constant JsNumber.floor => "floor".
 Extract Constant JsNumber.absolute => "abs_float".
-Extract Constant JsNumber.from_string => "(fun s -> float_of_string (String.concat """" (List.map (String.make 1) s)))".
+Extract Constant JsNumber.from_string =>
+  "(fun s -> float_of_string (String.concat """" (List.map (String.make 1) s)))
+   (* Note that we're using `float_of_string' there, which does not have the same
+      behavior than JavaScript.  For instance it will read ""022"" as 22 instead of
+      18, which should be the JavaScript result for it. *)".
 Extract Constant JsNumber.to_string =>
-  "(fun f -> let ret = ref [] in (* Ugly, but the API for Ocaml string is not very functionnal... *)
+  "(fun f -> let ret = ref [] in (* Ugly, but the API for OCaml string is not very functionnal... *)
     String.iter (fun c -> ret := c :: !ret) (string_of_float f);
-    List.rev !ret)".
+    List.rev !ret)
+   (* Note that we're using `string_of_float' there, which is no exactly the same as the JavaScript
+      output.  For instance it will return ""1."" instead of ""1"". *)".
 Extract Constant JsNumber.add => "(+.)".
 Extract Constant JsNumber.sub => "(-.)".
 Extract Constant JsNumber.mult => "( *. )".
