@@ -1970,12 +1970,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_entering_func_code_3 : forall S C lf args str bd vthis lex lex' S' C' o, (* Steps 5 through 9 *)
       object_scope S lf (Some lex) ->
       (lex', S') = lexical_env_alloc_decl S lex ->
-      (* TODO(Daiva): str already comes from the intermediate form;
-         so either we remove the premise below, or we choose to not
-         have str be an argument of spec_entering_func_code_3. 
-         Both ways are fine with me. 
-      str = funcbody_is_strict bd ->
-      *)
       C' = execution_ctx_intro_same lex' vthis str ->
       red_expr S' C' (spec_execution_ctx_binding_instantiation (Some lf) (funcbody_prog bd) args) o ->
       red_expr S C (spec_entering_func_code_3 lf args str bd vthis) o 
@@ -1992,36 +1986,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_instantiation_formal_params K args L nil) o
 
   | red_spec_binding_inst_formal_params_non_empty : forall o1 S C K v args args' L x xs o, (* Steps 4d i - iii *)
-      (* TODO(Daiva): I avoid using hd and tl functions, as in [let v := hd undef args in] and [tl args],
-         because [tl] should never be used on an empty list. *)
       (v,args') = (match args with nil => (undef,nil) | v::args' => (v,args') end) ->
       red_expr S C (spec_env_record_has_binding L x) o1 ->
       red_expr S C (spec_binding_instantiation_formal_params_1 K args' L x xs v o1) o ->
       red_expr S C (spec_binding_instantiation_formal_params K args L (x::xs)) o
 
-  | red_spec_binding_inst_formal_params_1_declared : forall S0 S C K args L x xs v o,  (* Step 4d iv *)
-      red_expr S C (spec_binding_instantiation_formal_params_2 K args L x xs v (out_void S)) o ->
+  | red_spec_binding_inst_formal_params_1_declared : forall o1 S0 S C K args L x xs v o,  (* Step 4d iv *)
+      red_expr S C (spec_env_record_set_mutable_binding L x v (execution_ctx_strict C)) o1 ->
+      red_expr S C (spec_binding_instantiation_formal_params_2 K args L xs o1) o ->
       red_expr S0 C (spec_binding_instantiation_formal_params_1 K args L x xs v (out_ter S true)) o
 
   | red_spec_binding_inst_formal_params_1_not_declared : forall S0 S C K args L x xs v o o1, (* Step 4d iv *)
-      red_expr S C (spec_env_record_create_mutable_binding L x None) o1 ->
+      red_expr S C (spec_env_record_create_set_mutable_binding L x None v (execution_ctx_strict C)) o1 ->
       (* TODO(Daiva): are we sure that deletable_opt above is None, meaning that the item
          will not be deletable? it's worth testing in an implementation if you can delete an arg binding. *)
-      red_expr S C (spec_binding_instantiation_formal_params_2 K args L x xs v o1) o ->
+      red_expr S C (spec_binding_instantiation_formal_params_2 K args L xs o1) o ->
       red_expr S0 C (spec_binding_instantiation_formal_params_1 K args L x xs v (out_ter S false)) o
 
-  (** TODO(Daiva): you can factorize the previous and the next rule into one, by using the
-      reduction rules described somewhere in this file in a section called:
-      "combination of create mutable binding and set mutable binding" *)
-
-  | red_spec_binding_inst_formal_params_2 : forall S0 S C K args L x xs v o1 o,  (* Step 4d v *)
-      red_expr S C (spec_env_record_set_mutable_binding L x v (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_binding_instantiation_formal_params_3 K args L xs o1) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_2 K args L x xs v (out_void S)) o
-
-  | red_spec_binding_inst_formal_params_3 : forall S0 S C K args L xs o1 o, (* Step 4d loop *)
+  | red_spec_binding_inst_formal_params_2 : forall S0 S C K args L xs o1 o, (* Step 4d loop *)
       red_expr S C (spec_binding_instantiation_formal_params K args L xs) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_3 K args L xs (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_formal_params_2 K args L xs (out_void S)) o
       
   (* Auxiliary reductions for binding instantiation: 
      bindings for function declarations (Step 5). *)
@@ -2136,9 +2120,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       bconfig = false (* TODO: configurableBindings with eval *) ->
       (* TODO(Daiva): in order to define bconfig, you need to know whether 
          you have eval code or not, so the argument that you called [lf] needs to passed until this point. *)
-      fds = prog_funcdecl code -> (* TODO(Daiva): I replaced the "let" with an equality. *)
+      fds = prog_funcdecl code -> 
       K = spec_execution_ctx_binding_instantiation_3 code bconfig -> 
-      (* TODO(Daiva): I introduce a named K to reduce the length of the next line. *)
       red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig (out_void S)) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
 
