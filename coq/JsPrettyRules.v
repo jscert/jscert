@@ -253,7 +253,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       (res_type R = restype_break /\ res_label_in R labs) ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S rv)
 
-  | red_stat_while_4_continue : forall S0 S C labs e1 t2 rv R,
+  | red_stat_while_4_continue : forall S0 S C labs e1 t2 rv R o,
       (   (res_type R = restype_continue /\ res_label_in R labs)
         \/ res_type R = restype_normal) ->
       red_stat S C (stat_while_1 labs e1 t2 rv) o ->      
@@ -1188,7 +1188,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (spec_to_object v) o
 
-  | red_spec_to_object_prim : forall S C w o,
+  | red_spec_to_object_prim : forall S C w o v,
       ~ (v = prim_undef \/ v = prim_null) ->
       red_expr S C (spec_prim_new_object w) o ->
       red_expr S C (spec_to_object (value_prim w)) o
@@ -1963,7 +1963,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_entering_func_code_3 lf args false bd vthis) o ->
       red_expr S0 C (spec_entering_func_code_2 lf args bd (out_ter S vthis)) o
 
-  | red_spec_entering_func_code_1_object : forall S C lf args bd (lthis:loc) o, (* Step 4 *)
+  | red_spec_entering_func_code_1_object : forall S C lf args bd (lthis:object_loc) o, (* Step 4 *)
       red_expr S C (spec_entering_func_code_3 lf args false bd lthis) o ->
       red_expr S C (spec_entering_func_code_1 lf args bd lthis false) o
 
@@ -1994,7 +1994,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_formal_params_non_empty : forall o1 S C K v args args' L x xs o, (* Steps 4d i - iii *)
       (* TODO(Daiva): I avoid using hd and tl functions, as in [let v := hd undef args in] and [tl args],
          because [tl] should never be used on an empty list. *)
-      (v,args') = (match args with nil => (undef,nil) | v::args' => (v,args')) ->
+      (v,args') = (match args with nil => (undef,nil) | v::args' => (v,args') end) ->
       red_expr S C (spec_env_record_has_binding L x) o1 ->
       red_expr S C (spec_binding_instantiation_formal_params_1 K args' L x xs v o1) o ->
       red_expr S C (spec_binding_instantiation_formal_params K args L (x::xs)) o
@@ -2411,16 +2411,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_get_proto_of : forall S C v r args o, 
       arguments_from args (v::nil) ->
-      red_expr S C (spec_call_object_get_proto_of_1 v) o ->
-      red_expr S C (spec_constructor_builtin builtin_object_get_proto_of_call args) o (* Isn't that a [spec_call_builtin] instead of [spec_constructor_builtin]? -- Martin *)
+      red_expr S C (spec_call_object_get_prototype_of_1 v) o ->
+      red_expr S C (spec_constructor_builtin builtin_object_get_prototype_of_call args) o (* Isn't that a [spec_call_builtin] instead of [spec_constructor_builtin]? -- Martin *)
 
   | red_spec_call_object_get_proto_of_1_not_object : forall S C w o, 
       red_expr S C (spec_error builtin_type_error) o ->
-      red_expr S C (spec_call_object_get_proto_of_1 w) o
+      red_expr S C (spec_call_object_get_prototype_of_1 w) o
           
   | red_spec_call_object_get_proto_of_1_object : forall S C l v, 
       object_proto S l v ->
-      red_expr S C (spec_call_object_get_proto_of_1 l) (out_ter S v)
+      red_expr S C (spec_call_object_get_prototype_of_1 l) (out_ter S v)
 
   (** IsSealed (returns bool)  (15.2.3.11) *)  
   
