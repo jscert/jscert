@@ -1,4 +1,3 @@
-
 *********************************************************************
 REQUIREMENTS
 
@@ -9,6 +8,10 @@ COQBIN=/var/tmp/coq8.4/bin/
 
 You also need subversion to get TLC (else you need to import the TLC
 library by hand).
+
+Finally, you need ocaml, ocamlfind (package ocaml-findlib) and
+xml-light (package libxml-light-ocaml-dev) to compile the extracted
+interpreter.
 
 *********************************************************************
 INSTALLATION AND COMPILATION
