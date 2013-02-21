@@ -316,9 +316,9 @@ Inductive ext_expr :=
   | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation : option object_loc -> prog -> list value -> ext_expr
-  | spec_execution_ctx_binding_instantiation_1 : option object_loc -> prog -> list value -> env_loc -> ext_expr 
-  | spec_execution_ctx_binding_instantiation_2 : prog -> list value -> env_loc -> ext_expr
+  | spec_execution_ctx_binding_instantiation : codetype -> option object_loc -> prog -> list value -> ext_expr
+  | spec_execution_ctx_binding_instantiation_1 : codetype -> option object_loc -> prog -> list value -> env_loc -> ext_expr 
+  | spec_execution_ctx_binding_instantiation_2 : codetype -> prog -> list value -> env_loc -> ext_expr
   | spec_execution_ctx_binding_instantiation_3 : prog -> bool -> env_loc -> ext_expr
   
   (* Execution of "has_instance" *)
@@ -674,4 +674,3 @@ Inductive arguments_from : list value -> list value -> Prop :=
  | arguments_from_cons : forall Vs1 Vs2 v,
       arguments_from Vs1 Vs2 ->
       arguments_from (v::Vs1) (v::Vs2).
-

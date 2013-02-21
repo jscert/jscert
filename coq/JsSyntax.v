@@ -143,7 +143,6 @@ with stat :=
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
   | stat_debugger : stat  
-  (* LATER: add do_while *)
   (* LATER: add switch *)
 
 (** Grammar of programs *)

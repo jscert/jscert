@@ -21,6 +21,7 @@ Implicit Type lab : label.
 Implicit Type labs : label_set.
 Implicit Type R : res.
 Implicit Type o : out.
+Implicit Type ct : codetype.
 
 Implicit Type x : prop_name.
 Implicit Type str : strictness_flag.
@@ -1971,7 +1972,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_scope S lf (Some lex) ->
       (lex', S') = lexical_env_alloc_decl S lex ->
       C' = execution_ctx_intro_same lex' vthis str ->
-      red_expr S' C' (spec_execution_ctx_binding_instantiation (Some lf) (funcbody_prog bd) args) o ->
+      red_expr S' C' (spec_execution_ctx_binding_instantiation codetype_func (Some lf) (funcbody_prog bd) args) o ->
       red_expr S C (spec_entering_func_code_3 lf args str bd vthis) o 
 
 
@@ -2097,33 +2098,32 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
           with constructors "codetype_func" and "codetype_global" and "codetype_eval";
           then, introduce a new variable name, e.g. "c" to represent a coq value of type codetype. *)
 
-  | red_spec_execution_ctx_binding_instantiation : forall L Ls S C lf code args o, (* Step 1 *)
-      (* todo: handle eval case -- step 2 *)
+  | red_spec_execution_ctx_binding_instantiation : forall L Ls S C ct lf code args o, (* Step 1 *)
+      (* todo: Daiva -- I think that strictness is not handled correctly at the moment. We need to implement 10.1.1 *)
       (* todo: [code] needs to contain all the function declarations and the variable declarations *)
       execution_ctx_variable_env C = L::Ls ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_1 lf code args L) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation lf code args) o
+      red_expr S C (spec_execution_ctx_binding_instantiation_1 ct lf code args L) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation ct lf code args) o
 
   | red_spec_execution_ctx_binding_instantiation_1_function : forall xs_option S C lf code args L o, (* Step 4a *)
       object_formal_parameters S lf xs_option ->
       let xs := unsome_default nil xs_option in
       (* TODO(Daiva): can the list of xs be None? Otherwise, I would suggest a single premise: 
       object_formal_parameters S lf (Some xs) -> *)
-      red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 code) args L xs) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_1 (Some lf) code args L) o
+      red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 codetype_func code) args L xs) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_1 codetype_func (Some lf) code args L) o
 
-  | red_spec_execution_ctx_binding_instantiation_1_not_function : forall L S C code args o, (* Skipping step 4 *)
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_1 None code args L) o
+  | red_spec_execution_ctx_binding_instantiation_1_not_function : forall L S C ct code args o, (* Skipping step 4 *)
+      ct <> codetype_func ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_2 ct code args L) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_1 ct None code args L) o
 
-  | red_spec_execution_ctx_binding_instantiation_function_2 : forall bconfig L K S C code fds args o, (* Step 5 *)
-      bconfig = false (* TODO: configurableBindings with eval *) ->
-      (* TODO(Daiva): in order to define bconfig, you need to know whether 
-         you have eval code or not, so the argument that you called [lf] needs to passed until this point. *)
+  | red_spec_execution_ctx_binding_instantiation_function_2 : forall bconfig L K S C ct code fds args o, (* Step 5 *)
+      bconfig = (If ct = codetype_eval then true else false) ->
       fds = prog_funcdecl code -> 
       K = spec_execution_ctx_binding_instantiation_3 code bconfig -> 
       red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 code args L) o
+      red_expr S C (spec_execution_ctx_binding_instantiation_2 ct code args L) o
 
   (* TODO(Daiva): let's add steps 6-7 in here, even though we can postpone to later
      on the definition of the rules of section 10.6 describing the "Arguments" object *)

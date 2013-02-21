@@ -1371,4 +1371,12 @@ Definition out_error_or_cst S str B R :=
 Definition out_error_or_void S str B :=
   if str then out_ter S (res_throw B)
   else out_void S.
+  
+(**************************************************************)
+(** ** Auxiliary definition used in Declaration Binding Instantiation *)
+
+Inductive codetype :=
+  | codetype_func : codetype
+  | codetype_global : codetype
+  | codetype_eval : codetype.
 
