@@ -2099,7 +2099,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_execution_ctx_binding_instantiation_1 ct lf code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation ct lf code args) o
 
-  | red_spec_execution_ctx_binding_instantiation_1_function : forall xs_option S C lf code args L o, (* Step 4a *)
+  | red_spec_execution_ctx_binding_instantiation_1_function : forall xs S C lf code args L o, (* Step 4a *)
       object_formal_parameters S lf (Some xs) ->
       red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 codetype_func code) args L xs) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 codetype_func (Some lf) code args L) o
