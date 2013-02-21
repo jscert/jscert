@@ -1358,9 +1358,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_get_3_accessor_undef : forall S C vthis l, (* Step 5 *)
       red_expr S C (spec_object_get_3 vthis l undef) (out_ter S undef) 
 
-  | red_spec_object_get_3_accessor_object : forall B S C vthis l lf o, (* Step 6 *)
-      red_expr S C (spec_call lf (value_object vthis) nil) o ->
-      red_expr S C (spec_object_get_3 vthis l lf) o
+  | red_spec_object_get_3_accessor_object : forall B S C (lthis : object_loc) l lf o, (* Step 6 *)
+      (* I changed this rule as a term [vthis] of type [object_loc] appeared in it, which strongly looked as an error.  Please check it.  -- Martin. *)
+      red_expr S C (spec_call lf lthis nil) o ->
+      red_expr S C (spec_object_get_3 lthis l lf) o
       
   (** CanPut  (8.12.4) *)
 
