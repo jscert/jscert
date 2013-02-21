@@ -2092,12 +2092,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Declaration Binding Instantiation: main reduction rules *)    
 
-    (* Assumption made: if lf is None, then code is global code or eval code, otherwise it is function code. 
-       TODO: have an enumeration code_type? 
-       TODO(Daiva): yes, please introduce an inductive type "codetype" 
-          with constructors "codetype_func" and "codetype_global" and "codetype_eval";
-          then, introduce a new variable name, e.g. "c" to represent a coq value of type codetype. *)
-
   | red_spec_execution_ctx_binding_instantiation : forall L Ls S C ct lf code args o, (* Step 1 *)
       (* todo: Daiva -- I think that strictness is not handled correctly at the moment. We need to implement 10.1.1 *)
       (* todo: [code] needs to contain all the function declarations and the variable declarations *)
@@ -2106,10 +2100,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_execution_ctx_binding_instantiation ct lf code args) o
 
   | red_spec_execution_ctx_binding_instantiation_1_function : forall xs_option S C lf code args L o, (* Step 4a *)
-      object_formal_parameters S lf xs_option ->
-      let xs := unsome_default nil xs_option in
-      (* TODO(Daiva): can the list of xs be None? Otherwise, I would suggest a single premise: 
-      object_formal_parameters S lf (Some xs) -> *)
+      object_formal_parameters S lf (Some xs) ->
       red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 codetype_func code) args L xs) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 codetype_func (Some lf) code args L) o
 
