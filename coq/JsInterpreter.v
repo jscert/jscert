@@ -89,38 +89,39 @@ Definition get_arg := get_nth undef.
 (**************************************************************)
 (** Monadic constructors *)
 
-Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : result :=
+Definition if_ter (o : result) (K : state -> res -> result) : result :=
   match o with
   | out_ter S0 R =>
+    K S0 R
+  | _ => o
+  end.
+
+Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : result :=
+  if_ter o (fun S0 R =>
     match res_type R with
     | restype_normal =>
       let rv' := res_value R in
       K S0 (ifb rv' = resvalue_empty then rv else rv')
-    | _ => o
-    end
-  | _ => o
-  end.
+    | restype_break => o
+    | _ =>
+      out_ter S0 (res_overwrite_value_if_empty rv R)
+    end).
 
 Definition if_success := if_success_state resvalue_empty.
 
-Definition if_success_or_throw (o : result) (K1 : state -> resvalue -> result) (K2 : state -> value -> result) : result :=
-  match o with
-  | out_ter S0 R =>
+Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> value -> result) : result :=
+  if_ter o (fun S0 R =>
     match res_type R with
-    | restype_normal => K1 S0 (res_value R)
     | restype_throw =>
       match res_value R with
       | resvalue_value v => K2 S0 v
       | _ => result_stuck
       end
-    | _ => o
-    end
-  | _ => o
-  end.
+    | _ => K1 o
+    end).
 
 Definition if_success_or_return (o : result) (K1 : state -> resvalue -> result) (K2 : state -> value -> result) : result :=
-  match o with
-  | out_ter S0 R =>
+  if_ter o (fun S0 R =>
     match res_type R with
     | restype_normal => K1 S0 (res_value R)
     | restype_return =>
@@ -129,34 +130,20 @@ Definition if_success_or_return (o : result) (K1 : state -> resvalue -> result) 
       | _ => result_stuck
       end
     | _ => o
-    end
-  | _ => o
-  end.
+    end).
 
-Definition if_success_or_break (o : result) (K1 : state -> resvalue -> result) (K2 : state -> res -> result) : result :=
-  match o with
-  | out_ter S0 R =>
-    match res_type R with
-    | restype_normal => K1 S0 (res_value R)
-    | restype_break => K2 S0 R
-    | _ => o
-    end
-  | _ => o
-  end.
-
-Definition if_success_while rv (o : result) (K : state -> resvalue -> result) : result :=
-  match o with
-  | out_ter S0 R =>
-    let rv' := res_value R in
-    let rvf := ifb rv' = resvalue_empty then rv else rv' in
-    match res_type R with
-    | restype_normal =>
-      K S0 rvf
-    | restype_break =>
-      out_ter S0 (res_with_value R rvf)
-    | _ => o
-    end
-  | _ => o
+Definition if_normal_continue_or_break (search_label : unit -> bool) S R
+  (K1 : unit -> result) (K2 : unit -> result) : result :=
+  let default := out_ter S R in
+  match res_type R with
+  | restype_break =>
+    if search_label tt then K2 tt
+    else default
+  | restype_continue =>
+    if search_label tt then K1 tt
+    else default
+  | restype_normal => K1 tt
+  | _ => default
   end.
 
 Definition if_value (o : result) (K : state -> value -> result) : result :=
@@ -223,7 +210,7 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
     | _ => result_stuck
     end).
 
-Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *)
+Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *) (* TODO:  Is that really needed? *)
 
 End InterpreterEliminations.
 
@@ -1252,12 +1239,13 @@ Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) 
             out_ter S2 (JsNumber.neg n))
 
         | unary_op_bitwise_not =>
-          arbitrary (* TODO *)
+          to_int32 run_call' S1 C v (fun S2 k =>
+            out_ter S2 (JsNumber.of_int (JsNumber.int32_bitwise_not k)))
 
         | unary_op_not =>
           out_ter S (neg (convert_value_to_boolean v))
 
-        | _ => arbitrary
+        | _ => result_stuck
 
         end)
 
@@ -1334,7 +1322,7 @@ Fixpoint run_block (run_stat' : run_stat_type) S C rv ts : result :=
 
 
 (**************************************************************)
-(** ** Intermediary function for all non-trivial cases. *)
+(** ** Intermediary functions for all non-trivial cases. *)
 
 Definition run_expr_binary_op (run_expr' : run_expr_type) (run_call' : run_call_type)
   (run_binary_op' : run_binary_op_type) S C op e1 e2 : result :=
@@ -1487,20 +1475,22 @@ Definition run_stat_if (run_expr' : run_expr_type) (run_stat' : run_stat_type)
         out_ter S resvalue_empty
       end).
 
-Definition run_stat_while (run_expr' : run_expr_type) (run_stat' : run_stat_type)
-  (run_call' : run_call_type) S C ls e1 t2 : result :=
-  if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
-    if (convert_value_to_boolean v1) then
-      if_success_or_break (run_stat' S1 C t2) (fun S2 rv2 =>
-        if_success_while rv2 (run_stat' S2 C (stat_while ls e1 t2)) (fun S3 rv3 =>
-          out_ter S3 rv3))
-      (fun S2 R2 =>
-          ifb res_label_in R2 ls then
-            out_ter S2 resvalue_empty
-          else out_ter S2 (res_throw resvalue_empty)
-        )
-    else
-      out_ter S1 undef).
+Fixpoint run_stat_while (max_step : nat) (run_expr' : run_expr_type) (run_stat' : run_stat_type)
+  (run_call' : run_call_type) rv S C ls e1 t2 : result :=
+  match max_step with
+  | O => result_bottom
+  | S max_step' =>
+    let run_stat_while' := run_stat_while max_step' run_expr' run_stat' run_call' in
+    if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
+      if convert_value_to_boolean v1 then
+        if_ter (run_stat' S1 C t2) (fun S2 R =>
+          let rvR := res_value R in
+          let rv' := ifb rvR = resvalue_empty then rv else rvR in
+          if_normal_continue_or_break (fun _ => res_label_in R ls) S2 R (fun _ =>
+            run_stat_while' rv' S2 C ls e1 t2) (fun _ =>
+            out_ter S2 rv'))
+      else out_ter S1 rv)
+  end.
 
 Definition run_stat_try (run_stat' : run_stat_type) (run_call' : run_call_type)
   S C t1 t2o t3o : result :=
@@ -1508,16 +1498,12 @@ Definition run_stat_try (run_stat' : run_stat_type) (run_call' : run_call_type)
     match t3o with
     | None => fun res => res
     | Some t3 => fun res =>
-      match res with
-      | out_ter S1 R =>
+      if_ter res (fun S1 R =>
         if_success (run_stat' S1 C t3) (fun S2 rv' =>
-          out_ter S2 R)
-      | _ => res (* stuck or bottom *)
-      end
+          out_ter S2 R))
     end
   in
-  if_success_or_throw (run_stat' S C t1) (fun S1 rv1 =>
-    finally (out_ter S1 rv1)) (fun S1 v =>
+  if_any_or_throw (run_stat' S C t1) finally (fun S1 v =>
     match t2o with
     | None => finally (out_ter S1 (res_throw v))
     | Some (x, t2) =>
@@ -1644,7 +1630,7 @@ with run_stat (max_step : nat) S C t : result :=
       arbitrary (* TODO *)
 
     | stat_while ls e1 t2 =>
-      run_stat_while run_expr' run_stat' run_call' S C ls e1 t2
+      run_stat_while max_step' run_expr' run_stat' run_call' resvalue_empty S C ls e1 t2
 
     | stat_throw e =>
       run_stat_throw run_expr' run_call' S C e

@@ -359,7 +359,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
                 We need to change the type of create/set mutable binding then *)
       res_value R = resvalue_value v ->
       red_expr S' C (spec_env_record_create_set_mutable_binding L x None v throw_irrelevant) o1 ->
-      red_stat S' C (stat_try_2 o1 lex' t1 fo) o ->
+      red_stat S' C (stat_try_2 o1 lex' t1 fo) o -> (* [stat_try_2] is marked as intercepting [abort] rules in [abort_intercepted_stat]:  does that mean that there actually is a way not to execute the [finally] part of a [try/catch/finally] while actually executing a part of the [try] block?  -- Martin. *)
       red_stat S0 C (stat_try_1 (out_ter S R) (Some (x,t1)) fo) o
 
   | red_stat_try_2_catch : forall C S0 S lex' t1 fo o o1,

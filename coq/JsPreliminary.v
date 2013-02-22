@@ -52,7 +52,7 @@ Implicit Type t : stat.
 (** Update the value field if it is empty *)
 
 Definition res_overwrite_value_if_empty rv R :=
-  If res_value R = resvalue_empty
+  ifb res_value R = resvalue_empty
     then res_with_value R rv
     else R.
 
