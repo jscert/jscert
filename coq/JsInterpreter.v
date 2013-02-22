@@ -210,8 +210,6 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
     | _ => result_stuck
     end).
 
-Definition env_loc_default := 0%nat. (* It is needed to avoid using an [arbitrary] that would be extracted by an exception. *) (* TODO:  Is that really needed? *)
-
 End InterpreterEliminations.
 
 
@@ -729,11 +727,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
 
 Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C L x (deletable_opt : option bool) v str : result :=
   if_success (env_record_create_mutable_binding S L x deletable_opt) (fun S rv =>
-    match rv with
-    | prim_undef =>
-      env_record_set_mutable_binding run_call' S C L x v str
-    | _ => result_stuck
-    end).
+    env_record_set_mutable_binding run_call' S C L x v str).
 
 Definition env_record_create_immutable_binding S L x : result :=
   match pick (env_record_binds S L) with
@@ -788,71 +782,82 @@ Definition creating_function_object S C (names : list string) (bd : funcbody) X 
           if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
-Fixpoint execution_ctx_binding_instantiation_set_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result :=
+Fixpoint binding_instantiation_formal_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result :=
   match names with
   | nil => out_void S
   | argname :: names' =>
     let v := hd undef args in
     let hb := env_record_has_binding S L argname in
     if_success
-      (if hb then out_void S
-      else env_record_create_mutable_binding S L argname None) (fun S1 rv1 =>
-        if_success (env_record_set_mutable_binding run_call' S1 C L argname v str)
-        (fun S2 rv2 =>
-          execution_ctx_binding_instantiation_set_args run_call' S2 C L (tl args) names' str))
+      (if hb then
+        env_record_set_mutable_binding run_call' S C L argname v (execution_ctx_strict C)
+      else env_record_create_set_mutable_binding run_call' S C L argname None v (execution_ctx_strict C)) (fun S1 rv1 =>
+        binding_instantiation_formal_args run_call' S1 C L (tl args) names' str)
   end.
 
-Fixpoint execution_ctx_binding_instantiation_create_execution_ctx (run_call' : run_call_type) S C L (fds : list funcdecl) : result :=
-  arbitrary (* TODO
+Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L (fds : list funcdecl) (bconfig : strictness_flag) : result :=
   match fds with
   | nil => out_void S
   | fd :: fds' =>
-    let fb := funcdecl_body fd in
-    let fn := funcdecl_name fd in
-    let strb := funcbody_is_strict fb in
-    if_object (creating_function_object S (funcdecl_parameters fd) fb (execution_ctx_variable_env C) strb) (fun S1 fo =>
-      let hb := env_record_has_binding S L fn in
-      if_success (if hb then
-        match run_object_get_property S builtin_global fn with
-        | full_descriptor_undef => result_stuck
-        | full_descriptor_some A =>
-          if attributes_configurable A then (
-            let A' := attributes_data_intro undef true true false in (* To be reread *)
-            object_define_own_prop S1 builtin_global fn A' true
-          ) else ifb descriptor_is_accessor A \/ attributes_writable A <> Some true \/ attributes_enumerable A <> Some true then (* TODO:  This rule has unfortunately no meaning.  Read it directly from the specifiaction 5e iv of execution_ctx_binding_instantiation. *)
-          out_type_error S1
-          else out_void S1
-        end else env_record_create_mutable_binding S1 L fn (Some false)) (fun S2 rv2 =>
-          if_success (env_record_set_mutable_binding run_call' S2 C L fn (value_object fo) strb) (fun S3 rv3 =>
-            execution_ctx_binding_instantiation_create_execution_ctx run_call' S3 C L fds')))
-  end *).
+      let fbd := funcdecl_body fd in
+      let fname := funcdecl_name fd in
+      let str := funcbody_is_strict fbd in
+      if_success (creating_function_object S C (funcdecl_parameters fd) fbd (execution_ctx_variable_env C) str) (fun S1 rv1 =>
+        arbitrary (* TODO *)
+        (*if env_record_has_binding S1 L fname then
+          ifb L = env_loc_global_env_record then
+            arbitrary (* TODO *)
+          else result_stuck
+        else env_record_create_mutable_binding S1 L fname (Some bconfig)*)
+      )
+  end.
 
-Fixpoint execution_ctx_binding_instantiation_init_vars (run_call' : run_call_type) S C L (vds : list string) str : result :=
+Fixpoint binding_instantiation_var_decls (run_call' : run_call_type) S C L (vds : list string) str : result :=
   match vds with
   | nil => out_void S
   | vd :: vds' =>
     if env_record_has_binding S L vd then
-      execution_ctx_binding_instantiation_init_vars run_call' S C L vds' str
+      binding_instantiation_var_decls run_call' S C L vds' str
     else
-      if_success (env_record_create_set_mutable_binding run_call' S C L vd (Some false) undef str) (fun S1 rv1 =>
-        execution_ctx_binding_instantiation_init_vars run_call' S1 C L vds' str)
+      if_success (env_record_create_set_mutable_binding run_call' S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 rv1 =>
+        binding_instantiation_var_decls run_call' S1 C L vds' str)
   end.
 
-Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (funco : option object_loc) p (args : list value) : result :=
-  let L := hd env_loc_default (execution_ctx_variable_env C) in
+Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str :=
+  arbitrary (* TODO *).
+
+Definition binding_instantiation_arguments_object (run_call' : run_call_type) S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) :=
+  let name := "arguments" in
+  let bdecl := env_record_has_binding S L name in
+  ifb ct = codetype_func /\ ~ bdecl then (
+    let lf := extract_from_option funco in
+    let str := prog_strict p in
+      if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
+        if str then
+          if_success (env_record_create_immutable_binding S1 L name) (fun S2 rv2 =>
+            env_record_initialize_immutable_binding S2 L name largs)
+        else
+          env_record_create_set_mutable_binding run_call' S1 C L name None largs false))
+  else out_void S.
+
+Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (ct : codetype) (funco : option object_loc) p (args : list value) : result :=
+  let L := hd_inhab (execution_ctx_variable_env C) in
   let str := execution_ctx_strict C in
-  if_success
-    match funco with
-    | Some func =>
-      let names_option := run_object_formal_parameters S func in
-      let names := unsome_default nil names_option in
-      execution_ctx_binding_instantiation_set_args run_call' S C L args names str
-    | None => out_void S
-    end (fun S1 re0 =>
+  let (o, names) := match ct, funco with
+    | codetype_func, Some func =>
+      let names := unsome_default nil (run_object_formal_parameters S func) in
+      (binding_instantiation_formal_args run_call' S C L args names str, names)
+    | (codetype_global | codetype_eval), None => (out_void S : result, nil)
+    | _, _ => (result_stuck, nil)
+    end in
+  if_success o (fun S1 rv1 =>
+      let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
-      if_success (execution_ctx_binding_instantiation_create_execution_ctx run_call' S1 C L fds) (fun S2 rv =>
-        let vds := prog_vardecl p in
-        execution_ctx_binding_instantiation_init_vars run_call' S2 C L vds str)).
+      if_success (binding_instantiation_function_decls run_call' S1 C L fds bconfig) (fun S2 rv2 =>
+        if_success (binding_instantiation_arguments_object run_call' S2 C L ct funco p names args) (fun S3 rv3 =>
+          let vds := prog_vardecl p in
+          binding_instantiation_var_decls run_call' S2 C L vds str))).
+
 
 Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) :=
   let bd := run_object_code S lf in
@@ -865,7 +870,7 @@ Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : obj
   let scope := extract_from_option (run_object_scope S lf) in
   let (lex', S1) := lexical_env_alloc_decl S scope in
   let C1 := execution_ctx_intro_same lex' this str in
-  if_success (execution_ctx_binding_instantiation run_call' S1 C1 (Some lf) (funcbody_prog bd) args) (fun S2 rv =>
+  if_success (execution_ctx_binding_instantiation run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 rv =>
     K S2 C1).
 
 Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=

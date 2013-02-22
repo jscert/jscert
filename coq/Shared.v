@@ -551,3 +551,12 @@ Proof.
 Qed.
 
 
+(**************************************************************)
+(** ** LATER: move to LibList *)
+
+Definition hd_inhab {A : Type} `{Inhab A} (l : list A) : A :=
+  match l with
+  | nil => arbitrary
+  | a :: l' => a
+  end.
+
