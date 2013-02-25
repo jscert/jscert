@@ -1261,7 +1261,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_put : forall S C l x v throw B o,
       object_method object_put_ S l B ->
       (* TODO: Daiva: Double check [this] value *)
-      red_expr S C (spec_object_put_1 B l l x v throw) o -> (* There lacks the [this] part there. -- Martin. *)
+      red_expr S C (spec_object_put_1 B l l x v throw) o ->
       red_expr S C (spec_object_put l x v throw) o
 
   (** HasProperty (returns bool) *)
@@ -1439,6 +1439,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_put_3_not_data : forall S C vthis l x v throw Aa o, (* Step 4 *)
       red_expr S C (spec_object_get_prop l x (spec_object_put_4 vthis l x v throw)) o ->
       red_expr S C (spec_object_put_3 vthis l x v throw (attributes_accessor_of Aa)) o
+      (* According to the spec, it should be every cases that are not [attributes_data_of].  There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
 
   | red_spec_object_put_4_accessor : forall vsetter lfsetter S C vthis l x v throw Aa o1 o, (* Step 5 *)
       vsetter = attributes_accessor_set Aa ->
@@ -1453,6 +1454,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S C (spec_object_put_4 lthis l x v throw (attributes_data_of Ad)) o
+      (* According to the spec, it should be every cases that are not [attributes_accessor_of].  There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
 
   | red_spec_object_put_4_not_accessor_prim : forall S C (wthis:prim) l x v throw Ad o, (* Step 6, for prim values *)
       red_expr S C (spec_error_or_void throw builtin_type_error) o ->
@@ -1723,7 +1725,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_prim_value_put w x v throw) o
 
   | red_spec_prim_value_put_1 : forall S0 S C w x v throw l o,
-      red_expr S C (spec_object_put_1 builtin_default_put w l x v throw) o -> (* I think that there should be no [w] at this line. *)
+      red_expr S C (spec_object_put_1 builtin_default_put w l x v throw) o ->
       red_expr S0 C (spec_prim_value_put_1 w x v throw (out_ter S l)) o
 
   (** Auxiliary: [spec_expr_get_value] as a combination of [red_expr] and [get_value] *)

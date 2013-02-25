@@ -497,6 +497,9 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
 Definition extract_from_option {B : Type} `{Inhab B} (op : option B) : B :=
   morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.
 
+Definition unmonad_option {B : Type} (default : B) (op : option B) : B :=
+  morph_option default id op.
+
 
 (**************************************************************)
 (** ** LATER: move to LibList *)
@@ -559,4 +562,14 @@ Definition hd_inhab {A : Type} `{Inhab A} (l : list A) : A :=
   | nil => arbitrary
   | a :: l' => a
   end.
+
+Global Instance eq_nil_dec : forall (A : Type) (l : list A),
+  Decidable (l = nil).
+Proof.
+   introv. destruct~ l.
+    rewrite~ prop_eq_True_back. typeclass.
+    rewrite~ prop_eq_False_back.
+     typeclass.
+     discriminate.
+Qed.
 
