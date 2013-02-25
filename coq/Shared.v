@@ -514,6 +514,18 @@ Fixpoint map_nth {A B : Type} (d : B) (f : A -> B) (i : nat) (s : list A) : B :=
 Definition get_nth {A : Type} (d : A) (i : nat) (s : list A) : A :=
   map_nth (fun _ : unit => d) (fun (x : A) _ => x) i s tt.
 
+Lemma get_nth_nil : forall (A : Type) (d : A) (i : nat),
+  get_nth d i nil = d.
+Proof. introv. destruct~ i. Qed.
+
+Lemma get_nth_null : forall (A : Type) (d a : A) (s : list A),
+  get_nth d 0 (a :: s) = a.
+Proof. introv. reflexivity. Qed.
+
+Lemma get_nth_cons : forall (A : Type) (i : nat) (d a : A) (s : list A),
+  get_nth d (S i) (a :: s) = get_nth d i s.
+Proof. introv. reflexivity. Qed.
+
 
 (**************************************************************)
 (** ** LATER: move to LibReflect *)

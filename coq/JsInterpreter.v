@@ -79,7 +79,6 @@ Proof. applys prove_Inhab result_stuck. Qed.
 
 Section InterpreterEliminations.
 
-
 (**************************************************************)
 (** Generic constructions *)
 
@@ -1114,7 +1113,6 @@ Definition run_equal :=
   *).
 
 Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : binary_op) v1 v2 : result :=
-  (* TODO: move these as definitions outside the body *)
   let conv_primitive S v :=
     to_primitive run_call' S C v None in
   let convert_twice_primitive :=
@@ -1127,6 +1125,7 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
     to_string run_call' S C v in
   let convert_twice_string :=
     convert_twice if_string conv_string in
+
   match op with
 
   | binary_op_add =>
@@ -1705,22 +1704,6 @@ with run_stat (max_step : nat) S C t : result :=
 
 (**************************************************************)
 
-with run_prog (max_step : nat) S C p : result :=
-  match max_step with
-  | O => result_bottom
-  | S max_step' =>
-    let run_elements' := run_elements max_step' in
-    match p with
-
-    | prog_intro str els =>
-      let C' := execution_ctx_initial str (* TODO:  Declare functions and variables *) in
-      run_elements' S C' resvalue_empty els
-
-    end
-  end
-
-(**************************************************************)
-
 with run_elements (max_step : nat) S C rv (els : list element) : result :=
   match max_step with
   | O => result_bottom
@@ -1737,6 +1720,22 @@ with run_elements (max_step : nat) S C rv (els : list element) : result :=
 
     | element_func_decl name args bd :: els' =>
       (* run_elements' S C rv els' *) arbitrary (* As functions are not declared in [run_prog], I prefer raise an exception when such a function should have been defined. *) (* TODO: Remove the [arbitrary] as soon as [run_prog] is correct. *)
+
+    end
+  end
+
+(**************************************************************)
+
+with run_prog (max_step : nat) S C p : result :=
+  match max_step with
+  | O => result_bottom
+  | S max_step' =>
+    let run_elements' := run_elements max_step' in
+    match p with
+
+    | prog_intro str els =>
+      let C' := execution_ctx_initial str (* TODO:  Declare functions and variables *) in
+      run_elements' S C' resvalue_empty els
 
     end
   end
