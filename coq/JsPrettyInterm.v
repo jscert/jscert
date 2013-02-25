@@ -314,16 +314,16 @@ Inductive ext_expr :=
   | spec_binding_instantiation_function_decls_2 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_instantiation_function_decls_3 : (env_loc -> ext_expr) -> list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> bool -> full_descriptor -> ext_expr
   | spec_binding_instantiation_function_decls_4 : (env_loc -> ext_expr) -> list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_instantiation_arg_obj : (out -> ext_expr) -> codetype -> option object_loc -> prog -> list string -> list value -> env_loc -> out -> ext_expr
+  | spec_binding_instantiation_arg_obj_1 : (out -> ext_expr) -> prog -> env_loc -> strictness_flag -> out -> ext_expr
+  | spec_binding_instantiation_arg_obj_2 : (out -> ext_expr) -> prog -> env_loc -> object_loc -> out -> ext_expr
   | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> out -> ext_expr
   | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation : codetype -> option object_loc -> prog -> list value -> ext_expr
   | spec_execution_ctx_binding_instantiation_1 : codetype -> option object_loc -> prog -> list value -> env_loc -> ext_expr 
   | spec_execution_ctx_binding_instantiation_2 : codetype -> option object_loc -> prog -> list string -> list value -> env_loc -> ext_expr
   | spec_execution_ctx_binding_instantiation_3 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> ext_expr
-  | spec_execution_ctx_binding_instantiation_4 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_5 : prog -> bool -> env_loc -> strictness_flag -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_6 : prog -> bool -> env_loc -> object_loc -> out -> ext_expr
-  | spec_execution_ctx_binding_instantiation_7 : prog -> bool -> env_loc -> out -> ext_expr
+  | spec_execution_ctx_binding_instantiation_4 : prog -> bool -> env_loc -> out -> ext_expr
   
   | spec_create_arguments_object : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
   
