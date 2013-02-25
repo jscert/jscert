@@ -10,13 +10,11 @@ fi
 
 function end_message {
 	sleep 0.1
-	printf '\nFailed tests:\n'
 	all_failed_tests=`cat $globalFileName`
 
-	if [[ $all_failed_tests == '' ]]
+	if [[ $all_failed_tests != '' ]]
 	then
-		printf '\tNone\n'
-	else
+		printf '\nFailed tests:\n'
 		printf "$all_failed_tests\n"
 	fi
 

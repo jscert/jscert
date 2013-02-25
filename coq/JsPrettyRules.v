@@ -2040,7 +2040,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args L fd fds str fo bconfig (out_ter S false)) o
 
   | red_spec_binding_instantiation_function_decls_2_true_global : forall K1 A o1 L S0 S C K args fd fds str fo bconfig o, (* Step 5e ii *)
-      K1 = spec_binding_instantiation_function_decls_3 K args fd fds str fo (attributes_configurable A) bconfig ->
+      K1 = spec_binding_instantiation_function_decls_3 K args fd fds str fo (attributes_configurable A) bconfig -> (* What is this [A]?  I guess this should be tested after [spec_object_get_prop] have been executed, otherwise it's meaningless. -- Martin *)
       red_expr S C (spec_object_get_prop builtin_global (funcdecl_name fd) K1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 K args env_loc_global_env_record fd fds str fo bconfig (out_ter S true)) o
 
