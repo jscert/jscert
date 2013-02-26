@@ -105,8 +105,10 @@ Ltac if_unmonad :=
   let R := fresh "R" in
   match goal with
 
-  | I: if_success_state ?rv ?res ?K
-      = result_normal (out_ter ?S0 ?R0) |- ?g =>
+  | I: if_success ?rev ?K = ?res |- ?g =>
+    unfold if_success in I; if_unmonad
+
+  | I: if_success_state ?rv ?res ?K = ?res' |- ?g =>
     need_ter I NT E res S R; [
        try (inverts NT; inverts I; fail)
       | let C1 := fresh "C" in
@@ -117,8 +119,8 @@ Ltac if_unmonad :=
         cuts C3: ((res_type R = restype_continue
             \/ res_type R = restype_return
             \/ res_type R = restype_throw) ->
-          out_ter S (res_overwrite_value_if_empty rv R)
-            = out_ter S0 R0 -> g); [
+          result_normal (out_ter S (res_overwrite_value_if_empty rv R))
+            = res' -> g); [
         destruct (res_type R); [ apply C1 | apply C2
           | apply C3 | apply C3 | apply C3 ];
           (reflexivity || (inverts~ I; fail) || idtac)
@@ -126,10 +128,15 @@ Ltac if_unmonad :=
           let RT := fresh "RT" in
           introv RT ; (rewrite RT in I || (clear I; introv I)) ]
 
-  | I: if_ter ?res ?K
-      = result_normal (out_ter ?S0 ?R0) |- ?g =>
+  | I: if_ter ?res ?K = ?res' |- ?g =>
     need_ter I NT E res S R; [
        try (inverts NT; inverts I; fail) |]
+
+  | I: result_normal (out_ter ?S1 ?R1)
+      = result_normal (out_ter ?S0 ?R0) |- ?g =>
+    inverts~ I
+  | I: out_ter ?S1 ?R1 = out_ter ?S0 ?R0 |- ?g =>
+    inverts~ I
 
   end.
 
@@ -137,21 +144,18 @@ Parameter gT : Prop.
 
 Lemma test : forall res res0 S0 R0,
   if_ter res (fun S R =>
-    if_success_state resvalue_empty res0 (fun S' rv =>
+    if_success res0 (fun S' rv =>
       result_stuck))
   = out_ter S0 R0 -> gT.
 Proof.
   introv I.
 
-  if_unmonad.
-  cuts P: (result -> Prop).
-  cuts: (P res0).
-  if_unmonad.
-
-  skip.
-  skip.
+  repeat if_unmonad.
 
   Set Printing All. idtac.
+
+  skip.
+  skip.
 
 Admitted.
 
