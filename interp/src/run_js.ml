@@ -22,7 +22,10 @@ let arguments () =
     usage_msg
 
 let get_value_ref state r =
-	match Interpreter.ref_get_value state (Interpreter.Resvalue_ref r) with
+	match Interpreter.ref_get_value
+		(Interpreter.run_call max_int)
+		state (Interpreter.execution_ctx_initial false)
+		(Interpreter.Resvalue_ref r) with
     | Interpreter.Result_normal (
 	   Interpreter.Out_ter (_,
 	     { Interpreter.res_type = Interpreter.Restype_normal ;
@@ -65,9 +68,7 @@ let _ =
                   with
                   | Interpreter.Result_normal (
                       Interpreter.Out_ter (state,
-						{ Interpreter.res_type = Interpreter.Restype_normal ;
-						  Interpreter.res_value =
-						    Interpreter.Resvalue_empty })) ->
+						{ Interpreter.res_type = Interpreter.Restype_normal })) ->
                      state
                   | _ -> assert false
                   end

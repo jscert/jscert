@@ -322,3 +322,26 @@ Proof.
       skip. (* We need the fact that the value [v] is correct at this point. *)
 Qed.
 
+
+(**************************************************************)
+(** ** Type [codetype] *)
+
+(** Boolean comparison *)
+
+Definition codetype_compare ct1 ct2 :=
+  match ct1, ct2 with
+  | codetype_func, codetype_func => true
+  | codetype_global, codetype_global => true
+  | codetype_eval, codetype_eval => true
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance codetype_comparable : Comparable codetype.
+Proof.
+  applys (comparable_beq codetype_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+

@@ -497,6 +497,9 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
 Definition extract_from_option {B : Type} `{Inhab B} (op : option B) : B :=
   morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.
 
+Definition unmonad_option {B : Type} (default : B) (op : option B) : B :=
+  morph_option default id op.
+
 
 (**************************************************************)
 (** ** LATER: move to LibList *)
@@ -510,6 +513,18 @@ Fixpoint map_nth {A B : Type} (d : B) (f : A -> B) (i : nat) (s : list A) : B :=
 
 Definition get_nth {A : Type} (d : A) (i : nat) (s : list A) : A :=
   map_nth (fun _ : unit => d) (fun (x : A) _ => x) i s tt.
+
+Lemma get_nth_nil : forall (A : Type) (d : A) (i : nat),
+  get_nth d i nil = d.
+Proof. introv. destruct~ i. Qed.
+
+Lemma get_nth_null : forall (A : Type) (d a : A) (s : list A),
+  get_nth d 0 (a :: s) = a.
+Proof. introv. reflexivity. Qed.
+
+Lemma get_nth_cons : forall (A : Type) (i : nat) (d a : A) (s : list A),
+  get_nth d (S i) (a :: s) = get_nth d i s.
+Proof. introv. reflexivity. Qed.
 
 
 (**************************************************************)
@@ -550,4 +565,23 @@ Proof.
   rewrite* prop_eq_True_back. typeclass.
 Qed.
 
+
+(**************************************************************)
+(** ** LATER: move to LibList *)
+
+Definition hd_inhab {A : Type} `{Inhab A} (l : list A) : A :=
+  match l with
+  | nil => arbitrary
+  | a :: l' => a
+  end.
+
+Global Instance eq_nil_dec : forall (A : Type) (l : list A),
+  Decidable (l = nil).
+Proof.
+   introv. destruct~ l.
+    rewrite~ prop_eq_True_back. typeclass.
+    rewrite~ prop_eq_False_back.
+     typeclass.
+     discriminate.
+Qed.
 
