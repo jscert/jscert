@@ -2402,38 +2402,87 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_sealed_1 v) o ->
       red_expr S C (spec_call_builtin builtin_object_is_sealed args) o
 
-  (* 1. If Type(O) is not Object throw a TypeError exception. *)
-
   | red_spec_call_object_is_sealed_1_not_object : forall S C v o, 
       type_of v <> type_object ->
       red_expr S C (spec_error builtin_type_error) o ->
       red_expr S C (spec_call_object_is_sealed_1 v) o
 
-  (* 2. For each named own property name P of O,
-       a. Let desc be the result of calling the [[GetOwnProperty]] internal method of O with P.
-       b. If desc.[[Configurable]] is true, then return false. *)
+  (* Note: the spec says: 
+        "For each named own property name P of O,
+          a. Let desc be the result of calling the [[GetOwnProperty]] 
+             internal method of O with P.
+          b. If desc.[[Configurable]] is true, then return false.
+     However, in this rule we don't actually call [[GetOwnProperty]], but instead
+     we directly iterate through the list of properties [(x,A)]. (since out goal 
+     is just to check the [configurable] field of A, this should be safe. *)
 
-  | red_spec_call_object_is_sealed_1_object_has_configurable_prop : forall S C l x o, 
-      object_has_property S l x ->
-      red_expr S C (spec_object_get_own_prop l x spec_call_object_is_sealed_2) o ->
-      o = (out_ter S true) ->
-      red_expr S C (spec_call_object_is_sealed_1 l) (out_ter S false)
+  | red_spec_call_object_is_sealed_1_object : forall S C l x o, 
+      red_exp S C (spec_object_iter_own_prop l spec_call_object_is_sealed_2 (spec_call_object_is_sealed_3 l)) -> o
+      red_expr S C (spec_call_object_is_sealed_1 l) o
 
-  | red_spec_call_object_is_sealed_2 : forall S C A b, 
-      b = attributes_configurable A ->
-      red_expr S C (spec_call_object_is_sealed_2 A) (out_ter S b)
-               
-  (* 3. If the [[Extensible]] internal property of O is false, then return true.
-     4. Otherwise, return false. *)
+  | red_spec_call_object_is_sealed_2_prop_is_configurable : forall S C A, 
+      attributes_configurable A = true ->
+      red_expr S C (spec_call_object_is_sealed_2 x A K) (out_ter S false)
 
-  | red_spec_call_object_is_sealed_1_has_no_configurable_prop : forall S C l b b1,  
+  | red_spec_call_object_is_sealed_2_prop_is_not_configurable : forall S C A, 
+      attributes_configurable A = false ->
+      red_expr S C K o ->
+      red_expr S C (spec_call_object_is_sealed_2 x A K) o
+
+ | red_spec_call_object_is_sealed_3 : forall S C l b,  
       object_extensible S l b -> 
-      b1 = (If b = false then true else false) -> 
-      red_expr S C (spec_call_object_is_sealed_1 l) (out_ter S b1)
-  
+      red_expr S C (spec_call_object_is_sealed_3 l) (out_ter S (negb b))
+
+  (* red_spec_object_iter_own_prop *)
+
+  | red_spec_object_iter_own_prop : forall S C P l o, 
+      object_properties S l P ->
+      map_as_list P L ->
+      red_expr S C (spec_iter_properties_1 L Kprop Knil) o ->
+      red_expr S C (spec_object_iter_own_prop l Kprop Knil) o
+
+  | red_spec_object_iter_own_prop_nil : forall S C o, 
+      red_expr S C Knil o -> 
+      red_expr S C (spec_object_iter_own_prop_1 nil Kprop Knil) o
+
+  | red_spec_object_iter_own_prop_cons : forall S C A x o, 
+      red_expr S C (Kprop x A (spec_iter_properties_1 L Kprop Knil)) o -> 
+      red_expr S C (spec_object_iter_own_prop_1 ((x, A)::L) Kprop Knil) o
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   (** IsFrozen (returns bool)  (15.2.3.12) *)
-    (* Daniele: similar to IsSealed. Same question. *)
     (* TODO *)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   
   (** IsExtensible (returns bool)  (15.2.3.13) *)
@@ -2465,7 +2514,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_prevent_extensions_1 v) o
 
 
-  | red_spec_call_object_prevent_extensions_object : forall S S' C O l b, 
+  | red_spec_call_object_prevent_extensions_object : forall S S' C O l, 
       object_binds S l O ->
       let O1 := object_with_extension O false in
       S' = object_write S l O1 ->

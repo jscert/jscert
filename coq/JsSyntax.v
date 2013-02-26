@@ -541,6 +541,13 @@ Definition class_name := string.
 Definition object_properties_type :=
   Heap.heap prop_name attributes.
 
+(**************************************************************)
+(** ** LATER: implement *) 
+(** ** LATER: move to Shared.v *)
+(** ** LATER: should be generic? *)
+
+Axiom map_as_list : object_properties_type -> list (prop_name * attributes).
+
 (** Representation of objects *)
 
 Record object := object_intro {
