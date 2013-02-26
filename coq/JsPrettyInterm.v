@@ -229,12 +229,16 @@ Inductive ext_expr :=
   | spec_object_define_own_prop_6c : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr  
   | spec_object_define_own_prop_reject : bool -> ext_expr
   | spec_object_define_own_prop_write : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
- 
+(* Daniele: FIX                                                                                
+  | spec_object_iter_own_prop : object_loc -> (prop_name -> full_descriptor -> ext_expr -> ext_expr) -> ext_expr -> ext_expr
+  | spec_object_iter_own_prop_1 : list (prop_name * attributes) -> ext_expr -> ext_expr -> ext_expr
+*)
   | spec_prim_value_get : value -> prop_name -> ext_expr
   | spec_prim_value_get_1 : value -> prop_name -> out -> ext_expr
   
   | spec_prim_value_put : value -> prop_name -> value -> bool -> ext_expr
   | spec_prim_value_put_1 : prim -> prop_name -> value -> bool -> out -> ext_expr
+
   (*
   | spec_object_put_special : value -> prop_name -> value -> bool -> ext_expr
 
@@ -391,7 +395,8 @@ Inductive ext_expr :=
   | spec_call_object_get_prototype_of_1 : value -> ext_expr
   | spec_call_object_is_extensible_1 : value -> ext_expr
   | spec_call_object_is_sealed_1 : value -> ext_expr
-  | spec_call_object_is_sealed_2 : full_descriptor -> ext_expr
+  | spec_call_object_is_sealed_2 : prop_name -> full_descriptor -> ext_expr -> ext_expr
+  | spec_call_object_is_sealed_3 : object_loc -> ext_expr
   | spec_call_object_prevent_extensions_1 : value -> ext_expr
 
   | spec_call_object_proto_to_string_1 : value -> ext_expr

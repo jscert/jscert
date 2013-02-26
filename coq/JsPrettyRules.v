@@ -2436,7 +2436,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_get_prototype_of_1 l) (out_ter S v)
 
   (** IsSealed (returns bool)  (15.2.3.11) *)  
-  
+  (* Daniele: remove comment once [red_spec_object_iter_own_prop] is fixed
   | red_spec_call_object_is_sealed : forall S C v o args, 
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_is_sealed_1 v) o ->
@@ -2448,7 +2448,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_sealed_1 v) o
 
   (* Note: the spec says: 
-        "For each named own property name P of O,
+        For each named own property name P of O,
           a. Let desc be the result of calling the [[GetOwnProperty]] 
              internal method of O with P.
           b. If desc.[[Configurable]] is true, then return false.
@@ -2457,14 +2457,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      is just to check the [configurable] field of A, this should be safe. *)
 
   | red_spec_call_object_is_sealed_1_object : forall S C l x o, 
-      red_exp S C (spec_object_iter_own_prop l spec_call_object_is_sealed_2 (spec_call_object_is_sealed_3 l)) -> o
+      red_expr S C (spec_object_iter_own_prop l spec_call_object_is_sealed_2 (spec_call_object_is_sealed_3 l)) -> o
       red_expr S C (spec_call_object_is_sealed_1 l) o
 
-  | red_spec_call_object_is_sealed_2_prop_is_configurable : forall S C A, 
+  | red_spec_call_object_is_sealed_2_prop_is_configurable : forall S C A K, 
       attributes_configurable A = true ->
       red_expr S C (spec_call_object_is_sealed_2 x A K) (out_ter S false)
 
-  | red_spec_call_object_is_sealed_2_prop_is_not_configurable : forall S C A, 
+  | red_spec_call_object_is_sealed_2_prop_is_not_configurable : forall S C A K, 
       attributes_configurable A = false ->
       red_expr S C K o ->
       red_expr S C (spec_call_object_is_sealed_2 x A K) o
@@ -2476,8 +2476,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* red_spec_object_iter_own_prop *)
 
   | red_spec_object_iter_own_prop : forall S C P l o, 
-      object_properties S l P ->
-      map_as_list P L ->
+      object_properties S l P -> 
+      map_as_list P L -> 
       red_expr S C (spec_iter_properties_1 L Kprop Knil) o ->
       red_expr S C (spec_object_iter_own_prop l Kprop Knil) o
 
@@ -2488,7 +2488,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_iter_own_prop_cons : forall S C A x o, 
       red_expr S C (Kprop x A (spec_iter_properties_1 L Kprop Knil)) o -> 
       red_expr S C (spec_object_iter_own_prop_1 ((x, A)::L) Kprop Knil) o
-
+*)
 
   (** IsFrozen (returns bool)  (15.2.3.12) *)
     (* TODO *)
@@ -2796,7 +2796,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (l, S') = object_alloc S O ->
       red_expr S0 C (spec_call_number_new_1 (out_ter S v)) (out_ter S' l) 
 
-
   (*------------------------------------------------------------*)
   (** ** Number prototype builtin functions *)
 
@@ -2834,12 +2833,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Error.prototype.valueOf()  : TODO: it's not in the spec! *)
 
-  
-.
-
-
-
-
+. 
 
 (*******************************************************************************)
 (*******************************************************************************)
@@ -3069,7 +3063,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_get_own_property_default S l x An ->
       (If An <> full_descriptor_undef
        then An' = An
-       else
+       else 
          (If (prim_string x <> convert_prim_to_string (prim_number (JsNumber.absolute (convert_primitive_to_integer x)))) (* TODO: remove coercion *)
           then An' = full_descriptor_undef
           else (* TODO: make an auxiliary definition for this else branch *)
@@ -3084,5 +3078,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
           )
       )) ->
       object_get_own_property S l x An'.
-
 *)
+
+
+
+
+
+
