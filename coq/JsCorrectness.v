@@ -74,38 +74,51 @@ Qed.
 (**************************************************************)
 (** Monadic constructors *)
 
-(* Small tests to automate the proof.
-Lemma test : forall res S0 R0,
-  if_ter res (fun S R =>
-    result_stuck) = out_ter S0 R0.
+Inductive not_ter : result -> Prop :=
+  | not_ter_div : not_ter out_div
+  | not_ter_stuck : not_ter result_stuck
+  | not_ter_bottom : not_ter result_bottom.
+
+Lemma not_ter_forall : forall res,
+  ~ not_ter res <-> exists S R, res = out_ter S R.
 Proof.
-  introv.
-
-  tests: (exists S R, res = out_ter S R).
-   lets (S&R&E): (rm C). rewrite E in * |- *. clear E.
-   simpl.
-
-   skip.
-
-  cuts: ((forall S R, ~ res = out_ter S R) ->
-    res = out_ter S0 R0).
-  (* TODO:  Add [lets] *)
-  destruct res as [o|r1|r2]; [
-    destruct o; [
-      simpl; rewrite H; [
-        reflexivity
-        | introv; discriminate ]
-      | false C; repeat eexists ]
-    | auto*
-    | auto* ].
-
-  skip.
+  iff P.
+   destruct res; try (false P; constructors).
+    destruct o. false P; constructors. repeat eexists.
+   lets (S&R&E): (rm P). intro A. substs. inverts A.
 Qed.
 
 Ltac unmonad_if_ter :=
   match goal with
-  | 
-  end. *)
+  | I: if_ter ?res ?F = result_normal (out_ter ?S0 ?R0) |- ?g =>
+    let NT := fresh "NT" in
+    tests NT: (not_ter res); [
+      let G := fresh "G" in
+      cuts G: (res = out_ter S0 R0 -> g); [
+        apply G; inverts NT; inverts I
+      | let E := fresh "Eq" in
+        introv E; clear NT ]
+     | rewrite not_ter_forall in NT;
+       let S := fresh "S" in
+       let R := fresh "R" in
+       let E := fresh "Eq" in
+       lets (S&R&E): (rm NT); rewrite E in I; clear E; simpl in I ]
+  end.
+
+Parameter gT : Prop.
+
+Lemma test : forall res S0 R0,
+  if_ter res (fun S R =>
+    result_stuck) = out_ter S0 R0 -> gT.
+Proof.
+  introv I.
+
+  unmonad_if_ter.
+
+  skip.
+  skip.
+
+Qed.
 
 
 (**************************************************************)
