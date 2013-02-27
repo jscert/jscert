@@ -140,6 +140,7 @@ Ltac if_unmonad :=
 
   end.
 
+(*
 Parameter gT : Prop.
 
 Lemma test : forall res res0 S0 R0,
@@ -158,6 +159,7 @@ Proof.
   skip.
 
 Admitted.
+*)
 
 
 (**************************************************************)

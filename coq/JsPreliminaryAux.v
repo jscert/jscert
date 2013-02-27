@@ -212,13 +212,6 @@ Global Instance descriptor_is_generic_dec : forall Desc,
   Decidable (descriptor_is_generic Desc).
 Proof. typeclass. Qed.
 
-Global Instance res_label_in_dec : forall R labs,
-  Decidable (res_label_in R labs).
-Proof.
-  introv. unfold res_label_in.
-  destruct (res_label R); typeclass.
-Qed.
-
 Global Instance prepost_unary_op_dec : forall op,
   Decidable (prepost_unary_op op).
 Proof. introv. destruct op; typeclass. Qed.

@@ -131,19 +131,30 @@ Definition if_success_or_return (o : result) (K1 : state -> resvalue -> result) 
     | _ => o
     end).
 
-Definition if_normal_continue_or_break (search_label : unit -> bool) S R
-  (K1 : unit -> result) (K2 : unit -> result) : result :=
-  let default := out_ter S R in
-  match res_type R with
-  | restype_break =>
-    if search_label tt then K2 tt
-    else default
-  | restype_continue =>
-    if search_label tt then K1 tt
-    else default
-  | restype_normal => K1 tt
-  | _ => default
-  end.
+Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
+  (K1 : state -> res -> result) (K2 : state -> res -> result) : result :=
+  if_ter o (fun S R =>
+    match res_type R with
+    | restype_break =>
+      if search_label R then K2
+      else out_ter
+    | restype_continue =>
+      if search_label R then K1
+      else out_ter
+    | restype_normal => K1
+    | _ => out_ter
+    end S R).
+
+Definition if_break (o : result) (search_label : res -> bool)
+  (K : state -> res -> result) : result :=
+  if_ter o (fun S R =>
+    let default := out_ter S R in
+    match res_type R with
+    | restype_break =>
+      if search_label (res_value R) then K S R
+      else default
+    | _ => default
+    end).
 
 Definition if_value (o : result) (K : state -> value -> result) : result :=
   if_success o (fun S rv =>
@@ -1492,6 +1503,11 @@ Definition run_expr_new (run_expr' : run_expr_type) (run_call' : run_call_type)
 
 (**************************************************************)
 
+Definition run_stat_label (run_stat' : run_stat_type) S C lab t :=
+  if_break (run_stat' S C t)
+    (fun R => decide (res_label R = Some lab))
+    (fun S1 R1 => out_ter S1 (res_value R1)).
+
 Definition run_stat_with (run_expr' : run_expr_type) (run_stat' : run_stat_type)
   (run_call' : run_call_type) S C e1 t2 : result :=
   if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
@@ -1526,12 +1542,13 @@ Fixpoint run_stat_while (max_step : nat) (run_expr' : run_expr_type) (run_stat' 
     let run_stat_while' := run_stat_while max_step' run_expr' run_stat' run_call' in
     if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
       if convert_value_to_boolean v1 then
-        if_ter (run_stat' S1 C t2) (fun S2 R =>
-          let rvR := res_value R in
+        if_ter (run_stat' S1 C t2) (fun S2 R2 =>
+          let rvR := res_value R2 in
           let rv' := ifb rvR = resvalue_empty then rv else rvR in
-          if_normal_continue_or_break (fun _ => res_label_in R ls) S2 R (fun _ =>
-            run_stat_while' rv' S2 C ls e1 t2) (fun _ =>
-            out_ter S2 rv'))
+          if_normal_continue_or_break (out_ter S2 R2)
+            (fun R => res_label_in R ls) (fun S3 R3 =>
+            run_stat_while' rv' S3 C ls e1 t2) (fun S3 R3 =>
+            out_ter S3 rv'))
       else out_ter S1 rv)
   end.
 
@@ -1660,8 +1677,8 @@ with run_stat (max_step : nat) S C t : result :=
     | stat_block ts =>
       run_block run_stat' S C resvalue_empty ts
 
-    | stat_label l t =>
-      arbitrary (* TODO *)
+    | stat_label lab t =>
+      run_stat_label run_stat' S C lab t
 
     | stat_with e1 t2 =>
       run_stat_with run_expr' run_stat' run_call' S C e1 t2
