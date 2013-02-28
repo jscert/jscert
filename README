@@ -18,6 +18,12 @@ INSTALLATION AND COMPILATION
 
 1) Run "make init" to install the parser, TLC, and Flocq (requires subversion)
 
+1') If you did not obtain the files through git (typically if you got
+    a snapshot), you then need to fetch the parser manually:
+    
+    rmdir src/core/trunk/interp/parser
+    git submodule add https://github.com/resource-reasoning/JS_Parser.git src/core/trunk/interp/parser
+
 2) Run "make" to compile the files (ignore the warnings),
    Run "make -j 2" if your machine has two cores.
 
