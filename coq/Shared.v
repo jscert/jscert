@@ -422,7 +422,7 @@ Qed.
 Class FunctionalPred A (P:A->Prop) := functionalpred_make {
     functional_pred : forall x y, P x -> P y -> x = y }.
 
-Global Instance apply_if_exists_pickable : (* Is hat a good idea? -- Martin *)
+Global Instance apply_if_exists_pickable : (* Is that a good idea? -- Martin *)
   forall (A B : Type) (P : A -> Prop) (f : A -> B),
   Pickable P -> FunctionalPred P ->
   Pickable (fun v => exists x, P x /\ f x = v).

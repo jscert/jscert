@@ -92,10 +92,11 @@ Qed.
 (* [need_ter I NT E res S R] generates two goals:
    * one where [not_ter res]
    * one where [res = out_ter S R] *)
-Ltac need_ter I NT E res S R :=
-  tests NT: (not_ter res); [|
-    rewrite not_ter_forall in NT;
-     lets (S&R&E): (rm NT); rewrite E in I; clear E; simpl in I ].
+Ltac need_ter I NT E res S R k :=
+  tests NT: (not_ter res); [
+      try solve [ inverts NT; inverts I ]
+    | rewrite not_ter_forall in NT;
+      lets (S&R&E): (rm NT); rewrite E in I; clear E; simpl in I; k ].
 
 (* Unfolds one monadic contructor in the environnement. *)
 Ltac if_unmonad :=
@@ -109,28 +110,28 @@ Ltac if_unmonad :=
     unfold if_success in I; if_unmonad
 
   | I: if_success_state ?rv ?res ?K = ?res' |- ?g =>
-    need_ter I NT E res S R; [
-       try (inverts NT; inverts I; fail)
+    need_ter I NT E res S R ltac:(
+      let C := fresh "C" in
+      asserts C: ((res_type R = restype_normal -> g)
+        /\ (res_type R = restype_break -> g)
+        /\ ((res_type R = restype_continue
+          \/ res_type R = restype_return
+          \/ res_type R = restype_throw) ->
+        result_normal (out_ter S (res_overwrite_value_if_empty rv R))
+          = res' -> g)); [
+          splits;
+          let RT := fresh "RT" in
+          introv RT; first [ rewrite RT in I | clear I; introv I ]
       | let C1 := fresh "C" in
         let C2 := fresh "C" in
         let C3 := fresh "C" in
-        cuts C1: (res_type R = restype_normal -> g); [
-        cuts C2: (res_type R = restype_break -> g); [
-        cuts C3: ((res_type R = restype_continue
-            \/ res_type R = restype_return
-            \/ res_type R = restype_throw) ->
-          result_normal (out_ter S (res_overwrite_value_if_empty rv R))
-            = res' -> g); [
+        lets (C1&C2&C3): (rm C);
         destruct (res_type R); [ apply C1 | apply C2
           | apply C3 | apply C3 | apply C3 ];
-          (reflexivity || (inverts~ I; fail) || idtac)
-        | clear C1 C2] | clear C1] |];
-          let RT := fresh "RT" in
-          introv RT ; (rewrite RT in I || (clear I; introv I)) ]
+          first [ reflexivity | inverts~ I; fail | idtac ] ])
 
   | I: if_ter ?res ?K = ?res' |- ?g =>
-    need_ter I NT E res S R; [
-       try (inverts NT; inverts I; fail) |]
+    need_ter I NT E res S R ltac:idtac
 
   | I: result_normal (out_ter ?S1 ?R1)
       = result_normal (out_ter ?S0 ?R0) |- ?g =>
@@ -140,44 +141,60 @@ Ltac if_unmonad :=
 
   end.
 
-(*
-Parameter gT : Prop.
 
-Lemma test : forall res res0 S0 R0,
-  if_ter res (fun S R =>
-    if_success res0 (fun S' rv =>
-      result_stuck))
-  = out_ter S0 R0 -> gT.
+(**************************************************************)
+(** Operations on objects *)
+
+Lemma run_object_method_correct :
+  forall Proj S l,
+  (* TODO:  Add correctness properties. *)
+    object_method Proj S l (run_object_method Proj S l).
 Proof.
-  introv I.
+  introv. eexists. splits*.
+  apply pick_spec.
+  skip. (* Need properties about [l]. *)
+Qed.
 
-  repeat if_unmonad.
+Lemma run_object_proto :
+  forall S l,
+  (* TODO:  Add correctness properties. *)
+    object_proto S l (run_object_proto S l).
+Proof.
+  introv. eexists. splits*.
+  apply pick_spec.
+  skip. (* Need properties about [l]. *)
+Qed.
 
-  Set Printing All. idtac.
 
-  skip.
-  skip.
+(**************************************************************)
+(** Correctness of interpreter *)
 
-Admitted.
-*)
+Definition follow_spec {T Te : Type} :=
+  fun (conv : T -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
+    (run : state -> execution_ctx -> T -> result) => forall S C (e : T) o,
+  (* TODO:  Add correctness statements. *)
+  run S C e = o ->
+  red S C (conv e) o.
+
+Definition follow_expr := follow_spec expr_basic red_expr.
+Definition follow_stat := follow_spec stat_basic red_stat.
+Definition follow_prog := follow_spec prog_basic red_prog.
+(* TODO:  Definition follow_call :=
+  follow_spec expr_call *)
+
+(**************************************************************)
+(** Operations on environments *)
 
 
 (**************************************************************)
 (** ** Main theorem *)
 
-Theorem run_prog_correct : forall num S C p o,
-  (* TODO:  Add correctness statements. *)
-  run_prog num S C p = o ->
-  red_prog S C p o
-
-with run_stat_correct : forall num S C t o,
-  run_stat num S C t = o ->
-  red_stat S C t o
-
-with run_expr_correct : forall num S C e o,
-  run_expr num S C e = o ->
-  red_expr S C e o.
+Theorem run_prog_correct : forall num,
+  follow_prog (run_prog num)
+with run_stat_correct : forall num,
+  follow_stat (run_stat num)
+with run_expr_correct : forall num,
+  follow_expr (run_expr num).
 Proof.
 Admitted.
-
 
