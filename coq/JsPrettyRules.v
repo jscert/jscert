@@ -2099,7 +2099,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_instantiation_arg_obj_declared : forall o1 L S0 S C K ct lf code xs args bdecl o, (* Step 7 else branch *)
       ~ (ct = codetype_func /\ bdecl = false) ->
       red_expr S C (K (out_void S)) o ->
-      red_expr S0 C (spec_binding_instantiation_arg_obj K ct lf code xs args L (out_ter S bdecl)) o (* I removed the constraint that [lf] should be defined.  Please douvble check -- Martin.*)
+      red_expr S0 C (spec_binding_instantiation_arg_obj K ct lf code xs args L (out_ter S bdecl)) o (* I removed the constraint that [lf] should be defined.  Please double check -- Martin.*)
 
   | red_spec_binding_instantiation_arg_obj_not_declared : forall str o1 L S0 S C K ct lf code xs args o, (* Step 7a *)
       str = prog_strict code ->

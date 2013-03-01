@@ -182,6 +182,7 @@ Definition follow_prog := follow_spec prog_basic red_prog.
 (* TODO:  Definition follow_call :=
   follow_spec expr_call *)
 
+
 (**************************************************************)
 (** Operations on environments *)
 

@@ -750,6 +750,8 @@ Definition to_default (run_call' : run_call_type) S C l (prefo : option preftype
         which seems lighter and clearer, all hat because of the next
         line (which could actually be replaced by a [call], but would
         it be clearer to add such a deferencing?) *)
+        (* In fact, that may be a bad idea as some non yet implemented
+        primitive may need to call directly run_call' afterwards. *)
         if_success_value run_call' C (run_call' S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
           match v with
           | value_prim w => out_ter S w
