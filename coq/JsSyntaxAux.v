@@ -93,7 +93,7 @@ Definition object_with_invokation O constr call has_instance :=
 Definition object_with_details O scope params code target boundthis boundargs paramsmap :=
   match O with
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
-    object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 scope params code target boundthis boundargs paramsmap 
+    object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 scope params code target boundthis boundargs paramsmap
   end.
 
 (** Projection functions for [funcbody] *)
@@ -102,11 +102,11 @@ Definition funcbody_prog bd :=
   match bd with
   | funcbody_intro p _ => p
   end.
-  
+
 Definition funcbody_string bd :=
   match bd with
   | funcbody_intro _ s => s
-  end.  
+  end.
 
 
 (**************************************************************)
@@ -128,7 +128,7 @@ Definition builtin_compare bl1 bl2 :=
   | builtin_ref_error, builtin_ref_error => true
   | builtin_syntax_error, builtin_syntax_error => true
   | builtin_type_error, builtin_type_error => true
-  | _, _ => false
+  | _, _ => false (* Note that this is not always the case. *)
   end.
 (*
 Parameter builtin_compare : builtin -> builtin -> bool.
@@ -435,8 +435,37 @@ Proof. apply prove_Inhab. apply (funcbody_intro arbitrary arbitrary). Qed.
 (** Inhabitants **)
 
 Global Instance funccode_inhab : Inhab funccode.
-Proof. apply (prove_Inhab (funccode_builtin arbitrary)). Qed. 
- (* TODO: use an arbitrary for type [stat] *)
+Proof. apply (prove_Inhab (funccode_code arbitrary)). Qed.
+
+
+(**************************************************************)
+(** ** Type [restype] *)
+
+(** Inhabitants **)
+
+Global Instance restype_inhab : Inhab restype.
+Proof. apply (prove_Inhab restype_normal). Qed.
+
+(** Boolean comparison *)
+
+Definition restype_compare rt1 rt2 :=
+  match rt1, rt2 with
+  | restype_normal, restype_normal => true
+  | restype_break, restype_break => true
+  | restype_continue, restype_continue => true
+  | restype_return, restype_return => true
+  | restype_throw, restype_throw => true
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance restype_comparable : Comparable restype.
+Proof.
+  applys (comparable_beq restype_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
 
 
 (**************************************************************)

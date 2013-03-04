@@ -476,7 +476,7 @@ Definition string_sub s (n l : int) : string :=
 (* todo: move *)
 Axiom ascii_compare : Ascii.ascii -> Ascii.ascii -> bool.
 Global Instance ascii_comparable : Comparable Ascii.ascii.
-Proof. applys (comparable_beq ascii_compare). skip. Qed. (* I need this for the extraction -- Martin. *)
+Proof. applys (comparable_beq ascii_compare). skip. Qed. (* I need at least this for the extraction -- Martin. *)
 Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
 
 (* todo: implement using lib *)
@@ -583,5 +583,22 @@ Proof.
     rewrite~ prop_eq_False_back.
      typeclass.
      discriminate.
+Qed.
+
+
+(**************************************************************)
+(** ** LATER: move to LibProd *)
+
+Definition prod_compare {A B : Type} `{Comparable A} `{Comparable B} (x y : A * B) :=
+  let (x1, x2) := x in let (y1, y2) := y in
+  decide (x1 = y1 /\ x2 = y2).
+
+Global Instance prod_comparable : forall A B : Type,
+  Comparable A -> Comparable B -> Comparable (A * B).
+Proof.
+  introv CA CB. applys comparable_beq (@prod_compare A B _ _). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff H; inverts~ H;
+   tryfalse; auto; try congruence.
+  (* Note that this is not the usual proof, which didn't worked there. -- Martin. *)
 Qed.
 

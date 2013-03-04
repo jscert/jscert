@@ -86,8 +86,9 @@ Definition attributes_data_compare Ad1 Ad2 :=
 Global Instance attributes_data_comparable : Comparable attributes_data.
 Proof.
   applys (comparable_beq attributes_data_compare). intros x y.
-  skip. (* The classical proof does not work as [x] and [y] has t be destructed recursively.
-           However, please do not admit this proof as the interpreter needs it. -- Martin *)
+  destruct x; destruct y; simpl; rew_refl; iff H;
+    [lets~ (H1&H2&H3&H4): (rm H) | inverts~ H]; congruence.
+  (* Note that this is not the usual proof, which didn't worked there. -- Martin. *)
 Qed.
 
 
@@ -107,7 +108,9 @@ Definition attributes_accessor_compare Aa1 Aa2 :=
 Global Instance attributes_accessor_comparable : Comparable attributes_accessor.
 Proof.
   applys (comparable_beq attributes_accessor_compare). intros x y.
-  skip. (* idem. -- Martin *)
+  destruct x; destruct y; simpl; rew_refl; iff H;
+    [lets~ (H1&H2&H3&H4): (rm H) | inverts~ H]; congruence.
+  (* Note that this is not the usual proof, which didn't worked there. -- Martin. *)
 Qed.
 
 

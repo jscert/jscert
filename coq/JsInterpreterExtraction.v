@@ -114,7 +114,7 @@ Extract Constant env_loc_global_env_record => "0".
 
 
 (* Sets *)
-Extract Constant label_set_dec => "(fun l -> assert false (* TODO:  How to make extract those `label_set'? *))".
+Extract Constant label_set_dec => "(fun l -> assert false (* TODO:  How to make Coq extract those `label_set'? *))".
 
 
 (* The following functions make pattern matches with floats and shall thus be removed. *)
@@ -124,7 +124,7 @@ Extraction Inline Fappli_IEEE.Bdiv Fappli_IEEE_bits.b64_div.
 
 (* New options for the interpreter to work in Coq 8.4 *)
 Set Extraction AccessOpaque.
-Extract Constant Pos.succ => "Pervasives.succ". (* Martin:  Because of a bug of the extraction printer, we are forced to precise the way we want such objects to be extracted... *)
+Extract Constant Pos.succ => "Pervasives.succ (* Because of a bug of the extraction printer, we are forced to precise the way we want such objects to be extracted... *)".
 
 (* These parameters are implementation-dependant according to the spec.
    I've chosed some very simple values, but we could choose another thing for them. *)
