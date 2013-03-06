@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export LibTactics LibCore LibString LibSet.
+Require Export LibTactics LibCore LibString LibFset LibSet.
 Generalizable Variables A B.
 Require Export LibProd.
 
@@ -601,4 +601,17 @@ Proof.
    tryfalse; auto; try congruence.
   (* Note that this is not the usual proof, which didn't worked there. -- Martin. *)
 Qed.
+
+
+(**************************************************************)
+(** ** LATER: move to LibFset *)
+
+Lemma subset_inter_weak_l : forall {A : Type} (E F : fset A),
+  FsetImpl.subset (FsetImpl.inter E F) E.
+Proof. intros_all. rewrite FsetImpl.in_inter in H. auto*. Qed.
+
+Lemma subset_inter_weak_r : forall {A : Type} (E F : fset A),
+  FsetImpl.subset (FsetImpl.inter E F) F.
+Proof. intros_all. rewrite FsetImpl.in_inter in H. auto*. Qed.
+
 
