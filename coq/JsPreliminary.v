@@ -46,6 +46,12 @@ Implicit Type p : prog.
 Implicit Type t : stat.
 
 
+
+(**************************************************************)
+
+Definition prog_intro_strictness p :=
+  match p with prog_intro str els => str end.
+
 (**************************************************************)
 (** ** Auxiliary functions for results *)
 
@@ -70,6 +76,10 @@ Definition res_label_in R labs :=
   | Some lab => decide (lab \in labs)
   end.
 
+  (* TODO
+
+res_label_in R labs := (res_label R \in labs)
+*)
 
 (**************************************************************)
 (** ** Auxiliary functions for function bodies *)
