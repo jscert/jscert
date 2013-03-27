@@ -80,6 +80,13 @@ Definition label := string.
 
 Definition label_opt := option label.
 
+(* TODO
+-->
+labelopt :=
+   | labelopt_empty
+   | labelopt_real : string
+*)
+
 (** A set of label, possibly including the empty label. *)
 
 Definition label_set := set label.
@@ -147,7 +154,7 @@ with stat :=
 
 (** Grammar of programs *)
 
-with prog := 
+with prog :=
   | prog_intro : strictness_flag -> list element -> prog 
 
 with element :=
@@ -176,6 +183,26 @@ Inductive math_op :=
   .
 
 (** Identifiers for builtin functions and objects *)
+
+(* TODO
+Inductive preallocated :=
+
+call_object_get_prototype_of
+construct_method
+
+builtin_get;
+   object_get_own_prop_ : builtin_get_own_prop;
+   object_get_prop_ : builtin_get_prop;
+   object_put_ : builtin_put;
+   object_can_put_ : builtin_can_put;
+   object_has_prop_ : builtin_has_prop;
+   object_delete_ : builtin_delete;
+   object_default_value_ : builtin_default_value;
+   object_define_own_prop_ : builtin_define_own_prop;
+builtin_has_instance
+
+preallocated => preallocated objects
+*)
 
 Inductive builtin :=
   
@@ -356,6 +383,7 @@ Inductive builtin :=
 Inductive object_loc :=
   | object_loc_normal : nat -> object_loc
   | object_loc_builtin : builtin -> object_loc.
+(*  | object_loc_prealloc : prealloc -> object_loc.*)
 
 (** Grammar of primitive values *)
 
@@ -393,7 +421,10 @@ Coercion prim_bool : bool >-> prim.
 Coercion prim_number : JsNumber.number >-> prim.
 Coercion prim_string : string >-> prim.
 Coercion value_prim : prim >-> value.
+(*
+Coercion object_loc_prealloc : prealloc >-> object_loc.*)
 Coercion object_loc_builtin : builtin >-> object_loc.
+
 Coercion value_object : object_loc >-> value.
 
 
@@ -541,12 +572,13 @@ Definition object_properties_type :=
   Heap.heap prop_name attributes.
 
 (**************************************************************)
+
 (** ** LATER: implement *) 
 (** ** LATER: move to Shared.v *)
 (** ** LATER: should be generic? *)
-
 Axiom map_as_list : object_properties_type -> list (prop_name * attributes).
 
+(**************************************************************)
 (** Representation of objects *)
 
 Record object := object_intro {
@@ -555,18 +587,18 @@ Record object := object_intro {
    object_extensible_ : bool;
    object_prim_value_ : option value;
    object_properties_ : object_properties_type;
-   object_get_ : builtin;
-   object_get_own_prop_ : builtin;
-   object_get_prop_ : builtin;
-   object_put_ : builtin;
-   object_can_put_ : builtin;
-   object_has_prop_ : builtin;
-   object_delete_ : builtin;
-   object_default_value_ : builtin;
-   object_define_own_prop_ : builtin;
-   object_construct_ : option builtin;
-   object_call_ : option builtin;
-   object_has_instance_ : option builtin;
+   object_get_ : builtin_get;
+   object_get_own_prop_ : builtin_get_own_prop;
+   object_get_prop_ : builtin_get_prop;
+   object_put_ : builtin_put;
+   object_can_put_ : builtin_can_put;
+   object_has_prop_ : builtin_has_prop;
+   object_delete_ : builtin_delete;
+   object_default_value_ : builtin_default_value;
+   object_define_own_prop_ : builtin_define_own_prop;
+   object_construct_ : option builtin ; (* option constructable; *)
+   object_call_ : option builtin ; (* option callable; *)
+   object_has_instance_ : option builtin; (*_has_instance ; *)
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
    object_code_ : option funcbody;
@@ -576,6 +608,7 @@ Record object := object_intro {
    object_parameter_map_ : option object_loc
    (* LATER: match for regular expression matching *)
    }.
+
 
 
 (**************************************************************)
