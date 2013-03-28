@@ -416,9 +416,6 @@ Proof. apply (prove_Inhab (prog_intro true nil)). Qed.
 
 (** Projections **)
 
-Definition prog_strict p :=
-  match p with prog_intro bstrict els => bstrict end.
-
 Definition prog_elements p :=
   match p with prog_intro bstrict els => els end.
 
