@@ -97,3 +97,4 @@ with add_infos_element str el :=
     | element_stat t => element_stat (add_infos_stat str label_set_empty t)
     | element_func_decl s ss fb => element_func_decl s ss (add_infos_funcbody str fb)
   end.
+

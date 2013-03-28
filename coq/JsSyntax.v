@@ -255,6 +255,8 @@ Inductive call :=
   | call_after_bind (* 15.3.4.5.1 *)
   | call_prealloc : prealloc -> call. (* all are functions except those tagged not callable *)
 
+Coercion call_prealloc : prealloc >-> call.
+
 (** Identifiers for "Construct" methods *)
 
 Inductive construct :=
@@ -276,6 +278,7 @@ Inductive construct :=
       | construct_throw_type_error
     *)
 
+Coercion construct_prealloc : prealloc >-> construct.
 
 (** Identifiers for "HasInstance" methods *)
 
