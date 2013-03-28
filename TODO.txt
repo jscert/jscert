@@ -9,7 +9,6 @@ TODO
 
 *) resolve ambiguity "propname" vs "prop_name"
 
-*)  initialize the execution context with binding instantiation 
 
 ===
 ONCE INTERPRETER IS STABILIZED
@@ -96,17 +95,3 @@ function f() {  y: { x : { try { break x } catch (e) { break y } finally { 2 } ;
 TEST:
 
 delete {}
-
-
-
-==============
-BIN:
-
-(* TODO: cleanup
-Global Instance label_bag : BagIn label label_set.
-Proof. apply in_inst. Qed.
-
-Global Instance label_set_dec : forall lab labs,
-  Decidable (lab \in labs).
-Admitted.
-*)

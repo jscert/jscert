@@ -17,7 +17,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type B : builtin.
+(*Implicit Type B : builtin.*)
 Implicit Type T : type.
 
 Implicit Type rt : restype.
@@ -78,28 +78,28 @@ Notation "'attrib_native'" := prop_attributes_for_global_object.
 Definition object_create_builtin vproto sclass P :=
   object_create vproto sclass true P.
 
-(** Builds a native object, with [builtin_function_proto]
+(** Builds a native object, with [prealloc_function_proto]
     as prototype, and a length property. *)
 
-Definition object_create_builtin_common length P :=
+Definition object_create_prealloc_call_or_construct length P :=
   let sclass := "Function" in
   let P' := Heap.write P "length" (attrib_constant length) in
   (* The spec does not say anything special about [[get]] for built-in objects *)
-  object_create_builtin builtin_function_proto sclass P'.
+  object_create_builtin prealloc_function_proto sclass P'.
 
 (** Builds a native function object, like in the above function
     but with only a Call method implemented by builtin code. *)
 
-Definition object_create_builtin_function builtin_call length P :=
-  let O := object_create_builtin_common length P in
-  object_with_invokation O None (Some builtin_call) None.
+Definition object_create_prealloc_call fprealloc length P :=
+  let O := object_create_prealloc_call_or_construct length P in
+  object_with_invokation O None (Some (call_prealloc fprealloc)) None.
 
 (** Builds a native constructor object, with a Call method and
     a Construct method implemented by builtin code. *)
 
-Definition object_create_builtin_constructor builtin_call builtin_construct length P :=
-  let O := object_create_builtin_common length P in
-  object_with_invokation O (Some builtin_construct) (Some builtin_call) None.
+Definition object_create_prealloc_constructor fprealloc length P :=
+  let O := object_create_prealloc_call_or_construct length P in
+  object_with_invokation O (Some (construct_prealloc fprealloc)) (Some (call_prealloc fprealloc)) None.
 
 (** Shorthand to extend a heap with a native method *)
 
@@ -118,65 +118,66 @@ Definition write_constant P name value :=
 (** Implementation-dependent values for prototype and class fields
     of the global object *)
 
-Parameter object_builtin_global_proto : value.
-Parameter object_builtin_global_class : string.
+Parameter object_prealloc_global_proto : value.
+Parameter object_prealloc_global_class : string.
 
 (** Properties of the global object *)
 
-Definition object_builtin_global_properties :=
+Definition object_prealloc_global_properties :=
   let P := Heap.empty in
   let P := write_constant P "NaN" JsNumber.nan in
   let P := write_constant P "Infinity" JsNumber.infinity in
   let P := write_constant P "undefined" undef in
-  let P := write_native P "eval" builtin_global_eval in
-  let P := write_native P "isNan" builtin_global_is_nan in
-  let P := write_native P "isFinite" builtin_global_is_finite in
+  let P := write_native P "eval" prealloc_global_eval in
+  let P := write_native P "isNan" prealloc_global_is_nan in
+  let P := write_native P "isFinite" prealloc_global_is_finite in
   (* LATER: other functions to insert here *)
-  let P := write_native P "Object" builtin_object in
-  let P := write_native P "Function" builtin_function in
-  (* LATER: let P := write_native P "Array" builtin_array in
-  let P := write_native P "String" builtin_string in
-  let P := write_native P "Boolean" builtin_boolean in
-  let P := write_native P "Number" builtin_number in *)
-  let P := write_native P "Math" builtin_math in
-  let P := write_native P "Error" builtin_error in
-  let P := write_native P "RangeError" builtin_range_error in
-  let P := write_native P "ReferenceError" builtin_ref_error in
-  let P := write_native P "SyntaxError" builtin_syntax_error in
-  let P := write_native P "TypeError" builtin_type_error in
+  let P := write_native P "Object" prealloc_object in
+  let P := write_native P "Function" prealloc_function in
+  (* LATER: let P := write_native P "Array" prealloc_array in
+  let P := write_native P "String" prealloc_string in
+  let P := write_native P "Boolean" prealloc_boolean in
+  let P := write_native P "Number" prealloc_number in *)
+  let P := write_native P "Math" prealloc_math in
+  let P := write_native P "Error" prealloc_error in
+  let P := write_native P "RangeError" prealloc_range_error in
+  let P := write_native P "ReferenceError" prealloc_ref_error in
+  let P := write_native P "SyntaxError" prealloc_syntax_error in
+  let P := write_native P "TypeError" prealloc_type_error in
   P.
 
 (** Definition of the global object *)
 
-Definition object_builtin_global :=
+Definition object_prealloc_global :=
   object_create_builtin
-    object_builtin_global_proto
-    object_builtin_global_class
-    object_builtin_global_properties.
+    object_prealloc_global_proto
+    object_prealloc_global_class
+    object_prealloc_global_properties.
     
 Definition global_eval_function_object :=
-  object_create_builtin_function builtin_global_eval_call 1 Heap.empty.
+  object_create_prealloc_call prealloc_global_eval 1 Heap.empty.
   
 Definition global_is_nan_function_object := 
-  object_create_builtin_function builtin_global_is_nan_call 1 Heap.empty.
+  object_create_prealloc_call prealloc_global_is_nan 1 Heap.empty.
   
 Definition global_is_finite_function_object :=
-  object_create_builtin_function builtin_global_is_finite_call 1 Heap.empty.
+  object_create_prealloc_call prealloc_global_is_finite 1 Heap.empty.
+
 
 (**************************************************************)
 (** Object object *)
 
 (** Definition of the Object object *)
 
-Definition object_builtin_object :=
+Definition object_prealloc_object :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" builtin_object_proto in
-  let P := write_native P "get_prototype_of" builtin_object_get_prototype_of in
+  let P := write_constant P "prototype" prealloc_object_proto in
+  let P := write_native P "get_prototype_of" prealloc_object_get_prototype_of in
   (* LATER: complete list *)
-  object_create_builtin_constructor builtin_object_call builtin_object_new 1 P.
+  object_create_prealloc_constructor prealloc_object 1 P.
   
 Definition object_get_prototype_of_function_object :=
-  object_create_builtin_function builtin_object_get_prototype_of_call 1 Heap.empty.
+  object_create_prealloc_call prealloc_object_get_prototype_of 1 Heap.empty.
 
 
 (**************************************************************)
@@ -184,46 +185,46 @@ Definition object_get_prototype_of_function_object :=
 
 (** Definition of the Object prototype object *)
 
-Definition object_builtin_object_proto :=
+Definition object_prealloc_object_proto :=
   let P := Heap.empty in
-  let P := write_native P "constructor" builtin_object in
-  let P := write_native P "toString" builtin_object_proto_to_string in 
-  let P := write_native P "valueOf" builtin_object_proto_value_of in 
-  let P := write_native P "isPrototypeOf" builtin_object_proto_is_prototype_of in 
+  let P := write_native P "constructor" prealloc_object in
+  let P := write_native P "toString" prealloc_object_proto_to_string in 
+  let P := write_native P "valueOf" prealloc_object_proto_value_of in 
+  let P := write_native P "isPrototypeOf" prealloc_object_proto_is_prototype_of in 
   object_create_builtin null "Object" P.
   
 Definition object_proto_to_string_function_object :=
-  object_create_builtin_function builtin_object_proto_to_string_call 0 Heap.empty.
+  object_create_prealloc_call prealloc_object_proto_to_string 0 Heap.empty.
   
 Definition object_proto_value_of_function_object :=
-  object_create_builtin_function builtin_object_proto_value_of_call 0 Heap.empty.
+  object_create_prealloc_call prealloc_object_proto_value_of 0 Heap.empty.
   
 Definition object_proto_is_prototype_of_function_object :=
-  object_create_builtin_function builtin_object_proto_is_prototype_of_call 1 Heap.empty.
+  object_create_prealloc_call prealloc_object_proto_is_prototype_of 1 Heap.empty.
 
 
 (**************************************************************)
 (** Function object *)
 
-Definition object_builtin_function :=
+Definition object_prealloc_function :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" (value_object builtin_function_proto) in
-  let P := write_native P "get_prototype_of" builtin_object_get_prototype_of in
+  let P := write_constant P "prototype" (value_object prealloc_function_proto) in
+  let P := write_native P "get_prototype_of" prealloc_object_get_prototype_of in
   (* LATER: complete list *)
-  object_create_builtin_constructor builtin_function_call builtin_function_new 1 P.
+  object_create_prealloc_constructor prealloc_function 1 P.
 
 
 (**************************************************************)
 (** Function prototype object *)
 
-Definition object_builtin_function_proto :=
+Definition object_prealloc_function_proto :=
   let P := Heap.empty in
-  let P := write_native P "constructor" builtin_function in
+  let P := write_native P "constructor" prealloc_function in
   let P := Heap.write P "length" (attrib_constant 0) in
-  (* let P := write_native P "toString" builtin_function_proto_to_string in *) (* TODO *)
+  (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* TODO *)
   (* LATER: complete list *)
-  let O := object_create_builtin builtin_object_proto "Function" P in
-  object_with_invokation O None (Some builtin_function_proto_invoked) None.
+  let O := object_create_builtin prealloc_object_proto "Function" P in
+  object_with_invokation O None (Some (call_prealloc prealloc_function_proto)) None.
 
 
 (**************************************************************)
@@ -231,36 +232,36 @@ Definition object_builtin_function_proto :=
 
 (* Daniele: ? *)
 
-Definition object_builtin_number :=
+Definition object_prealloc_number :=
   let P := Heap.empty in
-  (* TODO: what does this mean? --:: Daniele: use [builtin_function_proto] when available *)
+  (* TODO: what does this mean? --:: Daniele: use [prealloc_function_proto] when available *)
   (* Daiva: The spec says that Number.prototype is Number prototype object defined in 15.7.4 -- not a function prototype
             object. *)
-  let P := write_constant P "prototype" builtin_number_proto in
+  let P := write_constant P "prototype" prealloc_number_proto in
   let P := write_constant P "NaN" JsNumber.nan in
   let P := write_constant P "NEGATIVE_INFINITY" JsNumber.neg_infinity in
   let P := write_constant P "POSITIVE_INFINITY" JsNumber.infinity in
   (* TODO: complete list *)
-  object_create_builtin_constructor builtin_number_call builtin_number_new 1 P.
+  object_create_prealloc_constructor prealloc_number 1 P.
 
 
 (**************************************************************)
 (** Number prototype object *)
 
-Definition object_builtin_number_proto :=
+Definition object_prealloc_number_proto :=
   let P := Heap.empty in
-  let P := write_native P "constructor" builtin_number in
-  let P := write_native P "toString" builtin_number_proto_to_string in   
-  let P := write_native P "valueOf" builtin_number_proto_value_of in
+  let P := write_native P "constructor" prealloc_number in
+  let P := write_native P "toString" prealloc_number_proto_to_string in   
+  let P := write_native P "valueOf" prealloc_number_proto_value_of in
   (* TODO: complete list *)
-  let O := object_create_builtin builtin_object_proto "Number" P in
+  let O := object_create_builtin prealloc_object_proto "Number" P in
   object_with_primitive_value O JsNumber.zero.
   
 Definition number_proto_to_string_function_object :=
-  object_create_builtin_function builtin_number_proto_to_string_call 0 Heap.empty.
+  object_create_prealloc_call prealloc_number_proto_to_string 0 Heap.empty.
   
 Definition number_proto_value_of_function_object :=
-  object_create_builtin_function builtin_number_proto_value_of_call 0 Heap.empty.
+  object_create_prealloc_call prealloc_number_proto_value_of 0 Heap.empty.
 
 
 (**************************************************************)
@@ -286,34 +287,34 @@ Definition number_proto_value_of_function_object :=
 (**************************************************************)
 (** Bool object *)
 
-Definition object_builtin_bool :=
+Definition object_prealloc_bool :=
   let P := Heap.empty in
   (* Daiva: I've changed to write_native instead of write_constant since the spec does not say anything special
             about this field -- so default attributes for built-in things apply. *)
-  let P := write_native P "prototype" builtin_function_proto in
-  let P := write_constant P "prototype" builtin_bool_proto in
+  let P := write_native P "prototype" prealloc_function_proto in
+  let P := write_constant P "prototype" prealloc_bool_proto in
   (* TODO: complete list *)
-  object_create_builtin_constructor builtin_bool_call builtin_bool_new 1 P.
+  object_create_prealloc_constructor prealloc_bool 1 P.
 
 
 (**************************************************************)
 (** Bool prototype object *)
 
-Definition object_builtin_bool_proto :=
+Definition object_prealloc_bool_proto :=
   let P := Heap.empty in
-  let P := write_native P "constructor" builtin_bool in
-  let P := write_native P "toString" builtin_bool_proto_to_string in   
-  let P := write_native P "valueOf" builtin_bool_proto_value_of in
+  let P := write_native P "constructor" prealloc_bool in
+  let P := write_native P "toString" prealloc_bool_proto_to_string in   
+  let P := write_native P "valueOf" prealloc_bool_proto_value_of in
   (* TODO: complete list *)
-  let O := object_create_builtin builtin_object_proto "Boolean" P in
+  let O := object_create_builtin prealloc_object_proto "Boolean" P in
   (* The spec does not say explicitly that [[PrimitiveValue]] is false. It says that object's value is false (15.6.4). *)
   object_with_primitive_value O false.
   
 Definition bool_proto_to_string_function_object :=
-  object_create_builtin_function builtin_bool_proto_to_string_call 0 Heap.empty. 
+  object_create_prealloc_call prealloc_bool_proto_to_string 0 Heap.empty. 
   
 Definition bool_proto_value_of_function_object :=
-  object_create_builtin_function builtin_bool_proto_value_of_call 0 Heap.empty. 
+  object_create_prealloc_call prealloc_bool_proto_value_of 0 Heap.empty. 
 
 
 (**************************************************************)
@@ -337,46 +338,46 @@ Definition bool_proto_value_of_function_object :=
 
 Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
   (* Function objects of Global object *)
-  let h := Heap.write h builtin_global_eval global_eval_function_object in
-  let h := Heap.write h builtin_global_is_nan global_is_nan_function_object in
-  let h := Heap.write h builtin_global_is_finite global_is_finite_function_object in
+  let h := Heap.write h prealloc_global_eval global_eval_function_object in
+  let h := Heap.write h prealloc_global_is_nan global_is_nan_function_object in
+  let h := Heap.write h prealloc_global_is_finite global_is_finite_function_object in
   
   (* Function objects of Object *)
-  let h := Heap.write h builtin_object_get_prototype_of object_get_prototype_of_function_object in
+  let h := Heap.write h prealloc_object_get_prototype_of object_get_prototype_of_function_object in
   
   (* Function objects of Object.prototype *)
-  let h := Heap.write h builtin_object_proto_to_string object_proto_to_string_function_object in
-  let h := Heap.write h builtin_object_proto_value_of object_proto_value_of_function_object in
-  let h := Heap.write h builtin_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
+  let h := Heap.write h prealloc_object_proto_to_string object_proto_to_string_function_object in
+  let h := Heap.write h prealloc_object_proto_value_of object_proto_value_of_function_object in
+  let h := Heap.write h prealloc_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
   
   (* Function objects of Boolean.prototype *)
-  let h := Heap.write h builtin_bool_proto_to_string bool_proto_to_string_function_object in
-  let h := Heap.write h builtin_bool_proto_value_of bool_proto_value_of_function_object in
+  let h := Heap.write h prealloc_bool_proto_to_string bool_proto_to_string_function_object in
+  let h := Heap.write h prealloc_bool_proto_value_of bool_proto_value_of_function_object in
   
   (* Function objects of Number.prototype *)
-  let h := Heap.write h builtin_number_proto_to_string number_proto_to_string_function_object in
-  let h := Heap.write h builtin_number_proto_value_of number_proto_value_of_function_object in 
+  let h := Heap.write h prealloc_number_proto_to_string number_proto_to_string_function_object in
+  let h := Heap.write h prealloc_number_proto_value_of number_proto_value_of_function_object in 
   h.
 
 Definition object_heap_initial :=
   let h : Heap.heap object_loc object := Heap.empty in
-  let h := Heap.write h builtin_global object_builtin_global in
-  let h := Heap.write h builtin_object object_builtin_object in
-  let h := Heap.write h builtin_object_proto object_builtin_object_proto in
-  let h := Heap.write h builtin_bool object_builtin_bool in
-  let h := Heap.write h builtin_bool_proto object_builtin_bool_proto in
-  let h := Heap.write h builtin_number object_builtin_number in
-  let h := Heap.write h builtin_number_proto object_builtin_number_proto in
-  let h := Heap.write h builtin_function object_builtin_function in
-  let h := Heap.write h builtin_function_proto object_builtin_function_proto in
+  let h := Heap.write h prealloc_global object_prealloc_global in
+  let h := Heap.write h prealloc_object object_prealloc_object in
+  let h := Heap.write h prealloc_object_proto object_prealloc_object_proto in
+  let h := Heap.write h prealloc_bool object_prealloc_bool in
+  let h := Heap.write h prealloc_bool_proto object_prealloc_bool_proto in
+  let h := Heap.write h prealloc_number object_prealloc_number in
+  let h := Heap.write h prealloc_number_proto object_prealloc_number_proto in
+  let h := Heap.write h prealloc_function object_prealloc_function in
+  let h := Heap.write h prealloc_function_proto object_prealloc_function_proto in
   (* LATER : update and uncomment once definitions have been completed
-  let h := Heap.write h builtin_array_proto object_builtin_array_proto in
-  let h := Heap.write h builtin_string_proto object_builtin_string_proto in
-  let h := Heap.write h builtin_eval_proto object_builtin_eval_proto in
-  let h := Heap.write h builtin_range_error object_builtin_range_error in
-  let h := Heap.write h builtin_ref_error object_builtin_ref_error in
-  let h := Heap.write h builtin_syntax_error object_builtin_syntax_error in
-  let h := Heap.write h builtin_type_error object_builtin_type_error in
+  let h := Heap.write h prealloc_array_proto object_prealloc_array_proto in
+  let h := Heap.write h prealloc_string_proto object_prealloc_string_proto in
+  let h := Heap.write h prealloc_eval_proto object_prealloc_eval_proto in
+  let h := Heap.write h prealloc_range_error object_prealloc_range_error in
+  let h := Heap.write h prealloc_ref_error object_prealloc_ref_error in
+  let h := Heap.write h prealloc_syntax_error object_prealloc_syntax_error in
+  let h := Heap.write h prealloc_type_error object_prealloc_type_error in
   *)
   object_heap_initial_function_objects h.
 
@@ -387,7 +388,7 @@ Definition object_heap_initial :=
 Definition env_record_heap_initial :=
   Heap.write Heap.empty
              env_loc_global_env_record
-             (env_record_object_default builtin_global).
+             (env_record_object_default prealloc_global).
 
 
 (**************************************************************)

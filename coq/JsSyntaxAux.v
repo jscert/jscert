@@ -20,15 +20,15 @@ Definition object_create vproto sclass bextens P :=
      object_extensible_ := bextens;
      object_properties_ := P;
      object_prim_value_ := None;
-     object_get_ := builtin_default_get;
-     object_get_own_prop_ := builtin_default_get_own_prop;
-     object_get_prop_ := builtin_default_get_prop;
-     object_put_ := builtin_default_put;
-     object_can_put_ := builtin_default_can_put;
-     object_has_prop_ := builtin_default_has_prop;
-     object_delete_ := builtin_default_delete;
-     object_default_value_ := builtin_default_default_value;
-     object_define_own_prop_ := builtin_default_define_own_prop;
+     object_get_ := builtin_get_default;
+     object_get_own_prop_ := builtin_get_own_prop_default;
+     object_get_prop_ := builtin_get_prop_default;
+     object_put_ := builtin_put_default;
+     object_can_put_ := builtin_can_put_default;
+     object_has_prop_ := builtin_has_prop_default;
+     object_delete_ := builtin_delete_default;
+     object_default_value_ := builtin_default_value_default;
+     object_define_own_prop_ := builtin_define_own_prop_default;
      object_construct_ := None;
      object_call_ := None;
      object_has_instance_ := None;
@@ -112,33 +112,36 @@ Definition funcbody_string bd :=
 (**************************************************************)
 (** ** Type [builtin] *)
 
-(** Inhabitant *)
+(* TODO
 
-Global Instance builtin_inhab : Inhab builtin.
-Proof. apply (prove_Inhab builtin_global). Qed.
+  (** Inhabitant *)
 
-(** Boolean comparison *)
+  Global Instance builtin_inhab : Inhab builtin.
+  Proof. apply (prove_Inhab builtin_global). Qed.
 
-(* LATER: use a plugin to generate definition *)
-(* TODO: extract to ocaml primitive comparison *)
-Definition builtin_compare bl1 bl2 :=
-  match bl1, bl2 with
-  | builtin_global, builtin_global => true
-  | builtin_range_error, builtin_range_error => true
-  | builtin_ref_error, builtin_ref_error => true
-  | builtin_syntax_error, builtin_syntax_error => true
-  | builtin_type_error, builtin_type_error => true
-  | _, _ => false (* Note that this is not always the case. *)
-  end.
-(*
-Parameter builtin_compare : builtin -> builtin -> bool.
+  (** Boolean comparison *)
+
+  (* LATER: use a plugin to generate definition *)
+  (* TODO: extract to ocaml primitive comparison *)
+  Definition builtin_compare bl1 bl2 :=
+    match bl1, bl2 with
+    | builtin_global, builtin_global => true
+    | builtin_range_error, builtin_range_error => true
+    | builtin_ref_error, builtin_ref_error => true
+    | builtin_syntax_error, builtin_syntax_error => true
+    | builtin_type_error, builtin_type_error => true
+    | _, _ => false (* Note that this is not always the case. *)
+    end.
+  (*
+  Parameter builtin_compare : builtin -> builtin -> bool.
+  *)
 *)
 
 (** Decidable comparison *)
 
-Global Instance builtin_comparable : Comparable builtin.
+Global Instance prealloc_comparable : Comparable prealloc.
 Proof.
-  applys (comparable_beq builtin_compare).
+  (* applys (comparable_beq prealloc_compare). --TODO *)
   skip.
 Qed.
 
@@ -156,7 +159,7 @@ Proof. apply (prove_Inhab (object_loc_normal 0%nat)). Qed.
 Definition object_loc_compare l1 l2 :=
   match l1, l2 with
   | object_loc_normal ln1, object_loc_normal ln2 => decide (ln1 = ln2)
-  | object_loc_builtin bl1, object_loc_builtin bl2 => decide (bl1 = bl2)
+  | object_loc_prealloc bl1, object_loc_prealloc bl2 => decide (bl1 = bl2)
   | _, _ => false
   end.
 
@@ -427,15 +430,6 @@ Definition prog_elements p :=
 
 Global Instance body_inhab : Inhab funcbody.
 Proof. apply prove_Inhab. apply (funcbody_intro arbitrary arbitrary). Qed.
-
-
-(**************************************************************)
-(** ** Type [funccode] *)
-
-(** Inhabitants **)
-
-Global Instance funccode_inhab : Inhab funccode.
-Proof. apply (prove_Inhab (funccode_code arbitrary)). Qed.
 
 
 (**************************************************************)

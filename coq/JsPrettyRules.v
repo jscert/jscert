@@ -12,7 +12,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type B : builtin.
+(*Implicit Type B : builtin.*)
 Implicit Type T : type.
 
 Implicit Type rt : restype.
@@ -563,6 +563,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** New *)
 
+(*
   (* todo : add exceptions and conversions for new and call *)
 
   | red_expr_new : forall S0 C e1 le2 o o1,
@@ -605,6 +606,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       getvalue S1 r v ->
       l = obj_of_value v l0 ->
       red_expr S0 C (expr_new_3 l0 (out_ter S1 r)) (out_ter S1 l)*)
+
+*)
 
   (** Call 11.2.3 *)
 

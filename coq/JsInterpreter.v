@@ -15,7 +15,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type B : builtin.
+(*Implicit Type B : builtin.*)
 Implicit Type T : type.
 
 Implicit Type rt : restype.

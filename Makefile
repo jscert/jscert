@@ -48,7 +48,7 @@ JS_SRC=\
 	coq/JsNumber.v \
 	coq/JsSyntax.v \
 	coq/JsSyntaxAux.v \
-	coq/JsSyntaxLabels.v \
+	coq/JsSyntaxInfos.v \
 	coq/JsPreliminary.v \
 	coq/JsPreliminaryAux.v \
 	coq/JsPrettyInterm.v \

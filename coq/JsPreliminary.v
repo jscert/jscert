@@ -13,7 +13,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type B : builtin.
+(*Implicit Type B : builtin.*)
 Implicit Type T : type.
 
 Implicit Type rt : restype.
@@ -229,7 +229,7 @@ Definition object_get S l B :=
 
 (** Generalization of the above -- TODO *)
 
-Definition object_method Proj S l B :=
+Definition object_method (X:Type) Proj S l (B:X) :=
   exists O, object_binds S l O /\ Proj O = B.
 
 (** [object_call S l fco] asserts that the "primitive value"
@@ -902,7 +902,7 @@ Definition lexical_env_initial : lexical_env :=
 Definition execution_ctx_initial str :=
   {| execution_ctx_lexical_env := lexical_env_initial;
      execution_ctx_variable_env := lexical_env_initial;
-     execution_ctx_this_binding := builtin_global;
+     execution_ctx_this_binding := prealloc_global;
      execution_ctx_strict := str |}.
 
 
@@ -1325,17 +1325,17 @@ Inductive object_all_enumerable_properties : state -> value -> set prop_name -> 
 (** "Syntax error" behavior *)
 
 Definition out_syntax_error S :=
-  out_ter S (res_throw builtin_syntax_error).
+  out_ter S (res_throw prealloc_syntax_error).
 
 (** "Type error" behavior *)
 
 Definition out_type_error S :=
-  out_ter S (res_throw builtin_type_error).
+  out_ter S (res_throw prealloc_type_error).
 
 (** "Reference error" behavior *)
 
 Definition out_ref_error S :=
-  out_ter S (res_throw builtin_ref_error).
+  out_ter S (res_throw prealloc_ref_error).
 
 (** The "void" result is used by specification-level functions
     which do not produce any javascript value, but only perform

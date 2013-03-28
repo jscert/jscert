@@ -615,3 +615,6 @@ Lemma subset_inter_weak_r : forall {A : Type} (E F : fset A),
 Proof. intros_all. rewrite FsetImpl.in_inter in H. auto*. Qed.
 
 
+
+(**************************************************************)
+(** ** LATER: implement *) 

@@ -13,7 +13,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type B : builtin.
+(*Implicit Type B : builtin.*)
 Implicit Type T : type.
 
 Implicit Type rt : restype.
@@ -84,10 +84,11 @@ Inductive ext_expr :=
   | expr_access_3 : value -> out -> value -> ext_expr
   | expr_access_4 : value -> out -> ext_expr
 
+(*
   | expr_new_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
   | expr_new_2 : object_loc -> funccode -> list value -> ext_expr (* The arguments too. *)
   | expr_new_3 : object_loc -> out -> ext_expr (* The call has been executed. *)
-  
+*)
   | expr_call_1 : out -> list expr -> ext_expr (* The function has been evaluated. *)
   | expr_call_2 : res -> list expr -> out -> ext_expr 
   | expr_call_3 : res -> value -> list value -> ext_expr (* The arguments have been executed. *)
@@ -173,19 +174,19 @@ Inductive ext_expr :=
 
   (* todo *)
   | spec_object_get_own_prop : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_own_prop_1 : builtin -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
+  | spec_object_get_own_prop_1 : builtin_get_own_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
   | spec_object_get_own_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> option attributes -> ext_expr
   | spec_object_get_prop : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_prop_1 : builtin -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
+  | spec_object_get_prop_1 : builtin_get_own_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
   | spec_object_get_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
   | spec_object_get_prop_3 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> value -> ext_expr
   | spec_object_get : value -> prop_name -> ext_expr
-  | spec_object_get_1 : builtin -> value -> object_loc -> prop_name -> ext_expr
+  | spec_object_get_1 : builtin_get_own_prop -> value -> object_loc -> prop_name -> ext_expr
   | spec_object_get_2 : object_loc -> object_loc -> full_descriptor -> ext_expr
   | spec_object_get_3 : object_loc -> object_loc -> value -> ext_expr
 
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
-  | spec_object_can_put_1 : builtin -> object_loc -> prop_name -> ext_expr
+  | spec_object_can_put_1 : builtin_can_put -> object_loc -> prop_name -> ext_expr
   | spec_object_can_put_2 : object_loc -> prop_name -> full_descriptor -> ext_expr
   (* Daiva: Not needed? *)
   (*| spec_object_can_put_3 : object_loc -> prop_name -> bool -> ext_expr*)
@@ -194,23 +195,23 @@ Inductive ext_expr :=
   | spec_object_can_put_6 : attributes_data -> bool -> ext_expr
 
   | spec_object_put : value -> prop_name -> value -> bool -> ext_expr
-  | spec_object_put_1 : builtin -> value -> object_loc -> prop_name -> value -> bool -> ext_expr
+  | spec_object_put_1 : builtin_put -> value -> object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_2 : value -> object_loc -> prop_name -> value -> bool -> out -> ext_expr
   | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> full_descriptor -> ext_expr
   | spec_object_put_4 : value -> object_loc -> prop_name -> value -> bool -> full_descriptor -> ext_expr
   | spec_object_put_5 : out -> ext_expr
 
   | spec_object_has_prop : object_loc -> prop_name -> ext_expr
-  | spec_object_has_prop_1 : builtin -> object_loc -> prop_name -> ext_expr
+  | spec_object_has_prop_1 : builtin_has_prop -> object_loc -> prop_name -> ext_expr
   | spec_object_has_prop_2 : full_descriptor -> ext_expr
 
   | spec_object_delete : object_loc -> prop_name -> bool -> ext_expr
-  | spec_object_delete_1 : builtin -> object_loc -> prop_name -> bool -> ext_expr
+  | spec_object_delete_1 : builtin_delete -> object_loc -> prop_name -> bool -> ext_expr
   | spec_object_delete_2 : object_loc -> prop_name -> bool -> full_descriptor -> ext_expr
   | spec_object_delete_3 : object_loc -> prop_name -> bool -> bool -> ext_expr
 
   | spec_object_default_value : object_loc -> option preftype -> ext_expr
-  | spec_object_default_value_1 : builtin -> object_loc -> option preftype -> ext_expr
+  | spec_object_default_value_1 : builtin_default_value -> object_loc -> option preftype -> ext_expr
   | spec_object_default_value_2 : object_loc -> preftype -> preftype -> ext_expr
   | spec_object_default_value_3 : object_loc -> preftype -> ext_expr
   | spec_object_default_value_4 : ext_expr
@@ -219,7 +220,7 @@ Inductive ext_expr :=
   | spec_object_default_value_sub_3 : out -> ext_expr -> ext_expr
 
   | spec_object_define_own_prop : object_loc -> prop_name -> descriptor -> bool -> ext_expr
-  | spec_object_define_own_prop_1 : builtin -> object_loc -> prop_name -> descriptor -> bool -> ext_expr
+  | spec_object_define_own_prop_1 : builtin_define_own_prop -> object_loc -> prop_name -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> full_descriptor -> ext_expr
   | spec_object_define_own_prop_3 : object_loc -> prop_name -> descriptor -> bool -> full_descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_4 : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
@@ -333,14 +334,14 @@ Inductive ext_expr :=
   
   (* Execution of "has_instance" *)
 
-  | spec_object_has_instance : builtin -> object_loc -> value -> ext_expr
+  | spec_object_has_instance : builtin_has_instance -> object_loc -> value -> ext_expr
   | spec_object_has_instance_1 : object_loc -> out -> ext_expr
 
   (* Throwing of errors *)
 
-  | spec_error : builtin -> ext_expr (* todo: reduction rules *)
-  | spec_error_or_cst : bool -> builtin -> value -> ext_expr (* todo: reduction rules *)
-  | spec_error_or_void : bool -> builtin -> ext_expr (* todo: reduction rules *)
+  | spec_error : prealloc -> ext_expr (* todo: reduction rules *)
+  | spec_error_or_cst : bool -> prealloc -> value -> ext_expr (* todo: reduction rules *)
+  | spec_error_or_void : bool -> prealloc -> ext_expr (* todo: reduction rules *)
   
   | spec_init_throw_type_error : ext_expr
   | spec_init_throw_type_error_1 : out -> ext_expr
@@ -368,17 +369,17 @@ Inductive ext_expr :=
   (* TODO: Check if object_loc or value could be None *)
   (* TODO: get rid of this: | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr *)
   | spec_call : object_loc -> value -> list value -> ext_expr (* object with the call method, this value, arguments *)
-  | spec_call_1 : builtin -> object_loc -> value -> list value -> ext_expr
+  | spec_call_1 : call -> object_loc -> value -> list value -> ext_expr
   
-  | spec_call_builtin : builtin -> list value -> ext_expr
+  | spec_call_builtin : call -> list value -> ext_expr (* todo ?? is it a call first argument *)
   
   | spec_op_function_call : object_loc -> value -> list value -> ext_expr
   | spec_op_function_call_1 : object_loc -> out -> ext_expr
   | spec_op_function_call_2 : out -> ext_expr
   
-  | spec_constructor : builtin -> option object_loc -> list value -> ext_expr
+  | spec_constructor : construct -> option object_loc -> list value -> ext_expr
   
-  | spec_constructor_builtin : builtin -> list value -> ext_expr
+  | spec_constructor_builtin : construct -> list value -> ext_expr (* todo??*)
   
   | spec_function_constructor : object_loc -> list value -> ext_expr
   | spec_function_constructor_1 : object_loc -> list value -> out -> ext_expr

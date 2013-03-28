@@ -13,7 +13,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type B : builtin.
+(*Implicit Type B : builtin.*)
 Implicit Type T : type.
 
 Implicit Type rt : restype.
@@ -295,7 +295,7 @@ Proof. introv. typeclass. Qed.
 
 (** Decidable instance for [is_callable] *)
 
-Definition run_callable S v : option builtin :=
+Definition run_callable S v : option call :=
   match v with
   | value_prim w => None
   | value_object l => object_call_ (pick (object_binds S l))
@@ -341,3 +341,10 @@ Proof.
    tryfalse; auto; try congruence.
 Qed.
 
+
+(**************************************************************)
+
+
+(** ** LATER: should be generic? *)
+(* TODO: implement *)
+Axiom map_as_list : object_properties_type -> list (prop_name * attributes).

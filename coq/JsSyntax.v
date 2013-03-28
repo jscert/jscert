@@ -9,7 +9,6 @@ Require JsNumber.
 Notation "'number'" := (JsNumber.number).
 
 
-
 (************************************************************)
 (************************************************************)
 (************************************************************)
@@ -77,7 +76,7 @@ Inductive label :=
    | label_empty : label
    | label_string : string -> label.
 
-(** A set of label, possibly including the empty label. *)
+(** A set of labels, possibly including the empty label. *)
 
 Definition label_set := list label.
 
@@ -147,6 +146,8 @@ with stat :=
 with prog :=
   | prog_intro : strictness_flag -> list element -> prog 
 
+(** Grammar of program elements *)
+
 with element :=
   | element_stat : stat -> element
   | element_func_decl : string -> list string -> funcbody -> element.
@@ -156,6 +157,14 @@ with element :=
 Definition propdefs := list (propname * propbody).
 
 Definition elements := list element.
+
+(** Representation of a function declaration
+    (used only for the description of the semantics) *)
+
+Record funcdecl := funcdecl_intro {
+   funcdecl_name : string;
+   funcdecl_parameters : list string;
+   funcdecl_body : funcbody }.
 
 (** Coercions for grammars *)
 
@@ -168,202 +177,165 @@ Coercion label_string : string >-> label.
 
 (** Identifiers for builtin maths functions *)
 
-Inductive math_op :=
-  | math_op_abs : math_op
+Inductive mathop :=
+  | mathop_abs : mathop
   (* LATER: many others *)
   .
 
-(** Identifiers for builtin functions and objects *)
+(** Identifiers for objects pre-allocated in the initial heap *)
 
-(* TODO
-Inductive preallocated :=
-
-call_object_get_prototype_of
-construct_method
-
-builtin_get;
-   object_get_own_prop_ : builtin_get_own_prop;
-   object_get_prop_ : builtin_get_prop;
-   object_put_ : builtin_put;
-   object_can_put_ : builtin_can_put;
-   object_has_prop_ : builtin_has_prop;
-   object_delete_ : builtin_delete;
-   object_default_value_ : builtin_default_value;
-   object_define_own_prop_ : builtin_define_own_prop;
-builtin_has_instance
-
-preallocated => preallocated objects
-*)
-
-Inductive builtin :=
-  
-  | builtin_default_get
-  | builtin_default_get_own_prop
-  | builtin_default_get_prop
-  | builtin_default_put
-  | builtin_default_can_put
-  | builtin_default_has_prop
-  | builtin_default_delete
-  | builtin_default_default_value
-  | builtin_default_define_own_prop
-
-  | builtin_error
-  | builtin_range_error
-  | builtin_ref_error
-  | builtin_syntax_error
-  | builtin_type_error
-
-  | builtin_global                    (* location to global object *)
-  | builtin_global_eval               (* location to eval function object *)
-  | builtin_global_eval_call          (* id for calling eval *)
-  (*
-  | builtin_global_parse_int
-  | builtin_global_parse_int_call
-  | builtin_global_parse_float
-  | builtin_global_parse_float_call
-  *)
-  | builtin_global_is_nan            (* location to isNan function object *)
-  | builtin_global_is_nan_call       (* id for calling isNan *)
-  | builtin_global_is_finite         (* location to isFinite function object *)
-  | builtin_global_is_finite_call    (* id for calling isFinite *)
-
-  (* for objects of class Object *)
-  | builtin_object
-  | builtin_object_new
-  | builtin_object_call
-  | builtin_object_get_prototype_of      (* location to getPrototypeOf function object *)
-  | builtin_object_get_prototype_of_call (* id for calling getPrototypeOf *)
-  (* LATER:
-    builtin_object_get_own_prop_descriptor
-    builtin_object_get_own_prop_descriptor_call
-    builtin_object_get_own_prop_name
-    builtin_object_get_own_prop_name_call
-    builtin_object_create
-    builtin_object_create_call
-    builtin_object_define_prop
-    builtin_object_define_prop_call
-    builtin_object_define_properties
-    builtin_object_define_properties_call *)
-  (*
-  | builtin_object_seal
-  | builtin_object_seal_call
-  | builtin_object_freeze
-  | builtin_object_freeze_call
-  *)
-  | builtin_object_prevent_extensions
-  (*
-  | builtin_object_prevent_extensions_call
-  *)
-  | builtin_object_is_sealed
-  (*
-  | builtin_object_is_sealed_call
-  | builtin_object_is_frozen
-  | builtin_object_is_frozen_call
-  *)  
-  | builtin_object_is_extensible
-  (*
-  | builtin_object_is_extensible_call
-  *)
-  (* LATER:
-  | builtin_object_keys
-  | builtin_object_keys_call *)
-
-  | builtin_object_proto
-  | builtin_object_proto_to_string
-  | builtin_object_proto_to_string_call
-  | builtin_object_proto_value_of
-  | builtin_object_proto_value_of_call
-  (* TODO
-  | builtin_object_proto_has_own_prop
-  | builtin_object_proto_has_own_prop_call
-  *)
-  | builtin_object_proto_is_prototype_of
-  | builtin_object_proto_is_prototype_of_call
-  | builtin_object_proto_prop_is_enumerable
-  (* TODO  
-  | builtin_object_proto_prop_is_enumerable_call
-  *)
-
-  | builtin_function
-  | builtin_function_call
-  | builtin_function_new
-  | builtin_function_proto
-  (* Couldn't use the name builtin_function_proto_call for Function.prototype() since there is Function.prototype.call() *)
-  | builtin_function_proto_invoked  
-  (*
-  | builtin_function_proto_to_string
-  | builtin_function_proto_apply
-  | builtin_function_proto_call
-  *)
-  
-  (* 13.2.3 Unique function object *)
-  | builtin_function_throw_type_error
-
-  (* LATER:
-  | builtin_function_proto_bind ... etc... *)
-  | builtin_array_call
-  | builtin_array_new
-  | builtin_array_is_array
-  | builtin_array_proto
-  (* LATER:
-  | builtin_array_proto_to_string *)
-
-  | builtin_string_proto
-  | builtin_string_call
-  | builtin_string_new
-  (*
-  | builtin_string_proto_to_string
-  | builtin_string_proto_value_of
-  | builtin_string_proto_char_at
-  *)
-  (* LATER:
-  | builtin_string_proto_char_code_at *)
-
-  | builtin_bool
-  | builtin_bool_proto
-  | builtin_bool_call
-  | builtin_bool_new
-  | builtin_bool_proto_to_string
-  | builtin_bool_proto_to_string_call
-  | builtin_bool_proto_value_of
-  | builtin_bool_proto_value_of_call
-
-  | builtin_number
-  | builtin_number_call
-  | builtin_number_new
-  | builtin_number_proto
-  | builtin_number_proto_to_string
-  | builtin_number_proto_to_string_call
-  | builtin_number_proto_value_of
-  | builtin_number_proto_value_of_call
-  (* LATER:
-  | builtin_number_proto_to_fixed
-  | builtin_number_proto_to_exponential
-  | builtin_number_proto_to_precision
-   *)
-
-  | builtin_math
-  | builtin_math_function : math_op -> builtin
-  
-  (* Spec operation ids *)
-    
-  (* [[Call]] *)
-
-  | builtin_spec_op_function_call      (* 13.2.1 *)  
-  | builtin_spec_op_function_bind_call (* 15.3.4.5.1 *) (* TODO *)
-  
-  (* [[Constructor]] *)
-  | builtin_spec_op_function_constructor (* 13.2.2 *)
-  | builtin_spec_op_function_bind_constructor (* 15.3.4.5.2 *) (* TODO *)
-  
-  (* [[HasInstance]] *)
-  | builtin_spec_op_function_has_instance      (* 15.3.5.3 *)
-  | builtin_spec_op_function_bind_has_instance (* 15.3.4.5.3 *) (* TODO *)
-  
-  (* [[Get]] *) 
-  | builtin_spec_op_object_get (* 8.12.3 *)
-  | builtin_spec_op_function_get (* 15.3.5.4 *)
+Inductive prealloc :=
+  | prealloc_global (* not callable *)
+  | prealloc_global_eval
+  | prealloc_global_is_finite
+  | prealloc_global_is_nan
+  | prealloc_global_parse_float
+  | prealloc_global_parse_int
+  | prealloc_object
+  | prealloc_object_get_prototype_of      (* location to getPrototypeOf function object *)
+  | prealloc_object_get_own_prop_descriptor  (* LATER: support *)
+  | prealloc_object_get_own_prop_name  (* LATER: support *)
+  | prealloc_object_create  (* LATER: support *)
+  | prealloc_object_define_prop  (* LATER: support *)
+  | prealloc_object_define_properties  (* LATER: support *)
+  | prealloc_object_seal
+  | prealloc_object_freeze
+  | prealloc_object_prevent_extensions
+  | prealloc_object_is_sealed
+  | prealloc_object_is_frozen (* LATER: support *)
+  | prealloc_object_is_extensible
+  | prealloc_object_keys  (* LATER: support *)
+  | prealloc_object_keys_call  (* LATER: support *)
+  | prealloc_object_proto
+  | prealloc_object_proto_to_string
+  | prealloc_object_proto_value_of
+  | prealloc_object_proto_has_own_prop (* LATER: support *)
+  | prealloc_object_proto_is_prototype_of
+  | prealloc_object_proto_prop_is_enumerable (* LATER: support *)
+  | prealloc_function
+  | prealloc_function_proto
+  | prealloc_function_proto_to_string
+  | prealloc_function_proto_apply
+  | prealloc_function_proto_bind (* LATER: support this and others *)
+  | prealloc_bool
+  | prealloc_bool_proto
+  | prealloc_bool_proto_to_string
+  | prealloc_bool_proto_value_of
+  | prealloc_number
+  | prealloc_number_proto
+  | prealloc_number_proto_to_string
+  | prealloc_number_proto_value_of
+  | prealloc_number_proto_to_fixed (* LATER: support *)
+  | prealloc_number_proto_to_exponential (* LATER: support *)
+  | prealloc_number_proto_to_precision (* LATER: support *)
+  | prealloc_array
+  | prealloc_array_is_array
+  | prealloc_array_proto
+  | prealloc_array_proto_to_string (* LATER: support *)
+  | prealloc_string
+  | prealloc_string_proto
+  | prealloc_string_proto_to_string (* LATER: support *)
+  | prealloc_string_proto_value_of (* LATER: support *)
+  | prealloc_string_proto_char_at (* LATER: support *)
+  | prealloc_string_proto_char_code_at (* LATER: support *)
+  | prealloc_math (* not callable *)
+  | prealloc_mathop : mathop -> prealloc
+  | prealloc_error
+  | prealloc_range_error
+  | prealloc_ref_error
+  | prealloc_syntax_error
+  | prealloc_type_error
+  | prealloc_throw_type_error (* 13.2.3 *) (* LATER: support *)
   .
+
+(* Identifiers for "Callable" methods *)
+
+Inductive call :=
+  | call_default  (* 13.2.1 *)  
+  | call_after_bind (* 15.3.4.5.1 *)
+  | call_prealloc : prealloc -> call. (* all are functions except those tagged not callable *)
+
+(** Identifiers for "Construct" methods *)
+
+Inductive construct :=
+  | construct_default (* 13.2.2 *)
+  | construct_after_bind (* 15.3.4.5.2 *) (* LATER: support *)
+  | construct_prealloc : prealloc -> construct.
+    (* only the ones below are actually used
+      | construct_object
+      | construct_function
+      | construct_bool
+      | construct_number
+      | construct_array
+      | construct_string
+      | construct_error
+      | construct_range_error
+      | construct_ref_error
+      | construct_syntax_error
+      | construct_type_error
+      | construct_throw_type_error
+    *)
+
+
+(** Identifiers for "HasInstance" methods *)
+
+Inductive builtin_has_instance :=
+  | builtin_has_instance_default (* 15.3.5.3 *)
+  | builtin_has_instance_function (* TODO ref? *)
+  | builtin_has_instance_after_bind. (* 15.34.5.3 *)  (* LATER: support *)
+
+(** Identifiers for "Get" methods *)
+
+Inductive builtin_get :=
+  | builtin_get_default (* 8.12.3 *)
+  | builtin_get_function. (* 15.3.5.4 *)
+  (* TODO: string and array *)
+
+(** Identifiers for "GetOwnProperty" methods *)
+
+Inductive builtin_get_own_prop :=
+  | builtin_get_own_prop_default.
+
+(** Identifiers for "GetProperty" methods *)
+
+Inductive builtin_get_prop :=
+  | builtin_get_prop_default.
+
+(** Identifiers for "Put" methods *)
+
+Inductive builtin_put :=
+  | builtin_put_default.
+  (* TODO: string and array *)
+
+(** Identifiers for "CanPut" methods *)
+
+Inductive builtin_can_put :=
+  | builtin_can_put_default.
+  (* TODO: string and array *)
+
+(** Identifiers for "HasProperty" methods *)
+
+Inductive builtin_has_prop :=
+  | builtin_has_prop_default.
+  (* TODO: string and array *)
+
+(** Identifiers for "Delete" methods *)
+
+Inductive builtin_delete :=
+  | builtin_delete_default.
+  (* TODO: string and array *)
+
+(** Identifiers for "DefaultValue" methods *)
+
+Inductive builtin_default_value :=
+  | builtin_default_value_default.
+  (* TODO: date *)
+
+(** Identifiers for "DefineOwnProp" methods *)
+
+Inductive builtin_define_own_prop :=
+  | builtin_define_own_prop_default.
+  (* TODO: string and array *)
 
 
 (**************************************************************)
@@ -373,8 +345,7 @@ Inductive builtin :=
 
 Inductive object_loc :=
   | object_loc_normal : nat -> object_loc
-  | object_loc_builtin : builtin -> object_loc.
-(*  | object_loc_prealloc : prealloc -> object_loc.*)
+  | object_loc_prealloc : prealloc -> object_loc.
 
 (** Grammar of primitive values *)
 
@@ -412,10 +383,7 @@ Coercion prim_bool : bool >-> prim.
 Coercion prim_number : JsNumber.number >-> prim.
 Coercion prim_string : string >-> prim.
 Coercion value_prim : prim >-> value.
-(*
-Coercion object_loc_prealloc : prealloc >-> object_loc.*)
-Coercion object_loc_builtin : builtin >-> object_loc.
-
+Coercion object_loc_prealloc : prealloc >-> object_loc.
 Coercion value_object : object_loc >-> value.
 
 
@@ -562,12 +530,6 @@ Definition class_name := string.
 Definition object_properties_type :=
   Heap.heap prop_name attributes.
 
-(**************************************************************)
-
-(** ** LATER: implement *) 
-(** ** LATER: move to Shared.v *)
-(** ** LATER: should be generic? *)
-Axiom map_as_list : object_properties_type -> list (prop_name * attributes).
 
 (**************************************************************)
 (** Representation of objects *)
@@ -578,16 +540,7 @@ Record object := object_intro {
    object_extensible_ : bool;
    object_prim_value_ : option value;
    object_properties_ : object_properties_type;
-   object_get_ : builtin;
-   object_get_own_prop_ : builtin;
-   object_get_prop_ : builtin;
-   object_put_ : builtin;
-   object_can_put_ : builtin;
-   object_has_prop_ : builtin;
-   object_delete_ : builtin;
-   object_default_value_ : builtin;
-   object_define_own_prop_ : builtin;
-   (*object_get_ : builtin_get;
+   object_get_ : builtin_get;
    object_get_own_prop_ : builtin_get_own_prop;
    object_get_prop_ : builtin_get_prop;
    object_put_ : builtin_put;
@@ -595,10 +548,10 @@ Record object := object_intro {
    object_has_prop_ : builtin_has_prop;
    object_delete_ : builtin_delete;
    object_default_value_ : builtin_default_value;
-   object_define_own_prop_ : builtin_define_own_prop;*)
-   object_construct_ : option builtin ; (* option constructable; *)
-   object_call_ : option builtin ; (* option callable; *)
-   object_has_instance_ : option builtin; (*_has_instance ; *)
+   object_define_own_prop_ : builtin_define_own_prop;
+   object_construct_ : option construct;
+   object_call_ : option call ; 
+   object_has_instance_ : option builtin_has_instance;
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
    object_code_ : option funcbody;
@@ -610,13 +563,12 @@ Record object := object_intro {
    }.
 
 
-
 (**************************************************************)
 (** ** Representation of the state *)
 
 (** Representation of the state, as a heap storing objects,
-    a heap storing environment records, and a freshness generator
-    -- TODO: store the fresh locations into a wrapper around LibHeap *)
+    a heap storing environment records, and a freshness generator *)
+   (* LATER : store the fresh locations into a wrapper around LibHeap *)
 
 Record state := state_intro {
    state_object_heap : Heap.heap object_loc object;
@@ -658,7 +610,7 @@ Inductive res := res_intro {
 Definition abrupt_res R :=
   res_type R <> restype_normal.
 
-(** Smart constructors for type [res] *)
+(** Smart constructors for results *)
 
 Coercion res_ref r := res_intro restype_normal r label_empty.
 Coercion res_val v := res_intro restype_normal v label_empty.
@@ -675,26 +627,4 @@ Definition res_throw v := res_intro restype_throw v label_empty.
 Inductive out :=
   | out_div : out
   | out_ter : state -> res -> out.
-
-
-(**************************************************************)
-(**************************************************************)
-(****************************************************************)
-(** ** Auxiliarly data structures used for the semantics *)
-
-(** Representation of function code -- TODO: seems to be deprecated *)
-
-Inductive funccode :=
-  | funccode_code : prog -> funccode  (* TODO: this should probably be of type funcbody -> funccode *)
-  | funccode_builtin : builtin -> funccode.
-
-Coercion funccode_builtin : builtin >-> funccode.
-
-(** Representation of a function declaration *)
-
-Record funcdecl := funcdecl_intro {
-   funcdecl_name : string;
-   funcdecl_parameters : list string;
-   funcdecl_body : funcbody }.
-
 
