@@ -2065,37 +2065,32 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_instantiation_function_decls_4 args L fd fds str fo bconfig o1) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 args L fd fds str fo bconfig (out_ter S false)) o
 
-  | red_spec_binding_instantiation_function_decls_2_true_global : forall K A o1 L S0 S C args fd fds str fo bconfig o, (* Step 5e ii *)
-        (* todo: remove A *)
-      K = spec_binding_instantiation_function_decls_3 args fd fds str fo (attributes_configurable A) bconfig -> (* What is this [A]?  I guess this should be tested after [spec_object_get_prop] have been executed, otherwise it's meaningless. -- Martin *)
+  | red_spec_binding_instantiation_function_decls_2_true_global : forall K o1 L S0 S C args fd fds str fo bconfig o, (* Step 5e ii *)
+      K = spec_binding_instantiation_function_decls_3 args fd fds str fo bconfig -> (* What is this [A]?  I guess this should be tested after [spec_object_get_prop] have been executed, otherwise it's meaningless. -- Martin *)
       red_expr S C (spec_object_get_prop builtin_global (funcdecl_name fd) K) o ->
       red_expr S0 C (spec_binding_instantiation_function_decls_2 args env_loc_global_env_record fd fds str fo bconfig (out_ter S true)) o
 
-  | red_spec_binding_instantiation_function_decls_3_true : forall o1 L S C args fd fds str fo bconfig o, (* Step 5e iii *)
-       let A := attributes_data_intro undef true true bconfig in (* todo: something wrong with A , attempted fix below *)
-      (* attributes_configurable A = true -> *)
-      red_expr S C (spec_object_define_own_prop builtin_global (funcdecl_name fd) A true) o1 ->
+  | red_spec_binding_instantiation_function_decls_3_true : forall Anew o1 L S C args fd fds str fo bconfig A o, (* Step 5e iii *)
+      Anew = attributes_data_intro undef true true bconfig -> 
+      attributes_configurable A = true ->
+      red_expr S C (spec_object_define_own_prop builtin_global (funcdecl_name fd) Anew true) o1 ->
       red_expr S C (spec_binding_instantiation_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 args fd fds str fo true bconfig A) o
+      red_expr S C (spec_binding_instantiation_function_decls_3 args fd fds str fo bconfig (full_descriptor_some A)) o
       
   | red_spec_binding_instantiation_function_decls_4 : forall o1 L S C args fd fds str fo bconfig o, (* Step 5e iii *)
       red_expr S C (spec_binding_instantiation_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
       red_expr S C (spec_binding_instantiation_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o
 
-  | red_spec_binding_instantiation_function_decls_3_false_type_error : forall o1 L S C args fd fds str fo A configurable bconfig o, (* Step 5e iv *)
-      (* attributes_configurable A = false -> *)
-      configurable <> true ->
+  | red_spec_binding_instantiation_function_decls_3_false_type_error : forall o1 L S C args fd fds str fo A bconfig o, (* Step 5e iv *)
+      attributes_configurable A = false -> 
       descriptor_is_accessor A \/ (attributes_writable A = false \/ attributes_enumerable A = false) ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 args fd fds str fo configurable bconfig A) (out_type_error S)
+      red_expr S C (spec_binding_instantiation_function_decls_3 args fd fds str fo bconfig (full_descriptor_some A)) (out_type_error S)
 
-(* todo : pattern match A in the goal with (attributes_data_of Ad) 
-   and then check  ~ (attributes_data_writable Ad = true /\ attributes_data_enumerable Ad = true) *)
-
-  | red_spec_binding_instantiation_function_decls_3_false : forall o1 L S C args fd fds str fo A configurable bconfig o, (* Step 5e iv *)
-     configurable <> true ->
-      ~ (descriptor_is_accessor A) /\ attributes_writable A = true /\ attributes_enumerable A = true ->
+  | red_spec_binding_instantiation_function_decls_3_false : forall o1 L S C args fd fds str fo Ad bconfig o, (* Step 5e iv *)
+     attributes_data_configurable Ad = false -> 
+      ~ (attributes_data_writable Ad = true /\ attributes_data_enumerable Ad = true) ->
       red_expr S C (spec_binding_instantiation_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
-      red_expr S C (spec_binding_instantiation_function_decls_3 args fd fds str fo configurable bconfig A) o
+      red_expr S C (spec_binding_instantiation_function_decls_3 args fd fds str fo bconfig (attributes_data_of Ad)) o
 
   | red_spec_binding_instantiation_function_decls_2_true : forall o1 L S0 S C args fd fds str fo bconfig o, (* Step 5e *)
       L <> env_loc_global_env_record ->

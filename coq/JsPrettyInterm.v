@@ -318,7 +318,7 @@ Inductive ext_expr :=
   | spec_binding_instantiation_function_decls :  list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> ext_expr
   | spec_binding_instantiation_function_decls_1 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
   | spec_binding_instantiation_function_decls_2 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_instantiation_function_decls_3 : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> bool -> full_descriptor -> ext_expr
+  | spec_binding_instantiation_function_decls_3 : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> full_descriptor -> ext_expr
   | spec_binding_instantiation_function_decls_4 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_instantiation_function_decls_5 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> ext_expr
   | spec_binding_instantiation_function_decls_6 : list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
