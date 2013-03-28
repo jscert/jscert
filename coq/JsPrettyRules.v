@@ -571,97 +571,72 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** New (11.2.2) *)
 
-(*
   (* todo : add exceptions and conversions for new and call *)
 
-  | red_expr_new : forall S0 C e1 le2 o o1,
-      red_expr S0 C (expr_basic e1) o1 ->
-      red_expr S0 C (expr_new_1 o1 le2) o ->
-      red_expr S0 C (expr_new e1 le2) o
-
-  (* Daniele: we need to throw a 'TypeError' if l1 doesn't have type Object,
-     and if it doesn't implement internal method ((Construct)) - ? *)
-  (* Martin:  Do you then think that we should define a new extended expression
-     ext_expr_new_<something> to just do the getvalue step and then match on
-     its result?  I think it would be closer to the `great step' guidelines. *)
-  (*| red_expr_ext_expr_new_1 : forall S0 S1 C l1 l2 s3 lx P3 le2 r1 v1 o,
-      getvalue S1 r1 l1 ->
-      l1 <> loc_null -> (* Martin:  This condition seems to be yielded by the next three. *)
-        (* Arthur: agreed, we should be able to remove it;
-           maybe it was there to insist on the fact that "new null" should raise an exn *)
-      binds S1 l1 field_scope (value_scope s3) ->
-      binds S1 l1 field_body (value_body lx P3) ->
-      binds S1 l1 field_normal_prototype v1 ->
-      l2 = obj_or_glob_of_value v1 ->
-      red_expr S1 C (expr_list_then (expr_new_2 l2 (normal_body s3 lx P3)) le2) o ->
-      red_expr S0 C (expr_new_1 (out_ter S1 r1) le2) o*)
-
-  (*| red_expr_ext_expr_new_2 : forall S0 S1 S2 S3 S4 S5 C s3 l2 l3 l4 lx vs lfv ys P3 o1 o,
-      object_fresh S0 l3 ->
-      S1 = alloc_obj S0 l3 l2 ->
-      object_fresh S1 l4 ->
-      S2 = write_proto S1 l4 loc_null ->
-      S3 = write S2 l4 field_this l3 ->
-      arguments lx vs lfv ->
-      S4 = write_fields S3 l4 lfv ->
-      ys = defs_prog lx P3 ->
-      S5 = reserve_local_vars S4 l4 ys ->
-      red_expr S5 (l4::s3) (ext_expr_prog P3) o1 ->
-      red_expr S5 C (expr_new_3 l3 o1) o ->
-      red_expr S0 C (expr_new_2 l2 (normal_body s3 lx P3) vs) o*)
-
-  (*| red_expr_ext_expr_new_3 : forall S0 S1 C r v l l0,
-      getvalue S1 r v ->
-      l = obj_of_value v l0 ->
-      red_expr S0 C (expr_new_3 l0 (out_ter S1 r)) (out_ter S1 l)*)
-
-*)
+  | red_expr_new : forall S C e1 e2s o o1, (* Step 1 *)
+      red_expr S C e1 o1 ->
+      red_expr S C (expr_new_1 o1 e2s) o ->
+      red_expr S C (expr_new e1 e2s) o
+      
+  | red_expr_new_1 : forall S C e1 rv e2s o o1, (* Step 2 *)
+      red_expr S C (spec_get_value rv) o1 ->
+      red_expr S C (expr_new_2 e2s o1) o ->
+      red_expr S C (expr_new_1 (out_ter S rv) e2s) o
+      
+  | red_expr_new_2 : forall S0 S C e1 rv e2s v o o1, (* Step 3 *)
+      red_expr S C (expr_list_then (expr_new_3 v) e2s) o ->
+      red_expr S0 C (expr_new_2 e2s (out_ter S v)) o
+      
+  | red_expr_new_3_type_error : forall l S C o v vs, (* Steps 4-5 *)
+      (type_of v <> type_object) \/ (v = value_object l /\ object_construct S l None) ->
+      red_expr S C (spec_error prealloc_type_error) o ->
+      red_expr S C (expr_new_3 v vs) o
+      
+  | red_expr_new_3_constructor : forall constructor S C l vs v o, (* Step 8 *)
+      object_construct S l (Some constructor) ->
+      red_expr S C (spec_constructor constructor (Some l) vs) o ->
+      red_expr S C (expr_new_3 (value_object l) vs) o
 
   (** Call (11.2.3) *)
 
-  | red_expr_call : forall S0 C e1 e2s o1 o2,
+  | red_expr_call : forall S0 C e1 e2s o1 o2, (* Step 1 *)
       red_expr S0 C e1 o1 ->
       red_expr S0 C (expr_call_1 o1 e2s) o2 ->
       red_expr S0 C (expr_call e1 e2s) o2
 
-  | red_expr_call_1 : forall o1 S0 S C o rv e2s,
+  | red_expr_call_1 : forall o1 S0 S C o rv e2s, (* Step 2 *)
       red_expr S C (spec_get_value rv) o1 ->
       red_expr S C (expr_call_2 rv e2s o1) o ->
       red_expr S0 C (expr_call_1 (out_ter S rv) e2s) o
       
-  | red_expr_call_2 : forall S0 S C o rv v e2s,
+  | red_expr_call_2 : forall S0 S C o rv v e2s, (* Step 3 *)
       red_expr S C (expr_list_then (expr_call_3 rv v) e2s) o ->
       red_expr S0 C (expr_call_2 rv e2s (out_ter S v)) o
-      
-  | red_expr_call_3_not_object : forall S C o rv v vs,
-      type_of v <> type_object ->
+
+  | red_expr_call_3_not_object : forall l S C o rv v vs, (* Steps 4-5 *)
+      (type_of v <> type_object) \/ (v = value_object l /\ ~ (is_callable S l)) ->
       red_expr S C (spec_error prealloc_type_error) o ->
       red_expr S C (expr_call_3 rv v vs) o
-      
-  | red_expr_call_3_not_callable : forall S C o rv l vs,
-      ~ (is_callable S l) ->
-      red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (expr_call_3 rv (value_object l) vs) o
 
-  | red_expr_call_3_prop : forall v S C o r l vs,
+  | red_expr_call_3_prop : forall v S C o r l vs, (* Step 6a *)
       (is_callable S l) ->
       ref_is_property r -> 
       ref_is_value r v ->
       red_expr S C (expr_call_4 l vs (out_ter S v)) o ->
       red_expr S C (expr_call_3 (resvalue_ref r) (value_object l) vs) o
       
-  | red_expr_call_3_env : forall L o1 S C o r l vs,
+  | red_expr_call_3_env : forall L o1 S C o r l vs, (* Step 6b *)
       (is_callable S l) ->
       ref_is_env_record r L -> 
       red_expr S C (spec_env_record_implicit_this_value L) o1 -> 
       red_expr S C (expr_call_4 l vs o1) o ->
       red_expr S C (expr_call_3 (resvalue_ref r) (value_object l) vs) o
 
-  | red_expr_call_3_not_ref : forall S C v l vs o,
+  | red_expr_call_3_not_ref : forall S C v l vs o, (* Step 7 *)
       red_expr S C (expr_call_4 l vs (out_ter S undef)) o ->
       red_expr S C (expr_call_3 (resvalue_value v) (value_object l) vs) o
    
-  | red_expr_call_4 : forall S0 S C l vs v o,
+  | red_expr_call_4 : forall S0 S C l vs v o, (* Step 8 *)
       red_expr S C (spec_call l v vs) o ->
       red_expr S0 C (expr_call_4 l vs (out_ter S v)) o    
       

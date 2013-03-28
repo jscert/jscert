@@ -105,7 +105,7 @@ Extract Constant JsNumber.uint32_right_shift => "(lsr (* TODO:  To be reread. *)
 
 Extract Constant int_of_char => "int_of_char".
 
-Extract Constant builtin_compare => "(=)".
+Extract Constant prealloc_comparable => "(=)".
 Extract Constant ascii_compare => "(=)".
 Extract Constant le_int_decidable => "(<=)".
 Extract Constant int_lt_dec => "(<)".
@@ -123,8 +123,8 @@ Extract Constant Pos.succ => "Pervasives.succ (* Because of a bug of the extract
 
 (* These parameters are implementation-dependant according to the spec.
    I've chosed some very simple values, but we could choose another thing for them. *)
-Extract Constant object_builtin_global_proto => "(Value_prim Prim_null)".
-Extract Constant object_builtin_global_class => "(
+Extract Constant object_prealloc_global_proto => "(Value_prim Prim_null)".
+Extract Constant object_prealloc_global_class => "(
   let rec aux s = function
   | 0 -> []
   | n -> let n' = n - 1 in
