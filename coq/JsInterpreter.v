@@ -176,14 +176,12 @@ Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
     | _ => out_ter
     end S R).
 
-Definition if_break (o : result) (search_label : res -> bool)
-  (K : state -> res -> result) : result :=
+Definition if_break (o : result) (K : state -> res -> result) : result :=
   if_ter o (fun S R =>
     let default := out_ter S R in
     match res_type R with
     | restype_break =>
-      if search_label (res_value R) then K S R
-      else default
+      K S R
     | _ => default
     end).
 
@@ -1554,9 +1552,8 @@ Definition run_expr_new (run_expr' : run_expr_type) (run_call' : run_call_type)
 
 (**************************************************************)
 
-Definition run_stat_label (run_stat' : run_stat_type) S C lab t :=
+Definition run_stat_label (run_stat' : run_stat_type) S C lab t : result :=
   if_break (run_stat' S C t)
-    (fun R => decide (res_label R = Some lab))
     (fun S1 R1 => out_ter S1 (res_value R1)).
 
 Definition run_stat_with (run_expr' : run_expr_type) (run_stat' : run_stat_type)
@@ -1624,12 +1621,8 @@ Definition run_stat_try (run_stat' : run_stat_type) (run_call' : run_call_type)
       | L :: oldlex =>
         if_void (env_record_create_set_mutable_binding
           run_call' S C L x None v throw_irrelevant) (fun S2 =>
-          match rv2 with
-          | prim_undef =>
             let C' := execution_ctx_with_lex C lex' in
-            finally (run_stat' S2 C' t2)
-          | _ => result_stuck
-          end)
+            finally (run_stat' S2 C' t2))
       | nil => result_stuck
       end
     end).
@@ -1667,7 +1660,7 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       out_ter S (convert_literal_to_prim i)
 
     | expr_identifier x =>
-      out_ter S (identifier_res S C x)
+      if_some (identifier_res S C x) (out_ter S)
 
     | expr_unary_op op e =>
       run_unary_op run_expr' run_call' S C op e
@@ -1818,16 +1811,15 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
     match B with
 
     | builtin_spec_op_function_call =>
-      let lf := extract_from_option lfo in (* TODO:  Create a monad (if_some) *)
-      let vthis := extract_from_option vo in (* TODO:  Idem *)
-      execution_ctx_function_call run_call' S C lf vthis args (fun S1 C1 =>
-        if run_object_code_empty S1 lf then (* TODO:  Here a match is better as I’m doing a let just afterwards *)
-          out_ter S1 (res_normal undef) (* Is that reachable? *)
-        else (
-          let p := run_object_code S1 lf in
-          if_success_or_return (run_prog' S1 C1 (funcbody_prog p)) (fun S2 rv =>
-            out_ter S2 (res_normal undef)) (fun S2 v =>
-            out_ter S2 (res_normal v))))
+      if_some lfo (fun lf =>
+        if_some vo (fun vthis =>
+          execution_ctx_function_call run_call' S C lf vthis args (fun S1 C1 =>
+            if run_object_code_empty S1 lf then (* TODO:  Here a match is better as I’m doing a let just afterwards *)
+              out_ter S1 (res_normal undef) (* Is that reachable? *)
+            else if_some (run_object_code S1 lf) (fun pb =>
+              if_success_or_return (run_prog' S1 C1 (funcbody_prog pb)) (fun S2 rv =>
+                out_ter S2 (res_normal undef)) (fun S2 v =>
+                out_ter S2 (res_normal v))))))
 
     | builtin_spec_op_function_bind_call =>
       arbitrary (* TODO *)
