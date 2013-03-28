@@ -2009,30 +2009,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Auxiliary reductions for binding instantiation:
      bindings for parameters (Step 4d). *)
 
-  (* TODO: don't need to do this in CPS *)
+  | red_spec_binding_instantiation_formal_params_empty : forall S C args L str,  (* Loop ends in Step 4d *)  
+      red_expr S C (spec_binding_instantiation_formal_params args L nil str) (out_void S)
 
-  | red_spec_binding_instantiation_formal_params_empty : forall S C K args L o,  (* Loop ends in Step 4d *)  
-      red_expr S C (K args L) o -> (* todo: simply return out_void here *)
-      red_expr S C (spec_binding_instantiation_formal_params K args L nil) o
-
-  | red_spec_binding_instantiation_formal_params_non_empty : forall o1 S C K v args args' L x xs o, (* Steps 4d i - iii *)
+  | red_spec_binding_instantiation_formal_params_non_empty : forall o1 S C v args args' L x xs str o, (* Steps 4d i - iii *)
       (v,args') = (match args with nil => (undef,nil) | v::args' => (v,args') end) ->
       red_expr S C (spec_env_record_has_binding L x) o1 ->
-      red_expr S C (spec_binding_instantiation_formal_params_1 K args' L x xs v o1) o ->
-      red_expr S C (spec_binding_instantiation_formal_params K args L (x::xs)) o
+      red_expr S C (spec_binding_instantiation_formal_params_1 args' L x xs str v o1) o ->
+      red_expr S C (spec_binding_instantiation_formal_params args L (x::xs) str) o
 
-  | red_spec_binding_instantiation_formal_params_1_declared : forall o1 S0 S C K args L x xs v o,  (* Step 4d iv *)
+  | red_spec_binding_instantiation_formal_params_1_declared : forall o1 S0 S C args L x xs str v o,  (* Step 4d iv *)
       red_expr S C (spec_env_record_set_mutable_binding L x v (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_binding_instantiation_formal_params_2 K args L xs o1) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_1 K args L x xs v (out_ter S true)) o
+      red_expr S C (spec_binding_instantiation_formal_params_2 args L xs str o1) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_1 args L x xs str v (out_ter S true)) o
 
-  | red_spec_binding_instantiation_formal_params_1_not_declared : forall S0 S C K args L x xs v o o1, (* Step 4d iv *)
-    (* TODO: replace (execution_ctx_strict C) with  (prog_strict code) *)
-      red_expr S C (spec_env_record_create_set_mutable_binding L x None v (execution_ctx_strict C)) o1 ->
+  | red_spec_binding_instantiation_formal_params_1_not_declared : forall S0 S C args L x xs str v o o1, (* Step 4d iv *)
+      red_expr S C (spec_env_record_create_set_mutable_binding L x None v str) o1 ->
       (* TODO(Daiva): are we sure that deletable_opt above is None, meaning that the item
          will not be deletable? it's worth testing in an implementation if you can delete an arg binding. *)
-      red_expr S C (spec_binding_instantiation_formal_params_2 K args L xs o1) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_1 K args L x xs v (out_ter S false)) o
+      red_expr S C (spec_binding_instantiation_formal_params_2 args L xs str o1) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_1 args L x xs str v (out_ter S false)) o
 
     (* TODO: change above to do :
             -- if has binding -> create and goto join 
@@ -2040,9 +2036,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
             -- on join: to set
       *)
 
-  | red_spec_binding_instantiation_formal_params_2 : forall S0 S C K args L xs o1 o, (* Step 4d loop *)
-      red_expr S C (spec_binding_instantiation_formal_params K args L xs) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_2 K args L xs (out_void S)) o
+  | red_spec_binding_instantiation_formal_params_2 : forall S0 S C args L xs str o1 o, (* Step 4d loop *)
+      red_expr S C (spec_binding_instantiation_formal_params args L xs str) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_2 args L xs str (out_void S)) o
 
   (* Auxiliary reductions for binding instantiation: 
      bindings for function declarations (Step 5). *)
@@ -2174,46 +2170,51 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_execution_ctx_binding_instantiation_1 ct lf code args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation ct lf code args) o
 
-  | red_spec_execution_ctx_binding_instantiation_1_function : forall xs S C lf code args L o, (* Step 4a *)
+  | red_spec_execution_ctx_binding_instantiation_1_function : forall o1 xs S C lf code args L o, (* Step 4a *)
       object_formal_parameters S lf (Some xs) ->
-      red_expr S C (spec_binding_instantiation_formal_params (spec_execution_ctx_binding_instantiation_2 codetype_func (Some lf) code xs) args L xs) o ->
+      red_expr S C (spec_binding_instantiation_formal_params args L xs (prog_intro_strictness code)) o1 ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_2 codetype_func lf code xs args L o1) o -> 
       red_expr S C (spec_execution_ctx_binding_instantiation_1 codetype_func (Some lf) code args L) o
+      
+  | red_spec_execution_ctx_binding_instantiation_2 : forall S0 xs S C lf code args L o, (* Step 4a *)
+      red_expr S C (spec_execution_ctx_binding_instantiation_3 codetype_func (Some lf) code xs args L) o -> 
+      red_expr S0 C (spec_execution_ctx_binding_instantiation_2 codetype_func lf code xs args L (out_void S)) o      
 
   | red_spec_execution_ctx_binding_instantiation_1_not_function : forall L S C ct code args o, (* Skipping step 4a *)
       ct <> codetype_func ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 ct None code nil args L) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_3 ct None code nil args L) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_1 ct None code args L) o
 
   | red_spec_execution_ctx_binding_instantiation_function_2 : forall bconfig L K S C ct lf code fds xs args o, (* Step 5 *)
       bconfig = (If ct = codetype_eval then true else false) ->
       fds = prog_funcdecl code -> 
       (* TODO: remove continuation if possible for spec_binding_instantiation_function_decls *)
-      K = spec_execution_ctx_binding_instantiation_3 ct lf code xs args bconfig -> 
+      K = spec_execution_ctx_binding_instantiation_4 ct lf code xs args bconfig -> 
       red_expr S C (spec_binding_instantiation_function_decls K args L fds bconfig (out_void S)) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_2 ct lf code xs args L) o
+      red_expr S C (spec_execution_ctx_binding_instantiation_3 ct lf code xs args L) o
       
-  | red_spec_execution_ctx_binding_instantiation_3 : forall o1 L S C K ct lf code xs args bconfig o, (* Step 6 *)
+  | red_spec_execution_ctx_binding_instantiation_4 : forall o1 L S C K ct lf code xs args bconfig o, (* Step 6 *)
       red_expr S C (spec_env_record_has_binding L "arguments") o1 ->
-      K = spec_execution_ctx_binding_instantiation_4 code bconfig L ->
+      K = spec_execution_ctx_binding_instantiation_5 code bconfig L ->
       red_expr S C (spec_binding_instantiation_arg_obj K ct lf code xs args L o1) o ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_3 ct lf code xs args bconfig L) o
+      red_expr S C (spec_execution_ctx_binding_instantiation_4 ct lf code xs args bconfig L) o
 
   (* TODO
       red_expr S C (spec_env_record_has_binding L "arguments") o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 ct lf code xs args bconfig L o1) o
-      red_expr S C (spec_execution_ctx_binding_instantiation_3 ct lf code xs args bconfig L) o
-
-      spec_execution_ctx_binding_instantiation_5 ct lf code xs args bconfig L o1 ->
       red_expr S C (spec_execution_ctx_binding_instantiation_5 ct lf code xs args bconfig L o1) o
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 ct lf code xs args bconfig L (false)) o
+      red_expr S C (spec_execution_ctx_binding_instantiation_4 ct lf code xs args bconfig L) o
 
+      spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L o1 ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L o1) o
+      red_expr S C (spec_execution_ctx_binding_instantiation_5 ct lf code xs args bconfig L (false)) o
+
+      red_expr S C (spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L (true)) o
       red_expr S C (spec_execution_ctx_binding_instantiation_5 ct lf code xs args bconfig L (true)) o
-      red_expr S C (spec_execution_ctx_binding_instantiation_4 ct lf code xs args bconfig L (true)) o
   *)
 
-  | red_spec_execution_ctx_binding_instantiation_4 : forall o1 S0 L S C code bconfig o, (* Step 8 *)
+  | red_spec_execution_ctx_binding_instantiation_5 : forall o1 S0 L S C code bconfig o, (* Step 8 *)
       red_expr S C (spec_binding_instantiation_var_decls L (prog_vardecl code) bconfig (out_void S)) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_4 code bconfig L (out_void S)) o
+      red_expr S0 C (spec_execution_ctx_binding_instantiation_5 code bconfig L (out_void S)) o
 
 
   (*------------------------------------------------------------*)
