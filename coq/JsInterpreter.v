@@ -48,6 +48,15 @@ Implicit Type p : prog.
 Implicit Type t : stat.
 
 
+(**************************************************************)
+(** ** Structure of This File *)
+(* Definitions of the datatypes used.
+ * Monadic constructors.
+ * Functions corresponding to the [spec_*] of the semantics.
+ * Operatorshandling.
+ * Functions corresponding to syntax cases of the semantics (while, if, ...)
+ * Final fixed point. *)
+
 
 (**************************************************************)
 (** ** Some functions to be implemented (or extracted differently). *)
@@ -94,6 +103,15 @@ Definition get_arg := get_nth undef.
 (**************************************************************)
 (** Monadic constructors *)
 
+Definition if_bool_option (A : Type) (d : A) (bo : option bool) (K1 : unit -> A) (K2 : unit -> A) : A :=
+  morph_option d (fun b =>
+    if b then K1 tt else K2 tt) bo.
+
+Definition if_bool_option_result := if_bool_option result_stuck.
+
+Definition if_some {A : Type} (op : option A) (K : A -> result) : result :=
+  morph_option result_stuck K op.
+
 Definition if_ter (o : result) (K : state -> res -> result) : result :=
   match o with
   | out_ter S0 R =>
@@ -117,7 +135,7 @@ Definition if_success := if_success_state resvalue_empty.
 Definition if_void (o : result_void) (K : state -> result) : result :=
   if_success o (fun S rv =>
     match rv with
-    | out_ter S res_empty => K S
+    | resvalue_empty => K S
     | _ => result_stuck
     end).
 
@@ -326,45 +344,48 @@ Definition run_object_get_own_prop_base P x : full_descriptor :=
 Definition run_object_get_own_property_default S l x : full_descriptor :=
   run_object_get_own_prop_base (run_object_properties S l) x.
 
-Definition run_object_get_own_property S l x : full_descriptor :=
+Definition run_object_get_own_property S l x : option full_descriptor :=
   let sclass := run_object_class S l in
   let D := run_object_get_own_property_default S l x in
   ifb sclass = "String" then (
-    ifb D <> full_descriptor_undef then D
+    ifb D <> full_descriptor_undef then Some D
     else let ix := convert_primitive_to_integer x in
     ifb prim_string x <> convert_prim_to_string (JsNumber.absolute ix) then
-      full_descriptor_undef
+      Some full_descriptor_undef
     else (
       match run_object_prim_value S l with
-      | prim_string s =>
-        let len : int := String.length s in
-        let i := JsNumber_to_int ix in
-        ifb len <= i then full_descriptor_undef
-        else let s' := string_sub s i 1 in
-          attributes_data_intro s' false true false
-      | _ => arbitrary
+      | Some (prim_string s) =>
+        Some (
+          let len : int := String.length s in
+          let i := JsNumber_to_int ix in
+          ifb len <= i then full_descriptor_undef
+          else let s' := string_sub s i 1 in
+            attributes_data_intro s' false true false)
+      | _ => None
       end
     )
-  ) else D.
+  ) else Some D.
 
-Definition object_get_property_body run_object_get_property S v x : full_descriptor :=
+Definition object_get_property_body run_object_get_property S v x : option full_descriptor :=
   match v with
   | value_prim w =>
-    ifb v = null then full_descriptor_undef
-    else arbitrary
+    ifb v = null then Some full_descriptor_undef
+    else None
   | value_object l =>
-    let D := run_object_get_own_property S l x in
-    ifb D = full_descriptor_undef then (
-      let lproto := run_object_proto S l in
-      run_object_get_property S lproto x
-    ) else D
+    morph_option None (fun D =>
+      ifb D = full_descriptor_undef then (
+        let lproto := run_object_proto S l in
+        run_object_get_property S lproto x
+      ) else Some D)
+      (run_object_get_own_property S l x)
   end.
 
 Definition run_object_get_property := FixFun3 object_get_property_body.
 
-Definition object_has_prop S l x : bool :=
-  let D := run_object_get_property S l x in
-  decide (D <> full_descriptor_undef).
+Definition object_has_prop S l x : option bool :=
+  option_map (fun D =>
+    decide (D <> full_descriptor_undef))
+    (run_object_get_property S l x).
 
 Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
   match run_object_proto S  l  with
@@ -383,23 +404,23 @@ Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
   | None => d
   end.
 
-Definition env_record_has_binding S L x : bool :=
-  env_record_lookup (fun _ : unit => arbitrary) S L (fun E _ =>
+Definition env_record_has_binding S L x : option bool :=
+  env_record_lookup (fun _ : unit => None) S L (fun E _ =>
     match E with
     | env_record_decl Ed =>
-      decide (decl_env_record_indom Ed x)
+      Some (decide (decl_env_record_indom Ed x))
     | env_record_object l pt =>
       object_has_prop S l x
     end) tt.
 
-Fixpoint lexical_env_get_identifier_ref S X x str : ref :=
+Fixpoint lexical_env_get_identifier_ref S X x str : option ref :=
   match X with
   | nil =>
-    ref_create_value undef x str
+    Some (ref_create_value undef x str)
   | L :: X' =>
-    if env_record_has_binding S L x then
-      ref_create_env_loc L x str
-    else lexical_env_get_identifier_ref S X' x str
+    if_bool_option None (env_record_has_binding S L x) (fun _ =>
+      Some (ref_create_env_loc L x str)) (fun _ =>
+      lexical_env_get_identifier_ref S X' x str)
   end.
 
 Definition env_record_delete_binding S L x : result :=
@@ -428,23 +449,24 @@ Definition identifier_res S C x :=
 Definition object_get_builtin (run_call' : run_call_type) S C B vthis l x : result :=
   match B with
   | builtin_default_get =>
-    match run_object_get_property S l x with
-    | full_descriptor_undef => out_ter S undef
-    | attributes_data_of Ad =>
-      out_ter S (attributes_data_value Ad)
-    | attributes_accessor_of Aa =>
-      match attributes_accessor_get Aa with
-      | undef => out_ter S undef
-      | value_object lf =>
-        match vthis with
-        | value_object lthis =>
-          call run_call' S C lf lthis nil
-        | _ => result_stuck
+    if_some (run_object_get_property S l x) (fun D =>
+      match D with
+      | full_descriptor_undef => out_ter S undef
+      | attributes_data_of Ad =>
+        out_ter S (attributes_data_value Ad)
+      | attributes_accessor_of Aa =>
+        match attributes_accessor_get Aa with
+        | undef => out_ter S undef
+        | value_object lf =>
+          match vthis with
+          | value_object lthis =>
+            call run_call' S C lf lthis nil
+          | _ => result_stuck
+          end
+        | _ => (* TODO:  Check the spec' once it will have been updated. *)
+          result_stuck
         end
-      | _ => (* TODO:  Check the spec' once it will have been updated. *)
-        result_stuck
-      end
-    end
+      end)
   | _ =>
     result_stuck
   end.
@@ -482,7 +504,7 @@ Definition run_value_viewable_as_prim s S v : option prim :=
   | value_object l =>
     let s := run_object_class S l in
     match run_object_prim_value S l with
-    | value_prim w => Some w
+    | Some (value_prim w) => Some w
     | _ => None
     end
   end.
@@ -499,94 +521,94 @@ Definition env_record_get_binding_value (run_call' : run_call_type) S C L x str 
         out_error_or_cst S str builtin_ref_error undef
       else out_ter S v
     | env_record_object l pt =>
-      if object_has_prop S l x then
-        object_get run_call' S C l x
-      else out_error_or_cst S str builtin_ref_error undef
+      if_bool_option_result (object_has_prop S l x) (fun _ =>
+        object_get run_call' S C l x) (fun _ =>
+        out_error_or_cst S str builtin_ref_error undef)
     end).
 
 Definition object_can_put S l x : result :=
-  let D := run_object_get_own_property S l x in
-  let oe := run_object_extensible S l in
-  match D with
-  | full_descriptor_some A =>
-    match A with
-    | attributes_accessor_of Aa =>
-      out_ter S (decide (attributes_accessor_set Aa = undef))
-    | attributes_data_of Ad =>
-      out_ter S (prim_bool (attributes_data_writable Ad))
-    end
-  | full_descriptor_undef =>
-    let lproto := run_object_proto S l in
-    ifb lproto = null then out_ter S oe
-    else (
-      let Anproto := run_object_get_property S lproto x in
-      match Anproto with
-      | full_descriptor_undef => out_ter S oe
-      | full_descriptor_some A =>
-        match A with
-        | attributes_accessor_of Aa =>
-          out_ter S (decide (attributes_accessor_set Aa = undef))
-        | attributes_data_of Ad =>
-          out_ter S (if oe then false else prim_bool (attributes_data_writable Ad))
-        end
+  if_some (run_object_get_own_property S l x) (fun D =>
+    let oe := run_object_extensible S l in
+    match D with
+    | full_descriptor_some A =>
+      match A with
+      | attributes_accessor_of Aa =>
+        out_ter S (decide (attributes_accessor_set Aa = undef))
+      | attributes_data_of Ad =>
+        out_ter S (prim_bool (attributes_data_writable Ad))
       end
-    )
-  end.
+    | full_descriptor_undef =>
+      let lproto := run_object_proto S l in
+      ifb lproto = null then out_ter S oe
+      else (
+        if_some (run_object_get_property S lproto x) (fun Anproto =>
+          match Anproto with
+          | full_descriptor_undef => out_ter S oe
+          | full_descriptor_some A =>
+            match A with
+            | attributes_accessor_of Aa =>
+              out_ter S (decide (attributes_accessor_set Aa = undef))
+            | attributes_data_of Ad =>
+              out_ter S (if oe then false else prim_bool (attributes_data_writable Ad))
+            end
+          end)
+      )
+    end).
 
 Definition object_define_own_property S l x Desc str : result :=
-  let D := run_object_get_own_property S l x in
-  let extensible := run_object_extensible S l in
-  (* Note that Array will have a special case there. *)
-  match D with
-  | full_descriptor_undef =>
-    if extensible then (
-      let A :=
-        ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
-        then attributes_data_of_descriptor Desc : attributes
-        else attributes_accessor_of_descriptor Desc in
-      let S' := pick (object_set_property S l x A) in
-      out_ter S' true
-    ) else out_reject S str
-  | full_descriptor_some A =>
-    let dop_write S' A' :=
-      let A'' := attributes_update A Desc in
-      let S'' := pick (object_set_property S' l x A'') in
-      out_ter S'' true in
-    ifb descriptor_contains A Desc then
-      out_ter S true
-    else ifb attributes_change_enumerable_on_non_configurable A Desc then
-      out_reject S str
-    else ifb descriptor_is_generic Desc then
-      dop_write S A
-    else ifb attributes_is_data A <> descriptor_is_data Desc then (
-     if neg (attributes_configurable A) then
-       out_reject S str
-     else (
-      let A':=
-        match A return attributes with
-        | attributes_data_of Ad => attributes_accessor_of_attributes_data Ad
-        | attributes_accessor_of Aa => attributes_data_of_attributes_accessor Aa
-        end in
-      let S' := pick (object_set_property S l x A') in
-      dop_write S' A'
-    )) else
-      match A with
-      | attributes_data_of Ad =>
-        ifb descriptor_is_data Desc then (
-          ifb attributes_change_data_on_non_configurable Ad Desc then
-            out_reject S str
-          else
-            dop_write S Ad
-        ) else result_stuck
-      | attributes_accessor_of Aa =>
-        ifb descriptor_is_accessor Desc then (
-          ifb attributes_change_accessor_on_non_configurable Aa Desc then
-            out_reject S str
-          else
-            dop_write S Aa
-        ) else result_stuck
-      end
-  end.
+  if_some (run_object_get_own_property S l x) (fun D =>
+    let extensible := run_object_extensible S l in
+    (* Note that Array will have a special case there. *)
+    match D with
+    | full_descriptor_undef =>
+      if extensible then (
+        let A :=
+          ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
+          then attributes_data_of_descriptor Desc : attributes
+          else attributes_accessor_of_descriptor Desc in
+        let S' := pick (object_set_property S l x A) in
+        out_ter S' true
+      ) else out_reject S str
+    | full_descriptor_some A =>
+      let dop_write S' A' :=
+        let A'' := attributes_update A Desc in
+        let S'' := pick (object_set_property S' l x A'') in
+        out_ter S'' true in
+      ifb descriptor_contains A Desc then
+        out_ter S true
+      else ifb attributes_change_enumerable_on_non_configurable A Desc then
+        out_reject S str
+      else ifb descriptor_is_generic Desc then
+        dop_write S A
+      else ifb attributes_is_data A <> descriptor_is_data Desc then (
+       if neg (attributes_configurable A) then
+         out_reject S str
+       else (
+        let A':=
+          match A return attributes with
+          | attributes_data_of Ad => attributes_accessor_of_attributes_data Ad
+          | attributes_accessor_of Aa => attributes_data_of_attributes_accessor Aa
+          end in
+        let S' := pick (object_set_property S l x A') in
+        dop_write S' A'
+      )) else
+        match A with
+        | attributes_data_of Ad =>
+          ifb descriptor_is_data Desc then (
+            ifb attributes_change_data_on_non_configurable Ad Desc then
+              out_reject S str
+            else
+              dop_write S Ad
+          ) else result_stuck
+        | attributes_accessor_of Aa =>
+          ifb descriptor_is_accessor Desc then (
+            ifb attributes_change_accessor_on_non_configurable Aa Desc then
+              out_reject S str
+            else
+              dop_write S Aa
+          ) else result_stuck
+        end
+    end).
 
 
 (**************************************************************)
@@ -620,39 +642,41 @@ Definition object_put_complete (run_call' : run_call_type) S C B vthis l x v str
 
   | builtin_default_put =>
     if_success_bool (object_can_put S l x) (fun S1 =>
-      match run_object_get_own_property S1 l x with
-
-      | attributes_data_of Ad =>
-        match vthis with
-        | value_object lthis =>
-          let Desc := descriptor_intro (Some v) None None None None None in
-          if_success (object_define_own_property S1 l x Desc str) (fun S2 rv =>
-            out_void S2)
-        | value_prim wthis =>
-          out_error_or_void S1 str builtin_type_error
-        end
-
-      | _ =>
-        match run_object_get_property S1 l x with
-        | attributes_accessor_of Aa' =>
-          match attributes_accessor_set Aa' with
-          | value_object lfsetter =>
-            if_success (call run_call' S1 C lfsetter vthis (v::nil)) (fun S2 rv =>
-              out_void S2)
-          | _ => result_stuck
-          end
-        | _ =>
+      if_some (run_object_get_own_property S1 l x) (fun D =>
+        match D with
+        
+        | attributes_data_of Ad =>
           match vthis with
           | value_object lthis =>
-            let Desc := descriptor_intro_data v true true true in
+            let Desc := descriptor_intro (Some v) None None None None None in
             if_success (object_define_own_property S1 l x Desc str) (fun S2 rv =>
               out_void S2)
           | value_prim wthis =>
             out_error_or_void S1 str builtin_type_error
           end
-        end
-
-      end)
+        
+        | _ =>
+          if_some (run_object_get_property S1 l x) (fun D' =>
+            match D' with
+            | attributes_accessor_of Aa' =>
+              match attributes_accessor_set Aa' with
+              | value_object lfsetter =>
+                if_success (call run_call' S1 C lfsetter vthis (v::nil)) (fun S2 rv =>
+                  out_void S2)
+              | _ => result_stuck
+              end
+            | _ =>
+              match vthis with
+              | value_object lthis =>
+                let Desc := descriptor_intro_data v true true true in
+                if_success (object_define_own_property S1 l x Desc str) (fun S2 rv =>
+                  out_void S2)
+              | value_prim wthis =>
+                out_error_or_void S1 str builtin_type_error
+              end
+            end)
+        
+        end))
       (fun S' => out_error_or_void S str builtin_type_error)
 
     | _ => arbitrary (* TODO *)
@@ -719,10 +743,10 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
       let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
       out_void S'
   | env_record_object l pt =>
-    if object_has_prop S l x then result_stuck
-    else let A := attributes_data_intro undef true true deletable in
+    if_bool_option_result (object_has_prop S l x) (fun _ => result_stuck) (fun _ =>
+      let A := attributes_data_intro undef true true deletable in
       if_success (object_define_own_property S l x A throw_true) (fun S1 rv =>
-        out_void S1)
+        out_void S1))
   end.
 
 Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C L x (deletable_opt : option bool) v str : result_void :=
@@ -741,7 +765,7 @@ Definition env_record_create_immutable_binding S L x : result_void :=
 Definition env_record_initialize_immutable_binding S L x v : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
-    ifb pick (decl_env_record_binds Ed x) = (mutability_uninitialized_immutable undef) then
+    ifb pick (binds Ed x) = (mutability_uninitialized_immutable, undef) then
       let S' := env_record_write_decl_env S L x mutability_immutable v in
       out_void S'
     else result_stuck
@@ -923,12 +947,12 @@ Fixpoint binding_instantiation_formal_args (run_call' : run_call_type) S C L (ar
   | nil => out_void S
   | argname :: names' =>
     let v := hd undef args in
-    let hb := env_record_has_binding S L argname in
-    if_void
-      (if hb then (* TODO:  There might be a factorisation there:  look at the semantics for updates. *)
-        env_record_set_mutable_binding run_call' S C L argname v (execution_ctx_strict C)
-      else env_record_create_set_mutable_binding run_call' S C L argname None v (execution_ctx_strict C)) (fun S1 rv1 =>
-        binding_instantiation_formal_args run_call' S1 C L (tl args) names' str)
+    if_some (env_record_has_binding S L argname) (fun hb =>
+      if_void
+        (if hb then (* TODO:  There might be a factorisation there:  look at the semantics for updates. *)
+          env_record_set_mutable_binding run_call' S C L argname v (execution_ctx_strict C)
+        else env_record_create_set_mutable_binding run_call' S C L argname None v (execution_ctx_strict C)) (fun S1 =>
+          binding_instantiation_formal_args run_call' S1 C L (tl args) names' str))
   end.
 
 Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
@@ -940,23 +964,24 @@ Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L 
       let str := funcbody_is_strict fbd in
       if_object (creating_function_object run_call' S C (funcdecl_parameters fd) fbd (execution_ctx_variable_env C) str) (fun S1 fo =>
         if_success (* TODO:  Should be [if_void] I think.*) ( (* TODO:  Name this argument. *)
-          if env_record_has_binding S1 L fname then
+          if_bool_option_result (env_record_has_binding S1 L fname) (fun _ =>
             ifb L = env_loc_global_env_record then ( (* TODO:  Use “codetype” for this. *)
-              match run_object_get_property S1 builtin_global fname with
-              | full_descriptor_undef => result_stuck
-              | full_descriptor_some A =>
-                ifb attributes_configurable A then (
-                  let A' := attributes_data_intro undef true true bconfig in
-                  object_define_own_property S1 builtin_global fname A' true
-                ) else ifb descriptor_is_accessor A
-                  \/ (attributes_writable A = false \/ attributes_enumerable A = false) then
-                    out_type_error S1
-                else out_void S1
-              end
-            ) else out_void S1
-          else env_record_create_mutable_binding S1 L fname (Some bconfig)) (fun S2 rv => (* TODO:  Name this part:  the part above is just unreadable. *)
-            if_void (env_record_set_mutable_binding run_call' S2 C L fname fo str) (fun S3 =>
-              binding_instantiation_function_decls run_call' S3 C L fds' bconfig)))
+              if_some (run_object_get_property S1 builtin_global fname) (fun D =>
+                match D with
+                | full_descriptor_undef => result_stuck
+                | full_descriptor_some A =>
+                  ifb attributes_configurable A then (
+                    let A' := attributes_data_intro undef true true bconfig in
+                    object_define_own_property S1 builtin_global fname A' true
+                  ) else ifb descriptor_is_accessor A
+                    \/ (attributes_writable A = false \/ attributes_enumerable A = false) then
+                      out_type_error S1
+                  else out_void S1
+                end)
+            ) else out_void S1) (fun _ =>
+            env_record_create_mutable_binding S1 L fname (Some bconfig))) (fun S2 rv => (* TODO:  Name this part:  the part above is just unreadable. *)
+              if_void (env_record_set_mutable_binding run_call' S2 C L fname fo str) (fun S3 =>
+                binding_instantiation_function_decls run_call' S3 C L fds' bconfig)))
   end.
 
 Fixpoint binding_instantiation_var_decls (run_call' : run_call_type) S C L (vds : list string) str : result_void :=
@@ -964,10 +989,10 @@ Fixpoint binding_instantiation_var_decls (run_call' : run_call_type) S C L (vds 
   | nil => out_void S
   | vd :: vds' =>
     let bivd S := binding_instantiation_var_decls run_call' S C L vds' str in
-    if env_record_has_binding S L vd then bivd S
-    else
+    if_bool_option_result (env_record_has_binding S L vd) (fun _ =>
+      bivd S) (fun _ =>
       if_void (env_record_create_set_mutable_binding run_call' S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 =>
-        bivd S1)
+        bivd S1))
   end.
 
 Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
@@ -975,17 +1000,17 @@ Definition create_arguments_object S C l (xs : list prop_name) (args : list valu
 
 Definition binding_instantiation_arguments_object (run_call' : run_call_type) S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
   let name := "arguments" in
-  let bdecl := env_record_has_binding S L name in
-  ifb ct = codetype_func /\ ~ bdecl then (
-    let lf := extract_from_option funco in (* TODO :( *)
-    let str := prog_strict p in
-      if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
-        if str then
-          if_void (env_record_create_immutable_binding S1 L name) (fun S2 =>
-            env_record_initialize_immutable_binding S2 L name largs)
-        else
-          env_record_create_set_mutable_binding run_call' S1 C L name None largs false))
-  else out_void S.
+  if_some (env_record_has_binding S L name) (fun bdecl =>
+    ifb ct = codetype_func /\ ~ bdecl then (
+      if_some funco (fun lf =>
+        let str := prog_strict p in
+          if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
+            if str then
+              if_void (env_record_create_immutable_binding S1 L name) (fun S2 =>
+                env_record_initialize_immutable_binding S2 L name largs)
+            else
+              env_record_create_set_mutable_binding run_call' S1 C L name None largs false)))
+    else out_void S).
 
 Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
   let L := hd_inhab (execution_ctx_variable_env C) in (* TODO:  Baah! *)
@@ -997,7 +1022,7 @@ Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (
     | (codetype_global | codetype_eval), None => (out_void S : result, nil)
     | _, _ => (result_stuck, nil)
     end in
-  if_void o (fun S1 rv1 =>
+  if_void o (fun S1 =>
       let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
       if_void (binding_instantiation_function_decls run_call' S1 C L fds bconfig) (fun S2 =>
@@ -1007,18 +1032,18 @@ Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (
 
 
 Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) : result :=
-  let bd := run_object_code S lf in (* TODO:  Maybe this could be passed are arguments *)
-  let str := funcbody_is_strict bd in
-  let newthis :=
-    if str then this
-    else ifb this = null \/ this = undef then builtin_global
-    else ifb type_of this = type_object then this
-    else arbitrary in
-  let scope := extract_from_option (run_object_scope S lf) in (* TODO:  Baaaah! *)
-  let (lex', S1) := lexical_env_alloc_decl S scope in
-  let C1 := execution_ctx_intro_same lex' this str in
-  if_void (execution_ctx_binding_instantiation run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
-    K S2 C1).
+  if_some (run_object_code S lf) (fun bd => (* TODO:  Maybe this could be passed are arguments and thus avoid to recompute this [run_object_code] again. *)
+    let str := funcbody_is_strict bd in
+    let newthis :=
+      if str then this
+      else ifb this = null \/ this = undef then builtin_global
+      else ifb type_of this = type_object then this
+      else arbitrary in
+    if_some (run_object_scope S lf) (fun scope =>
+      let (lex', S1) := lexical_env_alloc_decl S scope in
+      let C1 := execution_ctx_intro_same lex' this str in
+      if_void (execution_ctx_binding_instantiation run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
+        K S2 C1))).
 
 Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
   match max_step with
@@ -1213,7 +1238,9 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
     match v2 with
     | value_object l =>
       if_string (to_string run_call' S C v1) (fun S2 x =>
-        out_ter S2 (object_has_prop S2 l x))
+        if_bool_option_result (object_has_prop S2 l x) (fun _ =>
+          out_ter S2 true) (fun _ =>
+          out_ter S2 false))
     | _ => out_type_error S
     end
 
@@ -1250,14 +1277,15 @@ Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
 
 Definition object_delete S l x str : result :=
   let B := run_object_method object_delete_ S l in
-  match run_object_get_own_property S l x with
-  | full_descriptor_undef => out_ter S true
-  | full_descriptor_some A =>
-    if attributes_configurable A then
-      out_ter (pick (object_rem_property S l x)) true
-    else
-      out_error_or_cst S str builtin_type_error false
-  end.
+  if_some (run_object_get_own_property S l x) (fun D =>
+    match D with
+    | full_descriptor_undef => out_ter S true
+    | full_descriptor_some A =>
+      if attributes_configurable A then
+        out_ter (pick (object_rem_property S l x)) true
+      else
+        out_error_or_cst S str builtin_type_error false
+    end).
 
 
 Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) S C (op : unary_op) e : result :=
@@ -1374,9 +1402,9 @@ Fixpoint run_var_decl (run_expr' : run_expr_type) (run_call' : run_call_type)
       | None => out_ter S undef
       | Some e =>
         if_success_value run_call' C (run_expr' S C e) (fun S1 v =>
-          let ir := identifier_res S1 C x in
-          if_void (ref_put_value run_call' S1 C ir v) (fun S2 =>
-            out_ter S2 undef))
+          if_some (identifier_res S1 C x) (fun ir =>
+            if_void (ref_put_value run_call' S1 C ir v) (fun S2 =>
+              out_ter S2 undef)))
       end) (fun S1 rv =>
         run_var_decl run_expr' run_call' S1 C xeos')
   end.
@@ -1456,7 +1484,7 @@ Definition run_expr_function (run_call' : run_call_type) S C fo args bd : result
     let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
     let follow L :=
       let E := pick (env_record_binds S' L) in
-      if_void env_record_create_immutable_binding S' L fn) (fun S1 =>
+      if_void (env_record_create_immutable_binding S' L fn) (fun S1 =>
         if_object (creating_function_object run_call' S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
           if_void (env_record_initialize_immutable_binding S2 L fn l) (fun S3 =>
             out_ter S3 l))) in
