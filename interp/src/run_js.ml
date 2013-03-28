@@ -1,6 +1,7 @@
 let file = ref ""
 let test_prelude = ref ""
 let test = ref false
+let printHeap = ref false
 
 let arguments () =
   let usage_msg="Usage: -jsparser <path> -file <path>" in
@@ -17,6 +18,9 @@ let arguments () =
       "-test_prelude",
       Arg.String(fun f -> test_prelude := f; test := true),
       "run the given test";
+      "-print-heap",
+      Arg.Unit(fun () -> printHeap := true),
+      "print the final state of the heap";
     ]
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
@@ -75,6 +79,9 @@ let _ =
          match o with
          | Interpreter.Out_ter (state, res) ->
             begin
+			  if !printHeap then
+			    print_endline
+					(Prheap.prheap (Interpreter.state_object_heap state)) ;
               match Interpreter.res_type res with
               | Interpreter.Restype_normal ->
                  (if (not !test) then
@@ -84,7 +91,7 @@ let _ =
                         print_endline "\n\nResult:\n";
                         print_endline (Prheap.prvalue v)
                      | Interpreter.Resvalue_ref re ->
-                        print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness o the result. -- Martin *)
+                        print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness from the result. -- Martin *)
       	                                   Prheap.string_of_char_list re.Interpreter.ref_name ^
       		                                   " and of value:\n\t" ^
       	                                       (match get_value_ref state re with
