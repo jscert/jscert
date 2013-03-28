@@ -2137,33 +2137,25 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Auxiliary reductions for binding instantiation:
      Declaring Arguments Object (7) *)
-      
-        (* TODO: simplify because now we are only called when bdecl=false *)
-  | red_spec_binding_instantiation_arg_obj_declared : forall o1 L S0 S C K ct lf code xs args bdecl o, (* Step 7 else branch *)
-      ~ (ct = codetype_func /\ bdecl = false) ->
-      red_expr S C (K (out_void S)) o ->
-      red_expr S0 C (spec_binding_instantiation_arg_obj K ct lf code xs args L (out_ter S bdecl)) o (* I removed the constraint that [lf] should be defined.  Please double check -- Martin.*)
 
-  | red_spec_binding_instantiation_arg_obj_not_declared : forall str o1 L S0 S C K ct lf code xs args o, (* Step 7a *)
-      str = prog_strict code ->
+  | red_spec_binding_instantiation_arg_obj : forall str o1 L S C ct lf code xs args o, (* Step 7a *)
+      str = prog_intro_strictness code ->
       red_expr S C (spec_create_arguments_object lf xs args L str) o1 ->
-      red_expr S C (spec_binding_instantiation_arg_obj_1 K code L str o1) o ->
-      red_expr S0 C (spec_binding_instantiation_arg_obj K codetype_func (Some lf) code xs args L (out_ter S false)) o
+      red_expr S C (spec_binding_instantiation_arg_obj_1 code L str o1) o ->
+      red_expr S C (spec_binding_instantiation_arg_obj lf code xs args L) o
  
-  | red_spec_binding_instantiation_arg_obj_1_strict : forall o1 L S0 S C K ct code largs o, (* Step 7b i *)
+  | red_spec_binding_instantiation_arg_obj_1_strict : forall o1 L S0 S C ct code largs o, (* Step 7b i *)
       red_expr S C (spec_env_record_create_immutable_binding L "arguments") o1 -> 
-      red_expr S C (spec_binding_instantiation_arg_obj_2 K code L largs o1) o ->
-      red_expr S0 C (spec_binding_instantiation_arg_obj_1 K code L true (out_ter S largs)) o
+      red_expr S C (spec_binding_instantiation_arg_obj_2 code L largs o1) o ->
+      red_expr S0 C (spec_binding_instantiation_arg_obj_1 code L true (out_ter S largs)) o
 
-  | red_spec_binding_instantiation_arg_obj_2 : forall o1 L S0 S C K code largs o, (* Step 7b ii *)
-      red_expr S C (spec_env_record_initialize_immutable_binding L "arguments" (value_object largs)) o1 -> 
-      red_expr S C (K o1) o ->
-      red_expr S0 C (spec_binding_instantiation_arg_obj_2 K code L largs (out_void S)) o
+  | red_spec_binding_instantiation_arg_obj_2 : forall o1 L S0 S C code largs o, (* Step 7b ii *)
+      red_expr S C (spec_env_record_initialize_immutable_binding L "arguments" (value_object largs)) o -> 
+      red_expr S0 C (spec_binding_instantiation_arg_obj_2 code L largs (out_void S)) o
       
-  | red_spec_binding_instantiation_arg_obj_1_not_strict : forall o1 L S0 S C K ct code largs o, (* Step 7c *)
-      red_expr S C (spec_env_record_create_set_mutable_binding L "arguments" None largs false) o1 -> 
-      red_expr S C (K o1) o ->
-      red_expr S0 C (spec_binding_instantiation_arg_obj_1 K code L false (out_ter S largs)) o
+  | red_spec_binding_instantiation_arg_obj_1_not_strict : forall o1 L S0 S C ct code largs o, (* Step 7c *)
+      red_expr S C (spec_env_record_create_set_mutable_binding L "arguments" None largs false) o -> 
+      red_expr S0 C (spec_binding_instantiation_arg_obj_1 code L false (out_ter S largs)) o
 
   (* Declaration Binding Instantiation: main reduction rules *)    
 
@@ -2200,28 +2192,32 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_execution_ctx_binding_instantiation_5 ct lf code xs args bconfig L) o ->
       red_expr S0 C (spec_execution_ctx_binding_instantiation_4 ct lf code xs args bconfig L (out_void S)) o
       
-  | red_spec_execution_ctx_binding_instantiation_5 : forall o1 L S C K ct lf code xs args bconfig o, (* Step 6 *)
+  | red_spec_execution_ctx_binding_instantiation_5 : forall o1 L S C ct lf code xs args bconfig o, (* Step 6 *)
       red_expr S C (spec_env_record_has_binding L "arguments") o1 ->
-      K = spec_execution_ctx_binding_instantiation_6 code bconfig L ->
-      red_expr S C (spec_binding_instantiation_arg_obj K ct lf code xs args L o1) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L o1) o ->
       red_expr S C (spec_execution_ctx_binding_instantiation_5 ct lf code xs args bconfig L) o
 
-  (* TODO
-      red_expr S C (spec_env_record_has_binding L "arguments") o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L o1) o
-      red_expr S C (spec_execution_ctx_binding_instantiation_5 ct lf code xs args bconfig L) o
+  | red_spec_execution_ctx_binding_instantiation_6_false : forall o1 L S0 S C lf code xs args bconfig o, (* Step 7 *)
+      red_expr S C (spec_binding_instantiation_arg_obj lf code xs args L) o1 ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_7 code bconfig L o1) o ->
+      red_expr S0 C (spec_execution_ctx_binding_instantiation_6 codetype_func (Some lf) code xs args bconfig L (out_ter S false)) o
+      
+  | red_spec_execution_ctx_binding_instantiation_7 : forall o1 L S C code bconfig L o, (* Step 7 join *)
+      red_expr S C (spec_execution_ctx_binding_instantiation_8 code bconfig L) o ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_7 code bconfig L (out_void S)) o
+      
+  | red_spec_execution_ctx_binding_instantiation_6_false_not_function : forall o1 L S0 S C ct lf code xs args bconfig o, (* Step 7 else *)
+      ct  <> codetype_func ->
+      red_expr S C (spec_execution_ctx_binding_instantiation_8 code bconfig L) o ->
+      red_expr S0 C (spec_execution_ctx_binding_instantiation_6 codetype_func lf code xs args bconfig L (out_ter S false)) o
 
-      spec_execution_ctx_binding_instantiation_7 ct lf code xs args bconfig L o1 ->
-      red_expr S C (spec_execution_ctx_binding_instantiation_7 ct lf code xs args bconfig L o1) o
-      red_expr S C (spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L (false)) o
+  | red_spec_execution_ctx_binding_instantiation_6_true : forall o1 L S0 S C ct lf code xs args bconfig o, (* Step 7 else *)
+      red_expr S C (spec_execution_ctx_binding_instantiation_8 code bconfig L) o ->
+      red_expr S0 C (spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L (out_ter S true)) o
 
-      red_expr S C (spec_execution_ctx_binding_instantiation_7 ct lf code xs args bconfig L (true)) o
-      red_expr S C (spec_execution_ctx_binding_instantiation_6 ct lf code xs args bconfig L (true)) o
-  *)
-
-  | red_spec_execution_ctx_binding_instantiation_6 : forall o1 S0 L S C code bconfig o, (* Step 8 *)
+  | red_spec_execution_ctx_binding_instantiation_8 : forall o1 S0 L S C code bconfig o, (* Step 8 *)
       red_expr S C (spec_binding_instantiation_var_decls L (prog_vardecl code) bconfig (prog_intro_strictness code)) o ->
-      red_expr S0 C (spec_execution_ctx_binding_instantiation_6 code bconfig L (out_void S)) o
+      red_expr S0 C (spec_execution_ctx_binding_instantiation_8 code bconfig L) o
 
 
   (*------------------------------------------------------------*)
