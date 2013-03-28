@@ -633,8 +633,8 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
   | abort_intercepted_stat_block_2 : forall lab S R rv ts,
       res_type R <> restype_throw ->
       abort_intercepted_stat (stat_block_2 rv (out_ter S R) ts)
-  | abort_intercepted_stat_label_1 : forall lab S R,
-      res_type R = restype_break ->
+  | abort_intercepted_stat_label_1 : forall lab rv S R,
+      R = res_intro restype_break rv lab ->
       abort_intercepted_stat (stat_label_1 lab (out_ter S R))
   | abort_intercepted_do_while_3 : forall labs e1 t2 rv S R,
       res_label_in R labs ->

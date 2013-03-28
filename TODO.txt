@@ -97,3 +97,16 @@ TEST:
 
 delete {}
 
+
+
+==============
+BIN:
+
+(* TODO: cleanup
+Global Instance label_bag : BagIn label label_set.
+Proof. apply in_inst. Qed.
+
+Global Instance label_set_dec : forall lab labs,
+  Decidable (lab \in labs).
+Admitted.
+*)

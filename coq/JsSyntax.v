@@ -70,21 +70,16 @@ Inductive literal :=
   | literal_number : number -> literal
   | literal_string : string -> literal.
 
-(** Labels used by break and continue keywords *)
+(** Labels literals used by break and continue keywords,
+    including the special "empty" label. *)
 
-Definition label := string.
-
-(** An optional label:
-    [None] refers to "the empty label", and [Some s] 
-    refers to a user label with string [s]. *)
-
-Inductive labelopt :=
-   | labelopt_empty : labelopt
-   | labelopt_label : label -> labelopt.
+Inductive label :=
+   | label_empty : label
+   | label_string : string -> label.
 
 (** A set of label, possibly including the empty label. *)
 
-Definition label_set := list labelopt.
+Definition label_set := list label.
 
 (** Strictness flag *)
 
@@ -130,7 +125,7 @@ with funcbody :=
 
 with stat :=
   | stat_expr : expr -> stat
-  | stat_label : label -> stat -> stat 
+  | stat_label : string -> stat -> stat 
   | stat_block : list stat -> stat
   | stat_var_decl : list (string * option expr) -> stat
   | stat_if : expr -> stat -> option stat -> stat
@@ -139,8 +134,8 @@ with stat :=
   | stat_with : expr -> stat -> stat
   | stat_throw : expr -> stat
   | stat_return : option expr -> stat
-  | stat_break : labelopt -> stat
-  | stat_continue : labelopt ->  stat
+  | stat_break : label -> stat
+  | stat_continue : label ->  stat
   | stat_try : stat -> option (string * stat) -> option stat -> stat (* Note: try s1 [catch (x) s2] [finally s3] *)
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
@@ -165,7 +160,7 @@ Definition elements := list element.
 (** Coercions for grammars *)
 
 Coercion stat_expr : expr >-> stat.
-Coercion labelopt_label : label >-> labelopt.
+Coercion label_string : string >-> label.
 
 
 (**************************************************************)
@@ -658,22 +653,22 @@ Coercion resvalue_ref : ref >-> resvalue.
 Inductive res := res_intro {
   res_type : restype;
   res_value : resvalue;
-  res_label : labelopt }.
+  res_label : label }.
   
 Definition abrupt_res R :=
   res_type R <> restype_normal.
 
 (** Smart constructors for type [res] *)
 
-Coercion res_ref r := res_intro restype_normal r labelopt_empty.
-Coercion res_val v := res_intro restype_normal v labelopt_empty.
-Coercion res_normal rv := res_intro restype_normal rv labelopt_empty.
+Coercion res_ref r := res_intro restype_normal r label_empty.
+Coercion res_val v := res_intro restype_normal v label_empty.
+Coercion res_normal rv := res_intro restype_normal rv label_empty.
 
-Definition res_empty := res_intro restype_normal resvalue_empty labelopt_empty.
+Definition res_empty := res_intro restype_normal resvalue_empty label_empty.
 Definition res_break labo := res_intro restype_break resvalue_empty labo.
 Definition res_continue labo := res_intro restype_continue resvalue_empty labo.
-Definition res_return v := res_intro restype_return v labelopt_empty.
-Definition res_throw v := res_intro restype_throw v labelopt_empty.
+Definition res_return v := res_intro restype_return v label_empty.
+Definition res_throw v := res_intro restype_throw v label_empty.
 
 (** Outcome of an evaluation: divergence or termination *)
 

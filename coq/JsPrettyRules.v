@@ -323,10 +323,10 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Labelled statement (recall [abort_intercepted_stat]) *)
 
-  | red_stat_label : forall S C lab t o1 o,
+  | red_stat_label : forall S C slab t o1 o,
       red_stat S C t o1 ->
-      red_stat S C (stat_label_1 lab o1) o ->
-      red_stat S C (stat_label lab t) o
+      red_stat S C (stat_label_1 (label_string slab) o1) o ->
+      red_stat S C (stat_label slab t) o
 
   | red_stat_label_1_normal : forall S0 S lab C rv,
       red_stat S0 C (stat_label_1 lab (out_ter S rv)) (out_ter S rv)
