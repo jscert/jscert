@@ -53,9 +53,9 @@ JS_SRC=\
 	coq/JsPreliminaryAux.v \
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
+	coq/JsInit.v \
 	coq/JsPrettyRules.v \
 	coq/JsCorrectness.v \
-	coq/JsInit.v \
 	coq/JsInterpreter.v \
     coq/JsInterpreterExtraction.v
 

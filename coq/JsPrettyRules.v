@@ -1,4 +1,4 @@
-Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux.
+Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux JsInit.
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -74,9 +74,9 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
   (** Program  (10.4.1) *)
 
-  | red_prog_1_nil : forall S C str els o,
+  | red_prog_prog : forall S C str els o,
       red_prog S C (prog_1 resvalue_empty els) o ->
-      red_prog S C (prog_into str els) o
+      red_prog S C (prog_intro str els) o
 
   (** No more source elements *)
 
@@ -332,7 +332,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_label_1 lab (out_ter S rv)) (out_ter S rv)
 
   | red_stat_label_1_break_eq : forall S0 S C R rv lab,
-      R = res_intro restype_break rv (Some lab) ->
+      R = res_intro restype_break rv lab ->
       red_stat S0 C (stat_label_1 lab (out_ter S R)) (out_ter S (res_normal rv))
 
  (** Throw statement *)
