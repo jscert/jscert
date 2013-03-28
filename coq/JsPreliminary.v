@@ -238,6 +238,13 @@ Definition object_method (X:Type) Proj S l (B:X) :=
 
 Definition object_call S l fco :=
   exists O, object_binds S l O /\ object_call_ O = fco.
+  
+(** [object_construct S l fco] asserts that the "construct"
+    field of the object stored at address [l] in [S] contains
+    an option [fco] which may contain code. *)
+
+Definition object_construct S l fco :=
+  exists O, object_binds S l O /\ object_construct_ O = fco.
 
 (** [object_has_instance S l Bo] asserts that the
     [[has instance]] method for the object stored at address [l] 
