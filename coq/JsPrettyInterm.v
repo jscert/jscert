@@ -325,8 +325,9 @@ Inductive ext_expr :=
   | spec_binding_instantiation_arg_obj : (out -> ext_expr) -> codetype -> option object_loc -> prog -> list string -> list value -> env_loc -> out -> ext_expr
   | spec_binding_instantiation_arg_obj_1 : (out -> ext_expr) -> prog -> env_loc -> strictness_flag -> out -> ext_expr
   | spec_binding_instantiation_arg_obj_2 : (out -> ext_expr) -> prog -> env_loc -> object_loc -> out -> ext_expr
-  | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> out -> ext_expr
-  | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> out -> ext_expr
+  | spec_binding_instantiation_var_decls : env_loc -> list string -> bool -> strictness_flag -> ext_expr
+  | spec_binding_instantiation_var_decls_1 : env_loc -> string -> list string -> bool -> strictness_flag -> out -> ext_expr
+  | spec_binding_instantiation_var_decls_2 : env_loc -> list string -> bool -> strictness_flag -> out -> ext_expr
   | spec_execution_ctx_binding_instantiation : codetype -> option object_loc -> prog -> list value -> ext_expr
   | spec_execution_ctx_binding_instantiation_1 : codetype -> option object_loc -> prog -> list value -> env_loc -> ext_expr 
   | spec_execution_ctx_binding_instantiation_2 : codetype -> object_loc -> prog -> list string -> list value -> env_loc -> out -> ext_expr

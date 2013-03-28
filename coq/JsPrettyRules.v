@@ -2109,25 +2109,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Auxiliary reductions for binding instantiation:
      bindings for variable declarations (Step 8) *)
 
-  (* _nil _cons as naming for the reduction rules *)
-  | red_spec_binding_instantiation_var_decls_empty : forall o1 L S0 S C bconfig o, (* Step 8 *)
-      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig (out_void S)) (out_void S)     
+  | red_spec_binding_instantiation_var_decls_nil : forall o1 L S0 S C bconfig str o, (* Step 8 *)
+      red_expr S0 C (spec_binding_instantiation_var_decls L nil bconfig str) (out_void S)     
       
-  | red_spec_binding_instantiation_var_decls_non_empty : forall o1 L S0 S C vd vds bconfig o, (* Step 8b *)
+  | red_spec_binding_instantiation_var_decls_cons : forall o1 L S0 S C vd vds bconfig str o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
-      red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds bconfig o1) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig (out_void S)) o
-      (* TODO: remove (out_void S) from spec_binding_instantiation_var_decls *)
+      red_expr S C (spec_binding_instantiation_var_decls_1 L vd vds bconfig str o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls L (vd::vds) bconfig str) o
 
-  | red_spec_binding_inst_var_decls_1_true : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
-      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig (out_void S)) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S true)) o
+  | red_spec_binding_inst_var_decls_1_true : forall o1 L S0 S C vd vds bconfig str o, (* Step 8c *)
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig str) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig str (out_ter S true)) o
 
-  | red_spec_binding_instantiation_var_decls_1_false : forall o1 L S0 S C vd vds bconfig o, (* Step 8c *)
-      (* todo: replace (execution_ctx_strict C) with the right thing *)
+  | red_spec_binding_instantiation_var_decls_1_false : forall o1 L S0 S C vd vds bconfig str o, (* Step 8c *)
       red_expr S C (spec_env_record_create_set_mutable_binding L vd (Some bconfig) undef (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig o1) o ->
-      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig (out_ter S false)) o
+      red_expr S C (spec_binding_instantiation_var_decls_2 L vds bconfig str o1) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_1 L vd vds bconfig str (out_ter S false)) o
+      
+  | red_spec_binding_instantiation_var_decls_2 : forall L S0 S C vds bconfig str o, (* Step 8c *)
+      red_expr S C (spec_binding_instantiation_var_decls L vds bconfig str) o ->
+      red_expr S0 C (spec_binding_instantiation_var_decls_2 L vds bconfig str (out_void S)) o
 
 (* --end arthur still needs to read-- *)      
 
@@ -2216,7 +2217,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   *)
 
   | red_spec_execution_ctx_binding_instantiation_6 : forall o1 S0 L S C code bconfig o, (* Step 8 *)
-      red_expr S C (spec_binding_instantiation_var_decls L (prog_vardecl code) bconfig (out_void S)) o ->
+      red_expr S C (spec_binding_instantiation_var_decls L (prog_vardecl code) bconfig (prog_intro_strictness code)) o ->
       red_expr S0 C (spec_execution_ctx_binding_instantiation_6 code bconfig L (out_void S)) o
 
 
