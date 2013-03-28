@@ -884,9 +884,9 @@ Definition creating_function_object_proto (run_call' : run_call_type) S C l (K :
 Definition creating_function_object (run_call' : run_call_type) S C (names : list string) (bd : funcbody) X str : result :=
   let O := object_create prealloc_function_proto "Function" true Heap.empty in
   let O1 := object_with_invokation O
-    (Some builtin_spec_op_function_constructor)
-    (Some builtin_spec_call_default)
-    (Some builtin_spec_op_function_has_instance) in
+    (Some (construct_prealloc prealloc_function))
+    (Some (call_prealloc prealloc_function))
+    (Some builtin_has_instance_function) in
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
@@ -1770,10 +1770,7 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
     let run_call' := run_call max_step' in
     match B with
 
-    | builtin_spec_call_default =>
-(*
-| call_prealloc prealloc_function =>
-*)
+    | call_prealloc prealloc_function =>
       if_some lfo (fun lf =>
         if_some vo (fun vthis =>
           execution_ctx_function_call run_call' S C lf vthis args (fun S1 C1 =>

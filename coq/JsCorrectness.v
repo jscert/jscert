@@ -145,6 +145,7 @@ Ltac if_unmonad :=
 (**************************************************************)
 (** Operations on objects *)
 
+(* TODO
 Lemma run_object_method_correct :
   forall Proj S l,
   (* TODO:  Add correctness properties. *)
@@ -154,16 +155,7 @@ Proof.
   apply pick_spec.
   skip. (* Need properties about [l]. *)
 Qed.
-
-Lemma run_object_proto :
-  forall S l,
-  (* TODO:  Add correctness properties. *)
-    object_proto S l (run_object_proto S l).
-Proof.
-  introv. eexists. splits*.
-  apply pick_spec.
-  skip. (* Need properties about [l]. *)
-Qed.
+*)
 
 
 (**************************************************************)
