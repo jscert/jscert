@@ -1001,7 +1001,7 @@ Definition binding_instantiation_arguments_object (run_call' : run_call_type) S 
   if_some (env_record_has_binding S L name) (fun bdecl =>
     ifb ct = codetype_func /\ ~ bdecl then (
       if_some funco (fun lf =>
-        let str := prog_strict p in
+        let str := prog_intro_strictness p in
           if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
             if str then
               if_void (env_record_create_immutable_binding S1 L name) (fun S2 =>
