@@ -611,49 +611,44 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Call 11.2.3 *)
 
-  | red_expr_call : forall S0 C e1 e2s o1 o2,
+  | red_expr_call : forall S0 C e1 e2s o1 o2, (* Step 1 *)
       red_expr S0 C e1 o1 ->
       red_expr S0 C (expr_call_1 o1 e2s) o2 ->
       red_expr S0 C (expr_call e1 e2s) o2
 
-  | red_expr_call_1 : forall o1 S0 S C o rv e2s,
+  | red_expr_call_1 : forall o1 S0 S C o rv e2s, (* Step 2 *)
       red_expr S C (spec_get_value rv) o1 ->
       red_expr S C (expr_call_2 rv e2s o1) o ->
       red_expr S0 C (expr_call_1 (out_ter S rv) e2s) o
       
-  | red_expr_call_2 : forall S0 S C o rv v e2s,
+  | red_expr_call_2 : forall S0 S C o rv v e2s, (* Step 3 *)
       red_expr S C (expr_list_then (expr_call_3 rv v) e2s) o ->
       red_expr S0 C (expr_call_2 rv e2s (out_ter S v)) o
       
-  | red_expr_call_3_not_object : forall S C o rv v vs,
-      type_of v <> type_object ->
-      red_expr S C (spec_error builtin_type_error) o ->
+  | red_expr_call_3_not_object : forall l S C o rv v vs, (* Steps 4-5 *)
+      (type_of v <> type_object) \/ (v = value_object l /\ ~ (is_callable S l)) ->
+      red_expr S C (spec_error prealloc_type_error) o ->
       red_expr S C (expr_call_3 rv v vs) o
-      
-  | red_expr_call_3_not_callable : forall S C o rv l vs,
-      ~ (is_callable S l) ->
-      red_expr S C (spec_error builtin_type_error) o ->
-      red_expr S C (expr_call_3 rv (value_object l) vs) o
 
-  | red_expr_call_3_prop : forall v S C o r l vs,
+  | red_expr_call_3_prop : forall v S C o r l vs, (* Step 6a *)
       (is_callable S l) ->
       ref_is_property r -> 
       ref_is_value r v ->
       red_expr S C (expr_call_4 l vs (out_ter S v)) o ->
       red_expr S C (expr_call_3 (resvalue_ref r) (value_object l) vs) o
       
-  | red_expr_call_3_env : forall L o1 S C o r l vs,
+  | red_expr_call_3_env : forall L o1 S C o r l vs, (* Step 6b *)
       (is_callable S l) ->
       ref_is_env_record r L -> 
       red_expr S C (spec_env_record_implicit_this_value L) o1 -> 
       red_expr S C (expr_call_4 l vs o1) o ->
       red_expr S C (expr_call_3 (resvalue_ref r) (value_object l) vs) o
 
-  | red_expr_call_3_not_ref : forall S C v l vs o,
+  | red_expr_call_3_not_ref : forall S C v l vs o, (* Step 7 *)
       red_expr S C (expr_call_4 l vs (out_ter S undef)) o ->
       red_expr S C (expr_call_3 (resvalue_value v) (value_object l) vs) o
    
-  | red_expr_call_4 : forall S0 S C l vs v o,
+  | red_expr_call_4 : forall S0 S C l vs v o, (* Step 8 *)
       red_expr S C (spec_call l v vs) o ->
       red_expr S0 C (expr_call_4 l vs (out_ter S v)) o    
       
