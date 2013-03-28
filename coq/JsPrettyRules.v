@@ -2017,28 +2017,30 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_has_binding L x) o1 ->
       red_expr S C (spec_binding_instantiation_formal_params_1 args' L x xs str v o1) o ->
       red_expr S C (spec_binding_instantiation_formal_params args L (x::xs) str) o
-
-  | red_spec_binding_instantiation_formal_params_1_declared : forall o1 S0 S C args L x xs str v o,  (* Step 4d iv *)
-      red_expr S C (spec_env_record_set_mutable_binding L x v (execution_ctx_strict C)) o1 ->
-      red_expr S C (spec_binding_instantiation_formal_params_2 args L xs str o1) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_1 args L x xs str v (out_ter S true)) o
-
+      
   | red_spec_binding_instantiation_formal_params_1_not_declared : forall S0 S C args L x xs str v o o1, (* Step 4d iv *)
-      red_expr S C (spec_env_record_create_set_mutable_binding L x None v str) o1 ->
+      red_expr S C (spec_env_record_create_mutable_binding L x None) o1 ->
       (* TODO(Daiva): are we sure that deletable_opt above is None, meaning that the item
          will not be deletable? it's worth testing in an implementation if you can delete an arg binding. *)
-      red_expr S C (spec_binding_instantiation_formal_params_2 args L xs str o1) o ->
+      red_expr S C (spec_binding_instantiation_formal_params_2 args L x xs str v o1) o ->
       red_expr S0 C (spec_binding_instantiation_formal_params_1 args L x xs str v (out_ter S false)) o
+      
+  | red_spec_binding_instantiation_formal_params_2 : forall S0 S C args L x xs str v o o1, (* Step 4d iv join *)
+      red_expr S C (spec_binding_instantiation_formal_params_3 args L x xs str v) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_2 args L x xs str v (out_void S)) o
 
-    (* TODO: change above to do :
-            -- if has binding -> create and goto join 
-            -- if no binding -> goto join
-            -- on join: to set
-      *)
+  | red_spec_binding_instantiation_formal_params_1_declared : forall o1 S0 S C args L x xs str v o,  (* Step 4d iv else *)
+      red_expr S C (spec_binding_instantiation_formal_params_3 args L x xs str v) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_1 args L x xs str v (out_ter S true)) o
+      
+  | red_spec_binding_instantiation_formal_params_3 : forall o1 S0 S C args L x xs str v o,  (* Step 4d v *)
+      red_expr S C (spec_env_record_set_mutable_binding L x v str) o1 ->
+      red_expr S C (spec_binding_instantiation_formal_params_4 args L xs str o1) o ->
+      red_expr S0 C (spec_binding_instantiation_formal_params_3 args L x xs str v) o
 
-  | red_spec_binding_instantiation_formal_params_2 : forall S0 S C args L xs str o1 o, (* Step 4d loop *)
+  | red_spec_binding_instantiation_formal_params_4 : forall S0 S C args L xs str o1 o, (* Step 4d loop *)
       red_expr S C (spec_binding_instantiation_formal_params args L xs str) o ->
-      red_expr S0 C (spec_binding_instantiation_formal_params_2 args L xs str (out_void S)) o
+      red_expr S0 C (spec_binding_instantiation_formal_params_4 args L xs str (out_void S)) o
 
   (* Auxiliary reductions for binding instantiation: 
      bindings for function declarations (Step 5). *)
