@@ -2,21 +2,18 @@ open Interpreter
 
 let prloc = function
   | Object_loc_normal i -> "@" ^ string_of_int i
-  | Object_loc_builtin builtinid ->
+  | Object_loc_prealloc builtinid ->
 		match builtinid with
-		| Builtin_error -> "Builtin_error"
-		| Builtin_range_error -> "Builtin_range_error"
-		| Builtin_ref_error -> "Builtin_ref_error"
-		| Builtin_syntax_error -> "Builtin_syntax_error"
-		| Builtin_type_error -> "Builtin_type_error"
-		| Builtin_global -> "Builtin_global"
-		| Builtin_global_eval -> "Builtin_global_eval"
-		| Builtin_global_eval_call -> "Builtin_global_eval_call"
-		| Builtin_global_is_nan -> "Builtin_global_is_nan"
-		| Builtin_global_is_nan_call -> "Builtin_global_is_nan_call"
-		| Builtin_global_is_finite -> "Builtin_global_is_finite"
-		| Builtin_global_is_finite_call -> "Builtin_global_is_finite_call"
-		| Builtin_object -> "Builtin_object"
+		| Prealloc_error -> "Prealloc_error"
+		| Prealloc_range_error -> "Prealloc_range_error"
+		| Prealloc_ref_error -> "Prealloc_ref_error"
+		| Prealloc_syntax_error -> "Prealloc_syntax_error"
+		| Prealloc_type_error -> "Prealloc_type_error"
+		| Prealloc_global -> "Prealloc_global"
+		| Prealloc_global_eval -> "Prealloc_global_eval"
+		| Prealloc_global_is_nan -> "Prealloc_global_is_nan"
+		| Prealloc_global_is_finite -> "Prealloc_global_is_finite"
+		| Prealloc_object -> "Prealloc_object"
 		| _ -> "Object_loc_builtin NIY"
 
 let string_of_char_list cl =

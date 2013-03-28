@@ -129,7 +129,7 @@ Implicit Arguments FixFun4_fix_partial [A1 A2 A3 A4 B IB F f].
 
 (* LibList.mem does not use `decide' but `isTrue' and is thus extracted
    classically. *)
-Fixpoint mem_decide (A : Type) `{Comparable A} (x : A) (l : list A) {struct l} := (* I don't kow why, but by default the structural decrease of the fix is on `{Comparable A}. *)
+Fixpoint mem_decide (A : Type) `{Comparable A} (x : A) (l : list A) :=
   match l with
   | nil => false
   | y::l' => ifb x = y then true else mem_decide x l'

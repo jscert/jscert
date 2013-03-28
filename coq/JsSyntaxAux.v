@@ -460,6 +460,33 @@ Qed.
 
 
 (**************************************************************)
+(** ** Type [label] *)
+
+(** Inhabitants **)
+
+Global Instance label_inhab : Inhab label.
+Proof. apply (prove_Inhab label_empty). Qed.
+
+(** Boolean comparison *)
+
+Definition label_compare lab1 lab2 :=
+  match lab1, lab2 with
+  | label_empty, label_empty => true
+  | label_string s1, label_string s2 => decide (s1 = s2)
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance label_comparable : Comparable label.
+Proof.
+  applys (comparable_beq label_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+
+
+(**************************************************************)
 (** ** Type [label_set] *)
 
 Definition label_set_empty : label_set := nil.
@@ -468,7 +495,7 @@ Definition label_set_add lab labs := lab :: labs.
 
 Definition label_set_add_empty labs := label_set_add label_empty labs.
 
-Definition label_set_mem lab labs := LibList.mem lab labs.
+Definition label_set_mem lab labs := decide (In lab labs).
 
 
 (**************************************************************)
