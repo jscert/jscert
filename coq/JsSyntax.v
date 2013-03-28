@@ -83,6 +83,8 @@ Definition label_set := list label.
 (** Strictness flag *)
 
 Definition strictness_flag := bool.
+Definition strictness_true : strictness_flag := true.
+Definition strictness_false : strictness_flag := false.
 
 (** Property name in source code *)
 

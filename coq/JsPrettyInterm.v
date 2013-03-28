@@ -138,9 +138,6 @@ Inductive ext_expr :=
   | expr_assign_4 : res -> out -> ext_expr
   | expr_assign_5 : value -> out -> ext_expr
 
-(* TODO: we could separate ext_spec from ext_expr,
-   and separate red_spec from red_expr *)
-
   (** Extended expressions for conversions *)
 
   | spec_to_primitive : value -> option preftype -> ext_expr
@@ -177,11 +174,11 @@ Inductive ext_expr :=
   | spec_object_get_own_prop_1 : builtin_get_own_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
   | spec_object_get_own_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> option attributes -> ext_expr
   | spec_object_get_prop : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_prop_1 : builtin_get_own_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
+  | spec_object_get_prop_1 : builtin_get_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
   | spec_object_get_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
   | spec_object_get_prop_3 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> value -> ext_expr
   | spec_object_get : value -> prop_name -> ext_expr
-  | spec_object_get_1 : builtin_get_own_prop -> value -> object_loc -> prop_name -> ext_expr
+  | spec_object_get_1 : builtin_get -> value -> object_loc -> prop_name -> ext_expr
   | spec_object_get_2 : object_loc -> object_loc -> full_descriptor -> ext_expr
   | spec_object_get_3 : object_loc -> object_loc -> value -> ext_expr
 
@@ -380,15 +377,15 @@ Inductive ext_expr :=
   | spec_call : object_loc -> value -> list value -> ext_expr (* object with the call method, this value, arguments *)
   | spec_call_1 : call -> object_loc -> value -> list value -> ext_expr
   
-  | spec_call_builtin : call -> list value -> ext_expr (* todo ?? is it a call first argument *)
+  | spec_call_prealloc : prealloc -> list value -> ext_expr
   
-  | spec_op_function_call : object_loc -> value -> list value -> ext_expr
-  | spec_op_function_call_1 : object_loc -> out -> ext_expr
-  | spec_op_function_call_2 : out -> ext_expr
+  | spec_call_default : object_loc -> value -> list value -> ext_expr
+  | spec_call_default_1 : object_loc -> out -> ext_expr
+  | spec_call_default_2 : out -> ext_expr
   
   | spec_constructor : construct -> option object_loc -> list value -> ext_expr
   
-  | spec_constructor_builtin : construct -> list value -> ext_expr (* todo??*)
+  | spec_constructor_prealloc : prealloc -> list value -> ext_expr (* todo??*)
   
   | spec_function_constructor : object_loc -> list value -> ext_expr
   | spec_function_constructor_1 : object_loc -> list value -> out -> ext_expr
