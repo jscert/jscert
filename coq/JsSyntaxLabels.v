@@ -37,7 +37,7 @@ with add_label_sets_to_element (elem : element) : element :=
     | element_func_decl s ss fb => element_func_decl s ss (add_label_sets_to_funcbody fb)
   end
 
-with add_label_sets_to_stat (lset : label_set) (t: stat) : stat :=
+with add_label_sets_to_stat (labs : label_set) (t: stat) : stat :=
   let opt {A} (f : A -> A ) (smth : option A) :=
     match smth with
       | Some smth => Some (f smth)
@@ -49,13 +49,13 @@ with add_label_sets_to_stat (lset : label_set) (t: stat) : stat :=
   let feo := opt fe in
   match t with 
     | stat_expr e => stat_expr (fe e)
-    | stat_label l t => stat_label l (add_label_sets_to_stat (label_set_add l lset) t)
+    | stat_label l t => stat_label l (add_label_sets_to_stat (label_set_add l labs) t)
     | stat_block ts => stat_block (List.map f ts)
     | stat_var_decl vars => stat_var_decl (List.map (fun var =>
       match var with (s, eo) => (s, feo eo) end) vars)
     | stat_if e t to => stat_if (fe e) (f t) (fo to) 
-    | stat_do_while _ t e => stat_do_while (label_set_add labelopt_empty lset) (f t) (fe e)
-    | stat_while _ e t => stat_while (label_set_add labelopt_empty lset) (fe e) (f t)
+    | stat_do_while _ t e => stat_do_while (label_set_add_empty labs) (f t) (fe e)
+    | stat_while _ e t => stat_while (label_set_add_empty labs) (fe e) (f t)
     | stat_with e t => stat_with (fe e) (f t)
     | stat_throw e => stat_throw (fe e)
     | stat_return eo => stat_return (feo eo)
@@ -63,7 +63,7 @@ with add_label_sets_to_stat (lset : label_set) (t: stat) : stat :=
     | stat_continue lopt => stat_continue lopt
     | stat_try t catch to =>
       stat_try (f t) (opt (fun c => match c with (cs, t) => (cs, f t) end) catch) (fo to) 
-    | stat_for_in _ e1 e2 t => stat_for_in (label_set_add labelopt_empty lset) (fe e1) (fe e2) (f t)
-    | stat_for_in_var _ str eo e t => stat_for_in_var (label_set_add labelopt_empty lset) str (feo eo) (fe e) (f t)
+    | stat_for_in _ e1 e2 t => stat_for_in (label_set_add_empty labs) (fe e1) (fe e2) (f t)
+    | stat_for_in_var _ str eo e t => stat_for_in_var (label_set_add_empty labs) str (feo eo) (fe e) (f t)
     | stat_debugger => stat_debugger
   end.
