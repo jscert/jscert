@@ -159,25 +159,25 @@ and exp_to_stat exp : Interpreter.stat =
 	  | Skip -> Interpreter.Stat_block []
       | Return (Some e) -> Interpreter.Stat_return (Some (exp_to_exp e))
       | Return None -> Interpreter.Stat_return None
-      | Break (Some l) -> Interpreter.Stat_break (Some (string_to_coq l))
-      | Break None -> Interpreter.Stat_break None
-      | Continue (Some l) -> Interpreter.Stat_continue (Some (string_to_coq l))
-      | Continue None -> Interpreter.Stat_continue None
+      | Break (Some l) -> Interpreter.Stat_break (Interpreter.Label_string (string_to_coq l))
+      | Break None -> Interpreter.Stat_break Interpreter.Label_empty
+      | Continue (Some l) -> Interpreter.Stat_continue (Interpreter.Label_string (string_to_coq l))
+      | Continue None -> Interpreter.Stat_continue Interpreter.Label_empty
       | Debugger -> Interpreter.Stat_debugger
       | VarDec vs -> Interpreter.Stat_var_decl (map (fun (v, e) ->
           string_to_coq v, match e with None -> None | Some e -> Some (exp_to_exp e)) vs)
       | Throw e -> Interpreter.Stat_throw (exp_to_exp e)
       | Label (l, e) -> Interpreter.Stat_label (string_to_coq l, f e)
-      | While (e1, e2)  -> Interpreter.Stat_while (exp_to_exp e1, f e2)
-      | DoWhile (e1, e2) -> Interpreter.Stat_do_while (f e1, exp_to_exp e2)
-      | With (e1, e2) -> Interpreter.Stat_with (exp_to_exp e1, f e2) 
+	  | While (e1, e2)  -> Interpreter.Stat_while ([], exp_to_exp e1, f e2)
+	  | DoWhile (e1, e2) -> Interpreter.Stat_do_while ([], f e1, exp_to_exp e2)
+      | With (e1, e2) -> Interpreter.Stat_with (exp_to_exp e1, f e2)
       | Try (e, None, None) -> Interpreter.Stat_try (f e, None, None)
       | Try (e, None, Some fe) -> Interpreter.Stat_try (f e, None, Some (f fe))
       | Try (e, Some (s, ce), None) -> Interpreter.Stat_try (f e, Some (string_to_coq s, f ce), None)
       | Try (e, Some (s, ce), Some fe) -> Interpreter.Stat_try (f e, Some (string_to_coq s, f ce), Some (f fe))  
       | If (e1, e2, Some e3) -> Interpreter.Stat_if (exp_to_exp e1, f e2, Some (f e3))
       | If (e1, e2, None) -> Interpreter.Stat_if (exp_to_exp e1, f e2, None)
-      | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* TODO:  We could actually do something there *)
+      | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* TODO:  We could actually do something there now *)
       | For (e1, e2, e3, e4) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Switch (e1, e2s) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | Block es -> Interpreter.Stat_block (List.map f es)

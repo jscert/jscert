@@ -9,6 +9,14 @@ let prloc = function
 		| Builtin_ref_error -> "Builtin_ref_error"
 		| Builtin_syntax_error -> "Builtin_syntax_error"
 		| Builtin_type_error -> "Builtin_type_error"
+		| Builtin_global -> "Builtin_global"
+		| Builtin_global_eval -> "Builtin_global_eval"
+		| Builtin_global_eval_call -> "Builtin_global_eval_call"
+		| Builtin_global_is_nan -> "Builtin_global_is_nan"
+		| Builtin_global_is_nan_call -> "Builtin_global_is_nan_call"
+		| Builtin_global_is_finite -> "Builtin_global_is_finite"
+		| Builtin_global_is_finite_call -> "Builtin_global_is_finite_call"
+		| Builtin_object -> "Builtin_object"
 		| _ -> "Object_loc_builtin NIY"
 
 let string_of_char_list cl =
@@ -49,6 +57,24 @@ let prprim = function
 let rec prvalue = function
   | Value_prim p -> prprim p
   | Value_object ol -> prloc ol
+
+
+let prfieldmap loc obj =
+	String.concat "" (List.fold_left
+		(fun acc (x, a) ->
+			("\t" ^ prloc loc ^ "." ^ string_of_char_list x ^ ";\n") :: acc) []
+		(Interpreter.Heap.to_list (obj.Interpreter.object_properties_)))
+
+let prheap heap =
+	"digraph g{\n" ^
+	"node [shape=record];\n" ^
+	"rankdir=LR;\n" ^
+	(String.concat ""
+		  (List.rev (List.fold_left
+			(fun acc (key, v) -> prfieldmap key v :: acc) []
+			(Interpreter.Heap.to_list heap)
+		))) ^
+	"}"
 
 (*
 

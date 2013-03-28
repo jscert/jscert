@@ -1,6 +1,7 @@
 let file = ref ""
 let test_prelude = ref ""
 let test = ref false
+let printHeap = ref false
 
 let arguments () =
   let usage_msg="Usage: -jsparser <path> -file <path>" in
@@ -17,6 +18,9 @@ let arguments () =
       "-test_prelude",
       Arg.String(fun f -> test_prelude := f; test := true),
       "run the given test";
+      "-print-heap",
+      Arg.Unit(fun () -> printHeap := true),
+      "print the final state of the heap";
     ]
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
@@ -58,32 +62,26 @@ let _ =
   let exit_if_test _ = if !test then exit 1 in
   try
     let exp = Translate_syntax.coq_syntax_from_file !file in
-    let sti = if (!test) then
+    let exp' = if (!test) then
                 begin
-                  match Interpreter.run_prog
-                          max_int
-                          Interpreter.state_initial
-                          (Interpreter.execution_ctx_initial false)
-                          (Translate_syntax.coq_syntax_from_file !test_prelude)
-                  with
-                  | Interpreter.Result_normal (
-                      Interpreter.Out_ter (state,
-						{ Interpreter.res_type = Interpreter.Restype_normal })) ->
-                     state
-                  | _ -> assert false
+					let Interpreter.Prog_intro (_, el) = exp in
+					let Interpreter.Prog_intro (str, el0) =
+						Translate_syntax.coq_syntax_from_file !test_prelude in
+					Interpreter.Prog_intro (str, el0 @ el)
                   end
-              else Interpreter.state_initial
-    in match Interpreter.run_prog
+              else exp
+    in match Interpreter.run_javascript
             max_int
-            sti
-            (Interpreter.execution_ctx_initial false)
-            exp
+            exp'
     with
     | Interpreter.Result_normal o ->
        begin
          match o with
          | Interpreter.Out_ter (state, res) ->
             begin
+			  if !printHeap then
+			    print_endline
+					(Prheap.prheap (Interpreter.state_object_heap state)) ;
               match Interpreter.res_type res with
               | Interpreter.Restype_normal ->
                  (if (not !test) then
@@ -93,7 +91,7 @@ let _ =
                         print_endline "\n\nResult:\n";
                         print_endline (Prheap.prvalue v)
                      | Interpreter.Resvalue_ref re ->
-                        print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness o the result. -- Martin *)
+                        print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness from the result. -- Martin *)
       	                                   Prheap.string_of_char_list re.Interpreter.ref_name ^
       		                                   " and of value:\n\t" ^
       	                                       (match get_value_ref state re with
@@ -116,7 +114,7 @@ let _ =
                  print_endline "\n\nEXCEPTION THROWN\n" ;
                  (match Interpreter.res_value res with
                  | Interpreter.Resvalue_value v ->
-                   print_endline (Prheap.prvalue v)
+                   print_endline ("\tReturned value:\t" ^ Prheap.prvalue v)
 				 | Interpreter.Resvalue_ref _ ->
 				   print_endline "With a reference."
 				 | Interpreter.Resvalue_empty ->

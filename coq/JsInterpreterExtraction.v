@@ -112,11 +112,6 @@ Extract Constant int_lt_dec => "(<)".
 
 Extract Constant env_loc_global_env_record => "0".
 
-
-(* Sets *)
-Extract Constant label_set_dec => "(fun l -> assert false (* TODO:  How to make Coq extract those `label_set'? *))".
-
-
 (* The following functions make pattern matches with floats and shall thus be removed. *)
 Extraction Inline Fappli_IEEE.Bplus Fappli_IEEE.binary_normalize Fappli_IEEE_bits.b64_plus.
 Extraction Inline Fappli_IEEE.Bmult Fappli_IEEE.Bmult_FF Fappli_IEEE_bits.b64_mult.
@@ -138,7 +133,7 @@ Extract Constant object_builtin_global_class => "(
     List.rev (aux s (String.length s))
   in aux2 ""GlobalClass"")".
 
-Extraction "interp/src/interpreter.ml" state_initial execution_ctx_initial run_prog.
+Extraction "interp/src/interpreter.ml" run_javascript.
 
 
 
