@@ -1,4 +1,4 @@
-var $ERROR = function(str) {
+function $ERROR (str) {
   __$ERROR__ = str
 }
 

@@ -58,26 +58,17 @@ let _ =
   let exit_if_test _ = if !test then exit 1 in
   try
     let exp = Translate_syntax.coq_syntax_from_file !file in
-    let sti = if (!test) then
+    let exp' = if (!test) then
                 begin
-                  match Interpreter.run_prog
-                          max_int
-                          Interpreter.state_initial
-                          (Interpreter.execution_ctx_initial false)
-                          (Translate_syntax.coq_syntax_from_file !test_prelude)
-                  with
-                  | Interpreter.Result_normal (
-                      Interpreter.Out_ter (state,
-						{ Interpreter.res_type = Interpreter.Restype_normal })) ->
-                     state
-                  | _ -> assert false
+					let Interpreter.Prog_intro (_, el) = exp in
+					let Interpreter.Prog_intro (str, el0) =
+						Translate_syntax.coq_syntax_from_file !test_prelude in
+					Interpreter.Prog_intro (str, el0 @ el)
                   end
-              else Interpreter.state_initial
-    in match Interpreter.run_prog
+              else exp
+    in match Interpreter.run_javascript
             max_int
-            sti
-            (Interpreter.execution_ctx_initial false)
-            exp
+            exp'
     with
     | Interpreter.Result_normal o ->
        begin
@@ -116,7 +107,7 @@ let _ =
                  print_endline "\n\nEXCEPTION THROWN\n" ;
                  (match Interpreter.res_value res with
                  | Interpreter.Resvalue_value v ->
-                   print_endline (Prheap.prvalue v)
+                   print_endline ("\tReturned value:\t" ^ Prheap.prvalue v)
 				 | Interpreter.Resvalue_ref _ ->
 				   print_endline "With a reference."
 				 | Interpreter.Resvalue_empty ->

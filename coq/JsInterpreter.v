@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix.
-Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
+Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux JsInit.
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -1715,7 +1715,7 @@ with run_stat (max_step : nat) S C t : result :=
       run_expr' S C e
 
     | stat_var_decl xeos =>
-      (* run_var_decl run_call' run_expr' S C xeos *) arbitrary (* As variables are not declared in [run_prog], I prefer raise an exception when such a variable should have been defined. *) (* TODO: Remove the [arbitrary] as soon as [run_prog] is correct. *)
+      run_var_decl run_expr' run_call' S C xeos
 
     | stat_block ts =>
       run_block run_stat' S C resvalue_empty ts
@@ -1779,7 +1779,7 @@ with run_elements (max_step : nat) S C rv (els : list element) : result :=
         run_elements' S1 C rv1 els')
 
     | element_func_decl name args bd :: els' =>
-      (* run_elements' S C rv els' *) arbitrary (* As functions are not declared in [run_prog], I prefer raise an exception when such a function should have been defined. *) (* TODO: Remove the [arbitrary] as soon as [run_prog] is correct. *)
+      run_elements' S C rv els'
 
     end
   end
@@ -1794,8 +1794,7 @@ with run_prog (max_step : nat) S C p : result :=
     match p with
 
     | prog_intro str els =>
-      let C' := execution_ctx_initial str (* TODO:  Declare functions and variables *) in
-      run_elements' S C' resvalue_empty els
+      run_elements' S C resvalue_empty els
 
     end
   end
@@ -1900,6 +1899,20 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
       arbitrary (* TODO *)
 
     end
+  end.
+
+(**************************************************************)
+
+Definition run_javascript (max_step : nat) p : result :=
+  match max_step with
+  | O => result_bottom
+  | S max_step' =>
+    let run_prog' := run_prog max_step' in
+    let run_call' := run_call max_step' in
+    let S := state_initial in
+    let C := execution_ctx_initial (prog_intro_strictness p) in
+    if_void (execution_ctx_binding_instantiation run_call' S C codetype_global None p nil) (fun S' =>
+      run_prog' S' C p)
   end.
 
 End Interpreter.

@@ -133,7 +133,7 @@ Extract Constant object_builtin_global_class => "(
     List.rev (aux s (String.length s))
   in aux2 ""GlobalClass"")".
 
-Extraction "interp/src/interpreter.ml" state_initial execution_ctx_initial run_prog.
+Extraction "interp/src/interpreter.ml" run_javascript.
 
 
 

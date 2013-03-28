@@ -53,7 +53,7 @@ Inductive red_javascript : prog -> out -> Prop :=
 
   | red_javascript_intro : forall S S' C0 C p o,
       S = state_initial ->
-      C0 = execution_ctx_initial (prog_intro_strictness p) ->
+      C0 = execution_ctx_initial (prog_intro_strictness p) -> (* I think [C0] should be removed and replaced by [C] there. -- Martin. *)
       red_expr S C (spec_execution_ctx_binding_instantiation codetype_global None p nil) (out_void S') ->
       red_prog S' C p o ->
       red_javascript p o
