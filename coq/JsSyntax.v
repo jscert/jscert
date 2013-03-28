@@ -78,18 +78,13 @@ Definition label := string.
     [None] refers to "the empty label", and [Some s] 
     refers to a user label with string [s]. *)
 
-Definition label_opt := option label.
-
-(* TODO
--->
-labelopt :=
-   | labelopt_empty
-   | labelopt_real : string
-*)
+Inductive labelopt :=
+   | labelopt_empty : labelopt
+   | labelopt_label : label -> labelopt.
 
 (** A set of label, possibly including the empty label. *)
 
-Definition label_set := set label.
+Definition label_set := list labelopt.
 
 (** Strictness flag *)
 
@@ -144,8 +139,8 @@ with stat :=
   | stat_with : expr -> stat -> stat
   | stat_throw : expr -> stat
   | stat_return : option expr -> stat
-  | stat_break : label_opt -> stat
-  | stat_continue : label_opt ->  stat
+  | stat_break : labelopt -> stat
+  | stat_continue : labelopt ->  stat
   | stat_try : stat -> option (string * stat) -> option stat -> stat (* Note: try s1 [catch (x) s2] [finally s3] *)
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
@@ -170,6 +165,7 @@ Definition elements := list element.
 (** Coercions for grammars *)
 
 Coercion stat_expr : expr >-> stat.
+Coercion labelopt_label : label >-> labelopt.
 
 
 (**************************************************************)
@@ -587,7 +583,16 @@ Record object := object_intro {
    object_extensible_ : bool;
    object_prim_value_ : option value;
    object_properties_ : object_properties_type;
-   object_get_ : builtin_get;
+   object_get_ : builtin;
+   object_get_own_prop_ : builtin;
+   object_get_prop_ : builtin;
+   object_put_ : builtin;
+   object_can_put_ : builtin;
+   object_has_prop_ : builtin;
+   object_delete_ : builtin;
+   object_default_value_ : builtin;
+   object_define_own_prop_ : builtin;
+   (*object_get_ : builtin_get;
    object_get_own_prop_ : builtin_get_own_prop;
    object_get_prop_ : builtin_get_prop;
    object_put_ : builtin_put;
@@ -595,7 +600,7 @@ Record object := object_intro {
    object_has_prop_ : builtin_has_prop;
    object_delete_ : builtin_delete;
    object_default_value_ : builtin_default_value;
-   object_define_own_prop_ : builtin_define_own_prop;
+   object_define_own_prop_ : builtin_define_own_prop;*)
    object_construct_ : option builtin ; (* option constructable; *)
    object_call_ : option builtin ; (* option callable; *)
    object_has_instance_ : option builtin; (*_has_instance ; *)
@@ -653,22 +658,22 @@ Coercion resvalue_ref : ref >-> resvalue.
 Inductive res := res_intro {
   res_type : restype;
   res_value : resvalue;
-  res_label : label_opt }.
+  res_label : labelopt }.
   
 Definition abrupt_res R :=
   res_type R <> restype_normal.
 
 (** Smart constructors for type [res] *)
 
-Coercion res_ref r := res_intro restype_normal r None.
-Coercion res_val v := res_intro restype_normal v None.
-Coercion res_normal rv := res_intro restype_normal rv None.
+Coercion res_ref r := res_intro restype_normal r labelopt_empty.
+Coercion res_val v := res_intro restype_normal v labelopt_empty.
+Coercion res_normal rv := res_intro restype_normal rv labelopt_empty.
 
-Definition res_empty := res_intro restype_normal resvalue_empty None.
+Definition res_empty := res_intro restype_normal resvalue_empty labelopt_empty.
 Definition res_break labo := res_intro restype_break resvalue_empty labo.
 Definition res_continue labo := res_intro restype_continue resvalue_empty labo.
-Definition res_return v := res_intro restype_return v None.
-Definition res_throw v := res_intro restype_throw v None.
+Definition res_return v := res_intro restype_return v labelopt_empty.
+Definition res_throw v := res_intro restype_throw v labelopt_empty.
 
 (** Outcome of an evaluation: divergence or termination *)
 

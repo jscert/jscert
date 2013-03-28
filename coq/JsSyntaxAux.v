@@ -5,7 +5,7 @@ Require Export JsSyntax.
 Implicit Type l : object_loc.
 Implicit Type rt : restype.
 Implicit Type rv : resvalue.
-Implicit Type lab : label.
+Implicit Type lab : labelopt.
 Implicit Type R : res.
 
 
@@ -470,14 +470,20 @@ Qed.
 
 (**************************************************************)
 (** ** Type [label_set] *)
-
+(* TODO: cleanup
 Global Instance label_bag : BagIn label label_set.
 Proof. apply in_inst. Qed.
 
 Global Instance label_set_dec : forall lab labs,
   Decidable (lab \in labs).
 Admitted.
+*)
 
+Definition label_set_empty : label_set := nil.
+
+Definition label_set_add lab lset := lab :: lset.
+
+Definition label_set_mem lab lset := LibList.mem lab lset.
 
 (**************************************************************)
 (** Retrieve function and variable declarations from code *)
