@@ -494,8 +494,8 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
 
 (* TODO: find more explicit name suggesting that a function is extracted *)
 (* I'm not sure to fully understand that comment:  it does not extract as a function.  If I used a function to implement it, it was to avoid it always raise an exception in the extracted OCaml code :) -- Martin. *)
-Definition extract_from_option {B : Type} `{Inhab B} (op : option B) : B :=
-  morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.
+(*Definition extract_from_option {B : Type} `{Inhab B} (op : option B) : B :=
+  morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.*) (* I guess it's in fact better to remove this black magic from this file :) -- Martin. *)
 
 Definition unmonad_option {B : Type} (default : B) (op : option B) : B :=
   morph_option default id op.

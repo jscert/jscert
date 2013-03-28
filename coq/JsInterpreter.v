@@ -53,7 +53,7 @@ Implicit Type t : stat.
 (** ** Some functions to be implemented (or extracted differently). *)
 
 Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
-(* It should never return an option, but its result will is a pain to be used... -- Martin *)
+(* It should never return an option, but its result will be a pain to be used... -- Martin *)
 
 
 (**************************************************************)
@@ -63,6 +63,12 @@ Inductive result :=
   | result_normal : out -> result
   | result_stuck
   | result_bottom.
+
+(* In the semantics, some rules returns an [out] which actually never
+  carry a result, only an [out_void] of something (or an error).  The
+  following type is there to differentiate those functions from the
+  others. *)
+Definition result_void := result.
 
 (* Coercion *)
 
@@ -107,6 +113,13 @@ Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : 
     end).
 
 Definition if_success := if_success_state resvalue_empty.
+
+Definition if_void (o : result_void) (K : state -> result) : result :=
+  if_success o (fun S rv =>
+    match rv with
+    | out_ter S res_empty => K S
+    | _ => result_stuck
+    end).
 
 Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> value -> result) : result :=
   if_ter o (fun S0 R =>
@@ -240,8 +253,8 @@ Definition run_object_class S l : string :=
 Definition run_object_extensible S l : bool :=
   object_extensible_ (pick (object_binds S l)).
 
-Definition run_object_prim_value S l : value :=
-  extract_from_option (object_prim_value_ (pick (object_binds S l))).
+Definition run_object_prim_value S l : option value :=
+  object_prim_value_ (pick (object_binds S l)).
 
 Definition run_object_call S l : option builtin :=
   object_call_ (pick (object_binds S l)).
@@ -259,8 +272,8 @@ Definition run_object_code_empty S l : bool :=
   morph_option true (fun _ => false)
     (object_code_ (pick (object_binds S l))).
 
-Definition run_object_code S l : funcbody :=
-  extract_from_option (object_code_ (pick (object_binds S l))).
+Definition run_object_code S l : option funcbody :=
+  object_code_ (pick (object_binds S l)).
 
 Definition run_object_properties S l : object_properties_type :=
   object_properties_ (pick (object_binds S l)).
@@ -293,8 +306,9 @@ Definition run_binary_op_type : Type :=
 
 
 Definition call (run_call' : run_call_type) S C l vthis args : result :=
-  let B := extract_from_option (run_object_call S l) in (* Return stuck if its not a Some. *)
-  run_call' S C B (Some l) (Some vthis) args.
+  morph_option result_stuck (fun B =>
+    run_call' S C B (Some l) (Some vthis) args)
+    (run_object_call S l).
 
 
 (**************************************************************)
@@ -427,7 +441,7 @@ Definition object_get_builtin (run_call' : run_call_type) S C B vthis l x : resu
           call run_call' S C lf lthis nil
         | _ => result_stuck
         end
-      | _ =>
+      | _ => (* TODO:  Check the spec' once it will have been updated. *)
         result_stuck
       end
     end
@@ -601,7 +615,7 @@ Definition ref_get_value (run_call' : run_call_type) S C rv : result :=
     end
   end.
 
-Definition object_put_complete (run_call' : run_call_type) S C B vthis l x v str : result :=
+Definition object_put_complete (run_call' : run_call_type) S C B vthis l x v str : result_void :=
   match B with
 
   | builtin_default_put =>
@@ -645,11 +659,11 @@ Definition object_put_complete (run_call' : run_call_type) S C B vthis l x v str
 
     end.
 
-Definition object_put (run_call' : run_call_type) S C l x v str : result :=
+Definition object_put (run_call' : run_call_type) S C l x v str : result_void :=
   let B := run_object_method object_put_ S l in
   object_put_complete run_call' S C B l l x v str.
 
-Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v str : result :=
+Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v str : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
     let (mu, v_old) := read Ed x in
@@ -662,11 +676,11 @@ Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v 
     object_put run_call' S C l x v str
   end.
 
-Definition prim_value_put (run_call' : run_call_type) S C w x v str : result :=
+Definition prim_value_put (run_call' : run_call_type) S C w x v str : result_void :=
   if_object (to_object S w) (fun S1 l =>
     object_put_complete run_call' S1 C builtin_default_put w l x v str).
 
-Definition ref_put_value (run_call' : run_call_type) S C rv v : result :=
+Definition ref_put_value (run_call' : run_call_type) S C rv v : result_void :=
   match rv with
   | resvalue_value v => out_ref_error S
   | resvalue_ref r =>
@@ -696,7 +710,7 @@ Definition if_success_value (run_call' : run_call_type) C (o : result) (K : stat
       end)).
 
 
-Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : result :=
+Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : result_void :=
   let deletable := unsome_default false deletable_opt in
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
@@ -707,28 +721,30 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
   | env_record_object l pt =>
     if object_has_prop S l x then result_stuck
     else let A := attributes_data_intro undef true true deletable in
-      object_define_own_property S l x A throw_true
+      if_success (object_define_own_property S l x A throw_true) (fun S1 rv =>
+        out_void S1)
   end.
 
-Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C L x (deletable_opt : option bool) v str : result :=
-  if_success (env_record_create_mutable_binding S L x deletable_opt) (fun S rv =>
+Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C L x (deletable_opt : option bool) v str : result_void :=
+  if_void (env_record_create_mutable_binding S L x deletable_opt) (fun S =>
     env_record_set_mutable_binding run_call' S C L x v str).
 
-Definition env_record_create_immutable_binding S L x : result :=
+Definition env_record_create_immutable_binding S L x : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
     ifb decl_env_record_indom Ed x then result_stuck
-    else out_void (
-      env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
+    else out_void
+      (env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
   | _ => result_stuck
   end.
 
-Definition env_record_initialize_immutable_binding S L x v : result :=
+Definition env_record_initialize_immutable_binding S L x v : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
-    (* In contrary to the rules, no check is performed there, is that a problem? -- Martin *)
-    let S' := env_record_write_decl_env S L x mutability_immutable v in
-    out_void S'
+    ifb pick (decl_env_record_binds Ed x) = (mutability_uninitialized_immutable undef) then
+      let S' := env_record_write_decl_env S L x mutability_immutable v in
+      out_void S'
+    else result_stuck
   | _ => result_stuck
   end.
 
@@ -772,10 +788,10 @@ Definition to_primitive (run_call' : run_call_type) S C v (prefo : option prefty
 Definition to_number (run_call' : run_call_type) S C v : result :=
   match v with
   | value_prim w =>
-      out_ter S (convert_prim_to_number w)
+    out_ter S (convert_prim_to_number w)
   | value_object l =>
-     if_success_primitive (to_primitive run_call' S C l (Some preftype_number)) (fun S1 w =>
-        out_ter S (convert_prim_to_number w))
+    if_success_primitive (to_primitive run_call' S C l (Some preftype_number)) (fun S1 w =>
+      out_ter S (convert_prim_to_number w))
   end.
 
 Definition to_integer (run_call' : run_call_type) S C v : result :=
@@ -797,19 +813,19 @@ Definition to_uint32 (run_call' : run_call_type) S C v (K : state -> int -> resu
 Definition to_string (run_call' : run_call_type) S C v : result :=
   match v with
   | value_prim w =>
-      out_ter S (convert_prim_to_string w)
+    out_ter S (convert_prim_to_string w)
   | value_object l =>
-      if_success_primitive (to_primitive run_call' S C l (Some preftype_string)) (fun S1 w =>
-        out_ter S (convert_prim_to_string w))
+    if_success_primitive (to_primitive run_call' S C l (Some preftype_string)) (fun S1 w =>
+      out_ter S (convert_prim_to_string w))
   end.
 
 Definition env_record_implicit_this_value S L : value :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed => undef
   | env_record_object l provide_this =>
-      if provide_this
-        then l : value
-        else undef
+    if provide_this
+      then l : value
+      else undef
   end.
 
 
@@ -902,20 +918,20 @@ Definition creating_function_object (run_call' : run_call_type) S C (names : lis
           if_success (object_define_own_property S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
-Fixpoint binding_instantiation_formal_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result :=
+Fixpoint binding_instantiation_formal_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result_void :=
   match names with
   | nil => out_void S
   | argname :: names' =>
     let v := hd undef args in
     let hb := env_record_has_binding S L argname in
-    if_success
-      (if hb then (* There might be a factorisation there:  look at the semantics for updates. *)
+    if_void
+      (if hb then (* TODO:  There might be a factorisation there:  look at the semantics for updates. *)
         env_record_set_mutable_binding run_call' S C L argname v (execution_ctx_strict C)
       else env_record_create_set_mutable_binding run_call' S C L argname None v (execution_ctx_strict C)) (fun S1 rv1 =>
         binding_instantiation_formal_args run_call' S1 C L (tl args) names' str)
   end.
 
-Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result :=
+Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
   match fds with
   | nil => out_void S
   | fd :: fds' =>
@@ -923,9 +939,9 @@ Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L 
       let fname := funcdecl_name fd in
       let str := funcbody_is_strict fbd in
       if_object (creating_function_object run_call' S C (funcdecl_parameters fd) fbd (execution_ctx_variable_env C) str) (fun S1 fo =>
-        if_success ( (* Name this argument. *)
+        if_success (* TODO:  Should be [if_void] I think.*) ( (* TODO:  Name this argument. *)
           if env_record_has_binding S1 L fname then
-            ifb L = env_loc_global_env_record then ( (* Use “codetype” for this. *)
+            ifb L = env_loc_global_env_record then ( (* TODO:  Use “codetype” for this. *)
               match run_object_get_property S1 builtin_global fname with
               | full_descriptor_undef => result_stuck
               | full_descriptor_some A =>
@@ -938,71 +954,71 @@ Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L 
                 else out_void S1
               end
             ) else out_void S1
-          else env_record_create_mutable_binding S1 L fname (Some bconfig)) (fun S2 rv => (* Name this part:  the part above is just unreadable. *)
-            if_success (env_record_set_mutable_binding run_call' S2 C L fname fo str) (fun S3 rv =>
+          else env_record_create_mutable_binding S1 L fname (Some bconfig)) (fun S2 rv => (* TODO:  Name this part:  the part above is just unreadable. *)
+            if_void (env_record_set_mutable_binding run_call' S2 C L fname fo str) (fun S3 =>
               binding_instantiation_function_decls run_call' S3 C L fds' bconfig)))
   end.
 
-Fixpoint binding_instantiation_var_decls (run_call' : run_call_type) S C L (vds : list string) str : result :=
+Fixpoint binding_instantiation_var_decls (run_call' : run_call_type) S C L (vds : list string) str : result_void :=
   match vds with
   | nil => out_void S
   | vd :: vds' =>
-    if env_record_has_binding S L vd then
-      binding_instantiation_var_decls run_call' S C L vds' str (* Name this to avoid dupplication *)
+    let bivd S := binding_instantiation_var_decls run_call' S C L vds' str in
+    if env_record_has_binding S L vd then bivd S
     else
-      if_success (env_record_create_set_mutable_binding run_call' S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 rv1 => (* “if_void” and not “if_success” *)
-        binding_instantiation_var_decls run_call' S1 C L vds' str)
+      if_void (env_record_create_set_mutable_binding run_call' S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 =>
+        bivd S1)
   end.
 
-Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str :=
+Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
   arbitrary (* TODO *).
 
-Definition binding_instantiation_arguments_object (run_call' : run_call_type) S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result :=
+Definition binding_instantiation_arguments_object (run_call' : run_call_type) S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
   let name := "arguments" in
   let bdecl := env_record_has_binding S L name in
   ifb ct = codetype_func /\ ~ bdecl then (
-    let lf := extract_from_option funco in (* :( *)
+    let lf := extract_from_option funco in (* TODO :( *)
     let str := prog_strict p in
       if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
         if str then
-          if_success (env_record_create_immutable_binding S1 L name) (fun S2 rv2 =>
+          if_void (env_record_create_immutable_binding S1 L name) (fun S2 =>
             env_record_initialize_immutable_binding S2 L name largs)
         else
           env_record_create_set_mutable_binding run_call' S1 C L name None largs false))
   else out_void S.
 
-Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (ct : codetype) (funco : option object_loc) p (args : list value) : result :=
-  let L := hd_inhab (execution_ctx_variable_env C) in (* Baah! *)
-  let str := execution_ctx_strict C in (* Check the semantics (and pass around the argument) *)
-  let (o, names) := match ct, funco with (* Alternative way of presenting that:  name the continuation at the bottom and don’t name “o”! *)
+Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
+  let L := hd_inhab (execution_ctx_variable_env C) in (* TODO:  Baah! *)
+  let str := execution_ctx_strict C in (* TODO:  Check the semantics (and pass around the argument) *)
+  let (o, names) := match ct, funco with (* TODO:  Alternative way of presenting that:  name the continuation at the bottom and don’t name “o”! *)
     | codetype_func, Some func =>
       let names := unsome_default nil (run_object_formal_parameters S func) in
       (binding_instantiation_formal_args run_call' S C L args names str, names)
     | (codetype_global | codetype_eval), None => (out_void S : result, nil)
     | _, _ => (result_stuck, nil)
     end in
-  if_success o (fun S1 rv1 =>
+  if_void o (fun S1 rv1 =>
       let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
-      if_success (binding_instantiation_function_decls run_call' S1 C L fds bconfig) (fun S2 rv2 =>
-        if_success (binding_instantiation_arguments_object run_call' S2 C L ct funco p names args) (fun S3 rv3 =>
+      if_void (binding_instantiation_function_decls run_call' S1 C L fds bconfig) (fun S2 =>
+        if_void (binding_instantiation_arguments_object run_call' S2 C L ct funco p names args) (fun S3 =>
           let vds := prog_vardecl p in
           binding_instantiation_var_decls run_call' S2 C L vds str))).
 
 
 Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) : result :=
-  let bd := run_object_code S lf in (* Maybe this could be passed are arguments *)
+  let bd := run_object_code S lf in (* TODO:  Maybe this could be passed are arguments *)
   let str := funcbody_is_strict bd in
   let newthis :=
     if str then this
     else ifb this = null \/ this = undef then builtin_global
     else ifb type_of this = type_object then this
     else arbitrary in
-  let scope := extract_from_option (run_object_scope S lf) in (* Baaaah! *)
+  let scope := extract_from_option (run_object_scope S lf) in (* TODO:  Baaaah! *)
   let (lex', S1) := lexical_env_alloc_decl S scope in
   let C1 := execution_ctx_intro_same lex' this str in
-  if_success (execution_ctx_binding_instantiation run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 rv =>
-    K S2 C1). (* use `if_void' instead of `if_success' *)
+  if_void (execution_ctx_binding_instantiation run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
+    K S2 C1).
 
 Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
   match max_step with
@@ -1252,7 +1268,7 @@ Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) 
           let (number_op, is_pre) := run_prepost_op op in
           let n2 := number_op n1 in
           let v := prim_number (if is_pre then n2 else n1) in
-          if_success (ref_put_value run_call' S3 C rv1 n2) (fun S4 rv2 =>
+          if_void (ref_put_value run_call' S3 C rv1 n2) (fun S4 =>
             out_ter S4 v))))
   else
     match op with
@@ -1359,7 +1375,7 @@ Fixpoint run_var_decl (run_expr' : run_expr_type) (run_call' : run_call_type)
       | Some e =>
         if_success_value run_call' C (run_expr' S C e) (fun S1 v =>
           let ir := identifier_res S1 C x in
-          if_success (ref_put_value run_call' S1 C ir v) (fun S2 rv =>
+          if_void (ref_put_value run_call' S1 C ir v) (fun S2 =>
             out_ter S2 undef))
       end) (fun S1 rv =>
         run_var_decl run_expr' run_call' S1 C xeos')
@@ -1419,7 +1435,7 @@ Definition run_expr_assign (run_expr' : run_expr_type) (run_call' : run_call_typ
     let follow S rv' :=
       match rv' with
       | resvalue_value v =>
-        if_success (ref_put_value run_call' S C rv1 v) (fun S' rv2 =>
+        if_void (ref_put_value run_call' S C rv1 v) (fun S' =>
          out_ter S' v)
       | _ => result_stuck
       end in
@@ -1440,9 +1456,9 @@ Definition run_expr_function (run_call' : run_call_type) S C fo args bd : result
     let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
     let follow L :=
       let E := pick (env_record_binds S' L) in
-      if_success (env_record_create_immutable_binding S' L fn) (fun S1 rv1 =>
+      if_void env_record_create_immutable_binding S' L fn) (fun S1 =>
         if_object (creating_function_object run_call' S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
-          if_success (env_record_initialize_immutable_binding S2 L fn l) (fun S3 rv2 =>
+          if_void (env_record_initialize_immutable_binding S2 L fn l) (fun S3 =>
             out_ter S3 l))) in
     map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt
   end.
@@ -1578,9 +1594,8 @@ Definition run_stat_try (run_stat' : run_stat_type) (run_call' : run_call_type)
       let (lex', S') := lexical_env_alloc_decl S lex in
       match lex' with
       | L :: oldlex =>
-        if_success
-        (env_record_create_set_mutable_binding run_call' S C L x None v throw_irrelevant)
-        (fun S2 rv2 =>
+        if_void (env_record_create_set_mutable_binding
+          run_call' S C L x None v throw_irrelevant) (fun S2 =>
           match rv2 with
           | prim_undef =>
             let C' := execution_ctx_with_lex C lex' in
@@ -1775,10 +1790,10 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
     match B with
 
     | builtin_spec_op_function_call =>
-      let lf := extract_from_option lfo in (* Create a monad (if_some) *)
-      let vthis := extract_from_option vo in (* Idem *)
+      let lf := extract_from_option lfo in (* TODO:  Create a monad (if_some) *)
+      let vthis := extract_from_option vo in (* TODO:  Idem *)
       execution_ctx_function_call run_call' S C lf vthis args (fun S1 C1 =>
-        if run_object_code_empty S1 lf then (* Here a match is better as I’m doing a let just afterwards *)
+        if run_object_code_empty S1 lf then (* TODO:  Here a match is better as I’m doing a let just afterwards *)
           out_ter S1 (res_normal undef) (* Is that reachable? *)
         else (
           let p := run_object_code S1 lf in
