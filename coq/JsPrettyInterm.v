@@ -87,11 +87,13 @@ Inductive ext_expr :=
   | expr_new_1 : out -> list expr -> ext_expr (* The arguments too. *)
   | expr_new_2 : value -> list value -> ext_expr (* The call has been executed. *)
 
-  | expr_call_1 : out -> list expr -> ext_expr 
-  | expr_call_2 : res -> list expr -> out -> ext_expr (* The function has been evaluated. *)
-  | expr_call_3 : res -> value -> list value -> ext_expr (* The arguments have been executed. *)
-  | expr_call_4 : res -> object_loc -> list value -> ext_expr
-  | expr_call_5 : object_loc -> list value -> out -> ext_expr (* The call has been executed. *)
+  | expr_call_1 : out -> bool -> list expr -> ext_expr 
+  | expr_call_2 : res -> bool -> list expr -> out -> ext_expr (* The function has been evaluated. *)
+  | expr_call_3 : res -> value -> bool -> list value -> ext_expr (* The arguments have been executed. *)
+  | expr_call_4 : res -> object_loc -> bool -> list value -> ext_expr
+  | expr_call_5 : object_loc -> bool -> list value -> out -> ext_expr (* The call has been executed. *)
+  
+  | spec_eval : bool -> value -> list value -> ext_expr (* TODO *)
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
