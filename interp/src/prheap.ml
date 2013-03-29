@@ -1,5 +1,9 @@
 open Interpreter
 
+let prbool = function
+	| true -> "true"
+	| false -> "false"
+
 let prloc = function
   | Object_loc_normal i -> "@" ^ string_of_int i
   | Object_loc_prealloc builtinid ->
@@ -36,7 +40,7 @@ let prbinary_op = function
 	| Binary_op_equal -> "==="
 	| Binary_op_instanceof -> "instanceof"
 	| Binary_op_in -> "in"
-  | _ -> "Binary Op NIY"
+	| _ -> "Binary Op NIY"
 
 let prliteral = function
 	| Literal_null -> "null"
@@ -51,25 +55,54 @@ let prprim = function
   | Prim_number f -> string_of_float f
   | Prim_string cl -> string_of_char_list cl
 
-let rec prvalue = function
+let prvalue = function
   | Value_prim p -> prprim p
   | Value_object ol -> prloc ol
 
+let prattributes = function
+  | Attributes_data_of d ->
+	Printf.sprintf "{ value: %s, writable: %s, enum: %s, config: %s }"
+	  (prvalue (attributes_data_value d))
+	  (prbool (attributes_data_writable d))
+	  (prbool (attributes_data_enumerable d))
+	  (prbool (attributes_data_configurable d))
+  | Attributes_accessor_of a ->
+	Printf.sprintf "{ get: %s, set: %s, enum: %s, config: %s }"
+	  (prvalue (attributes_accessor_get a))
+	  (prvalue (attributes_accessor_set a))
+	  (prbool (attributes_accessor_enumerable a))
+	  (prbool (attributes_accessor_configurable a))
 
-let prfieldmap loc obj =
+
+let prfieldmap (old : (prop_name * attributes) list option) show_init loc obj =
 	String.concat "" (List.fold_left
 		(fun acc (x, a) ->
-			("\t" ^ prloc loc ^ "." ^ string_of_char_list x ^ ";\n") :: acc) []
-		(Interpreter.Heap.to_list (obj.Interpreter.object_properties_)))
+			if show_init
+			  && morph_option false (fun old0 ->
+				List.mem (x, a) old0) old
+			then acc
+			else Printf.sprintf "\t %s . %s =  %s;\n"
+				  (prloc loc)
+				  (string_of_char_list x)
+				  (prattributes a)
+				    :: acc) []
+		(Heap.to_list (obj.Interpreter.object_properties_)))
 
-let prheap heap =
+let prheap show_init heap =
+	let list_heap_init = Heap.to_list object_heap_initial in
 	"digraph g{\n" ^
 	"node [shape=record];\n" ^
 	"rankdir=LR;\n" ^
 	(String.concat ""
 		  (List.rev (List.fold_left
-			(fun acc (key, v) -> prfieldmap key v :: acc) []
-			(Interpreter.Heap.to_list heap)
+			(fun acc (key, v) ->
+				prfieldmap (try
+						Some (Heap.to_list
+							(object_properties_
+								(List.assoc key list_heap_init)))
+					with Not_found -> None) show_init
+				  key v :: acc) []
+			(Heap.to_list heap)
 		))) ^
 	"}"
 
