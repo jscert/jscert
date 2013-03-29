@@ -2024,9 +2024,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_function_decls_nil : forall o1 L S0 S C args str bconfig o, (* Step 5b *)
       red_expr S0 C (spec_binding_inst_function_decls args L nil str bconfig) (out_void S)
 
-  | red_spec_binding_inst_function_decls_cons : forall strict str o1 L S0 S C args fd fds str bconfig o, (* Step 5b *)
-      strict = funcbody_is_strict (funcdecl_body fd) ->
-      red_expr S C (spec_creating_function_object (funcdecl_parameters fd) (funcdecl_body fd) (execution_ctx_variable_env C) strict) o1 ->
+  | red_spec_binding_inst_function_decls_cons : forall str_fd str o1 L S0 S C args fd fds str bconfig o, (* Step 5b *)
+      str_fd = funcbody_is_strict (funcdecl_body fd) ->
+      red_expr S C (spec_creating_function_object (funcdecl_parameters fd) (funcdecl_body fd) (execution_ctx_variable_env C) str_fd) o1 ->
       red_expr S C (spec_binding_inst_function_decls_1 args L fd fds str bconfig o1) o ->
       red_expr S C (spec_binding_inst_function_decls args L (fd::fds) str bconfig) o
 
