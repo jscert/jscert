@@ -15,6 +15,7 @@ Abbreviations used in the formalization:
   - args for arguments
   - proto for prototype
   - spec for specification
+  - inst for instantiation
 
 From LibHeap
   - rem for remove

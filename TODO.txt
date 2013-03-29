@@ -39,6 +39,7 @@ INVARIANT ON SYNTAX
 - "try" must have either catch or finally
 - "with" statement cannot be in strict mode
 
+-- a result triple, if is of type throw, carries a real value (not empty nor reference)
 
 
 
