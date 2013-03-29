@@ -592,9 +592,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error prealloc_type_error) o ->
       red_expr S C (expr_new_3 v vs) o
       
-  | red_expr_new_3_constructor : forall constructor S C l vs v o, (* Step 8 *)
-      object_construct S l (Some constructor) ->
-      red_expr S C (spec_constructor constructor (Some l) vs) o ->
+  | red_expr_new_3_constructor : forall S C l vs v o, (* Step 8 *)
+      red_expr S C (spec_constructor l vs) o ->
       red_expr S C (expr_new_3 (value_object l) vs) o
 
   (** Call (11.2.3) *)
@@ -2321,35 +2320,39 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_default_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))
       
   (** Constructor calls *)
-  (* TODO_DAIVA : make the beginning symmetric with what's above for function calls *)
-
-(* tofix
-  | red_spec_constructor_prealloc : forall S C builtinid lo args o,
-      builtinid <> prealloc_spec_op_function_constructor /\ builtinid <> prealloc_spec_op_function_bind_constructor ->
-      red_expr S C (spec_constructor_prealloc builtinid args) o -> 
-      red_expr S C (spec_constructor builtinid lo args) o
+  
+  | red_spec_construtor : forall S C l co args o,
+      object_construct S l (Some co) ->
+      red_expr S C (spec_constructor_1 co l args) o ->
+      red_expr S C (spec_constructor l args) o
       
-  | red_spec_constructor_function : forall S C l args o,
-      red_expr S C (spec_function_constructor l args) o -> 
-      red_expr S C (spec_constructor prealloc_spec_op_function_constructor (Some l) args) o
+  | red_spec_constructor_to_default : forall S C l args o,
+      red_expr S C (spec_constructor_default l args) o -> 
+      red_expr S C (spec_constructor_1 construct_default l args) o
       
-  | red_spec_function_constructor : forall o1 S C l args o,
+  | red_spec_constructor_to_prealloc : forall S C B l args o,
+      red_expr S C (spec_constructor_prealloc B args) o -> 
+      red_expr S C (spec_constructor_1 (construct_prealloc B) l args) o   
+      
+  (** Constructor for regular functions *)       
+      
+  | red_spec_constructor_default : forall o1 S C l args o,
       red_expr S C (spec_object_get (value_object l) "prototype") o1 ->
-      red_expr S C (spec_function_constructor_1 l args o1) o ->
-      red_expr S C (spec_function_constructor l args) o
+      red_expr S C (spec_constructor_default_1 l args o1) o ->
+      red_expr S C (spec_constructor_default l args) o
       
-  | red_spec_function_constructor_1 : forall l' vproto O S' o1 S0 S C l args v o,
+  | red_spec_constructor_default_1 : forall l' vproto O S' o1 S0 S C l args v o,
       vproto = (If (type_of v) = type_object then v else prealloc_object_proto) ->
       O = object_new vproto "Object" ->
       (l', S') = object_alloc S O ->
       red_expr S' C (spec_call l (value_object l') args) o1 ->
-      red_expr S' C (spec_function_constructor_2 l' o1) o ->
-      red_expr S0 C (spec_function_constructor_1 l args (out_ter S v)) o
+      red_expr S' C (spec_constructor_default_2 l' o1) o ->
+      red_expr S0 C (spec_constructor_default_1 l args (out_ter S v)) o
       
   | red_spec_function_constructor_2 : forall S0 S C l' v vr o,
       vr = (If (type_of v = type_object) then v else l') ->
-      red_expr S0 C (spec_function_constructor_2 l' (out_ter S v)) (out_ter S vr)
-  *)
+      red_expr S0 C (spec_constructor_default_2 l' (out_ter S v)) (out_ter S vr)
+      
 (*            
       let A := attributes_data_intro (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->

@@ -382,13 +382,14 @@ Inductive ext_expr :=
   | spec_call_default_1 : object_loc -> out -> ext_expr
   | spec_call_default_2 : out -> ext_expr
   
-  | spec_constructor : construct -> option object_loc -> list value -> ext_expr
+  | spec_constructor : object_loc -> list value -> ext_expr
+  | spec_constructor_1 : construct -> object_loc -> list value -> ext_expr
   
   | spec_constructor_prealloc : prealloc -> list value -> ext_expr (* todo??*)
   
-  | spec_function_constructor : object_loc -> list value -> ext_expr
-  | spec_function_constructor_1 : object_loc -> list value -> out -> ext_expr
-  | spec_function_constructor_2 : object_loc -> out -> ext_expr
+  | spec_constructor_default : object_loc -> list value -> ext_expr
+  | spec_constructor_default_1 : object_loc -> list value -> out -> ext_expr
+  | spec_constructor_default_2 : object_loc -> out -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
   (* TODO: rename all the spec_call into spec_builtin *)
