@@ -565,28 +565,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** New (11.2.2, second part) *)
 
-  | red_expr_new : forall S C e1 e2s o o1, (* Step 1 *)
-      red_expr S C e1 o1 ->
+  | red_expr_new : forall S C e1 e2s o o1, (* Steps 1-2 *)
+      red_expr S C (spec_expr_get_value e1) o1 ->
       red_expr S C (expr_new_1 o1 e2s) o ->
       red_expr S C (expr_new e1 e2s) o
       
-  | red_expr_new_1 : forall S C e1 rv e2s o o1, (* Step 2 *)
-      red_expr S C (spec_get_value rv) o1 ->
-      red_expr S C (expr_new_2 e2s o1) o ->
-      red_expr S C (expr_new_1 (out_ter S rv) e2s) o
+  | red_expr_new_1 : forall S0 S C e1 rv e2s v o o1, (* Step 3 *)
+      red_expr S C (expr_list_then (expr_new_2 v) e2s) o ->
+      red_expr S0 C (expr_new_1 (out_ter S v) e2s) o
       
-  | red_expr_new_2 : forall S0 S C e1 rv e2s v o o1, (* Step 3 *)
-      red_expr S C (expr_list_then (expr_new_3 v) e2s) o ->
-      red_expr S0 C (expr_new_2 e2s (out_ter S v)) o
-      
-  | red_expr_new_3_type_error : forall S C o v vs, (* Steps 4-5 *)
+  | red_expr_new_2_type_error : forall S C o v vs, (* Steps 4-5 *)
       (type_of v <> type_object) \/ (exists l, v = value_object l /\ object_construct S l None) ->
       red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (expr_new_3 v vs) o
+      red_expr S C (expr_new_2 v vs) o
       
-  | red_expr_new_3_construct : forall S C l vs v o, (* Step 6 *)
+  | red_expr_new_2_construct : forall S C l vs v o, (* Step 6 *)
       red_expr S C (spec_construct l vs) o ->
-      red_expr S C (expr_new_3 (value_object l) vs) o
+      red_expr S C (expr_new_2 (value_object l) vs) o
 
   (** Call (11.2.3) *)
 
