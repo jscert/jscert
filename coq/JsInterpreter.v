@@ -900,7 +900,7 @@ Definition creating_function_object (run_call' : run_call_type) S C (names : lis
           if_success (object_define_own_property S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
-Fixpoint binding_instantiation_formal_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result_void :=
+Fixpoint binding_inst_formal_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result_void :=
   match names with
   | nil => out_void S
   | argname :: names' =>
@@ -910,10 +910,10 @@ Fixpoint binding_instantiation_formal_args (run_call' : run_call_type) S C L (ar
         (if hb then (* TODO:  There might be a factorisation there:  look at the semantics for updates. *)
           env_record_set_mutable_binding run_call' S C L argname v (execution_ctx_strict C)
         else env_record_create_set_mutable_binding run_call' S C L argname None v (execution_ctx_strict C)) (fun S1 =>
-          binding_instantiation_formal_args run_call' S1 C L (tl args) names' str))
+          binding_inst_formal_args run_call' S1 C L (tl args) names' str))
   end.
 
-Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
+Fixpoint binding_inst_function_decls (run_call' : run_call_type) S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
   match fds with
   | nil => out_void S
   | fd :: fds' =>
@@ -939,14 +939,14 @@ Fixpoint binding_instantiation_function_decls (run_call' : run_call_type) S C L 
             ) else out_void S1) (fun _ =>
             env_record_create_mutable_binding S1 L fname (Some bconfig))) (fun S2 rv => (* TODO:  Name this part:  the part above is just unreadable. *)
               if_void (env_record_set_mutable_binding run_call' S2 C L fname fo str) (fun S3 =>
-                binding_instantiation_function_decls run_call' S3 C L fds' bconfig)))
+                binding_inst_function_decls run_call' S3 C L fds' bconfig)))
   end.
 
-Fixpoint binding_instantiation_var_decls (run_call' : run_call_type) S C L (vds : list string) str : result_void :=
+Fixpoint binding_inst_var_decls (run_call' : run_call_type) S C L (vds : list string) str : result_void :=
   match vds with
   | nil => out_void S
   | vd :: vds' =>
-    let bivd S := binding_instantiation_var_decls run_call' S C L vds' str in
+    let bivd S := binding_inst_var_decls run_call' S C L vds' str in
     if_bool_option_result (env_record_has_binding S L vd) (fun _ =>
       bivd S) (fun _ =>
       if_void (env_record_create_set_mutable_binding run_call' S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 =>
@@ -956,7 +956,7 @@ Fixpoint binding_instantiation_var_decls (run_call' : run_call_type) S C L (vds 
 Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
   arbitrary (* TODO *).
 
-Definition binding_instantiation_arguments_object (run_call' : run_call_type) S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
+Definition binding_inst_arguments_object (run_call' : run_call_type) S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
   let name := "arguments" in
   if_some (env_record_has_binding S L name) (fun bdecl =>
     ifb ct = codetype_func /\ ~ bdecl then (
@@ -970,23 +970,23 @@ Definition binding_instantiation_arguments_object (run_call' : run_call_type) S 
               env_record_create_set_mutable_binding run_call' S1 C L name None largs false)))
     else out_void S).
 
-Definition execution_ctx_binding_instantiation (run_call' : run_call_type) S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
+Definition execution_ctx_binding_inst (run_call' : run_call_type) S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
   let L := hd_inhab (execution_ctx_variable_env C) in (* TODO:  Baah! *)
   let str := execution_ctx_strict C in (* TODO:  Check the semantics (and pass around the argument) *)
   let (o, names) := match ct, funco with (* TODO:  Alternative way of presenting that:  name the continuation at the bottom and don’t name “o”! *)
     | codetype_func, Some func =>
       let names := unsome_default nil (run_object_method object_formal_parameters_ S func) in
-      (binding_instantiation_formal_args run_call' S C L args names str, names)
+      (binding_inst_formal_args run_call' S C L args names str, names)
     | (codetype_global | codetype_eval), None => (out_void S : result, nil)
     | _, _ => (result_stuck, nil)
     end in
   if_void o (fun S1 =>
       let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
-      if_void (binding_instantiation_function_decls run_call' S1 C L fds bconfig) (fun S2 =>
-        if_void (binding_instantiation_arguments_object run_call' S2 C L ct funco p names args) (fun S3 =>
+      if_void (binding_inst_function_decls run_call' S1 C L fds bconfig) (fun S2 =>
+        if_void (binding_inst_arguments_object run_call' S2 C L ct funco p names args) (fun S3 =>
           let vds := prog_vardecl p in
-          binding_instantiation_var_decls run_call' S2 C L vds str))).
+          binding_inst_var_decls run_call' S2 C L vds str))).
 
 
 Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) : result :=
@@ -1000,7 +1000,7 @@ Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : obj
     if_some (run_object_method object_scope_ S lf) (fun scope =>
       let (lex', S1) := lexical_env_alloc_decl S scope in
       let C1 := execution_ctx_intro_same lex' this str in
-      if_void (execution_ctx_binding_instantiation run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
+      if_void (execution_ctx_binding_inst run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
         K S2 C1))).
 
 Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
@@ -1864,7 +1864,7 @@ Definition run_javascript (max_step : nat) p : result :=
     let run_call' := run_call max_step' in
     let S := state_initial in
     let C := execution_ctx_initial (prog_intro_strictness p) in
-    if_void (execution_ctx_binding_instantiation run_call' S C codetype_global None p nil) (fun S' =>
+    if_void (execution_ctx_binding_inst run_call' S C codetype_global None p nil) (fun S' =>
       run_prog' S' C p)
   end.
 
