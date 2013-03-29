@@ -209,7 +209,7 @@ Qed.
 (** Inhabitant *)
 
 Global Instance value_inhab : Inhab value.
-Proof. apply (prove_Inhab (value_prim arbitrary)). Qed.
+Proof. applys prove_Inhab value_prim. typeclass. Qed.
 
 (** Boolean comparison *)
 
@@ -319,6 +319,14 @@ Proof.
    tryfalse; auto; try congruence.
 Qed.
 
+(**************************************************************)
+(** ** Type [object_properties_type] *)
+
+(** Inhabitants **)
+
+Global Instance object_properties_type_inhab : Inhab object_properties_type.
+Proof. applys prove_Inhab @Heap.empty. Qed.
+
 
 (**************************************************************)
 (** ** Type [object] *)
@@ -326,9 +334,7 @@ Qed.
 (** Inhabitants **)
 
 Global Instance object_inhab : Inhab object.
-Proof.
-  apply (prove_Inhab (object_create arbitrary arbitrary arbitrary arbitrary)).
-Qed.
+Proof. applys prove_Inhab object_create; try typeclass; try apply arbitrary. Qed.
 
 
 (**************************************************************)

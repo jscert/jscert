@@ -4,7 +4,7 @@ Require Export Ascii String.
 Require Export LibTactics LibLogic LibReflect LibList
   LibOperation LibStruct LibNat LibEpsilon LibFunc
   LibHeap LibStream.
-Module Heap := LibHeap.HeapList.
+Module Heap := HeapId (LibHeap.HeapList).
 Require JsNumber.
 Notation "'number'" := (JsNumber.number).
 

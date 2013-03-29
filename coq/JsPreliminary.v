@@ -46,7 +46,6 @@ Implicit Type p : prog.
 Implicit Type t : stat.
 
 
-
 (**************************************************************)
 
 Definition prog_intro_strictness p :=

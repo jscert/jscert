@@ -617,4 +617,106 @@ Proof. intros_all. rewrite FsetImpl.in_inter in H. auto*. Qed.
 
 
 (**************************************************************)
-(** ** LATER: implement *) 
+(** ** Do not move in TLC *)
+
+Notation "'if' b 'then' v1 'else' v2" :=
+  (if (b : bool) then v1 else v2)
+  (at level 200, right associativity) : type_scope.
+
+
+(**************************************************************)
+(** ** LATER: move to LibHeap *)
+
+Module HeapId (Export Heap : HeapSpec) : HeapSpec.
+Generalizable Variable K V.
+
+Definition heap K V := (nat * heap K V)%type.
+
+Section HeapDefs.
+(*Variables K V : Type.*)
+Context `{Comparable K} `{Inhab V}.
+Definition empty : heap K V := (0%nat, empty).
+Definition dom (h : heap K V) := dom (snd h).
+Definition binds (h : heap K V) := binds (snd h).
+Definition to_list (h : heap K V) := to_list (snd h).
+Definition read (h : heap K V) := read (snd h).
+Definition write (h : heap K V) k v :=
+  let (id, h0) := h in
+  (S id, write (snd h) k v).
+Definition rem (h : heap K V) k :=
+  let (id, h0) := h in
+  (S id, rem (snd h) k).
+Definition indom (h : heap K V) := indom (snd h).
+Definition read_option (h : heap K V) := read_option (snd h).
+End HeapDefs.
+
+Section HeapAxioms.
+Context `{Comparable K} `{Inhab V}.
+Implicit Types h : heap K V.
+
+Lemma indom_equiv_binds : forall h k,
+  indom h k = (exists v, binds h k v).
+Proof. destruct h. eapply indom_equiv_binds. Qed.
+
+Lemma dom_empty :
+  dom (@empty K V) = \{}.
+Proof. unfold empty. eapply dom_empty. Qed.
+
+Lemma binds_equiv_read : forall h k,
+  indom h k -> (forall v, (binds h k v) = (read h k = v)).
+Proof. destruct h. eapply binds_equiv_read. Qed.
+
+Lemma dom_write : forall h r v,
+  dom (write h r v) = dom h \u \{r}.
+Proof. destruct h. eapply dom_write. Qed.
+
+Lemma binds_write_eq : forall h k v,
+  binds (write h k v) k v.
+Proof. destruct h. eapply binds_write_eq. Qed.
+
+Lemma binds_write_neq : forall h k v k' v',
+  binds h k v -> k <> k' -> 
+  binds (write h k' v') k v.
+Proof. destruct h. eapply binds_write_neq. Qed.
+
+Lemma binds_write_inv : forall h k v k' v',
+  binds (write h k' v') k v -> 
+  (k = k' /\ v = v') \/ (k <> k' /\ binds h k v). 
+Proof. destruct h. eapply binds_write_inv. Qed.
+
+Lemma binds_rem : forall h k k' v,
+  binds h k v -> k <> k' -> binds (rem h k') k v.
+Proof. destruct h. eapply binds_rem. Qed.
+
+Lemma binds_rem_inv : forall h k v k',
+  binds (rem h k') k v -> k <> k' /\ binds h k v.
+Proof. destruct h. eapply binds_rem_inv. Qed.
+
+Lemma not_indom_rem : forall h k,
+  ~ indom (rem h k) k.
+Proof. destruct h. eapply not_indom_rem. Qed.
+
+Lemma binds_equiv_read_option : forall h k v,
+  (binds h k v) = (read_option h k = Some v).
+Proof. destruct h. eapply binds_equiv_read_option. Qed.
+
+Lemma not_indom_equiv_read_option : forall h k,
+  (~ indom h k) = (read_option h k = None).
+Proof. destruct h. eapply not_indom_equiv_read_option. Qed.
+
+Lemma read_option_def : forall h k,
+  read_option h k = (If indom h k then Some (read h k) else None).
+Proof. destruct h. eapply read_option_def. Qed.
+
+Lemma indom_decidable : forall `{Comparable K} V (h:heap K V) k,
+  Decidable (indom h k).
+Proof. destruct h. eapply indom_decidable. Qed.
+
+End HeapAxioms.
+
+End HeapId.
+
+
+(**************************************************************)
+(** ** LATER: implement *)
+

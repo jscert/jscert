@@ -300,10 +300,10 @@ Definition run_call_full (run_call' : run_call_type) S C l vthis args : result :
 (** Operations on environments *)
 
 Definition run_decl_env_record_binds_value Ed x : value :=
-  snd (pick (binds Ed x)).
+  snd (pick (Heap.binds Ed x)).
 
 Definition run_object_get_own_prop_base P x : full_descriptor :=
-  match read_option P x with
+  match Heap.read_option P x with
   | None => full_descriptor_undef
   | Some A => full_descriptor_some A
   end.
@@ -366,7 +366,7 @@ Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S 
 Definition run_object_proto_is_prototype_of := FixFun3 object_proto_is_prototype_of_body.
 
 Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
-  match read_option (state_env_record_heap S) L with
+  match Heap.read_option (state_env_record_heap S) L with
   | Some E => K E
   | None => d
   end.
@@ -394,15 +394,15 @@ Definition env_record_delete_binding S L x : result :=
   env_record_lookup (fun _ : unit => arbitrary) S L (fun E _ =>
     match E return result with
     | env_record_decl Ed =>
-      match read_option Ed x with
+      match Heap.read_option Ed x with
       | None =>
         out_ter S true
       | Some (mutability_nondeletable, v) =>
         out_ter S false
       | Some (mu, v) =>
         out_ter (state_with_env_record_heap S
-          (write (state_env_record_heap S) L
-            (env_record_decl (rem Ed x)))) true
+          (Heap.write (state_env_record_heap S) L
+            (env_record_decl (Heap.rem Ed x)))) true
       end
     | env_record_object l pt =>
       result_stuck
@@ -483,7 +483,7 @@ Definition env_record_get_binding_value (run_call' : run_call_type) S C L x str 
   env_record_lookup result_stuck S L (fun er =>
     match er with
     | env_record_decl Ed =>
-      let (mu, v) := read Ed x in
+      let (mu, v) := Heap.read Ed x in
       ifb mu = mutability_uninitialized_immutable then
         out_error_or_cst S str prealloc_ref_error undef
       else out_ter S v
@@ -655,7 +655,7 @@ Definition object_put (run_call' : run_call_type) S C l x v str : result_void :=
 Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v str : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
-    let (mu, v_old) := read Ed x in
+    let (mu, v_old) := Heap.read Ed x in
     ifb mutability_is_mutable mu then
       out_void (env_record_write_decl_env S L x mu v)
     else if str then
@@ -730,7 +730,7 @@ Definition env_record_create_immutable_binding S L x : result_void :=
 Definition env_record_initialize_immutable_binding S L x v : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
-    ifb pick (binds Ed x) = (mutability_uninitialized_immutable, undef) then
+    ifb pick (Heap.binds Ed x) = (mutability_uninitialized_immutable, undef) then
       let S' := env_record_write_decl_env S L x mutability_immutable v in
       out_void S'
     else result_stuck

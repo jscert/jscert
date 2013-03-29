@@ -1,4 +1,5 @@
 Set Implicit Arguments.
+Require Import Shared.
 Require Export JsSyntax JsSyntaxAux JsPreliminary.
 
 (**************************************************************)
@@ -187,12 +188,25 @@ Qed.
 
 Global Instance object_binds_pickable : forall S l,
   Pickable (object_binds S l).
-Proof. typeclass. Qed.
+Proof.
+  introv. applys pickable_make (Heap.read (state_object_heap S) l).
+  unfolds object_binds. introv [a Ba]. erewrite~ @Heap.binds_equiv_read.
+  erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
+Qed.
 
 Global Instance env_record_binds_pickable : forall S L,
   Pickable (env_record_binds S L).
-Proof. typeclass. Qed.
+Proof.
+  introv. applys pickable_make (Heap.read (state_env_record_heap S) L).
+  unfolds env_record_binds. introv [a Ba]. erewrite~ @Heap.binds_equiv_read.
+  erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
+Qed.
 
+Global Instance decl_env_record_pickable : forall Ed x,
+  Pickable (Heap.binds Ed x).
+Proof.
+  introv. (*destruct Ed.*) skip. (* TODO:  Why is that opaque?!?! *)
+Qed.
 
 (**************************************************************)
 (** ** Some decidable instances *)
@@ -221,9 +235,7 @@ Proof. introv. destruct op; typeclass. Qed.
 
 Global Instance attributes_is_data_dec : forall A,
   Decidable (attributes_is_data A).
-Proof.
-  intro A. destruct A; typeclass.
-Qed.
+Proof. intro A. destruct A; typeclass. Qed.
 
 
 Definition run_object_heap_map_properties S l F : state :=
@@ -236,9 +248,9 @@ Proof.
   introv. applys pickable_make (run_object_heap_map_properties S l F).
   introv [a [O [B E]]]. exists O. splits~.
   unfolds run_object_heap_map_properties.
-  fequals. fequals.
-  applys @binds_func B; try typeclass.
-  apply pick_spec. eexists. apply* B.
+  fequals. fequals. forwards*: @pick_spec (object_binds S l).
+  unfolds object_binds. erewrite @Heap.binds_equiv_read_option in B,H.
+  rewrite H in B. inverts~ B.
 Qed.
 
 Global Instance object_set_property_pickable : forall S l x A,
@@ -306,16 +318,7 @@ Global Instance is_callable_dec : forall S v,
 Proof.
   introv. applys decidable_make
     (morph_option false (fun _ => true) (run_callable S v)).
-  destruct v; simpls.
-   rewrite~ isTrue_false. introv [b H]. inverts H.
-   lets (p&H): binds_pickable (state_object_heap S) o; try typeclass.
-    tests C: (is_callable S o).
-     rewrite~ isTrue_true. fold_bool.
-      lets (b&p2&(B&E)): C. forwards~: (rm H). exists* p2.
-      forwards: @pick_spec (object_binds S o). exists* p2.
-      forwards: (binds_func H B). substs. rewrite~ E.
-     rewrite~ isTrue_false. fold_bool.
-      skip. (* We need the fact that the value [v] is correct at this point. *)
+  skip. (* TODO:  This proof has already been done, but with the old version of heaps. *)
 Qed.
 
 
@@ -348,3 +351,5 @@ Qed.
 (** ** LATER: should be generic? *)
 (* TODO: implement *)
 Axiom map_as_list : object_properties_type -> list (prop_name * attributes).
+
+

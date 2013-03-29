@@ -86,7 +86,7 @@ let prfieldmap (old : (prop_name * attributes) list option) show_init loc obj =
 				  (string_of_char_list x)
 				  (prattributes a)
 				    :: acc) []
-		(Heap.to_list (obj.Interpreter.object_properties_)))
+		(Heap.to_list (obj.object_properties_)))
 
 let prheap show_init heap =
 	let list_heap_init = Heap.to_list object_heap_initial in
