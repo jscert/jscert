@@ -2061,9 +2061,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       descriptor_is_accessor A \/ (attributes_writable A = false \/ attributes_enumerable A = false) ->
       red_expr S C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (full_descriptor_some A)) (out_type_error S)
 
-  | red_spec_binding_inst_function_decls_3_false : forall o1 L S C args fd fds str fo Ad bconfig o, (* Step 5e iv *)
-     attributes_data_configurable Ad = false -> 
-      ~ (attributes_data_writable Ad = true /\ attributes_data_enumerable Ad = true) ->
+  | red_spec_binding_inst_function_decls_3_false : forall o1 L S C args fd fds str fo Ad bconfig o, (* Step 5e iv else *)
+      attributes_data_configurable Ad = false -> 
+      attributes_data_writable Ad = true /\ attributes_data_enumerable Ad = true ->
       red_expr S C (spec_binding_inst_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
       red_expr S C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (attributes_data_of Ad)) o
 
