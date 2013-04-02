@@ -665,6 +665,11 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
   | abort_intercepted_stat_try_3 : forall S r fio o,
       abort_intercepted (stat_try_3 o fio) (out_ter S r).
   *)
+  
+Inductive abort_intercepted_expr : ext_expr -> Prop :=
+  | abort_intercepted_expr_call_default_2 : forall S R,
+      res_type R = restype_return ->
+      abort_intercepted_expr (spec_call_default_2 (out_ter S R)).
 
 
 (**************************************************************)

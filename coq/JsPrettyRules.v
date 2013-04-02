@@ -432,6 +432,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_abort : forall S C exte o,
       out_of_ext_expr exte = Some o ->
       abort o ->
+       ~ abort_intercepted_expr exte ->
       red_expr S C exte o
 
   (** Reduction of lists of expressions *)
@@ -2264,7 +2265,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_prealloc B args) o -> 
       red_expr S C (spec_call_1 (call_prealloc B) lo this args) o
 
-  (** Function calls for regular functions *)      
+  (** Function calls for regular functions 13.2.1 *)      
 
   | red_spec_call_default : forall S C l this args o1 o,      
       red_expr S C (spec_entering_func_code l this args) o1 ->
@@ -2283,10 +2284,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_call_default_2 o1) o ->
       red_expr S0 C (spec_call_default_1 l (out_void S)) o
-      
-   (* TODO_ARTHUR: check this needs to be fixed cause it's overlapping with the abort rules...(maybe) *)
-  | red_spec_call_default_2_throw : forall S C v,
-      red_expr S C (spec_call_default_2 (out_ter S (res_throw v))) (out_ter S (res_throw v))
       
   | red_spec_call_default_2_return : forall S C v,
       red_expr S C (spec_call_default_2 (out_ter S (res_return v))) (out_ter S (res_normal v))
