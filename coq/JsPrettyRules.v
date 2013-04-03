@@ -2195,60 +2195,67 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 (*---start todo---*)
 
 
-  (** Creating function object (returns object) *)
+  (** Creating function object (returns object) 13.2 *)
+  
+  
+  (** Auxiliary reduction steps for creating prototype object. Steps 16-18 *)
     
-  | red_spec_creating_function_object_proto : forall o1 S0 S C K l b o, 
+  | red_spec_creating_function_object_proto : forall o1 S C l o, (* Step 16 *)
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
-      red_expr S C (spec_creating_function_object_proto_1 K l o1) o ->
-      red_expr S0 C (spec_creating_function_object_proto K l (out_ter S b)) o
+      red_expr S C (spec_creating_function_object_proto_1 l o1) o ->
+      red_expr S C (spec_creating_function_object_proto l) o
     
-  | red_spec_creating_function_object_proto_1 : forall o1 S0 S C K l lproto b o, 
+  | red_spec_creating_function_object_proto_1 : forall o1 S0 S C l lproto b o, (* Step 17 *)
       let A := attributes_data_intro (value_object l) true false true in 
       red_expr S C (spec_object_define_own_prop lproto "constructor" A false) o1 ->
-      red_expr S C (spec_creating_function_object_proto_2 K l lproto o1) o ->
-      red_expr S0 C (spec_creating_function_object_proto_1 K l (out_ter S lproto)) o
+      red_expr S C (spec_creating_function_object_proto_2 l lproto o1) o ->
+      red_expr S0 C (spec_creating_function_object_proto_1 l (out_ter S lproto)) o
       
-   | red_spec_creating_function_object_proto_2 : forall o1 S0 S C K l lproto b o, 
+   | red_spec_creating_function_object_proto_2 : forall o1 S0 S C l lproto b o, (* Step 18 *)
       let A := attributes_data_intro (value_object lproto) true false false in 
-      red_expr S C (spec_object_define_own_prop l "prototype" A false) o1 ->
-      red_expr S C (K o1) o ->
-      red_expr S0 C (spec_creating_function_object_proto_2 K l lproto (out_ter S b)) o
+      red_expr S C (spec_object_define_own_prop l "prototype" A false) o ->
+      red_expr S0 C (spec_creating_function_object_proto_2 l lproto (out_ter S b)) o
+      
+  (** Main steps for creating function object *)
   
-  (* todo: make compile 
-  | red_spec_creating_function_object : forall l S' o1 S C names bd X str o,
-      let O := object_new prealloc_function_proto "Function" in
-      let O1 := object_with_invokation O 
-        (Some prealloc_spec_op_function_constructor) 
-        (Some prealloc_spec_call_default) 
-        (Some prealloc_spec_op_function_has_instance) in
-      let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
-      (l, S') = object_alloc S O2 ->
+  | red_spec_creating_function_object : forall l S' o1 S C names bd X str o, (* Steps 1 - 15 *)
+      let O := object_new prealloc_function_proto "Function" in (* Steps 1 - 4 & 13 *)
+      let O1 := object_with_get O builtin_get_function in (* Step 5 *)
+      let O2 := object_with_invokation O1 (* Steps 6 - 8 *)
+        (Some construct_default) 
+        (Some call_default) 
+        (Some builtin_has_instance_default) in
+      let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in (* Steps 9 - 12 *)
+      (l, S') = object_alloc S O3 ->
       let A := attributes_data_intro (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
-      red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 str l) l o1) o ->
+      red_expr S' C (spec_creating_function_object_1 str l o1) o ->
       red_expr S C (spec_creating_function_object names bd X str) o
-              *)           
-
-
-   | red_spec_creating_function_object_1_not_strict : forall o1 S0 S C l b, 
-      red_expr S0 C (spec_creating_function_object_1 false l (out_ter S b)) (out_ter S l)
       
-   | red_spec_creating_function_object_1_strict : forall o1 S0 S C l b o, 
+   | red_spec_creating_function_object_1 : forall S0 C str S l b o1 o, (* Steps 16 - 18 *)
+      red_expr S C (spec_creating_function_object_proto l) o1 ->
+      red_expr S C (spec_creating_function_object_2 str l o1) o ->
+      red_expr S0 C (spec_creating_function_object_1 str l (out_ter S b)) o
+                        
+   | red_spec_creating_function_object_2_not_strict : forall o1 S0 S C l b, (* Step 20 skipping Step 19 *)
+      red_expr S0 C (spec_creating_function_object_2 false l (out_ter S b)) (out_ter S l)
+      
+   | red_spec_creating_function_object_2_strict : forall o1 S0 S C l b o, (* Step 19b *)
       let vthrower := value_object prealloc_throw_type_error in
       let A := attributes_accessor_intro vthrower vthrower false false in 
       red_expr S C (spec_object_define_own_prop l "caller" A false) o1 ->
-      red_expr S C (spec_creating_function_object_2 l o1) o ->
-      red_expr S0 C (spec_creating_function_object_1 true l (out_ter S b)) o
+      red_expr S C (spec_creating_function_object_3 l o1) o ->
+      red_expr S0 C (spec_creating_function_object_2 true l (out_ter S b)) o
       
-  | red_spec_creating_function_object_2 : forall o1 S0 S C l b o, 
+  | red_spec_creating_function_object_3 : forall o1 S0 S C l b o,  (* Step 19c *)
       let vthrower := value_object prealloc_throw_type_error in
       let A := attributes_accessor_intro vthrower vthrower false false in 
       red_expr S C (spec_object_define_own_prop l "arguments" A false) o1 ->
-      red_expr S C (spec_creating_function_object_3 l o1) o ->
-      red_expr S0 C (spec_creating_function_object_2 l (out_ter S b)) o
+      red_expr S C (spec_creating_function_object_4 l o1) o ->
+      red_expr S0 C (spec_creating_function_object_3 l (out_ter S b)) o
       
-  | red_spec_creating_function_object_3 : forall o1 S0 S C l b o, 
-      red_expr S0 C (spec_creating_function_object_3 l (out_ter S b)) (out_ter S l)
+  | red_spec_creating_function_object_4 : forall o1 S0 S C l b o, (* Step 20 *)
+      red_expr S0 C (spec_creating_function_object_4 l (out_ter S b)) (out_ter S l)
       
   (** Function calls *)
 

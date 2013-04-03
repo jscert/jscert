@@ -361,14 +361,15 @@ Inductive ext_expr :=
   | spec_prim_new_object : prim -> ext_expr
 
   (* Auxiliary reduction for creating function object steps 16 - 18 *) 
-  | spec_creating_function_object_proto : (out -> ext_expr) -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_proto_1 : (out -> ext_expr) -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_proto_2 : (out -> ext_expr) -> object_loc -> object_loc -> out -> ext_expr
+  | spec_creating_function_object_proto : object_loc -> ext_expr
+  | spec_creating_function_object_proto_1 : object_loc -> out -> ext_expr
+  | spec_creating_function_object_proto_2 : object_loc -> object_loc -> out -> ext_expr
 
   | spec_creating_function_object : list string -> funcbody -> lexical_env -> strictness_flag -> ext_expr
   | spec_creating_function_object_1 : strictness_flag -> object_loc -> out -> ext_expr
-  | spec_creating_function_object_2 : object_loc -> out -> ext_expr
+  | spec_creating_function_object_2 : strictness_flag -> object_loc -> out -> ext_expr
   | spec_creating_function_object_3 : object_loc -> out -> ext_expr
+  | spec_creating_function_object_4 : object_loc -> out -> ext_expr
   
   (* Function creation in give execution context*)
   | spec_create_new_function_in :  execution_ctx -> list string -> funcbody -> ext_expr
