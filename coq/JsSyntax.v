@@ -194,7 +194,7 @@ Inductive prealloc :=
   | prealloc_global_parse_float
   | prealloc_global_parse_int
   | prealloc_object
-  | prealloc_object_get_prototype_of      (* location to getPrototypeOf function object *)
+  | prealloc_object_get_proto_of      (* location to getPrototypeOf function object *)
   | prealloc_object_get_own_prop_descriptor  (* LATER: support *)
   | prealloc_object_get_own_prop_name  (* LATER: support *)
   | prealloc_object_create  (* LATER: support *)

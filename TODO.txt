@@ -1,4 +1,11 @@
 
+ARTHUR:
+* Changed semantics of loop to better match paper
+* 12.6.2 seems boggus: if continue, then even if not good label, will loop
+
+
+
+
 =======
 TODO
 

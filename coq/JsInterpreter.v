@@ -1796,7 +1796,7 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
       if_number (to_number run_call' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
-    | prealloc_object_get_prototype_of =>
+    | prealloc_object_get_proto_of =>
       let v := get_arg 0 args in
       ifb type_of v <> type_object then
         result_stuck

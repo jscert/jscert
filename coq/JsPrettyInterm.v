@@ -402,7 +402,7 @@ Inductive ext_expr :=
  
   | spec_call_object_call_1 : value -> ext_expr
   | spec_call_object_new_1 : value -> ext_expr
-  | spec_call_object_get_prototype_of_1 : value -> ext_expr
+  | spec_call_object_get_proto_of_1 : value -> ext_expr
   | spec_call_object_is_extensible_1 : value -> ext_expr
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : prop_name -> full_descriptor -> ext_expr -> ext_expr

@@ -2468,19 +2468,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_get_proto_of : forall S C v r args o, 
       arguments_from args (v::nil) ->
-      red_expr S C (spec_call_object_get_prototype_of_1 v) o ->
-      red_expr S C (spec_construct_prealloc prealloc_object_get_prototype_of args) o (* Isn't that a [spec_call_prealloc] instead of [spec_construct_prealloc]? -- Martin *)
+      red_expr S C (spec_call_object_get_proto_of_1 v) o ->
+      red_expr S C (spec_construct_prealloc prealloc_object_get_proto_of args) o (* Isn't that a [spec_call_prealloc] instead of [spec_construct_prealloc]? -- Martin *)
 
   | red_spec_call_object_get_proto_of_1_not_object : forall S C w o, 
       red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (spec_call_object_get_prototype_of_1 w) o
+      red_expr S C (spec_call_object_get_proto_of_1 w) o
           
   | red_spec_call_object_get_proto_of_1_object : forall S C l v, 
       object_proto S l v ->
-      red_expr S C (spec_call_object_get_prototype_of_1 l) (out_ter S v)
+      red_expr S C (spec_call_object_get_proto_of_1 l) (out_ter S v)
 
   (** IsSealed (returns bool)  (15.2.3.11) *)  
-  (* Daniele: remove comment once [red_spec_object_iter_own_prop] is fixed
+(* Daniele: remove comment once [red_spec_object_iter_own_prop] is fixed
   | red_spec_call_object_is_sealed : forall S C v o args, 
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_is_sealed_1 v) o ->

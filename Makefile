@@ -73,6 +73,8 @@ JS_VO=$(JS_SRC:.v=.vo)
 
 all: $(JS_VO) interpreter
 
+tlc: $(TLC_VO)
+
 flocq: $(FLOCQ_VO)
 
 tags: $(JS_SRC)

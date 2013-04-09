@@ -172,12 +172,12 @@ Definition global_is_finite_function_object :=
 Definition object_prealloc_object :=
   let P := Heap.empty in
   let P := write_constant P "prototype" prealloc_object_proto in
-  let P := write_native P "get_prototype_of" prealloc_object_get_prototype_of in
+  let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in
   (* LATER: complete list *)
   object_create_prealloc_constructor prealloc_object 1 P.
   
 Definition object_get_prototype_of_function_object :=
-  object_create_prealloc_call prealloc_object_get_prototype_of 1 Heap.empty.
+  object_create_prealloc_call prealloc_object_get_proto_of 1 Heap.empty.
 
 
 (**************************************************************)
@@ -209,7 +209,7 @@ Definition object_proto_is_prototype_of_function_object :=
 Definition object_prealloc_function :=
   let P := Heap.empty in
   let P := write_constant P "prototype" (value_object prealloc_function_proto) in
-  let P := write_native P "get_prototype_of" prealloc_object_get_prototype_of in
+  let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in
   (* LATER: complete list *)
   object_create_prealloc_constructor prealloc_function 1 P.
 
@@ -343,7 +343,7 @@ Definition object_heap_initial_function_objects (h : Heap.heap object_loc object
   let h := Heap.write h prealloc_global_is_finite global_is_finite_function_object in
   
   (* Function objects of Object *)
-  let h := Heap.write h prealloc_object_get_prototype_of object_get_prototype_of_function_object in
+  let h := Heap.write h prealloc_object_get_proto_of object_get_prototype_of_function_object in
   
   (* Function objects of Object.prototype *)
   let h := Heap.write h prealloc_object_proto_to_string object_proto_to_string_function_object in
