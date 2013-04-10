@@ -2534,6 +2534,46 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_iter_own_prop_1 ((x, A)::L) Kprop Knil) o
 *)
 
+(** IsSealed (returns bool)  (15.2.3.11) *)  
+
+  (* 0 *)
+  | red_spec_call_object_is_sealed : forall S C v o args, 
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_call_object_is_sealed_1 v) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_is_sealed args) o
+ 
+  (* 1 *)
+  | red_spec_call_object_is_sealed_1_not_object : forall S C v o, 
+      type_of v <> type_object ->
+      red_expr S C (spec_error prealloc_type_error) o ->
+      red_expr S C (spec_call_object_is_sealed_1 v) o
+
+  | red_spec_call_object_is_sealed_1_object : forall S C l (L:list prop_name) P x o, 
+      object_properties S l P ->
+      L = map_as_list P -> 
+      red_expr S C (spec_call_object_is_sealed_2 l L) o ->
+      red_expr S C (spec_call_object_is_sealed_1 l) o
+
+  (* 2 *)
+  | red_spec_call_object_is_sealed_2_nil : forall S C l b x o,
+      object_extensible S l b ->
+      red_expr S C (spec_call_object_is_sealed_2 l nil) (out_ter S (negb b))
+               
+  | red_spec_call_object_is_sealed_2_cons : forall S C l (L:list prop_name) x o, 
+      red_expr S C (spec_object_get_own_prop l x (spec_call_object_is_sealed_3 l L)) o ->
+      red_expr S C (spec_call_object_is_sealed_2 l (x::L)) o
+
+  (* 3 *)
+  | red_spec_call_object_is_sealed_3_prop_configurable : forall S C A (L:list prop_name) l x o,
+      attributes_configurable A = true ->
+      red_expr S C (spec_call_object_is_sealed_3 l L A) (out_ter S false)
+
+  (* 4 *)
+  | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S C A (L:list prop_name) l x o,
+      attributes_configurable A = false ->
+      red_expr S C (spec_call_object_is_sealed_2 l L) o ->
+      red_expr S C (spec_call_object_is_sealed_3 l L A) o
+
   (** IsFrozen (returns bool)  (15.2.3.12) *)
     (* TODO *)
   
