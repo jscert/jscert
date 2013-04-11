@@ -4,7 +4,6 @@ Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 
 (* TODO list:
-    packaging [run_call' …]s
     label_sets
     binding_instantiation_formal_params
     binding_instantiation_function_decls
@@ -311,16 +310,16 @@ Definition run_object_heap_set_properties S l P' : state :=
 
 Record runs_type : Type :=
   make_runs {
-    run_expr : state -> execution_ctx -> expr -> result;
-    run_stat : state -> execution_ctx -> stat -> result;
-    run_prog : state -> execution_ctx -> prog -> result;
-    run_call : state -> execution_ctx -> call -> option object_loc -> option value -> list value -> result
+    wraped_run_expr : state -> execution_ctx -> expr -> result;
+    wraped_run_stat : state -> execution_ctx -> stat -> result;
+    wraped_run_prog : state -> execution_ctx -> prog -> result;
+    wraped_run_call : state -> execution_ctx -> call -> option object_loc -> option value -> list value -> result
   }.
 Implicit Type runs : runs_type.
 
 Definition run_call_full runs S C l vthis args : result :=
   morph_option result_stuck (fun B =>
-    run_call runs S C B (Some l) (Some vthis) args)
+    wraped_run_call runs S C B (Some l) (Some vthis) args)
     (run_object_method object_call_ S l).
 
 
@@ -786,7 +785,7 @@ Definition to_default runs S C l (prefo : option preftype) : result :=
         (* In fact, that may be a bad idea as some non yet implemented
         primitive may need to call directly run_call' afterwards. *)
         if_success_value runs C
-          (run_call runs S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
+          (wraped_run_call runs S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
           match v with
           | value_prim w => out_ter S w
           | value_object l => K tt
@@ -1279,7 +1278,7 @@ Definition object_delete S l x str : result :=
 
 Definition run_unary_op runs S C (op : unary_op) e : result :=
   ifb prepost_unary_op op then
-    if_success (run_expr runs S C e) (fun S1 rv1 =>
+    if_success (wraped_run_expr runs S C e) (fun S1 rv1 =>
       if_success_value runs C (out_ter S1 rv1) (fun S2 v2 =>
         if_number (to_number runs S2 C v2) (fun S3 n1 =>
           let (number_op, is_pre) := run_prepost_op op in
@@ -1291,7 +1290,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
     match op with
 
     | unary_op_delete =>
-      if_success (run_expr runs S C e) (fun S1 rv =>
+      if_success (wraped_run_expr runs S C e) (fun S1 rv =>
         match rv with
         | resvalue_value v => out_ter S1 true
         | resvalue_empty => result_stuck
@@ -1309,7 +1308,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
         end)
 
     | unary_op_typeof =>
-      if_success (run_expr runs S C e) (fun S1 rv =>
+      if_success (wraped_run_expr runs S C e) (fun S1 rv =>
         match rv with
         | resvalue_value v =>
           out_ter S1 (typeof_value S1 v)
@@ -1323,7 +1322,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
         end)
 
     | _ => (* Regular operators *)
-      if_success_value runs C (run_expr runs S C e) (fun S1 v =>
+      if_success_value runs C (wraped_run_expr runs S C e) (fun S1 v =>
         match op with
 
         | unary_op_void => out_ter S1 undef
@@ -1367,7 +1366,7 @@ Fixpoint init_object runs S C l (pds : propdefs) : result :=
         init_object runs S2 C l pds') in
     match pb with
     | propbody_val e0 =>
-      if_success_value runs C (run_expr runs S C e0) (fun S1 v0 =>
+      if_success_value runs C (wraped_run_expr runs S C e0) (fun S1 v0 =>
         let A := attributes_data_intro v0 true true true in
         follows S1 A)
     | propbody_get bd =>
@@ -1388,7 +1387,7 @@ Fixpoint run_var_decl runs S C xeos : result :=
     if_success (match eo with
       | None => out_ter S undef
       | Some e =>
-        if_success_value runs C (run_expr runs S C e) (fun S1 v =>
+        if_success_value runs C (wraped_run_expr runs S C e) (fun S1 v =>
           if_some (identifier_res S1 C x) (fun ir =>
             if_void (ref_put_value runs S1 C ir v) (fun S2 =>
               out_ter S2 undef)))
@@ -1401,7 +1400,7 @@ Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr)
   match es with
   | nil => K S1 (LibList.rev vs)
   | e :: es' =>
-    if_success_value runs C (run_expr runs S1 C e) (fun S2 v =>
+    if_success_value runs C (wraped_run_expr runs S1 C e) (fun S2 v =>
       run_list_expr runs S2 C (v :: vs) es' K)
   end.
 
@@ -1409,7 +1408,7 @@ Fixpoint run_block runs S C rv ts : result :=
   match ts with
   | nil => out_ter S rv
   | t :: ts' =>
-    if_success_state rv (run_stat runs S C t) (fun S1 rv1 =>
+    if_success_state rv (wraped_run_stat runs S C t) (fun S1 rv1 =>
       run_block runs S1 C rv1 ts')
   end.
 
@@ -1420,21 +1419,21 @@ Fixpoint run_block runs S C rv ts : result :=
 Definition run_expr_binary_op run_binary_op' runs S C op e1 e2 : result :=
   match is_lazy_op op with
   | None =>
-    if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
-      if_success_value runs C (run_expr runs S1 C e2) (fun S2 v2 =>
+    if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
+      if_success_value runs C (wraped_run_expr runs S1 C e2) (fun S2 v2 =>
         run_binary_op' runs S2 C op v1 v2))
   | Some b_ret =>
-    if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
+    if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
       let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then out_ter S1 v1
       else
-        if_success_value runs C (run_expr runs S1 C e2) (fun S2 v2 =>
+        if_success_value runs C (wraped_run_expr runs S1 C e2) (fun S2 v2 =>
           out_ter S2 v2))
   end.
 
 Definition run_expr_access runs S C e1 e2 : result :=
-  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
-    if_success_value runs C (run_expr runs S C e2) (fun S2 v2 =>
+  if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
+    if_success_value runs C (wraped_run_expr runs S C e2) (fun S2 v2 =>
       ifb v1 = prim_undef \/ v1 = prim_null then
         out_ref_error S2
       else
@@ -1442,7 +1441,7 @@ Definition run_expr_access runs S C e1 e2 : result :=
           out_ter S3 (ref_create_value v1 x (execution_ctx_strict C))))).
 
 Definition run_expr_assign run_binary_op' runs S C (opo : option binary_op) e1 e2 : result :=
-  if_success (run_expr runs S C e1) (fun S1 rv1 =>
+  if_success (wraped_run_expr runs S C e1) (fun S1 rv1 =>
     let follow S rv' :=
       match rv' with
       | resvalue_value v =>
@@ -1452,10 +1451,10 @@ Definition run_expr_assign run_binary_op' runs S C (opo : option binary_op) e1 e
       end in
     match opo with
     | None =>
-      if_success_value runs C (run_expr runs S1 C e2) follow
+      if_success_value runs C (wraped_run_expr runs S1 C e2) follow
     | Some op =>
       if_success_value runs C (out_ter S1 rv1) (fun S2 v1 =>
-        if_success_value runs C (run_expr runs S2 C e2) (fun S3 v2 =>
+        if_success_value runs C (wraped_run_expr runs S2 C e2) (fun S3 v2 =>
           if_success (run_binary_op' runs S3 C op v1 v2) follow))
     end).
 
@@ -1475,7 +1474,7 @@ Definition run_expr_function runs S C fo args bd : result :=
   end.
 
 Definition run_expr_call runs S C e1 e2s : result :=
-  if_success (run_expr runs S C e1) (fun S1 rv =>
+  if_success (wraped_run_expr runs S C e1) (fun S1 rv =>
     if_success_value runs C (out_ter S1 rv) (fun S2 f =>
       run_list_expr runs S2 C nil e2s (fun S3 args =>
         match f with
@@ -1499,9 +1498,9 @@ Definition run_expr_call runs S C e1 e2s : result :=
         end))).
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
-  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
+  if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
     let b1 := convert_value_to_boolean v1 in
-    if_success_value runs C (run_expr runs S1 C (if b1 then e2 else e3)) (fun S2 v2 =>
+    if_success_value runs C (wraped_run_expr runs S1 C (if b1 then e2 else e3)) (fun S2 v2 =>
       out_ter S2 v2)).
 
 Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
@@ -1535,29 +1534,29 @@ Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
 (**************************************************************)
 
 Definition run_stat_label runs S C lab t : result :=
-  if_break (run_stat runs S C t)
+  if_break (wraped_run_stat runs S C t)
     (fun S1 R1 => out_ter S1 (res_value R1)).
 
 Definition run_stat_with runs S C e1 t2 : result :=
-  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
+  if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
     if_success (to_object S1 v1) (fun S2 rv2 =>
       match rv2 with
       | value_object l =>
         let lex := execution_ctx_lexical_env C in
         let (lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
         let C' := execution_ctx_with_lex_this C lex' l in
-        run_stat runs S3 C' t2
+        wraped_run_stat runs S3 C' t2
       | _ => result_stuck
       end)).
 
 Definition run_stat_if runs S C e1 t2 to : result :=
-  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
+  if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
     if (convert_value_to_boolean v1) then
-      run_stat runs S1 C t2
+      wraped_run_stat runs S1 C t2
     else
       match to with
       | Some t3 =>
-        run_stat runs S1 C t3
+        wraped_run_stat runs S1 C t3
       | None =>
         out_ter S resvalue_empty
       end).
@@ -1567,9 +1566,9 @@ Fixpoint run_stat_while (max_step : nat) runs rv S C ls e1 t2 : result :=
   | O => result_bottom
   | S max_step' =>
     let run_stat_while' := run_stat_while max_step' runs in
-    if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
+    if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
       if convert_value_to_boolean v1 then
-        if_ter (run_stat runs S1 C t2) (fun S2 R2 =>
+        if_ter (wraped_run_stat runs S1 C t2) (fun S2 R2 =>
           let rvR := res_value R2 in
           let rv' := ifb rvR = resvalue_empty then rv else rvR in
           if_normal_continue_or_break (out_ter S2 R2)
@@ -1585,11 +1584,11 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
     | None => fun res => res
     | Some t3 => fun res =>
       if_ter res (fun S1 R =>
-        if_success (run_stat runs S1 C t3) (fun S2 rv' =>
+        if_success (wraped_run_stat runs S1 C t3) (fun S2 rv' =>
           out_ter S2 R))
     end
   in
-  if_any_or_throw (run_stat runs S C t1) finally (fun S1 v =>
+  if_any_or_throw (wraped_run_stat runs S C t1) finally (fun S1 v =>
     match t2o with
     | None => finally (out_ter S1 (res_throw v))
     | Some (x, t2) =>
@@ -1600,13 +1599,13 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
         if_void (env_record_create_set_mutable_binding
           runs S C L x None v throw_irrelevant) (fun S2 =>
             let C' := execution_ctx_with_lex C lex' in
-            finally (run_stat runs S2 C' t2))
+            finally (wraped_run_stat runs S2 C' t2))
       | nil => result_stuck
       end
     end).
 
 Definition run_stat_throw runs S C e : result :=
-  if_success_value runs C (run_expr runs S C e) (fun S1 v1 =>
+  if_success_value runs C (wraped_run_expr runs S C e) (fun S1 v1 =>
     out_ter S (res_throw v1)).
 
 Definition run_stat_return runs S C eo : result :=
@@ -1614,7 +1613,7 @@ Definition run_stat_return runs S C eo : result :=
   | None =>
     out_ter S (res_return undef)
   | Some e =>
-    if_success_value runs C (run_expr runs S C e) (fun S1 v1 =>
+    if_success_value runs C (wraped_run_expr runs S C e) (fun S1 v1 =>
       out_ter S (res_return v1))
   end.
 
@@ -1887,12 +1886,17 @@ Definition run_javascript (max_step : nat) p : result :=
   match max_step with
   | O => result_bottom
   | S max_step' =>
+    let run_expr' := run_expr max_step' in
+    let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let S := state_initial in
+    let run_binary_op' := run_binary_op max_step' in
+    let runs :=
+      make_runs run_expr' run_stat' run_prog' run_call'
+    in let S := state_initial in
     let p' := add_infos_prog strictness_false p in
     let C := execution_ctx_initial (prog_intro_strictness p) in
-    if_void (execution_ctx_binding_inst run_call' S C codetype_global None p nil) (fun S' =>
+    if_void (execution_ctx_binding_inst runs S C codetype_global None p nil) (fun S' =>
       run_prog' S' C p')
   end.
 
