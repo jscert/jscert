@@ -309,25 +309,18 @@ Definition run_object_heap_set_properties S l P' : state :=
    a pointer to the main functions.  Those types are just the ones of
    those main functions. *)
 
-Definition run_expr_type : Type :=
-  state -> execution_ctx -> expr -> result.
+Record runs_type : Type :=
+  make_runs {
+    run_expr : state -> execution_ctx -> expr -> result;
+    run_stat : state -> execution_ctx -> stat -> result;
+    run_prog : state -> execution_ctx -> prog -> result;
+    run_call : state -> execution_ctx -> call -> option object_loc -> option value -> list value -> result
+  }.
+Implicit Type runs : runs_type.
 
-Definition run_stat_type : Type :=
-  state -> execution_ctx -> stat -> result.
-
-Definition run_prog_type : Type :=
-  state -> execution_ctx -> prog -> result.
-
-Definition run_call_type : Type :=
-  state -> execution_ctx -> call -> option object_loc -> option value -> list value -> result.
-
-Definition run_binary_op_type : Type :=
-  state -> execution_ctx -> binary_op -> value -> value -> result.
-
-
-Definition run_call_full (run_call' : run_call_type) S C l vthis args : result :=
+Definition run_call_full runs S C l vthis args : result :=
   morph_option result_stuck (fun B =>
-    run_call' S C B (Some l) (Some vthis) args)
+    run_call runs S C B (Some l) (Some vthis) args)
     (run_object_method object_call_ S l).
 
 
@@ -448,7 +441,7 @@ Definition identifier_res S C x :=
   let str := execution_ctx_strict C in
   lexical_env_get_identifier_ref S X x str.
 
-Definition object_get_builtin (run_call' : run_call_type) S C B vthis l x : result :=
+Definition object_get_builtin runs S C B vthis l x : result :=
   match B with
   | builtin_get_default =>
     if_some (run_object_get_property S l x) (fun D =>
@@ -462,7 +455,7 @@ Definition object_get_builtin (run_call' : run_call_type) S C B vthis l x : resu
         | value_object lf =>
           match vthis with
           | value_object lthis =>
-            run_call_full run_call' S C lf lthis nil
+            run_call_full runs S C lf lthis nil
           | _ => result_stuck
           end
         | _ => (* TODO:  Check the spec' once it will have been updated. *)
@@ -473,11 +466,11 @@ Definition object_get_builtin (run_call' : run_call_type) S C B vthis l x : resu
     result_stuck (* TODO:  Check *)
   end.
 
-Definition object_get (run_call' : run_call_type) S C v x : result :=
+Definition object_get runs S C v x : result :=
   match v with
   | value_object l =>
     let B := run_object_method object_get_ S l in
-    object_get_builtin run_call' S C B l l x
+    object_get_builtin runs S C B l l x
   | value_prim _ => result_stuck
   end.
 
@@ -496,9 +489,9 @@ Definition to_object S v : result :=
   | value_object l => out_ter S l
   end.
 
-Definition prim_value_get (run_call' : run_call_type) S C v x : result :=
+Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
-    object_get_builtin run_call' S' C builtin_get_default v l x).
+    object_get_builtin runs S' C builtin_get_default v l x).
 
 Definition run_value_viewable_as_prim s S v : option prim :=
   match v with
@@ -514,7 +507,7 @@ Definition run_value_viewable_as_prim s S v : option prim :=
 
 (**************************************************************)
 
-Definition env_record_get_binding_value (run_call' : run_call_type) S C L x str : result :=
+Definition env_record_get_binding_value runs S C L x str : result :=
   env_record_lookup result_stuck S L (fun er =>
     match er with
     | env_record_decl Ed =>
@@ -524,7 +517,7 @@ Definition env_record_get_binding_value (run_call' : run_call_type) S C L x str 
       else out_ter S v
     | env_record_object l pt =>
       if_bool_option_result (object_has_prop S l x) (fun _ =>
-        object_get run_call' S C l x) (fun _ =>
+        object_get runs S C l x) (fun _ =>
         out_error_or_cst S str prealloc_ref_error undef)
     end).
 
@@ -615,7 +608,7 @@ Definition object_define_own_property S l x Desc str : result :=
 
 (**************************************************************)
 
-Definition ref_get_value (run_call' : run_call_type) S C rv : result :=
+Definition ref_get_value runs S C rv : result :=
   match rv with
   | resvalue_empty => result_stuck
   | resvalue_value v => out_ter S v
@@ -626,20 +619,20 @@ Definition ref_get_value (run_call' : run_call_type) S C rv : result :=
       match ref_base r with
       | ref_base_type_value v =>
         (ifb ref_has_primitive_base r then prim_value_get
-        else object_get) run_call' S C v (ref_name r)
+        else object_get) runs S C v (ref_name r)
       | ref_base_type_env_loc L =>
-        env_record_get_binding_value run_call' S C L (ref_name r) (ref_strict r)
+        env_record_get_binding_value runs S C L (ref_name r) (ref_strict r)
       end
     | ref_kind_env_record =>
       match ref_base r with
       | ref_base_type_value v => result_stuck
       | ref_base_type_env_loc L =>
-        env_record_get_binding_value run_call' S C L (ref_name r) (ref_strict r)
+        env_record_get_binding_value runs S C L (ref_name r) (ref_strict r)
       end
     end
   end.
 
-Definition object_put_complete (run_call' : run_call_type) S C B vthis l x v str : result_void :=
+Definition object_put_complete runs S C B vthis l x v str : result_void :=
   match B with
 
   | builtin_put_default =>
@@ -663,7 +656,7 @@ Definition object_put_complete (run_call' : run_call_type) S C B vthis l x v str
             | attributes_accessor_of Aa' =>
               match attributes_accessor_set Aa' with
               | value_object lfsetter =>
-                if_success (run_call_full run_call' S1 C lfsetter vthis (v::nil)) (fun S2 rv =>
+                if_success (run_call_full runs S1 C lfsetter vthis (v::nil)) (fun S2 rv =>
                   out_void S2)
               | _ => result_stuck
               end
@@ -683,11 +676,11 @@ Definition object_put_complete (run_call' : run_call_type) S C B vthis l x v str
 
     end.
 
-Definition object_put (run_call' : run_call_type) S C l x v str : result_void :=
+Definition object_put runs S C l x v str : result_void :=
   let B := run_object_method object_put_ S l in
-  object_put_complete run_call' S C B l l x v str.
+  object_put_complete runs S C B l l x v str.
 
-Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v str : result_void :=
+Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
     let (mu, v_old) := Heap.read Ed x in
@@ -697,37 +690,37 @@ Definition env_record_set_mutable_binding (run_call' : run_call_type) S C L x v 
       out_type_error S
     else out_ter S prim_undef
   | env_record_object l pt =>
-    object_put run_call' S C l x v str
+    object_put runs S C l x v str
   end.
 
-Definition prim_value_put (run_call' : run_call_type) S C w x v str : result_void :=
+Definition prim_value_put runs S C w x v str : result_void :=
   if_object (to_object S w) (fun S1 l =>
-    object_put_complete run_call' S1 C builtin_put_default w l x v str).
+    object_put_complete runs S1 C builtin_put_default w l x v str).
 
-Definition ref_put_value (run_call' : run_call_type) S C rv v : result_void :=
+Definition ref_put_value runs S C rv v : result_void :=
   match rv with
   | resvalue_value v => out_ref_error S
   | resvalue_ref r =>
     ifb ref_is_unresolvable r then (
       if ref_strict r then out_ref_error S
-      else object_put run_call' S C prealloc_global (ref_name r) v throw_false)
+      else object_put runs S C prealloc_global (ref_name r) v throw_false)
     else
       match ref_base r with
       | ref_base_type_value (value_object l) =>
-        object_put run_call' S C l (ref_name r) v (ref_strict r)
+        object_put runs S C l (ref_name r) v (ref_strict r)
       | ref_base_type_value (value_prim w) =>
         ifb ref_kind_of r = ref_kind_primitive_base then
-          prim_value_put run_call' S C w (ref_name r) v (ref_strict r)
+          prim_value_put runs S C w (ref_name r) v (ref_strict r)
         else result_stuck
       | ref_base_type_env_loc L =>
-        env_record_set_mutable_binding run_call' S C L (ref_name r) v (ref_strict r)
+        env_record_set_mutable_binding runs S C L (ref_name r) v (ref_strict r)
       end
   | resvalue_empty => result_stuck
   end.
 
-Definition if_success_value (run_call' : run_call_type) C (o : result) (K : state -> value -> result) : result :=
+Definition if_success_value runs C (o : result) (K : state -> value -> result) : result :=
   if_success o (fun S1 rv1 =>
-    if_success (ref_get_value run_call' S1 C rv1) (fun S2 rv2 =>
+    if_success (ref_get_value runs S1 C rv1) (fun S2 rv2 =>
       match rv2 with
       | resvalue_value v => K S2 v
       | _ => out_ref_error S2
@@ -749,9 +742,9 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
         out_void S1))
   end.
 
-Definition env_record_create_set_mutable_binding (run_call' : run_call_type) S C L x (deletable_opt : option bool) v str : result_void :=
+Definition env_record_create_set_mutable_binding runs S C L x (deletable_opt : option bool) v str : result_void :=
   if_void (env_record_create_mutable_binding S L x deletable_opt) (fun S =>
-    env_record_set_mutable_binding run_call' S C L x v str).
+    env_record_set_mutable_binding runs S C L x v str).
 
 Definition env_record_create_immutable_binding S L x : result_void :=
   match pick (env_record_binds S L) with
@@ -776,12 +769,12 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
 (**************************************************************)
 (** Conversions *)
 
-Definition to_default (run_call' : run_call_type) S C l (prefo : option preftype) : result :=
+Definition to_default runs S C l (prefo : option preftype) : result :=
   let gpref := unsome_default preftype_number prefo in
   let lpref := other_preftypes gpref in
   let gmeth := method_of_preftype gpref in
   let sub x K :=
-    if_object (object_get run_call' S C l x) (fun S1 lfo =>
+    if_object (object_get runs S C l x) (fun S1 lfo =>
       let lf := value_object lfo in
       match run_callable S lf with
       | Some fc =>
@@ -792,7 +785,8 @@ Definition to_default (run_call' : run_call_type) S C l (prefo : option preftype
         it be clearer to add such a deferencing?) *)
         (* In fact, that may be a bad idea as some non yet implemented
         primitive may need to call directly run_call' afterwards. *)
-        if_success_value run_call' C (run_call' S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
+        if_success_value runs C
+          (run_call runs S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
           match v with
           | value_prim w => out_ter S w
           | value_object l => K tt
@@ -803,43 +797,43 @@ Definition to_default (run_call' : run_call_type) S C l (prefo : option preftype
     let lmeth := method_of_preftype lpref in
     sub lmeth (fun _ => out_type_error S)).
 
-Definition to_primitive (run_call' : run_call_type) S C v (prefo : option preftype) : result :=
+Definition to_primitive runs S C v (prefo : option preftype) : result :=
   match v with
   | value_prim w => out_ter S w
-  | value_object l => to_default run_call' S C l prefo
+  | value_object l => to_default runs S C l prefo
   end.
 
-Definition to_number (run_call' : run_call_type) S C v : result :=
+Definition to_number runs S C v : result :=
   match v with
   | value_prim w =>
     out_ter S (convert_prim_to_number w)
   | value_object l =>
-    if_success_primitive (to_primitive run_call' S C l (Some preftype_number)) (fun S1 w =>
+    if_success_primitive (to_primitive runs S C l (Some preftype_number)) (fun S1 w =>
       out_ter S (convert_prim_to_number w))
   end.
 
-Definition to_integer (run_call' : run_call_type) S C v : result :=
-  if_success (to_number run_call' S C v) (fun S1 rv1 =>
+Definition to_integer runs S C v : result :=
+  if_success (to_number runs S C v) (fun S1 rv1 =>
     match rv1 with
     | prim_number n =>
       out_ter S (convert_number_to_integer n)
     | _ => result_stuck
     end).
 
-Definition to_int32 (run_call' : run_call_type) S C v (K : state -> int -> result) : result :=
-  if_number (to_number run_call' S C v) (fun S' n =>
+Definition to_int32 runs S C v (K : state -> int -> result) : result :=
+  if_number (to_number runs S C v) (fun S' n =>
     K S' (JsNumber.to_int32 n)).
 
-Definition to_uint32 (run_call' : run_call_type) S C v (K : state -> int -> result) : result :=
-  if_number (to_number run_call' S C v) (fun S' n =>
+Definition to_uint32 runs S C v (K : state -> int -> result) : result :=
+  if_number (to_number runs S C v) (fun S' n =>
     K S' (JsNumber.to_uint32 n)).
 
-Definition to_string (run_call' : run_call_type) S C v : result :=
+Definition to_string runs S C v : result :=
   match v with
   | value_prim w =>
     out_ter S (convert_prim_to_string w)
   | value_object l =>
-    if_success_primitive (to_primitive run_call' S C l (Some preftype_string)) (fun S1 w =>
+    if_success_primitive (to_primitive runs S C l (Some preftype_string)) (fun S1 w =>
       out_ter S (convert_prim_to_string w))
   end.
 
@@ -874,7 +868,7 @@ Definition bool_proto_value_of_call S C : result :=
   | _ => out_type_error S
   end.
 
-Definition constructor_builtin (run_call' : run_call_type) S C B (args : list value) : result :=
+Definition constructor_builtin runs S C B (args : list value) : result :=
   match B with
 
   | construct_prealloc prealloc_object =>
@@ -894,7 +888,7 @@ Definition constructor_builtin (run_call' : run_call_type) S C B (args : list va
       out_ter S JsNumber.zero
     else (
       let v := get_arg 0 args in
-      if_value (to_number run_call' S C v) (fun S1 v1 =>
+      if_value (to_number runs S C v) (fun S1 v1 =>
         let O1 := object_new prealloc_number_proto "Number" in
         let O := object_with_primitive_value O1 v in
         let (l, S') := object_alloc S O in
@@ -907,8 +901,8 @@ Definition constructor_builtin (run_call' : run_call_type) S C B (args : list va
 
 (**************************************************************)
 
-Definition creating_function_object_proto (run_call' : run_call_type) S C l (K : state -> result) : result :=
-  if_object (constructor_builtin run_call' S C
+Definition creating_function_object_proto runs S C l (K : state -> result) : result :=
+  if_object (constructor_builtin runs S C
     (construct_prealloc prealloc_object) nil) (fun S1 lproto =>
     let A1 := attributes_data_intro l true false true in
     if_success (object_define_own_property S1 lproto "constructor" A1 false) (fun S2 rv1 =>
@@ -916,7 +910,7 @@ Definition creating_function_object_proto (run_call' : run_call_type) S C l (K :
       if_success (object_define_own_property S2 l "prototype" A2 false) (fun S3 rv2 =>
         K S3))).
 
-Definition creating_function_object (run_call' : run_call_type) S C (names : list string) (bd : funcbody) X str : result :=
+Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
   let O := object_create prealloc_function_proto "Function" true Heap.empty in
   let O1 := object_with_invokation O
     (Some (construct_prealloc prealloc_function))
@@ -926,7 +920,7 @@ Definition creating_function_object (run_call' : run_call_type) S C (names : lis
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_property S1 l "length" A1 false) (fun S2 rv1 =>
-    creating_function_object_proto run_call' S2 C l (fun S3 =>
+    creating_function_object_proto runs S2 C l (fun S3 =>
       if negb str then out_ter S3 l
       else (
         let vthrower := value_object prealloc_throw_type_error in
@@ -935,7 +929,7 @@ Definition creating_function_object (run_call' : run_call_type) S C (names : lis
           if_success (object_define_own_property S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
-Fixpoint binding_inst_formal_args (run_call' : run_call_type) S C L (args : list value) (names : list string) str : result_void :=
+Fixpoint binding_inst_formal_args runs S C L (args : list value) (names : list string) str : result_void :=
   match names with
   | nil => out_void S
   | argname :: names' =>
@@ -943,19 +937,19 @@ Fixpoint binding_inst_formal_args (run_call' : run_call_type) S C L (args : list
     if_some (env_record_has_binding S L argname) (fun hb =>
       if_void
         (if hb then (* TODO:  There might be a factorisation there:  look at the semantics for updates. *)
-          env_record_set_mutable_binding run_call' S C L argname v (execution_ctx_strict C)
-        else env_record_create_set_mutable_binding run_call' S C L argname None v (execution_ctx_strict C)) (fun S1 =>
-          binding_inst_formal_args run_call' S1 C L (tl args) names' str))
+          env_record_set_mutable_binding runs S C L argname v (execution_ctx_strict C)
+        else env_record_create_set_mutable_binding runs S C L argname None v (execution_ctx_strict C)) (fun S1 =>
+          binding_inst_formal_args runs S1 C L (tl args) names' str))
   end.
 
-Fixpoint binding_inst_function_decls (run_call' : run_call_type) S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
+Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
   match fds with
   | nil => out_void S
   | fd :: fds' =>
       let fbd := funcdecl_body fd in
       let fname := funcdecl_name fd in
       let str := funcbody_is_strict fbd in
-      if_object (creating_function_object run_call' S C (funcdecl_parameters fd) fbd (execution_ctx_variable_env C) str) (fun S1 fo =>
+      if_object (creating_function_object runs S C (funcdecl_parameters fd) fbd (execution_ctx_variable_env C) str) (fun S1 fo =>
         if_success (* TODO:  Should be [if_void] I think.*) ( (* TODO:  Name this argument. *)
           if_bool_option_result (env_record_has_binding S1 L fname) (fun _ =>
             ifb L = env_loc_global_env_record then ( (* TODO:  Use “codetype” for this. *)
@@ -973,25 +967,25 @@ Fixpoint binding_inst_function_decls (run_call' : run_call_type) S C L (fds : li
                 end)
             ) else out_void S1) (fun _ =>
             env_record_create_mutable_binding S1 L fname (Some bconfig))) (fun S2 rv => (* TODO:  Name this part:  the part above is just unreadable. *)
-              if_void (env_record_set_mutable_binding run_call' S2 C L fname fo str) (fun S3 =>
-                binding_inst_function_decls run_call' S3 C L fds' bconfig)))
+              if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
+                binding_inst_function_decls runs S3 C L fds' bconfig)))
   end.
 
-Fixpoint binding_inst_var_decls (run_call' : run_call_type) S C L (vds : list string) str : result_void :=
+Fixpoint binding_inst_var_decls runs S C L (vds : list string) str : result_void :=
   match vds with
   | nil => out_void S
   | vd :: vds' =>
-    let bivd S := binding_inst_var_decls run_call' S C L vds' str in
+    let bivd S := binding_inst_var_decls runs S C L vds' str in
     if_bool_option_result (env_record_has_binding S L vd) (fun _ =>
       bivd S) (fun _ =>
-      if_void (env_record_create_set_mutable_binding run_call' S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 =>
+      if_void (env_record_create_set_mutable_binding runs S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 =>
         bivd S1))
   end.
 
 Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
   arbitrary (* TODO *).
 
-Definition binding_inst_arguments_object (run_call' : run_call_type) S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
+Definition binding_inst_arguments_object runs S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
   let name := "arguments" in
   if_some (env_record_has_binding S L name) (fun bdecl =>
     ifb ct = codetype_func /\ ~ bdecl then (
@@ -1002,29 +996,29 @@ Definition binding_inst_arguments_object (run_call' : run_call_type) S C L (ct :
               if_void (env_record_create_immutable_binding S1 L name) (fun S2 =>
                 env_record_initialize_immutable_binding S2 L name largs)
             else
-              env_record_create_set_mutable_binding run_call' S1 C L name None largs false)))
+              env_record_create_set_mutable_binding runs S1 C L name None largs false)))
     else out_void S).
 
-Definition execution_ctx_binding_inst (run_call' : run_call_type) S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
+Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
   let L := hd_inhab (execution_ctx_variable_env C) in (* TODO:  Baah! *)
   let str := execution_ctx_strict C in (* TODO:  Check the semantics (and pass around the argument) *)
   let (o, names) := match ct, funco with (* TODO:  Alternative way of presenting that:  name the continuation at the bottom and don’t name “o”! *)
     | codetype_func, Some func =>
       let names := unsome_default nil (run_object_method object_formal_parameters_ S func) in
-      (binding_inst_formal_args run_call' S C L args names str, names)
+      (binding_inst_formal_args runs S C L args names str, names)
     | (codetype_global | codetype_eval), None => (out_void S : result, nil)
     | _, _ => (result_stuck, nil)
     end in
   if_void o (fun S1 =>
       let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
-      if_void (binding_inst_function_decls run_call' S1 C L fds bconfig) (fun S2 =>
-        if_void (binding_inst_arguments_object run_call' S2 C L ct funco p names args) (fun S3 =>
+      if_void (binding_inst_function_decls runs S1 C L fds bconfig) (fun S2 =>
+        if_void (binding_inst_arguments_object runs S2 C L ct funco p names args) (fun S3 =>
           let vds := prog_vardecl p in
-          binding_inst_var_decls run_call' S2 C L vds str))).
+          binding_inst_var_decls runs S2 C L vds str))).
 
 
-Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) : result :=
+Definition execution_ctx_function_call runs S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) : result :=
   if_some (run_object_method object_code_ S lf) (fun bd => (* TODO:  Maybe this could be passed are arguments and thus avoid to recompute this [run_object_method object_code]_ again. *)
     let str := funcbody_is_strict bd in
     let newthis :=
@@ -1035,7 +1029,7 @@ Definition execution_ctx_function_call (run_call' : run_call_type) S C (lf : obj
     if_some (run_object_method object_scope_ S lf) (fun scope =>
       let (lex', S1) := lexical_env_alloc_decl S scope in
       let C1 := execution_ctx_intro_same lex' this str in
-      if_void (execution_ctx_binding_inst run_call' S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
+      if_void (execution_ctx_binding_inst runs S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
         K S2 C1))).
 
 Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
@@ -1053,14 +1047,14 @@ Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
 
   end.
 
-Definition run_spec_object_has_instance (max_step : nat) (run_call' : run_call_type) B S C l v : result :=
+Definition run_spec_object_has_instance (max_step : nat) runs B S C l v : result :=
   match B with
 
   | builtin_has_instance_function =>
     match v with
     | value_prim w => out_ter S false
     | value_object lv =>
-      if_object (object_get run_call' S C l "prototype") (fun S1 lo =>
+      if_object (object_get runs S C l "prototype") (fun S1 lo =>
         run_spec_object_has_instance_loop max_step S1 lv lo)
     end
 
@@ -1069,6 +1063,8 @@ Definition run_spec_object_has_instance (max_step : nat) (run_call' : run_call_t
   end.
 
 End LexicalEnvironments.
+
+Implicit Type runs : runs_type.
 
 
 Section Operators.
@@ -1164,17 +1160,17 @@ Definition run_equal :=
      - number, number.
   *).
 
-Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : binary_op) v1 v2 : result :=
+Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : result :=
   let conv_primitive S v :=
-    to_primitive run_call' S C v None in
+    to_primitive runs S C v None in
   let convert_twice_primitive :=
     convert_twice if_primitive conv_primitive in
   let conv_number S v :=
-    to_number run_call' S C v in
+    to_number runs S C v in
   let convert_twice_number :=
     convert_twice if_number conv_number in
   let conv_string S v :=
-    to_string run_call' S C v in
+    to_string runs S C v in
   let convert_twice_string :=
     convert_twice if_string conv_string in
 
@@ -1198,14 +1194,14 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
 
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift =>
     let (b_unsigned, F) := get_shift_op op in
-    (if b_unsigned then to_uint32 else to_int32) run_call' S C v1 (fun S1 k1 =>
-      to_uint32 run_call' S1 C v2 (fun S2 k2 =>
+    (if b_unsigned then to_uint32 else to_int32) runs S C v1 (fun S1 k1 =>
+      to_uint32 runs S1 C v2 (fun S2 k2 =>
         let k2' := JsNumber.modulo_32 k2 in
         out_ter S2 (JsNumber.of_int (F k1 k2'))))
 
   | binary_op_bitwise_and | binary_op_bitwise_or | binary_op_bitwise_xor =>
-    to_int32 run_call' S C v1 (fun S1 k1 =>
-      to_int32 run_call' S1 C v2 (fun S2 k2 =>
+    to_int32 runs S C v1 (fun S1 k1 =>
+      to_int32 runs S1 C v2 (fun S2 k2 =>
         out_ter S2 (JsNumber.of_int (get_bitwise_op op k1 k2))))
 
   | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
@@ -1222,7 +1218,7 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
     | value_object l =>
       morph_option (fun _ => out_type_error S : result)
       (fun has_instance_id _ =>
-        run_spec_object_has_instance max_step run_call' has_instance_id S C l v1)
+        run_spec_object_has_instance max_step runs has_instance_id S C l v1)
       (run_object_method object_has_instance_ S l) tt
     | _ => out_type_error S
     end
@@ -1230,7 +1226,7 @@ Definition run_binary_op (max_step : nat) (run_call' : run_call_type) S C (op : 
   | binary_op_in =>
     match v2 with
     | value_object l =>
-      if_string (to_string run_call' S C v1) (fun S2 x =>
+      if_string (to_string runs S C v1) (fun S2 x =>
         if_bool_option_result (object_has_prop S2 l x) (fun _ =>
           out_ter S2 true) (fun _ =>
           out_ter S2 false))
@@ -1281,21 +1277,21 @@ Definition object_delete S l x str : result :=
     end).
 
 
-Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) S C (op : unary_op) e : result :=
+Definition run_unary_op runs S C (op : unary_op) e : result :=
   ifb prepost_unary_op op then
-    if_success (run_expr' S C e) (fun S1 rv1 =>
-      if_success_value run_call' C (out_ter S1 rv1) (fun S2 v2 =>
-        if_number (to_number run_call' S2 C v2) (fun S3 n1 =>
+    if_success (run_expr runs S C e) (fun S1 rv1 =>
+      if_success_value runs C (out_ter S1 rv1) (fun S2 v2 =>
+        if_number (to_number runs S2 C v2) (fun S3 n1 =>
           let (number_op, is_pre) := run_prepost_op op in
           let n2 := number_op n1 in
           let v := prim_number (if is_pre then n2 else n1) in
-          if_void (ref_put_value run_call' S3 C rv1 n2) (fun S4 =>
+          if_void (ref_put_value runs S3 C rv1 n2) (fun S4 =>
             out_ter S4 v))))
   else
     match op with
 
     | unary_op_delete =>
-      if_success (run_expr' S C e) (fun S1 rv =>
+      if_success (run_expr runs S C e) (fun S1 rv =>
         match rv with
         | resvalue_value v => out_ter S1 true
         | resvalue_empty => result_stuck
@@ -1313,7 +1309,7 @@ Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) 
         end)
 
     | unary_op_typeof =>
-      if_success (run_expr' S C e) (fun S1 rv =>
+      if_success (run_expr runs S C e) (fun S1 rv =>
         match rv with
         | resvalue_value v =>
           out_ter S1 (typeof_value S1 v)
@@ -1321,25 +1317,25 @@ Definition run_unary_op (run_expr' : run_expr_type) (run_call' : run_call_type) 
           ifb ref_is_unresolvable r then
             out_ter S1 "undefined"
           else
-            if_success_value run_call' C (out_ter S1 r) (fun S2 v =>
+            if_success_value runs C (out_ter S1 r) (fun S2 v =>
               out_ter S2 (typeof_value S2 v))
         | resvalue_empty => result_stuck
         end)
 
     | _ => (* Regular operators *)
-      if_success_value run_call' C (run_expr' S C e) (fun S1 v =>
+      if_success_value runs C (run_expr runs S C e) (fun S1 v =>
         match op with
 
         | unary_op_void => out_ter S1 undef
 
-        | unary_op_add => to_number run_call' S1 C v
+        | unary_op_add => to_number runs S1 C v
 
         | unary_op_neg =>
-          if_number (to_number run_call' S1 C v) (fun S2 n =>
+          if_number (to_number runs S1 C v) (fun S2 n =>
             out_ter S2 (JsNumber.neg n))
 
         | unary_op_bitwise_not =>
-          to_int32 run_call' S1 C v (fun S2 k =>
+          to_int32 runs S1 C v (fun S2 k =>
             out_ter S2 (JsNumber.of_int (JsNumber.int32_bitwise_not k)))
 
         | unary_op_not =>
@@ -1359,20 +1355,19 @@ Section Interpreter.
 (**************************************************************)
 (** Some special cases *)
 
-Fixpoint init_object (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C l (pds : propdefs) : result :=
+Fixpoint init_object runs S C l (pds : propdefs) : result :=
   let create_new_function_in S0 args bd :=
-  creating_function_object run_call' S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
+  creating_function_object runs S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
   match pds with
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
     let x := string_of_propname pn in
     let follows S1 A :=
       if_success (object_define_own_property S1 l x A false) (fun S2 rv =>
-        init_object run_expr' run_call' S2 C l pds') in
+        init_object runs S2 C l pds') in
     match pb with
     | propbody_val e0 =>
-      if_success_value run_call' C (run_expr' S C e0) (fun S1 v0 =>
+      if_success_value runs C (run_expr runs S C e0) (fun S1 v0 =>
         let A := attributes_data_intro v0 true true true in
         follows S1 A)
     | propbody_get bd =>
@@ -1386,114 +1381,108 @@ Fixpoint init_object (run_expr' : run_expr_type) (run_call' : run_call_type)
     end
   end.
 
-Fixpoint run_var_decl (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C xeos : result :=
+Fixpoint run_var_decl runs S C xeos : result :=
   match xeos with
   | nil => out_ter S res_empty
   | (x, eo) :: xeos' =>
     if_success (match eo with
       | None => out_ter S undef
       | Some e =>
-        if_success_value run_call' C (run_expr' S C e) (fun S1 v =>
+        if_success_value runs C (run_expr runs S C e) (fun S1 v =>
           if_some (identifier_res S1 C x) (fun ir =>
-            if_void (ref_put_value run_call' S1 C ir v) (fun S2 =>
+            if_void (ref_put_value runs S1 C ir v) (fun S2 =>
               out_ter S2 undef)))
       end) (fun S1 rv =>
-        run_var_decl run_expr' run_call' S1 C xeos')
+        run_var_decl runs S1 C xeos')
   end.
 
-Fixpoint run_list_expr (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S1 C (vs : list value) (es : list expr)
+Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr)
   (K : state -> list value -> result) : result :=
   match es with
   | nil => K S1 (LibList.rev vs)
   | e :: es' =>
-    if_success_value run_call' C (run_expr' S1 C e) (fun S2 v =>
-      run_list_expr run_expr' run_call' S2 C (v :: vs) es' K)
+    if_success_value runs C (run_expr runs S1 C e) (fun S2 v =>
+      run_list_expr runs S2 C (v :: vs) es' K)
   end.
 
-Fixpoint run_block (run_stat' : run_stat_type) S C rv ts : result :=
+Fixpoint run_block runs S C rv ts : result :=
   match ts with
   | nil => out_ter S rv
   | t :: ts' =>
-    if_success_state rv (run_stat' S C t) (fun S1 rv1 =>
-      run_block run_stat' S1 C rv1 ts')
+    if_success_state rv (run_stat runs S C t) (fun S1 rv1 =>
+      run_block runs S1 C rv1 ts')
   end.
 
 
 (**************************************************************)
 (** ** Intermediary functions for all non-trivial cases. *)
 
-Definition run_expr_binary_op (run_expr' : run_expr_type) (run_call' : run_call_type)
-  (run_binary_op' : run_binary_op_type) S C op e1 e2 : result :=
+Definition run_expr_binary_op run_binary_op' runs S C op e1 e2 : result :=
   match is_lazy_op op with
   | None =>
-    if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
-      if_success_value run_call' C (run_expr' S1 C e2) (fun S2 v2 =>
-        run_binary_op' S2 C op v1 v2))
+    if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
+      if_success_value runs C (run_expr runs S1 C e2) (fun S2 v2 =>
+        run_binary_op' runs S2 C op v1 v2))
   | Some b_ret =>
-    if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
+    if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
       let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then out_ter S1 v1
       else
-        if_success_value run_call' C (run_expr' S1 C e2) (fun S2 v2 =>
+        if_success_value runs C (run_expr runs S1 C e2) (fun S2 v2 =>
           out_ter S2 v2))
   end.
 
-Definition run_expr_access (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C e1 e2 : result :=
-  if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
-    if_success_value run_call' C (run_expr' S C e2) (fun S2 v2 =>
+Definition run_expr_access runs S C e1 e2 : result :=
+  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
+    if_success_value runs C (run_expr runs S C e2) (fun S2 v2 =>
       ifb v1 = prim_undef \/ v1 = prim_null then
         out_ref_error S2
       else
-        if_string (to_string run_call' S2 C v2) (fun S3 x =>
+        if_string (to_string runs S2 C v2) (fun S3 x =>
           out_ter S3 (ref_create_value v1 x (execution_ctx_strict C))))).
 
-Definition run_expr_assign (run_expr' : run_expr_type) (run_call' : run_call_type) (run_binary_op' : run_binary_op_type)
-  S C opo e1 e2 : result :=
-  if_success (run_expr' S C e1) (fun S1 rv1 =>
+Definition run_expr_assign run_binary_op' runs S C (opo : option binary_op) e1 e2 : result :=
+  if_success (run_expr runs S C e1) (fun S1 rv1 =>
     let follow S rv' :=
       match rv' with
       | resvalue_value v =>
-        if_void (ref_put_value run_call' S C rv1 v) (fun S' =>
+        if_void (ref_put_value runs S C rv1 v) (fun S' =>
          out_ter S' v)
       | _ => result_stuck
       end in
     match opo with
     | None =>
-      if_success_value run_call' C (run_expr' S1 C e2) follow
+      if_success_value runs C (run_expr runs S1 C e2) follow
     | Some op =>
-      if_success_value run_call' C (out_ter S1 rv1) (fun S2 v1 =>
-        if_success_value run_call' C (run_expr' S2 C e2) (fun S3 v2 =>
-          if_success (run_binary_op' S3 C op v1 v2) follow))
+      if_success_value runs C (out_ter S1 rv1) (fun S2 v1 =>
+        if_success_value runs C (run_expr runs S2 C e2) (fun S3 v2 =>
+          if_success (run_binary_op' runs S3 C op v1 v2) follow))
     end).
 
-Definition run_expr_function (run_call' : run_call_type) S C fo args bd : result :=
+Definition run_expr_function runs S C fo args bd : result :=
   match fo with
   | None =>
-    creating_function_object run_call' S C args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)
+    creating_function_object runs S C args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)
   | Some fn =>
     let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
     let follow L :=
       let E := pick (env_record_binds S' L) in
       if_void (env_record_create_immutable_binding S' L fn) (fun S1 =>
-        if_object (creating_function_object run_call' S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
+        if_object (creating_function_object runs S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
           if_void (env_record_initialize_immutable_binding S2 L fn l) (fun S3 =>
             out_ter S3 l))) in
     map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt
   end.
 
-Definition run_expr_call (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C e1 e2s : result :=
-  if_success (run_expr' S C e1) (fun S1 rv =>
-    if_success_value run_call' C (out_ter S1 rv) (fun S2 f =>
-      run_list_expr run_expr' run_call' S2 C nil e2s (fun S3 args =>
+Definition run_expr_call runs S C e1 e2s : result :=
+  if_success (run_expr runs S C e1) (fun S1 rv =>
+    if_success_value runs C (out_ter S1 rv) (fun S2 f =>
+      run_list_expr runs S2 C nil e2s (fun S3 args =>
         match f with
         | value_object l =>
           ifb ~ (is_callable S3 l) then out_type_error S3
           else
-            let follow vthis := run_call_full run_call' S3 C l vthis args in
+            let follow vthis := run_call_full runs S3 C l vthis args in
             match rv with
             | resvalue_value v => follow undef
             | resvalue_ref r =>
@@ -1509,15 +1498,13 @@ Definition run_expr_call (run_expr' : run_expr_type) (run_call' : run_call_type)
         | _ => out_type_error S3
         end))).
 
-Definition run_expr_conditionnal (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C e1 e2 e3 : result :=
-  if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
+Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
+  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
     let b1 := convert_value_to_boolean v1 in
-    if_success_value run_call' C (run_expr' S1 C (if b1 then e2 else e3)) (fun S2 v2 =>
+    if_success_value runs C (run_expr runs S1 C (if b1 then e2 else e3)) (fun S2 v2 =>
       out_ter S2 v2)).
 
-Definition run_expr_new (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C e1 (e2s : list expr) : result :=
+Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
   arbitrary
   (* TODO
   (* Evaluate constructor *)
@@ -1547,45 +1534,42 @@ Definition run_expr_new (run_expr' : run_expr_type) (run_call' : run_call_type)
 
 (**************************************************************)
 
-Definition run_stat_label (run_stat' : run_stat_type) S C lab t : result :=
-  if_break (run_stat' S C t)
+Definition run_stat_label runs S C lab t : result :=
+  if_break (run_stat runs S C t)
     (fun S1 R1 => out_ter S1 (res_value R1)).
 
-Definition run_stat_with (run_expr' : run_expr_type) (run_stat' : run_stat_type)
-  (run_call' : run_call_type) S C e1 t2 : result :=
-  if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
+Definition run_stat_with runs S C e1 t2 : result :=
+  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
     if_success (to_object S1 v1) (fun S2 rv2 =>
       match rv2 with
       | value_object l =>
         let lex := execution_ctx_lexical_env C in
         let (lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
         let C' := execution_ctx_with_lex_this C lex' l in
-        run_stat' S3 C' t2
+        run_stat runs S3 C' t2
       | _ => result_stuck
       end)).
 
-Definition run_stat_if (run_expr' : run_expr_type) (run_stat' : run_stat_type)
-  (run_call' : run_call_type) S C e1 t2 to : result :=
-  if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
+Definition run_stat_if runs S C e1 t2 to : result :=
+  if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
     if (convert_value_to_boolean v1) then
-      run_stat' S1 C t2
+      run_stat runs S1 C t2
     else
       match to with
       | Some t3 =>
-        run_stat' S1 C t3
+        run_stat runs S1 C t3
       | None =>
         out_ter S resvalue_empty
       end).
 
-Fixpoint run_stat_while (max_step : nat) (run_expr' : run_expr_type) (run_stat' : run_stat_type)
-  (run_call' : run_call_type) rv S C ls e1 t2 : result :=
+Fixpoint run_stat_while (max_step : nat) runs rv S C ls e1 t2 : result :=
   match max_step with
   | O => result_bottom
   | S max_step' =>
-    let run_stat_while' := run_stat_while max_step' run_expr' run_stat' run_call' in
-    if_success_value run_call' C (run_expr' S C e1) (fun S1 v1 =>
+    let run_stat_while' := run_stat_while max_step' runs in
+    if_success_value runs C (run_expr runs S C e1) (fun S1 v1 =>
       if convert_value_to_boolean v1 then
-        if_ter (run_stat' S1 C t2) (fun S2 R2 =>
+        if_ter (run_stat runs S1 C t2) (fun S2 R2 =>
           let rvR := res_value R2 in
           let rv' := ifb rvR = resvalue_empty then rv else rvR in
           if_normal_continue_or_break (out_ter S2 R2)
@@ -1595,18 +1579,17 @@ Fixpoint run_stat_while (max_step : nat) (run_expr' : run_expr_type) (run_stat' 
       else out_ter S1 rv)
   end.
 
-Definition run_stat_try (run_stat' : run_stat_type) (run_call' : run_call_type)
-  S C t1 t2o t3o : result :=
+Definition run_stat_try runs S C t1 t2o t3o : result :=
   let finally : result -> result :=
     match t3o with
     | None => fun res => res
     | Some t3 => fun res =>
       if_ter res (fun S1 R =>
-        if_success (run_stat' S1 C t3) (fun S2 rv' =>
+        if_success (run_stat runs S1 C t3) (fun S2 rv' =>
           out_ter S2 R))
     end
   in
-  if_any_or_throw (run_stat' S C t1) finally (fun S1 v =>
+  if_any_or_throw (run_stat runs S C t1) finally (fun S1 v =>
     match t2o with
     | None => finally (out_ter S1 (res_throw v))
     | Some (x, t2) =>
@@ -1615,25 +1598,23 @@ Definition run_stat_try (run_stat' : run_stat_type) (run_call' : run_call_type)
       match lex' with
       | L :: oldlex =>
         if_void (env_record_create_set_mutable_binding
-          run_call' S C L x None v throw_irrelevant) (fun S2 =>
+          runs S C L x None v throw_irrelevant) (fun S2 =>
             let C' := execution_ctx_with_lex C lex' in
-            finally (run_stat' S2 C' t2))
+            finally (run_stat runs S2 C' t2))
       | nil => result_stuck
       end
     end).
 
-Definition run_stat_throw (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C e : result :=
-  if_success_value run_call' C (run_expr' S C e) (fun S1 v1 =>
+Definition run_stat_throw runs S C e : result :=
+  if_success_value runs C (run_expr runs S C e) (fun S1 v1 =>
     out_ter S (res_throw v1)).
 
-Definition run_stat_return (run_expr' : run_expr_type) (run_call' : run_call_type)
-  S C eo : result :=
+Definition run_stat_return runs S C eo : result :=
   match eo with
   | None =>
     out_ter S (res_return undef)
   | Some e =>
-    if_success_value run_call' C (run_expr' S C e) (fun S1 v1 =>
+    if_success_value runs C (run_expr runs S C e) (fun S1 v1 =>
       out_ter S (res_return v1))
   end.
 
@@ -1646,10 +1627,13 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
   | O => result_bottom
   | S max_step' =>
     let run_expr' := run_expr max_step' in
+    let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let run_binary_op' := run_binary_op max_step' run_call' in
-    match e with
+    let run_binary_op' := run_binary_op max_step' in
+    let runs :=
+      make_runs run_expr' run_stat' run_prog' run_call'
+    in match e with
 
     | expr_literal i =>
       out_ter S (convert_literal_to_prim i)
@@ -1658,39 +1642,39 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       if_some (identifier_res S C x) (out_ter S)
 
     | expr_unary_op op e =>
-      run_unary_op run_expr' run_call' S C op e
+      run_unary_op runs S C op e
 
     | expr_binary_op e1 op e2 =>
-      run_expr_binary_op run_expr' run_call' run_binary_op' S C op e1 e2
+      run_expr_binary_op run_binary_op' runs S C op e1 e2
 
     | expr_object pds =>
-      if_object (constructor_builtin run_call' S C
+      if_object (constructor_builtin runs S C
         (construct_prealloc prealloc_object) nil) (fun S1 l =>
-        init_object run_expr' run_call' S1 C l pds)
+        init_object runs S1 C l pds)
 
     | expr_member e1 f =>
       run_expr' S C (expr_access e1 (expr_literal (literal_string f)))
 
     | expr_access e1 e2 =>
-      run_expr_access run_expr' run_call' S C e1 e2
+      run_expr_access runs S C e1 e2
 
     | expr_assign e1 opo e2 =>
-      run_expr_assign run_expr' run_call' run_binary_op' S C opo e1 e2
+      run_expr_assign run_binary_op' runs S C opo e1 e2
 
     | expr_function fo args bd =>
-      run_expr_function run_call' S C fo args bd
+      run_expr_function runs S C fo args bd
 
     | expr_call e1 e2s =>
-      run_expr_call run_expr' run_call' S C e1 e2s
+      run_expr_call runs S C e1 e2s
 
     | expr_this =>
       out_ter S (execution_ctx_this_binding C)
 
     | expr_new e1 e2s =>
-      run_expr_new run_expr' run_call' S C e1 e2s
+      run_expr_new runs S C e1 e2s
 
     | expr_conditional e1 e2 e3 =>
-      run_expr_conditionnal run_expr' run_call' S C e1 e2 e3
+      run_expr_conditionnal runs S C e1 e2 e3
 
     end
   end
@@ -1705,40 +1689,43 @@ with run_stat (max_step : nat) S C t : result :=
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    match t with
+    let run_binary_op' := run_binary_op max_step' in
+    let runs :=
+      make_runs run_expr' run_stat' run_prog' run_call'
+    in match t with
 
     | stat_expr e =>
       run_expr' S C e
 
     | stat_var_decl xeos =>
-      run_var_decl run_expr' run_call' S C xeos
+      run_var_decl runs S C xeos
 
     | stat_block ts =>
-      run_block run_stat' S C resvalue_empty ts
+      run_block runs S C resvalue_empty ts
 
     | stat_label lab t =>
-      run_stat_label run_stat' S C lab t
+      run_stat_label runs S C lab t
 
     | stat_with e1 t2 =>
-      run_stat_with run_expr' run_stat' run_call' S C e1 t2
+      run_stat_with runs S C e1 t2
 
     | stat_if e1 t2 to =>
-      run_stat_if run_expr' run_stat' run_call' S C e1 t2 to
+      run_stat_if runs S C e1 t2 to
 
     | stat_do_while ls t1 e2 =>
       arbitrary (* TODO *)
 
     | stat_while ls e1 t2 =>
-      run_stat_while max_step' run_expr' run_stat' run_call' resvalue_empty S C ls e1 t2
+      run_stat_while max_step' runs resvalue_empty S C ls e1 t2
 
     | stat_throw e =>
-      run_stat_throw run_expr' run_call' S C e
+      run_stat_throw runs S C e
 
     | stat_try t1 t2o t3o =>
-      run_stat_try run_stat' run_call' S C t1 t2o t3o
+      run_stat_try runs S C t1 t2o t3o
 
     | stat_return eo =>
-      run_stat_return run_expr' run_call' S C eo
+      run_stat_return runs S C eo
 
     | stat_break so =>
       out_ter S (res_break so)
@@ -1801,14 +1788,19 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
   match max_step with
   | O => result_bottom
   | S max_step' =>
+    let run_expr' := run_expr max_step' in
+    let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    match B with
+    let run_binary_op' := run_binary_op max_step' in
+    let runs :=
+      make_runs run_expr' run_stat' run_prog' run_call'
+    in match B with
 
     | call_prealloc prealloc_function =>
       if_some lfo (fun lf =>
         if_some vo (fun vthis =>
-          execution_ctx_function_call run_call' S C lf vthis args (fun S1 C1 =>
+          execution_ctx_function_call runs S C lf vthis args (fun S1 C1 =>
             if run_object_code_empty S1 lf then (* TODO:  Here a match is better as I’m doing a let just afterwards *)
               out_ter S1 (res_normal undef) (* Is that reachable? *)
             else if_some (run_object_method object_code_ S1 lf) (fun pb =>
@@ -1823,12 +1815,12 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
 
     | prealloc_global_is_nan =>
       let v := get_arg 0 args in
-      if_number (to_number run_call' S C v) (fun S0 n =>
+      if_number (to_number runs S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan))))
 
     | prealloc_global_is_finite =>
       let v := get_arg 0 args in
-      if_number (to_number run_call' S C v) (fun S0 n =>
+      if_number (to_number runs S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
     | prealloc_object_get_proto_of =>
@@ -1881,7 +1873,7 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
         out_ter S JsNumber.zero
       else (
         let v := get_arg 0 args in
-        to_number run_call' S C v)
+        to_number runs S C v)
 
     | _ =>
       arbitrary (* TODO *)
