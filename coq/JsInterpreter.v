@@ -1,7 +1,42 @@
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix.
-Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux JsInit.
+Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
+
+(* TODO list:
+    packaging [run_call' …]s
+    label_sets
+    binding_instantiation_formal_params
+    binding_instantiation_function_decls
+    binding_instantiation_var_decls
+    execution_ctx_binding_instantiation
+    execution_ctx_binding_instantiation_function
+    binding_instantiation_arg_obj
+    expr_call
+    expr_new
+    expr_get_value_conv_stat
+    expr_function_unnamed
+    expr_conditional
+    spec_object_get
+    spec_object_get_own_prop
+    spec_object_can_put
+    spec_call
+    spec_call_to_default
+    spec_call_to_prealloc
+    spec_call_prog
+    _spec_call_default
+    spec_constructor_builtin
+    spec_error_type_error
+    spec_construtor
+    spec_function_constructor
+    spec_binding_inst
+    spec_construct_to_prealloc
+    spec_construct_default
+    spec_binding_inst_function_decls
+    abort_intercepted_expr
+    spec_creating_function_object_proto
+    spec_call_object_is_sealed
+*)
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -1863,9 +1898,10 @@ Definition run_javascript (max_step : nat) p : result :=
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
     let S := state_initial in
+    let p' := add_infos_prog strictness_false p in
     let C := execution_ctx_initial (prog_intro_strictness p) in
     if_void (execution_ctx_binding_inst run_call' S C codetype_global None p nil) (fun S' =>
-      run_prog' S' C p)
+      run_prog' S' C p')
   end.
 
 End Interpreter.

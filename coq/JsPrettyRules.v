@@ -61,8 +61,8 @@ Inductive red_javascript : prog -> out -> Prop :=
   | red_javascript_intro : forall S S' C p p' o,
       S = state_initial ->
       p' = add_infos_prog strictness_false p ->
-      C = execution_ctx_initial (prog_intro_strictness p) -> 
-      red_expr S C (spec_binding_inst codetype_global None p nil) (out_void S') ->
+      C = execution_ctx_initial (prog_intro_strictness p) -> (* Are you sure of this strictness flag?  We just force it to be false in [p'] so that seems strange to me. -- Martin. *)
+      red_expr S C (spec_binding_inst codetype_global None p nil) (out_void S') -> (* Same comment:  is that [p'] there?  -- Martin. *)
       red_prog S' C p' o ->
       red_javascript p o
 
