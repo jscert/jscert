@@ -5,9 +5,8 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
 
 (* TODO list:
     label_sets
-    binding_instantiation_formal_params
-    binding_instantiation_function_decls
-    binding_instantiation_var_decls
+    binding_inst_formal_params
+    binding_inst_var_decls
     execution_ctx_binding_instantiation
     execution_ctx_binding_instantiation_function
     binding_instantiation_arg_obj
@@ -25,12 +24,11 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     spec_call_default
     spec_constructor_builtin
     spec_error_type_error
-    spec_construtor
+    spec_constructor
     spec_function_constructor
     spec_binding_inst
     spec_construct_to_prealloc
     spec_construct_default
-    spec_binding_inst_function_decls
     abort_intercepted_expr
     spec_creating_function_object_proto
     spec_call_object_is_sealed
@@ -933,7 +931,7 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
           if_success (object_define_own_property S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
-Fixpoint binding_inst_formal_args runs S C L (args : list value) (names : list string) str : result_void :=
+Fixpoint binding_inst_formal_args runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
   match names with
   | nil => out_void S
   | argname :: names' =>
@@ -951,28 +949,30 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) (bconfig :
   | nil => out_void S
   | fd :: fds' =>
       let fbd := funcdecl_body fd in
+      let str_fd := funcbody_is_strict fbd in
+      let fparams := funcdecl_parameters fd in
       let fname := funcdecl_name fd in
-      let str := funcbody_is_strict fbd in
-      if_object (creating_function_object runs S C (funcdecl_parameters fd) fbd (execution_ctx_variable_env C) str) (fun S1 fo =>
-        if_success (* TODO:  Should be [if_void] I think.*) ( (* TODO:  Name this argument. *)
-          if_bool_option_result (env_record_has_binding S1 L fname) (fun _ =>
-            ifb L = env_loc_global_env_record then ( (* TODO:  Use “codetype” for this. *)
-              if_some (run_object_get_property S1 prealloc_global fname) (fun D =>
-                match D with
-                | full_descriptor_undef => result_stuck
-                | full_descriptor_some A =>
-                  ifb attributes_configurable A then (
-                    let A' := attributes_data_intro undef true true bconfig in
-                    object_define_own_property S1 prealloc_global fname A' true
-                  ) else ifb descriptor_is_accessor A
-                    \/ (attributes_writable A = false \/ attributes_enumerable A = false) then
-                      out_type_error S1
-                  else out_void S1
-                end)
-            ) else out_void S1) (fun _ =>
-            env_record_create_mutable_binding S1 L fname (Some bconfig))) (fun S2 rv => (* TODO:  Name this part:  the part above is just unreadable. *)
-              if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
-                binding_inst_function_decls runs S3 C L fds' bconfig)))
+      if_object (creating_function_object runs S C fparams fbd (execution_ctx_variable_env C) str_fd) (fun S1 fo =>
+        let follow (o : result) :=
+          if_void o (fun S2 =>
+            if_void (env_record_set_mutable_binding runs S2 C L fname fo str_fd) (fun S3 =>
+              binding_inst_function_decls runs S3 C L fds' bconfig))
+        in if_bool_option_result (env_record_has_binding S1 L fname) (fun _ =>
+          ifb L = env_loc_global_env_record then ( (* TODO:  Use “codetype” for this. *)
+            if_some (run_object_get_property S1 prealloc_global fname) (fun D =>
+              match D with
+              | full_descriptor_undef => result_stuck
+              | full_descriptor_some A =>
+                ifb attributes_configurable A then (
+                  let A' := attributes_data_intro undef true true bconfig in
+                  follow (object_define_own_property S1 prealloc_global fname A' true)
+                ) else ifb descriptor_is_accessor A
+                  \/ attributes_writable A = false \/ attributes_enumerable A = false then
+                    out_type_error S1
+                else follow (out_void S1)
+              end)
+          ) else follow (out_void S1)) (fun _ =>
+            follow (env_record_create_mutable_binding S1 L fname (Some bconfig))))
   end.
 
 Fixpoint binding_inst_var_decls runs S C L (vds : list string) str : result_void :=
@@ -987,7 +987,7 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) str : result_void
   end.
 
 Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
-  arbitrary (* TODO *).
+  arbitrary (* TODO, but not yet formalised in the specification. *).
 
 Definition binding_inst_arguments_object runs S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
   let name := "arguments" in

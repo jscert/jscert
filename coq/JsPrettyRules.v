@@ -2300,7 +2300,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   (** Constructor calls *)
   
-  | red_spec_construtor : forall S C l co args o,
+  | red_spec_constructor : forall S C l co args o,
       object_construct S l (Some co) ->
       red_expr S C (spec_construct_1 co l args) o ->
       red_expr S C (spec_construct l args) o
