@@ -31,7 +31,7 @@ let arguments () =
 
 let get_value_ref state r =
 	match Interpreter.ref_get_value
-		(Interpreter.run_call max_int)
+		(Interpreter.runs max_int)
 		state (Interpreter.execution_ctx_initial false)
 		(Interpreter.Resvalue_ref r) with
     | Interpreter.Result_normal (

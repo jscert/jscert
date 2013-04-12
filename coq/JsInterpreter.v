@@ -1421,7 +1421,7 @@ Definition run_expr_binary_op run_binary_op' runs S C op e1 e2 : result :=
   | None =>
     if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
       if_success_value runs C (wraped_run_expr runs S1 C e2) (fun S2 v2 =>
-        run_binary_op' runs S2 C op v1 v2))
+        run_binary_op' S2 C op v1 v2))
   | Some b_ret =>
     if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
       let b1 := convert_value_to_boolean v1 in
@@ -1455,7 +1455,7 @@ Definition run_expr_assign run_binary_op' runs S C (opo : option binary_op) e1 e
     | Some op =>
       if_success_value runs C (out_ter S1 rv1) (fun S2 v1 =>
         if_success_value runs C (wraped_run_expr runs S2 C e2) (fun S3 v2 =>
-          if_success (run_binary_op' runs S3 C op v1 v2) follow))
+          if_success (run_binary_op' S3 C op v1 v2) follow))
     end).
 
 Definition run_expr_function runs S C fo args bd : result :=
@@ -1629,10 +1629,9 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let run_binary_op' := run_binary_op max_step' in
-    let runs :=
-      make_runs run_expr' run_stat' run_prog' run_call'
-    in match e with
+    let runs' := make_runs run_expr' run_stat' run_prog' run_call' in
+    let run_binary_op' := run_binary_op max_step' runs' in
+    match e with
 
     | expr_literal i =>
       out_ter S (convert_literal_to_prim i)
@@ -1641,39 +1640,39 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       if_some (identifier_res S C x) (out_ter S)
 
     | expr_unary_op op e =>
-      run_unary_op runs S C op e
+      run_unary_op runs' S C op e
 
     | expr_binary_op e1 op e2 =>
-      run_expr_binary_op run_binary_op' runs S C op e1 e2
+      run_expr_binary_op run_binary_op' runs' S C op e1 e2
 
     | expr_object pds =>
-      if_object (constructor_builtin runs S C
+      if_object (constructor_builtin runs' S C
         (construct_prealloc prealloc_object) nil) (fun S1 l =>
-        init_object runs S1 C l pds)
+        init_object runs' S1 C l pds)
 
     | expr_member e1 f =>
-      run_expr' S C (expr_access e1 (expr_literal (literal_string f)))
+      wraped_run_expr runs' S C (expr_access e1 (expr_literal (literal_string f)))
 
     | expr_access e1 e2 =>
-      run_expr_access runs S C e1 e2
+      run_expr_access runs' S C e1 e2
 
     | expr_assign e1 opo e2 =>
-      run_expr_assign run_binary_op' runs S C opo e1 e2
+      run_expr_assign run_binary_op' runs' S C opo e1 e2
 
     | expr_function fo args bd =>
-      run_expr_function runs S C fo args bd
+      run_expr_function runs' S C fo args bd
 
     | expr_call e1 e2s =>
-      run_expr_call runs S C e1 e2s
+      run_expr_call runs' S C e1 e2s
 
     | expr_this =>
       out_ter S (execution_ctx_this_binding C)
 
     | expr_new e1 e2s =>
-      run_expr_new runs S C e1 e2s
+      run_expr_new runs' S C e1 e2s
 
     | expr_conditional e1 e2 e3 =>
-      run_expr_conditionnal runs S C e1 e2 e3
+      run_expr_conditionnal runs' S C e1 e2 e3
 
     end
   end
@@ -1688,43 +1687,41 @@ with run_stat (max_step : nat) S C t : result :=
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let run_binary_op' := run_binary_op max_step' in
-    let runs :=
-      make_runs run_expr' run_stat' run_prog' run_call'
-    in match t with
+    let runs' := make_runs run_expr' run_stat' run_prog' run_call' in
+    match t with
 
     | stat_expr e =>
-      run_expr' S C e
+      wraped_run_expr runs' S C e
 
     | stat_var_decl xeos =>
-      run_var_decl runs S C xeos
+      run_var_decl runs' S C xeos
 
     | stat_block ts =>
-      run_block runs S C resvalue_empty ts
+      run_block runs' S C resvalue_empty ts
 
     | stat_label lab t =>
-      run_stat_label runs S C lab t
+      run_stat_label runs' S C lab t
 
     | stat_with e1 t2 =>
-      run_stat_with runs S C e1 t2
+      run_stat_with runs' S C e1 t2
 
     | stat_if e1 t2 to =>
-      run_stat_if runs S C e1 t2 to
+      run_stat_if runs' S C e1 t2 to
 
     | stat_do_while ls t1 e2 =>
       arbitrary (* TODO *)
 
     | stat_while ls e1 t2 =>
-      run_stat_while max_step' runs resvalue_empty S C ls e1 t2
+      run_stat_while max_step' runs' resvalue_empty S C ls e1 t2
 
     | stat_throw e =>
-      run_stat_throw runs S C e
+      run_stat_throw runs' S C e
 
     | stat_try t1 t2o t3o =>
-      run_stat_try runs S C t1 t2o t3o
+      run_stat_try runs' S C t1 t2o t3o
 
     | stat_return eo =>
-      run_stat_return runs S C eo
+      run_stat_return runs' S C eo
 
     | stat_break so =>
       out_ter S (res_break so)
@@ -1791,19 +1788,18 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let run_binary_op' := run_binary_op max_step' in
-    let runs :=
-      make_runs run_expr' run_stat' run_prog' run_call'
-    in match B with
+    let runs' := make_runs run_expr' run_stat' run_prog' run_call' in
+    match B with
 
     | call_prealloc prealloc_function =>
       if_some lfo (fun lf =>
         if_some vo (fun vthis =>
-          execution_ctx_function_call runs S C lf vthis args (fun S1 C1 =>
+          execution_ctx_function_call runs' S C lf vthis args (fun S1 C1 =>
             if run_object_code_empty S1 lf then (* TODO:  Here a match is better as I’m doing a let just afterwards *)
               out_ter S1 (res_normal undef) (* Is that reachable? *)
             else if_some (run_object_method object_code_ S1 lf) (fun pb =>
-              if_success_or_return (run_prog' S1 C1 (funcbody_prog pb)) (fun S2 rv =>
+              if_success_or_return
+                (wraped_run_prog runs' S1 C1 (funcbody_prog pb)) (fun S2 rv =>
                 out_ter S2 (res_normal undef)) (fun S2 v =>
                 out_ter S2 (res_normal v))))))
 
@@ -1814,12 +1810,12 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
 
     | prealloc_global_is_nan =>
       let v := get_arg 0 args in
-      if_number (to_number runs S C v) (fun S0 n =>
+      if_number (to_number runs' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan))))
 
     | prealloc_global_is_finite =>
       let v := get_arg 0 args in
-      if_number (to_number runs S C v) (fun S0 n =>
+      if_number (to_number runs' S C v) (fun S0 n =>
         out_ter S0 (neg (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
     | prealloc_object_get_proto_of =>
@@ -1872,7 +1868,7 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
         out_ter S JsNumber.zero
       else (
         let v := get_arg 0 args in
-        to_number runs S C v)
+        to_number runs' S C v)
 
     | _ =>
       arbitrary (* TODO *)
@@ -1882,23 +1878,20 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
 
 (**************************************************************)
 
+Definition runs max_step :=
+  let run_expr' := run_expr max_step in
+  let run_stat' := run_stat max_step in
+  let run_prog' := run_prog max_step in
+  let run_call' := run_call max_step in
+  make_runs run_expr' run_stat' run_prog' run_call'.
+
 Definition run_javascript (max_step : nat) p : result :=
-  match max_step with
-  | O => result_bottom
-  | S max_step' =>
-    let run_expr' := run_expr max_step' in
-    let run_stat' := run_stat max_step' in
-    let run_prog' := run_prog max_step' in
-    let run_call' := run_call max_step' in
-    let run_binary_op' := run_binary_op max_step' in
-    let runs :=
-      make_runs run_expr' run_stat' run_prog' run_call'
-    in let S := state_initial in
-    let p' := add_infos_prog strictness_false p in
-    let C := execution_ctx_initial (prog_intro_strictness p) in
-    if_void (execution_ctx_binding_inst runs S C codetype_global None p nil) (fun S' =>
-      run_prog' S' C p')
-  end.
+  let runs' := runs max_step in
+  let S := state_initial in
+  let p' := add_infos_prog strictness_false p in
+  let C := execution_ctx_initial (prog_intro_strictness p) in
+  if_void (execution_ctx_binding_inst runs' S C codetype_global None p nil) (fun S' =>
+    wraped_run_prog runs' S' C p').
 
 End Interpreter.
 
