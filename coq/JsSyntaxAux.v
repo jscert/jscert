@@ -401,6 +401,119 @@ Definition execution_ctx_with_strict C bstrict :=
   match C with execution_ctx_intro le ve th bstrict_old =>
                execution_ctx_intro le ve th bstrict end.
 
+(**************************************************************)
+(** ** Type [literal] *)
+
+(** Inhabitants **)
+
+Global Instance literal_inhab : Inhab literal.
+Proof. apply (prove_Inhab literal_null). Qed.
+
+(** Boolean comparison *)
+
+Fixpoint literal_compare i1 i2 :=
+  match i1, i2 with
+  | literal_null, literal_null => true
+  | literal_bool b1, literal_bool b2 => decide (b1 = b2)
+  | literal_number n1, literal_number n2 => decide (n1 = n2)
+  | literal_string s1, literal_string s2 => decide (s1 = s2)
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance literal_comparable : Comparable literal.
+Proof.
+  applys (comparable_beq literal_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+
+
+(**************************************************************)
+(** ** Type [unary_op] *)
+
+(** Inhabitants **)
+
+Global Instance unary_op_inhab : Inhab unary_op.
+Proof. apply (prove_Inhab unary_op_void). Qed.
+
+(** Boolean comparison *)
+
+Fixpoint unary_op_compare op1 op2 :=
+  match op1, op2 with
+  | unary_op_delete, unary_op_delete => true
+  | unary_op_void, unary_op_void => true
+  | unary_op_typeof, unary_op_typeof => true
+  | unary_op_post_incr, unary_op_post_incr => true
+  | unary_op_post_decr, unary_op_post_decr => true
+  | unary_op_pre_incr, unary_op_pre_incr => true
+  | unary_op_pre_decr, unary_op_pre_decr => true
+  | unary_op_add, unary_op_add => true
+  | unary_op_neg, unary_op_neg => true
+  | unary_op_bitwise_not, unary_op_bitwise_not => true
+  | unary_op_not, unary_op_not => true
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance unary_op_comparable : Comparable unary_op.
+Proof.
+  applys (comparable_beq unary_op_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+
+
+(**************************************************************)
+(** ** Type [binary_op] *)
+
+(** Inhabitants **)
+
+Global Instance binary_op_inhab : Inhab binary_op.
+Proof. apply (prove_Inhab binary_op_coma). Qed.
+
+(** Boolean comparison *)
+
+Fixpoint binary_op_compare op1 op2 :=
+  match op1, op2 with
+  | binary_op_mult, binary_op_mult => true
+  | binary_op_div, binary_op_div => true
+  | binary_op_mod, binary_op_mod => true
+  | binary_op_add, binary_op_add => true
+  | binary_op_sub, binary_op_sub => true
+  | binary_op_left_shift, binary_op_left_shift => true
+  | binary_op_right_shift, binary_op_right_shift => true
+  | binary_op_unsigned_right_shift, binary_op_unsigned_right_shift => true
+  | binary_op_lt, binary_op_lt => true
+  | binary_op_gt, binary_op_gt => true
+  | binary_op_le, binary_op_le => true
+  | binary_op_ge, binary_op_ge => true
+  | binary_op_instanceof, binary_op_instanceof => true
+  | binary_op_in, binary_op_in => true
+  | binary_op_equal, binary_op_equal => true
+  | binary_op_disequal, binary_op_disequal => true
+  | binary_op_strict_equal, binary_op_strict_equal => true
+  | binary_op_strict_disequal, binary_op_strict_disequal => true
+  | binary_op_bitwise_and, binary_op_bitwise_and => true
+  | binary_op_bitwise_or, binary_op_bitwise_or => true
+  | binary_op_bitwise_xor, binary_op_bitwise_xor => true
+  | binary_op_and, binary_op_and => true
+  | binary_op_or, binary_op_or => true
+  | binary_op_coma, binary_op_coma => true
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance binary_op_comparable : Comparable binary_op.
+Proof.
+  applys (comparable_beq binary_op_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+
 
 (**************************************************************)
 (** ** Type [expr] *)
@@ -409,6 +522,50 @@ Definition execution_ctx_with_strict C bstrict :=
 
 Global Instance expr_inhab : Inhab expr.
 Proof. apply (prove_Inhab expr_this). Qed.
+
+(** Boolean comparison *)
+
+(* Note:  this funcion is not yet complete (and it would actually require much more work to be fully complete.  However, the only place where it is used is to test the syntactical equality to [eval], which part is correct.  This function is thus relatively acceptable for he moment. -- Martin. *)
+Fixpoint expr_compare e1 e2 :=
+  match e1, e2 with
+  | expr_this, expr_this => true
+  | expr_identifier s1, expr_identifier s2 => decide (s1 = s2)
+  | expr_literal l1, expr_literal l2 => decide (l1 = l2)
+  | expr_object l1, expr_object l2 => false (* TODO LATER:  decide (l1 = l2) *)
+  | expr_function f1 a1 b1, expr_function f2 a2 b2 =>
+    false (* TODO LATER:  decide (f1 = f2 /\ a1 = a2 /\ b1 = b2) *)
+  | expr_access e1 f1, expr_access e2 f2 =>
+    expr_compare e1 e2 && expr_compare f1 f2
+  | expr_member e1 f1, expr_member e2 f2 =>
+    expr_compare e1 e2 && decide (f1 = f2)
+  | expr_new e1 l1, expr_new e2 l2 =>
+    expr_compare e1 e2 (* todo later:  && decide (l1 = l2) *)
+  | expr_call e1 l1, expr_call e2 l2 =>
+    expr_compare e1 e2 (* todo later:  && decide (l1 = l2) *)
+  | expr_unary_op op1 e1, expr_unary_op op2 e2 =>
+    expr_compare e1 e2 && decide (op1 = op2)
+  | expr_binary_op e11 op1 e12, expr_binary_op e21 op2 e22 =>
+    decide (op1 = op2) && expr_compare e11 e21 && expr_compare e12 e22
+  | expr_conditional e11 e12 e13, expr_conditional e21 e22 e23 =>
+    expr_compare e11 e21 && expr_compare e12 e22 && expr_compare e13 e23
+  | expr_assign e11 op1 e12, expr_assign e21 op2 e22 =>
+    decide (op1 = op2) && expr_compare e11 e21 && expr_compare e12 e22
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance expr_comparable : Comparable expr.
+Proof.
+  applys (comparable_beq expr_compare).
+  skip. (* TODO:  Performs this proof (mutually recursively with syntactical equality with [stat], [prog], etc.) *)
+  (*induction x; induction y; simpl; rew_refl; iff;
+   tryfalse; auto;
+     repeat match goal with
+            | [H : _ /\ _ |- _ ] => destruct H
+            end;
+     try splits; fequals; auto; try congruence.*)
+Qed.
 
 
 (**************************************************************)

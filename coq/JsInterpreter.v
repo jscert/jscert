@@ -11,7 +11,6 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     execution_ctx_binding_instantiation
     execution_ctx_binding_instantiation_function
     binding_instantiation_arg_obj
-    expr_call
     expr_new
     expr_get_value_conv_stat
     expr_function_unnamed
@@ -19,11 +18,11 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     spec_object_get
     spec_object_get_own_prop
     spec_object_can_put
-    spec_call
+    spec_call (split run_call)
     spec_call_to_default
     spec_call_to_prealloc
     spec_call_prog
-    _spec_call_default
+    spec_call_default
     spec_constructor_builtin
     spec_error_type_error
     spec_construtor
@@ -239,7 +238,7 @@ Definition if_success_primitive (o : result) (K : state -> prim -> result) : res
     match v with
     | value_prim w =>
       K S w
-    | _ => result_stuck
+    | value_object _ => result_stuck
     end).
 
 Definition if_defined {B : Type} (op : option B) (K : B -> result) : result :=
@@ -258,7 +257,7 @@ Definition if_object (o : result) (K : state -> object_loc -> result) : result :
   if_value o (fun S v =>
     match v with
     | value_object l => K S l
-    | _ => result_stuck
+    | value_prim _ => result_stuck
     end).
 
 Definition if_string (o : result) (K : state -> string -> result) : result :=
@@ -279,7 +278,7 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | _ => result_stuck
+    | value_object _ => result_stuck
     end).
 
 End InterpreterEliminations.
@@ -318,8 +317,14 @@ Record runs_type : Type :=
 Implicit Type runs : runs_type.
 
 Definition run_call_full runs S C l vthis args : result :=
-  morph_option result_stuck (fun B =>
-    wraped_run_call runs S C B (Some l) (Some vthis) args)
+  morph_option result_stuck (fun c =>
+    match c with
+    | call_default =>
+      arbitrary (* TODO *)
+    | call_prealloc B =>
+      wraped_run_call runs S C B (Some l) (Some vthis) args
+    | call_after_bind => result_stuck
+    end)
     (run_object_method object_call_ S l).
 
 
@@ -387,7 +392,7 @@ Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S 
   | value_object l' =>
     ifb l' = l0 then out_ter S true
     else run_object_proto_is_prototype_of S l0 l'
-  | _ => result_stuck
+  | value_prim _ => result_stuck
   end.
 
 Definition run_object_proto_is_prototype_of := FixFun3 object_proto_is_prototype_of_body.
@@ -455,13 +460,13 @@ Definition object_get_builtin runs S C B vthis l x : result :=
           match vthis with
           | value_object lthis =>
             run_call_full runs S C lf lthis nil
-          | _ => result_stuck
+          | value_prim _ => result_stuck
           end
-        | _ => (* TODO:  Check the spec' once it will have been updated. *)
+        | value_prim _ => (* TODO:  Check the specification once it will have been updated. *)
           result_stuck
         end
       end)
-  | _ =>
+  | builtin_get_function =>
     result_stuck (* TODO:  Check *)
   end.
 
@@ -657,7 +662,7 @@ Definition object_put_complete runs S C B vthis l x v str : result_void :=
               | value_object lfsetter =>
                 if_success (run_call_full runs S1 C lfsetter vthis (v::nil)) (fun S2 rv =>
                   out_void S2)
-              | _ => result_stuck
+              | value_prim _ => result_stuck
               end
             | _ =>
               match vthis with
@@ -751,7 +756,7 @@ Definition env_record_create_immutable_binding S L x : result_void :=
     ifb decl_env_record_indom Ed x then result_stuck
     else out_void
       (env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
-  | _ => result_stuck
+  | env_record_object _ _ => result_stuck
   end.
 
 Definition env_record_initialize_immutable_binding S L x v : result_void :=
@@ -761,7 +766,7 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
       let S' := env_record_write_decl_env S L x mutability_immutable v in
       out_void S'
     else result_stuck
-  | _ => result_stuck
+  | env_record_object _ _ => result_stuck
   end.
 
 
@@ -867,7 +872,7 @@ Definition bool_proto_value_of_call S C : result :=
   | _ => out_type_error S
   end.
 
-Definition constructor_builtin runs S C B (args : list value) : result :=
+Definition constructor_builtin runs S C B (args : list value) : result := (* TODO:  Change the type of [B] from [construct] to [prealloc]. (?) *)
   match B with
 
   | construct_prealloc prealloc_object =>
@@ -1041,7 +1046,7 @@ Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
     | value_object proto =>
       ifb proto = lo then out_ter S true
       else run_spec_object_has_instance_loop max_step' S proto lo
-    | _ => result_stuck
+    | value_prim _ => result_stuck
     end
 
   end.
@@ -1219,7 +1224,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
       (fun has_instance_id _ =>
         run_spec_object_has_instance max_step runs has_instance_id S C l v1)
       (run_object_method object_has_instance_ S l) tt
-    | _ => out_type_error S
+    | value_prim _ => out_type_error S
     end
 
   | binary_op_in =>
@@ -1229,7 +1234,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
         if_bool_option_result (object_has_prop S2 l x) (fun _ =>
           out_ter S2 true) (fun _ =>
           out_ter S2 false))
-    | _ => out_type_error S
+    | value_prim _ => out_type_error S
     end
 
   | binary_op_equal | binary_op_disequal =>
@@ -1473,28 +1478,36 @@ Definition run_expr_function runs S C fo args bd : result :=
     map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt
   end.
 
+Definition run_eval S C (is_eval_direct : bool) (vthis : value) (vs : list value) :=
+  arbitrary (* TODO *).
+
 Definition run_expr_call runs S C e1 e2s : result :=
-  if_success (wraped_run_expr runs S C e1) (fun S1 rv =>
+  let is_eval_direct :=
+    decide (e1 = expr_literal (literal_string "eval"))
+  in if_success (wraped_run_expr runs S C e1) (fun S1 rv =>
     if_success_value runs C (out_ter S1 rv) (fun S2 f =>
-      run_list_expr runs S2 C nil e2s (fun S3 args =>
+      run_list_expr runs S2 C nil e2s (fun S3 vs =>
         match f with
         | value_object l =>
           ifb ~ (is_callable S3 l) then out_type_error S3
           else
-            let follow vthis := run_call_full runs S3 C l vthis args in
+            let follow vthis :=
+              ifb l = prealloc_global_eval then
+                run_eval S3 C is_eval_direct vthis vs
+              else run_call_full runs S3 C l vthis vs in
             match rv with
             | resvalue_value v => follow undef
             | resvalue_ref r =>
               match ref_base r with
               | ref_base_type_value v =>
-                ifb ref_is_property r then follow v (* Check *)
+                ifb ref_is_property r then follow v
                 else result_stuck
               | ref_base_type_env_loc L =>
                 follow (env_record_implicit_this_value S3 L)
               end
-            | _ => result_stuck
+            | resvalue_empty => result_stuck
             end
-        | _ => out_type_error S3
+        | value_prim _ => out_type_error S3
         end))).
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
@@ -1780,7 +1793,7 @@ with run_prog (max_step : nat) S C p : result :=
 
 (**************************************************************)
 
-with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option value) (args : list value) : result :=
+with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option value) (args : list value) : result := (* TODO:  This no longer takes so much arguments:  it should be only S, C, B (of type [prealloc] and not [call] as it is right now) and the arguments [args]. *)
   match max_step with
   | O => result_bottom
   | S max_step' =>
