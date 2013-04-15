@@ -7,9 +7,6 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     label_sets
     binding_inst_formal_params
     binding_inst_var_decls
-    execution_ctx_binding_instantiation
-    execution_ctx_binding_instantiation_function
-    binding_instantiation_arg_obj
     expr_new
     expr_get_value_conv_stat
     expr_function_unnamed
@@ -32,6 +29,7 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     abort_intercepted_expr
     spec_creating_function_object_proto
     spec_call_object_is_sealed
+    spec_create_arguments_object
 *)
 
 (**************************************************************)
@@ -942,7 +940,7 @@ Fixpoint binding_inst_formal_param runs S C L (args : list value) (names : list 
           binding_inst_formal_param runs S1 C L (tl args) names' str))
   end.
 
-Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str (* TODO:  Reread. *) (bconfig : strictness_flag) {struct fds} : result_void :=
+Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfig {struct fds} : result_void :=
   match fds with
   | nil => out_void S
   | fd :: fds' =>
@@ -951,26 +949,26 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str (* TOD
       let fparams := funcdecl_parameters fd in
       let fname := funcdecl_name fd in
       if_object (creating_function_object runs S C fparams fbd (execution_ctx_variable_env C) str_fd) (fun S1 fo =>
-        let follow (o : result) :=
-          if_void o (fun S2 =>
-            if_void (env_record_set_mutable_binding runs S2 C L fname fo str_fd) (fun S3 =>
-              binding_inst_function_decls runs S3 C L fds' str bconfig))
+        let follow S2 :=
+          if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
+            binding_inst_function_decls runs S3 C L fds' str bconfig)
         in if_bool_option_result (env_record_has_binding S1 L fname) (fun _ =>
-          ifb L = env_loc_global_env_record then ( (* TODO:  Use “codetype” for this. *)
+          ifb L = env_loc_global_env_record then (
             if_some (run_object_get_property S1 prealloc_global fname) (fun D =>
               match D with
               | full_descriptor_undef => result_stuck
               | full_descriptor_some A =>
                 ifb attributes_configurable A then (
                   let A' := attributes_data_intro undef true true bconfig in
-                  follow (object_define_own_property S1 prealloc_global fname A' true)
+                  if_void (object_define_own_property S1 prealloc_global fname A' true)
+                    follow
                 ) else ifb descriptor_is_accessor A
                   \/ attributes_writable A = false \/ attributes_enumerable A = false then
                     out_type_error S1
-                else follow (out_void S1)
+                else follow S1
               end)
-          ) else follow (out_void S1)) (fun _ =>
-            follow (env_record_create_mutable_binding S1 L fname (Some bconfig))))
+          ) else follow S1) (fun _ =>
+            if_void (env_record_create_mutable_binding S1 L fname (Some bconfig)) follow))
   end.
 
 Fixpoint binding_inst_var_decls runs S C L (vds : list string) str : result_void :=
@@ -987,19 +985,15 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) str : result_void
 Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
   arbitrary (* TODO, but not yet formalised in the specification. *).
 
-Definition binding_inst_arg_obj runs S C L (ct : codetype) (funco : option (* TODO:  remove this option. *) object_loc) p (xs : list prop_name) (args : list value) : result_void :=
-  let name := "arguments" in
-  if_some (env_record_has_binding S L name) (fun bdecl =>
-    ifb ct = codetype_func /\ ~ bdecl then (
-      if_some funco (fun lf =>
-        let str := prog_intro_strictness p in
-          if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
-            if str then
-              if_void (env_record_create_immutable_binding S1 L name) (fun S2 =>
-                env_record_initialize_immutable_binding S2 L name largs)
-            else
-              env_record_create_set_mutable_binding runs S1 C L name None largs false)))
-    else out_void S).
+Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
+  let arguments := "arguments" in
+  let str := prog_intro_strictness p in
+    if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
+      if str then
+        if_void (env_record_create_immutable_binding S1 L arguments) (fun S2 =>
+          env_record_initialize_immutable_binding S2 L arguments largs)
+      else
+        env_record_create_set_mutable_binding runs S1 C L arguments None largs false).
 
 Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
   destr_list (execution_ctx_variable_env C) result_stuck (fun L =>
@@ -1014,7 +1008,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
             binding_inst_var_decls runs S' C L vds str
           in match ct, funco, bdefined with
           | codetype_func, Some func, false =>
-            if_void (binding_inst_arg_obj runs S1 C L ct funco p names args) (fun S2 =>
+            if_void (binding_inst_arg_obj runs S1 C func p names args L) (fun S2 =>
               follow2 S2)
           | codetype_func, _, false => result_stuck
           | _, _, _ => follow2 S1
