@@ -4,6 +4,10 @@ let prbool = function
 	| true -> "true"
 	| false -> "false"
 
+let proption f = function
+	| None -> "None"
+	| Some x -> "Some (" ^ f x ^ ")"
+
 let prloc = function
   | Object_loc_normal i -> "@" ^ string_of_int i
   | Object_loc_prealloc builtinid ->
@@ -81,6 +85,19 @@ let prattributes = function
 	  (prvalue (attributes_accessor_set a))
 	  (prbool (attributes_accessor_enumerable a))
 	  (prbool (attributes_accessor_configurable a))
+
+let prfull_descriptor = function
+	| Full_descriptor_undef -> "undef"
+	| Full_descriptor_some a -> "attribute: " ^ prattributes a
+
+let prdescriptor desc =
+	Printf.sprintf "{ value : %s ; writable : %s ; get : %s  ; set : %s ; enumerable : %s ; configurable : %s }"
+	  (proption prvalue desc.descriptor_value)
+	  (proption prbool desc.descriptor_writable)
+	  (proption prvalue desc.descriptor_get)
+	  (proption prvalue desc.descriptor_set)
+	  (proption prbool desc.descriptor_enumerable)
+	  (proption prbool desc.descriptor_configurable)
 
 
 let prfieldmap (old : (prop_name * attributes) list option) skip_init loc obj =

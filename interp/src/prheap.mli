@@ -1,5 +1,6 @@
 
 val prbool : bool -> string
+val proption : ('a -> string) -> 'a option -> string
 val string_of_char_list : char list -> string
 val char_list_of_string : string -> char list
 
@@ -13,6 +14,9 @@ val prmutability : Interpreter.mutability -> string
 val prliteral : Interpreter.literal -> string
 val prprim : Interpreter.prim -> string
 val prvalue : Interpreter.value -> string
+
+val prdescriptor : Interpreter.descriptor -> string
+val prfull_descriptor : Interpreter.full_descriptor -> string
 
 val prheap :
   bool (* Skip init *) ->

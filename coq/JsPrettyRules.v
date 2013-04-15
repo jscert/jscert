@@ -1536,7 +1536,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_define_own_prop_2 : forall S C l x Desc throw An bext o, (* Step 2 *)
       object_extensible S l bext ->
       red_expr S C (spec_object_define_own_prop_3 l x Desc throw An bext) o ->
-      red_expr S C (spec_object_define_own_prop_2 l x Desc throw An) o
+      red_expr S C (spec_object_define_own_prop_2 l x Desc throw An) o (* This [An] is a [full_descriptor]:  why not calling it [D]? -- Martin *)
 
   | red_spec_object_define_own_prop_3_undef_false : forall S C l x Desc throw o, (* Step 3 *)
       red_expr S C (spec_object_define_own_prop_reject throw) o ->
@@ -1573,7 +1573,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_write l x A Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_5 l x A Desc throw) o
 
-  | red_spec_object_define_own_prop_5_a : forall S C l x A Desc throw o,(* Step 9 *)
+  | red_spec_object_define_own_prop_5_a : forall S C l x A Desc throw o, (* Step 9 *)
       (attributes_is_data A) <> (descriptor_is_data Desc) ->
       red_expr S C (spec_object_define_own_prop_6a l x A Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_5 l x A Desc throw) o
@@ -2846,6 +2846,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* TODO: call error new *)
 
   (* TODO: call error call *)
+
+  (* TODO: spec_error_or_cst *)
 
   (*------------------------------------------------------------*)
   (** ** Error prototype builtin functions *)

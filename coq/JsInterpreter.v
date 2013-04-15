@@ -555,60 +555,57 @@ Definition object_can_put S l x : result :=
       )
     end).
 
-Definition object_define_own_property S l x Desc str : result :=
-  if_some (run_object_get_own_property S l x) (fun D =>
-    let extensible := run_object_method object_extensible_ S l in
-    (* Note that Array will have a special case there. *)
-    match D with
-    | full_descriptor_undef =>
-      if extensible then (
-        let A :=
+Definition object_define_own_prop S l x Desc str : result :=
+  let B := run_object_method object_define_own_prop_ S l
+  in match B with
+  | builtin_define_own_prop_default =>
+    if_some (run_object_get_own_property S l x) (fun D =>
+      let reject S :=
+        out_error_or_cst S str prealloc_type_error false
+      in match D, run_object_method object_extensible_ S l with
+      | full_descriptor_undef, false => reject S
+      | full_descriptor_undef, true =>
+        let A : attributes :=
           ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
-          then attributes_data_of_descriptor Desc : attributes
-          else attributes_accessor_of_descriptor Desc in
-        let S' := pick (object_set_property S l x A) in
-        out_ter S' true
-      ) else out_reject S str
-    | full_descriptor_some A =>
-      let dop_write S' A' :=
-        let A'' := attributes_update A Desc in
-        let S'' := pick (object_set_property S' l x A'') in
-        out_ter S'' true in
-      ifb descriptor_contains A Desc then
-        out_ter S true
-      else ifb attributes_change_enumerable_on_non_configurable A Desc then
-        out_reject S str
-      else ifb descriptor_is_generic Desc then
-        dop_write S A
-      else ifb attributes_is_data A <> descriptor_is_data Desc then (
-       if neg (attributes_configurable A) then
-         out_reject S str
-       else (
-        let A':=
-          match A return attributes with
-          | attributes_data_of Ad => attributes_accessor_of_attributes_data Ad
-          | attributes_accessor_of Aa => attributes_data_of_attributes_accessor Aa
-          end in
-        let S' := pick (object_set_property S l x A') in
-        dop_write S' A'
-      )) else
-        match A with
-        | attributes_data_of Ad =>
-          ifb descriptor_is_data Desc then (
+          then attributes_data_of_descriptor Desc
+          else attributes_accessor_of_descriptor Desc
+        in let S1 := pick (object_set_property S l x A)
+        in out_ter S1 true
+      | full_descriptor_some A, bext =>
+        let object_define_own_prop_write S A :=
+          let A' := attributes_update A Desc in
+          let S' := pick (object_set_property S l x A') in
+          out_ter S' true
+        in ifb descriptor_contains A Desc then
+          out_ter S true
+        else ifb ~ (attributes_change_enumerable_on_non_configurable A Desc) then
+          reject S
+        else ifb descriptor_is_generic Desc then
+          object_define_own_prop_write S A
+        else ifb attributes_is_data A <> descriptor_is_data Desc then
+          if neg (attributes_configurable A) then
+            reject S
+          else let A':=
+              match A return attributes with
+              | attributes_data_of Ad =>
+                attributes_accessor_of_attributes_data Ad
+              | attributes_accessor_of Aa =>
+                attributes_data_of_attributes_accessor Aa
+              end
+            in let S' := pick (object_set_property S l x A')
+            in object_define_own_prop_write S' A'
+        else match A with
+          | attributes_data_of Ad =>
             ifb attributes_change_data_on_non_configurable Ad Desc then
-              out_reject S str
-            else
-              dop_write S Ad
-          ) else result_stuck
-        | attributes_accessor_of Aa =>
-          ifb descriptor_is_accessor Desc then (
+              reject S
+            else object_define_own_prop_write S A
+          | attributes_accessor_of Aa =>
             ifb attributes_change_accessor_on_non_configurable Aa Desc then
-              out_reject S str
-            else
-              dop_write S Aa
-          ) else result_stuck
-        end
-    end).
+              reject S
+            else object_define_own_prop_write S A
+          end
+      end)
+  end.
 
 
 (**************************************************************)
@@ -649,7 +646,7 @@ Definition object_put_complete runs S C B vthis l x v str : result_void :=
           match vthis with
           | value_object lthis =>
             let Desc := descriptor_intro (Some v) None None None None None in
-            if_success (object_define_own_property S1 l x Desc str) (fun S2 rv =>
+            if_success (object_define_own_prop S1 l x Desc str) (fun S2 rv =>
               out_void S2)
           | value_prim wthis =>
             out_error_or_void S1 str prealloc_type_error
@@ -669,7 +666,7 @@ Definition object_put_complete runs S C B vthis l x v str : result_void :=
               match vthis with
               | value_object lthis =>
                 let Desc := descriptor_intro_data v true true true in
-                if_success (object_define_own_property S1 l x Desc str) (fun S2 rv =>
+                if_success (object_define_own_prop S1 l x Desc str) (fun S2 rv =>
                   out_void S2)
               | value_prim wthis =>
                 out_error_or_void S1 str prealloc_type_error
@@ -743,7 +740,7 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
   | env_record_object l pt =>
     if_bool_option_result (object_has_prop S l x) (fun _ => result_stuck) (fun _ =>
       let A := attributes_data_intro undef true true deletable in
-      if_success (object_define_own_property S l x A throw_true) (fun S1 rv =>
+      if_success (object_define_own_prop S l x A throw_true) (fun S1 rv =>
         out_void S1))
   end.
 
@@ -903,9 +900,9 @@ Definition creating_function_object_proto runs S C l (K : state -> result) : res
   if_object (constructor_builtin runs S C
     (construct_prealloc prealloc_object) nil) (fun S1 lproto =>
     let A1 := attributes_data_intro l true false true in
-    if_success (object_define_own_property S1 lproto "constructor" A1 false) (fun S2 rv1 =>
+    if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 rv1 =>
       let A2 := attributes_data_intro lproto true false false in
-      if_success (object_define_own_property S2 l "prototype" A2 false) (fun S3 rv2 =>
+      if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 rv2 =>
         K S3))).
 
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
@@ -917,14 +914,14 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
-  if_success (object_define_own_property S1 l "length" A1 false) (fun S2 rv1 =>
+  if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 rv1 =>
     creating_function_object_proto runs S2 C l (fun S3 =>
       if negb str then out_ter S3 l
       else (
         let vthrower := value_object prealloc_throw_type_error in
         let A2 := attributes_accessor_intro vthrower vthrower false false in
-        if_success (object_define_own_property S3 l "caller" A2 false) (fun S4 rv2 =>
-          if_success (object_define_own_property S4 l "arguments" A2 false) (fun S5 rv3 =>
+        if_success (object_define_own_prop S3 l "caller" A2 false) (fun S4 rv2 =>
+          if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
 Fixpoint binding_inst_formal_param runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
@@ -960,7 +957,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
               | full_descriptor_some A =>
                 ifb attributes_configurable A then (
                   let A' := attributes_data_intro undef true true bconfig in
-                  if_void (object_define_own_property S1 prealloc_global fname A' true)
+                  if_void (object_define_own_prop S1 prealloc_global fname A' true)
                     follow
                 ) else ifb descriptor_is_accessor A
                   \/ attributes_writable A = false \/ attributes_enumerable A = false then
@@ -1369,7 +1366,7 @@ Fixpoint init_object runs S C l (pds : propdefs) : result :=
   | (pn, pb) :: pds' =>
     let x := string_of_propname pn in
     let follows S1 A :=
-      if_success (object_define_own_property S1 l x A false) (fun S2 rv =>
+      if_success (object_define_own_prop S1 l x A false) (fun S2 rv =>
         init_object runs S2 C l pds') in
     match pb with
     | propbody_val e0 =>
