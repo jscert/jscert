@@ -129,6 +129,11 @@ Section InterpreterEliminations.
 
 Definition get_arg := get_nth undef.
 
+Definition destr_list {A B : Type} (l : list A) (d : B) f :=
+  match l with
+  | nil => d
+  | cons a _ => f a
+  end.
 
 (**************************************************************)
 (** Monadic constructors *)
@@ -937,7 +942,7 @@ Fixpoint binding_inst_formal_param runs S C L (args : list value) (names : list 
           binding_inst_formal_param runs S1 C L (tl args) names' str))
   end.
 
-Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
+Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str (* TODO:  Reread. *) (bconfig : strictness_flag) {struct fds} : result_void :=
   match fds with
   | nil => out_void S
   | fd :: fds' =>
@@ -949,7 +954,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) (bconfig :
         let follow (o : result) :=
           if_void o (fun S2 =>
             if_void (env_record_set_mutable_binding runs S2 C L fname fo str_fd) (fun S3 =>
-              binding_inst_function_decls runs S3 C L fds' bconfig))
+              binding_inst_function_decls runs S3 C L fds' str bconfig))
         in if_bool_option_result (env_record_has_binding S1 L fname) (fun _ =>
           ifb L = env_loc_global_env_record then ( (* TODO:  Use “codetype” for this. *)
             if_some (run_object_get_property S1 prealloc_global fname) (fun D =>
@@ -982,7 +987,7 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) str : result_void
 Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
   arbitrary (* TODO, but not yet formalised in the specification. *).
 
-Definition binding_inst_arguments_object runs S C L (ct : codetype) (funco : option object_loc) p (xs : list prop_name) (args : list value) : result_void :=
+Definition binding_inst_arg_obj runs S C L (ct : codetype) (funco : option (* TODO:  remove this option. *) object_loc) p (xs : list prop_name) (args : list value) : result_void :=
   let name := "arguments" in
   if_some (env_record_has_binding S L name) (fun bdecl =>
     ifb ct = codetype_func /\ ~ bdecl then (
@@ -997,22 +1002,32 @@ Definition binding_inst_arguments_object runs S C L (ct : codetype) (funco : opt
     else out_void S).
 
 Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
-  let L := hd_inhab (execution_ctx_variable_env C) in (* TODO:  Baah! *)
-  let str := execution_ctx_strict C in (* TODO:  Check the semantics (and pass around the argument) *)
-  let (o, names) := match ct, funco with (* TODO:  Alternative way of presenting that:  name the continuation at the bottom and don’t name “o”! *)
-    | codetype_func, Some func =>
-      let names := unsome_default nil (run_object_method object_formal_parameters_ S func) in
-      (binding_inst_formal_param runs S C L args names str, names)
-    | (codetype_global | codetype_eval), None => (out_void S : result, nil)
-    | _, _ => (result_stuck, nil)
-    end in
-  if_void o (fun S1 =>
+  destr_list (execution_ctx_variable_env C) result_stuck (fun L =>
+    let str := prog_intro_strictness p in
+    let follow S' names :=
       let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
-      if_void (binding_inst_function_decls runs S1 C L fds bconfig) (fun S2 =>
-        if_void (binding_inst_arguments_object runs S2 C L ct funco p names args) (fun S3 =>
-          let vds := prog_vardecl p in
-          binding_inst_var_decls runs S2 C L vds str))).
+      if_void (binding_inst_function_decls runs S' C L fds str bconfig) (fun S1 =>
+        if_some (env_record_has_binding S1 L "arguments") (fun bdefined =>
+          let follow2 S' :=
+            let vds := prog_vardecl p in
+            binding_inst_var_decls runs S' C L vds str
+          in match ct, funco, bdefined with
+          | codetype_func, Some func, false =>
+            if_void (binding_inst_arg_obj runs S1 C L ct funco p names args) (fun S2 =>
+              follow2 S2)
+          | codetype_func, _, false => result_stuck
+          | _, _, _ => follow2 S1
+          end))
+    in match ct, funco with
+      | codetype_func, Some func =>
+        if_some (run_object_method object_formal_parameters_ S func) (fun names =>
+          if_void (binding_inst_formal_param runs S C L args names str) (fun S' =>
+            follow S' names))
+      | codetype_func, _ => result_stuck
+      | _, None => follow S nil
+      | _, _ => result_stuck
+      end).
 
 
 Definition execution_ctx_function_call runs S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) : result :=
