@@ -1931,48 +1931,48 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Entering function code  (10.4.3) *)
 
-  (* TODO: make this CPS *)
-  | red_spec_entering_func_code : forall S C lf vthis args bd str o, 
+  | red_spec_entering_func_code : forall S C lf vthis args bd str K o, 
       object_code S lf (Some bd) ->
       str = funcbody_is_strict bd ->
-      red_expr S C (spec_entering_func_code_1 lf args bd vthis str) o ->
-      red_expr S C (spec_entering_func_code lf vthis args) o
+      red_expr S C (spec_entering_func_code_1 lf args bd vthis str K) o ->
+      red_expr S C (spec_entering_func_code lf vthis args K) o
 
-  | red_spec_entering_func_code_1_strict : forall S C lf args bd vthis o, (* Step 1 *)
-      red_expr S C (spec_entering_func_code_3 lf args true bd vthis) o -> 
-      red_expr S C (spec_entering_func_code_1 lf args bd vthis true) o
+  | red_spec_entering_func_code_1_strict : forall S C lf args bd vthis K o, (* Step 1 *)
+      red_expr S C (spec_entering_func_code_3 lf args true bd vthis K) o -> 
+      red_expr S C (spec_entering_func_code_1 lf args bd vthis true K) o
 
-  | red_spec_entering_func_code_1_null_or_undef : forall S C lf args str bd vthis o, (* Step 2 *)
+  | red_spec_entering_func_code_1_null_or_undef : forall S C lf args str bd vthis K o, (* Step 2 *)
       (vthis = null \/ vthis = undef) ->
-      red_expr S C (spec_entering_func_code_3 lf args false bd prealloc_global) o ->
-      red_expr S C (spec_entering_func_code_1 lf args bd vthis false) o
+      red_expr S C (spec_entering_func_code_3 lf args false bd prealloc_global K) o ->
+      red_expr S C (spec_entering_func_code_1 lf args bd vthis false K) o
 
-  | red_spec_entering_func_code_1_not_object : forall S C lf args bd vthis o1 o, (* Step 3 *)
+  | red_spec_entering_func_code_1_not_object : forall S C lf args bd vthis o1 K o, (* Step 3 *)
       (vthis <> null /\ vthis <> undef /\ type_of vthis <> type_object) ->
       red_expr S C (spec_to_object vthis) o1 ->
-      red_expr S C (spec_entering_func_code_2 lf args bd o1) o ->
-      red_expr S C (spec_entering_func_code_1 lf args bd vthis false) o
+      red_expr S C (spec_entering_func_code_2 lf args bd o1 K) o ->
+      red_expr S C (spec_entering_func_code_1 lf args bd vthis false K) o
 
-  | red_spec_entering_func_code_2 : forall S S0 C lf args bd vthis o,
-      red_expr S C (spec_entering_func_code_3 lf args false bd vthis) o ->
-      red_expr S0 C (spec_entering_func_code_2 lf args bd (out_ter S vthis)) o
+  | red_spec_entering_func_code_2 : forall S S0 C lf args bd vthis K o,
+      red_expr S C (spec_entering_func_code_3 lf args false bd vthis K) o ->
+      red_expr S0 C (spec_entering_func_code_2 lf args bd (out_ter S vthis) K) o
 
-  | red_spec_entering_func_code_1_object : forall S C lf args bd (lthis:object_loc) o, (* Step 4 *)
-      red_expr S C (spec_entering_func_code_3 lf args false bd lthis) o ->
-      red_expr S C (spec_entering_func_code_1 lf args bd lthis false) o
+  | red_spec_entering_func_code_1_object : forall S C lf args bd (lthis:object_loc) K o, (* Step 4 *)
+      red_expr S C (spec_entering_func_code_3 lf args false bd lthis K) o ->
+      red_expr S C (spec_entering_func_code_1 lf args bd lthis false K) o
 
-  | red_spec_entering_func_code_3 : forall S C lf args str bd vthis lex lex' S' C' o, (* Steps 5 through 9 *)
+  | red_spec_entering_func_code_3 : forall o1 S C lf args str bd vthis lex lex' S' C' K o, (* Steps 5 through 9 *)
       object_scope S lf (Some lex) ->
       (lex', S') = lexical_env_alloc_decl S lex ->
       C' = execution_ctx_intro_same lex' vthis str ->
-      red_expr S' C' (spec_binding_inst codetype_func (Some lf) (funcbody_prog bd) args) o -> (* rename o to o1 *)
-      (* TODO: add new premise: red S C' (spec_entering_func_code_4 K o1) *)
-      red_expr S C (spec_entering_func_code_3 lf args str bd vthis) o 
+      red_expr S' C' (spec_binding_inst codetype_func (Some lf) (funcbody_prog bd) args) o1 -> 
+      red_expr S' C' (spec_entering_func_code_4 o1 K) o ->
+      red_expr S C (spec_entering_func_code_3 lf args str bd vthis K) o 
+      
+  | red_spec_entering_func_code_4 : forall S0 S C K o, 
+      red_expr S C K o ->
+      red_expr S0 C (spec_entering_func_code_4 (out_void S) K) o 
 
       (*  TODO:   
-          red S C' K o ->
-          red S0 C' (spec_entering_func_code_4 K (out_void S)) o 
-          
           interpreter schema:
              red_entering_func_code S C f :=
                 let C' = ... in
@@ -2274,23 +2274,22 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Function calls for regular functions 13.2.1 *)      
 
-  | red_spec_call_default : forall S C l this args o1 o,      
-      red_expr S C (spec_entering_func_code l this args) o1 ->
-      red_expr S C (spec_call_default_1 l o1) o ->
-      (* TODO: needs to be CPS to change the context *)
+  | red_spec_call_default : forall S C l this args o1 o,  
+      (* Using CPS to change the context *)    
+      red_expr S C (spec_entering_func_code l this args (spec_call_default_1 l)) o ->
       red_expr S C (spec_call_default l this args) o
       
   | red_spec_call_default_1_no_body : forall S0 S C l,
       (* todo: are we not supposed to get an exception when the object is not a function? *)
       (* TODO: check if red_prog return (normal, undef, empty) if function body is empty *)
       object_code S l None ->
-      red_expr S0 C (spec_call_default_1 l (out_void S)) (out_ter S (res_normal undef))
+      red_expr S0 C (spec_call_default_1 l) (out_ter S (res_normal undef))
       
   | red_spec_call_default_1_body : forall S0 S C l bd o1 o,
       object_code S l (Some bd) ->
       red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_call_default_2 o1) o ->
-      red_expr S0 C (spec_call_default_1 l (out_void S)) o
+      red_expr S0 C (spec_call_default_1 l) o
       
   | red_spec_call_default_2_return : forall S C v,
       red_expr S C (spec_call_default_2 (out_ter S (res_return v))) (out_ter S (res_normal v))

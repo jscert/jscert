@@ -304,10 +304,11 @@ Inductive ext_expr :=
 
   (** Extended expressions for function calls *)
 
-  | spec_entering_func_code : object_loc -> value -> list value -> ext_expr
-  | spec_entering_func_code_1 : object_loc -> list value -> funcbody -> value -> strictness_flag -> ext_expr
-  | spec_entering_func_code_2 : object_loc -> list value -> funcbody -> out -> ext_expr
-  | spec_entering_func_code_3 : object_loc -> list value -> strictness_flag -> funcbody -> value -> ext_expr
+  | spec_entering_func_code : object_loc -> value -> list value -> ext_expr -> ext_expr
+  | spec_entering_func_code_1 : object_loc -> list value -> funcbody -> value -> strictness_flag -> ext_expr -> ext_expr
+  | spec_entering_func_code_2 : object_loc -> list value -> funcbody -> out -> ext_expr -> ext_expr
+  | spec_entering_func_code_3 : object_loc -> list value -> strictness_flag -> funcbody -> value -> ext_expr -> ext_expr
+  | spec_entering_func_code_4 : out -> ext_expr -> ext_expr
   
   | spec_binding_inst_formal_params : list value -> env_loc -> list string -> strictness_flag -> ext_expr
   | spec_binding_inst_formal_params_1 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
@@ -382,7 +383,7 @@ Inductive ext_expr :=
   | spec_call_prealloc : prealloc -> list value -> ext_expr
   
   | spec_call_default : object_loc -> value -> list value -> ext_expr
-  | spec_call_default_1 : object_loc -> out -> ext_expr
+  | spec_call_default_1 : object_loc -> ext_expr
   | spec_call_default_2 : out -> ext_expr
   
   | spec_construct : object_loc -> list value -> ext_expr
