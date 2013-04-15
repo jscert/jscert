@@ -124,7 +124,7 @@ PARSER_INC=-I $(shell ocamlfind query xml-light) -I interp/src
 interp/src/parser_syntax.cmx: interp/parser/src/parser_syntax.ml
 	$(OCAMLOPT) -c -o $@ $<
 
-interp/src/pretty_print.cmx: interp/parser/src/pretty_print.ml
+interp/src/pretty_print.cmx: interp/parser/src/pretty_print.ml interp/src/parser_syntax.cmx
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
 interp/src/parser.cmx: interp/parser/src/parser.ml interp/src/parser_syntax.cmx
@@ -145,10 +145,8 @@ interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/inter
 interp/src/prheap.cmi: interp/src/prheap.mli interp/src/interpreter.cmi
 	$(OCAMLOPT) -c -I interp/src -o interp/src/prheap.cmi interp/src/prheap.mli
 
-interp/src/prheap.cmx: interp/src/prheap.ml interp/src/prheap.mli interp/src/interpreter.cmx
-	$(OCAMLOPT) -c -I interp/src -o $@ $^
-
-interp/src/prheap.cmx: interp/src/prheap.cmi
+interp/src/prheap.cmx: interp/src/prheap.ml interp/src/interpreter.cmx interp/src/prheap.cmi
+	$(OCAMLOPT) -c -I interp/src -o $@ ${^:cmi=mli}
 
 interp/run_js: interp/src/parser_syntax.cmx interp/src/parser.cmx interp/src/pretty_print.cmx interp/src/parser_main.cmx interp/src/interpreter.cmx interp/src/translate_syntax.cmx interp/src/prheap.cmx interp/src/run_js.ml
 	$(OCAMLOPT) $(PARSER_INC) -o $@ xml-light.cmxa unix.cmxa str.cmxa $^
