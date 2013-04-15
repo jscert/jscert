@@ -182,7 +182,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_var_decl_item_3 x o1) o ->
       red_stat S0 C (stat_var_decl_item_2 x r (out_ter S v)) o
   
-  | red_stat_var_decl_item_3 : forall S S0 C x r rv, (* Unused variable r. *)
+  | red_stat_var_decl_item_3 : forall S S0 C x rv,
       red_stat S0 C (stat_var_decl_item_3 x (out_ter S rv)) (out_ter S x)
 
   (** Expression (12.4) *)
@@ -236,7 +236,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o ->      
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
 
-  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv R o, (* Unused variable R. *)
+  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv o,
       red_stat S C (spec_expr_get_value_conv_stat e2 spec_to_boolean (stat_do_while_5 labs t1 e2 rv)) o ->
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o
 
