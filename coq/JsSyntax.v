@@ -9,6 +9,15 @@ Require JsNumber.
 Notation "'number'" := (JsNumber.number).
 
 
+(**************************************************************)
+(* TODO for MARTIN: implement *)
+
+(* [heap_keys_as_list h ks] holds if the list [ks] is a
+   permutation of the set of keys of the map [h]. *)
+
+Axiom heap_keys_as_list : forall A B, Heap.heap A B -> list A -> Prop.
+
+
 (************************************************************)
 (************************************************************)
 (************************************************************)

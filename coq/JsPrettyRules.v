@@ -50,7 +50,7 @@ Implicit Type t : stat.
 
 Implicit Type c : call.
 Implicit Type cstr : construct.
-
+Implicit Type xs : list prop_name.
 
 
 (**************************************************************)
@@ -2464,7 +2464,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_new_1 v) (out_ter S' l)
 
   (** GetPrototypeOf (returns value)  (15.2.3.2) *)
-  (* TODO: rename get_prototype into get_proto *)
 
   | red_spec_call_object_get_proto_of : forall S C v r args o, 
       arguments_from args (v::nil) ->
@@ -2480,99 +2479,38 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_get_proto_of_1 l) (out_ter S v)
 
   (** IsSealed (returns bool)  (15.2.3.11) *)  
-(* Daniele: remove comment once [red_spec_object_iter_own_prop] is fixed
-  | red_spec_call_object_is_sealed : forall S C v o args, 
-      arguments_from args (v::nil) ->
-      red_expr S C (spec_call_object_is_sealed_1 v) o ->
-      red_expr S C (spec_call_prealloc prealloc_object_is_sealed args) o
 
-  | red_spec_call_object_is_sealed_1_not_object : forall S C v o, 
-      type_of v <> type_object ->
-      red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (spec_call_object_is_sealed_1 v) o
-
-  (* Note: the spec says: 
-        For each named own property name P of O,
-          a. Let desc be the result of calling the [[GetOwnProperty]] 
-             internal method of O with P.
-          b. If desc.[[Configurable]] is true, then return false.
-     However, in this rule we don't actually call [[GetOwnProperty]], but instead
-     we directly iterate through the list of properties [(x,A)]. (since out goal 
-     is just to check the [configurable] field of A, this should be safe. *)
-
-  | red_spec_call_object_is_sealed_1_object : forall S C l x o, 
-      red_expr S C (spec_object_iter_own_prop l spec_call_object_is_sealed_2 (spec_call_object_is_sealed_3 l)) -> o
-      red_expr S C (spec_call_object_is_sealed_1 l) o
-
-  | red_spec_call_object_is_sealed_2_prop_is_configurable : forall S C A K, 
-      attributes_configurable A = true ->
-      red_expr S C (spec_call_object_is_sealed_2 x A K) (out_ter S false)
-
-  | red_spec_call_object_is_sealed_2_prop_is_not_configurable : forall S C A K, 
-      attributes_configurable A = false ->
-      red_expr S C K o ->
-      red_expr S C (spec_call_object_is_sealed_2 x A K) o
-
- | red_spec_call_object_is_sealed_3 : forall S C l b,  
-      object_extensible S l b -> 
-      red_expr S C (spec_call_object_is_sealed_3 l) (out_ter S (negb b))
-
-  (* red_spec_object_iter_own_prop *)
-
-  | red_spec_object_iter_own_prop : forall S C P l o, 
-      object_properties S l P -> 
-      map_as_list P L -> 
-      red_expr S C (spec_iter_properties_1 L Kprop Knil) o ->
-      red_expr S C (spec_object_iter_own_prop l Kprop Knil) o
-
-  | red_spec_object_iter_own_prop_nil : forall S C o, 
-      red_expr S C Knil o -> 
-      red_expr S C (spec_object_iter_own_prop_1 nil Kprop Knil) o
-
-  | red_spec_object_iter_own_prop_cons : forall S C A x o, 
-      red_expr S C (Kprop x A (spec_iter_properties_1 L Kprop Knil)) o -> 
-      red_expr S C (spec_object_iter_own_prop_1 ((x, A)::L) Kprop Knil) o
-*)
-
-(** IsSealed (returns bool)  (15.2.3.11) *)  
-
-  (* 0 *)
-  | red_spec_call_object_is_sealed : forall S C v o args, 
+  | red_spec_call_object_is_sealed : forall S C v o args, (* Step 0 *)
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_is_sealed_1 v) o ->
       red_expr S C (spec_call_prealloc prealloc_object_is_sealed args) o
  
-  (* 1 *)
-  | red_spec_call_object_is_sealed_1_not_object : forall S C v o, 
+  | red_spec_call_object_is_sealed_1_not_object : forall S C v o, (* Step 1 *)
       type_of v <> type_object ->
       red_expr S C (spec_error prealloc_type_error) o ->
       red_expr S C (spec_call_object_is_sealed_1 v) o
 
-  | red_spec_call_object_is_sealed_1_object : forall S C l (L:list prop_name) P x o, 
-      object_properties S l P ->
-      L = map_as_list P -> 
-      red_expr S C (spec_call_object_is_sealed_2 l L) o ->
+  | red_spec_call_object_is_sealed_1_object : forall S C l xs x o, (* Step 2 *)
+      object_properties_keys_as_list S l xs ->
+      red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
       red_expr S C (spec_call_object_is_sealed_1 l) o
+               
+  | red_spec_call_object_is_sealed_2_cons : forall S C l xs x o, (* Step 2.a *)
+      red_expr S C (spec_object_get_own_prop l x (spec_call_object_is_sealed_3 l xs)) o ->
+      red_expr S C (spec_call_object_is_sealed_2 l (x::xs)) o
 
-  (* 2 *)
-  | red_spec_call_object_is_sealed_2_nil : forall S C l b x o,
+  | red_spec_call_object_is_sealed_3_prop_configurable : forall S C A xs l x o, (* Step 2.b, true *)
+      attributes_configurable A = true ->
+      red_expr S C (spec_call_object_is_sealed_3 l xs A) (out_ter S false)
+
+  | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S C A xs l x o, (* Step 2.b, false *)
+      attributes_configurable A = false ->
+      red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
+      red_expr S C (spec_call_object_is_sealed_3 l xs A) o
+
+  | red_spec_call_object_is_sealed_2_nil : forall S C l b x o, (* Step 3-4 *)
       object_extensible S l b ->
       red_expr S C (spec_call_object_is_sealed_2 l nil) (out_ter S (negb b))
-               
-  | red_spec_call_object_is_sealed_2_cons : forall S C l (L:list prop_name) x o, 
-      red_expr S C (spec_object_get_own_prop l x (spec_call_object_is_sealed_3 l L)) o ->
-      red_expr S C (spec_call_object_is_sealed_2 l (x::L)) o
-
-  (* 3 *)
-  | red_spec_call_object_is_sealed_3_prop_configurable : forall S C A (L:list prop_name) l x o,
-      attributes_configurable A = true ->
-      red_expr S C (spec_call_object_is_sealed_3 l L A) (out_ter S false)
-
-  (* 4 *)
-  | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S C A (L:list prop_name) l x o,
-      attributes_configurable A = false ->
-      red_expr S C (spec_call_object_is_sealed_2 l L) o ->
-      red_expr S C (spec_call_object_is_sealed_3 l L A) o
 
   (** IsFrozen (returns bool)  (15.2.3.12) *)
     (* TODO *)

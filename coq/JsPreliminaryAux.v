@@ -345,12 +345,4 @@ Proof.
 Qed.
 
 
-(**************************************************************)
-
-(* Daniele: this is used for some builtin functions which 
-   have to iterate through all of the properties of an object 
-   (e.g. Object.isSealed() ) *)
-(* TODO: implement *)
-Axiom map_as_list : object_properties_type -> list prop_name.
-
 

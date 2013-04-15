@@ -280,6 +280,13 @@ Definition object_code S l bd :=
 Definition object_properties S l P :=
   exists O, object_binds S l O /\ P = object_properties_ O.
 
+(** [object_properties_keys_as_list S l xs] asserts that [xs]
+    is the list of property names associated to the object
+    stored at address [l] in [S] (the list can be in any order). *)
+
+Definition object_properties_keys_as_list S l xs :=
+  exists P, object_properties S l P /\ heap_keys_as_list P xs.
+
 (** Map a function [F] on the properties field of an object,
     and returns the updated object. *)
 
