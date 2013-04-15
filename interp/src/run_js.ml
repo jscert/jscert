@@ -85,7 +85,7 @@ let _ =
             begin
 			  if !printHeap then
 			    print_endline
-					(Prheap.prheap !skipInit (Interpreter.state_object_heap state)) ;
+					(Prheap.prstate !skipInit state) ;
               match Interpreter.res_type res with
               | Interpreter.Restype_normal ->
                  (if (not !test) then
