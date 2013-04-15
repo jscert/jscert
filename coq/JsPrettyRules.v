@@ -182,7 +182,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_var_decl_item_3 x o1) o ->
       red_stat S0 C (stat_var_decl_item_2 x r (out_ter S v)) o
   
-  | red_stat_var_decl_item_3 : forall S S0 C x r rv, (* Unused variable r. *)
+  | red_stat_var_decl_item_3 : forall S S0 C x rv,
       red_stat S0 C (stat_var_decl_item_3 x (out_ter S rv)) (out_ter S x)
 
   (** Expression (12.4) *)
@@ -236,7 +236,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o ->      
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
 
-  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv R o, (* Unused variable R. *)
+  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv o,
       red_stat S C (spec_expr_get_value_conv_stat e2 spec_to_boolean (stat_do_while_5 labs t1 e2 rv)) o ->
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o
 
@@ -628,7 +628,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_call_4 (resvalue_value v) l is_eval_direct vs) o
    
   | red_expr_call_5_eval : forall S0 S C l is_eval_direct vs v o, (* Step 8, special for eval *)
-      red_expr S C (spec_eval is_eval_direct v vs) o ->
+      red_expr S C (spec_call_global_eval is_eval_direct vs) o ->
       red_expr S0 C (expr_call_5 prealloc_global_eval is_eval_direct vs (out_ter S v)) o
    
    | red_expr_call_5_not_eval : forall S0 S C l is_eval_direct vs v o, (* Step 8 *)
@@ -1924,10 +1924,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      
   (*------------------------------------------------------------*)
   (** ** Operations on execution contexts and entering of function code (10.4) *)
+  
+  (** Entering function code  (10.4.2) *)
       
-  | red_spec_entering_eval_code : forall S C bd o,
+  | red_spec_entering_eval_code : forall S C is_direct_call bd K o,
       (* TODO! *)
-      red_expr S C (spec_entering_eval_code bd) o  
+      red_expr S C (spec_entering_eval_code is_direct_call bd K) o  
 
   (** Entering function code  (10.4.3) *)
 
@@ -2357,26 +2359,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Eval (returns value) *)  
 
-  | red_spec_call_global_eval : forall S C args v o,
+  | red_spec_call_global_eval : forall S C is_direct_call args v o,
       arguments_from args (v::nil) ->
-      red_expr S C (spec_call_global_eval_1 v) o ->
-      red_expr S C (spec_call_prealloc prealloc_global_eval args) o
+      red_expr S C (spec_call_global_eval_1 is_direct_call v) o ->
+      red_expr S C (spec_call_global_eval is_direct_call args) o
 
-  | red_spec_call_global_eval_1_not_string : forall S C v,
+  | red_spec_call_global_eval_1_not_string : forall S C is_direct_call v,
       type_of v <> type_string ->
-      red_expr S C (spec_call_global_eval_1 v) (out_ter S v)  
+      red_expr S C (spec_call_global_eval_1 is_direct_call v) (out_ter S v)  
       
-  | red_spec_call_global_eval_1_string_not_parse : forall s S C o,
+  | red_spec_call_global_eval_1_string_not_parse : forall s S C is_direct_call o,
       parse s None ->
       red_expr S C (spec_error prealloc_syntax_error) o -> 
-      red_expr S C (spec_call_global_eval_1 s) o 
+      red_expr S C (spec_call_global_eval_1 is_direct_call s) o 
       
-  | red_spec_call_global_eval_1_string_parse : forall s p S C o,
+  | red_spec_call_global_eval_1_string_parse : forall s p S C is_direct_call o,
       parse s (Some p) ->
-      (* TODO: the entering is no longer in cps form
-      red_expr S C (spec_entering_eval_code (spec_call_global_eval_1_2 p) (funcbody_intro p s)) o -> 
-      *)
-      red_expr S C (spec_call_global_eval_1 s) o 
+      red_expr S C (spec_entering_eval_code is_direct_call (funcbody_intro p s) (spec_call_global_eval_1_2 p)) o -> 
+      red_expr S C (spec_call_global_eval_1 is_direct_call s) o 
       
   | red_spec_call_global_eval_1_2 : forall o1 S C p o,
       red_prog S C p o1 ->

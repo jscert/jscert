@@ -593,7 +593,9 @@ Definition descriptor_contains Desc_old Desc_new :=
 
 Definition descriptor_enumerable_not_same A Desc :=
    match descriptor_enumerable Desc with
-   | None => True
+   | None => False (* TODO Check: Changed from True to False since the spec says (8.12.9 Step 7b):
+                      "Reject, if the [[Enumerable]] field of Desc is present 
+                      and the [[Enumerable]] fields of current and Desc are the Boolean negation of each other" *)
    | Some b => b <> (attributes_enumerable A)
    end.
 
