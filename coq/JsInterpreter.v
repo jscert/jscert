@@ -443,7 +443,7 @@ Definition identifier_res S C x :=
   let str := execution_ctx_strict C in
   lexical_env_get_identifier_ref S X x str.
 
-Definition object_get_builtin runs S C B vthis l x : result :=
+Definition object_get_builtin runs S C B vthis l x : result := (* Corresponds to the construction [spec_object_get_1] of the specification. *)
   match B with
   | builtin_get_default =>
     if_some (run_object_get_property S l x) (fun D =>
@@ -468,7 +468,7 @@ Definition object_get_builtin runs S C B vthis l x : result :=
     result_stuck (* TODO:  Check *)
   end.
 
-Definition object_get runs S C v x : result :=
+Definition object_get runs S C v x : result := (* This [v] should be a location. *)
   match v with
   | value_object l =>
     let B := run_object_method object_get_ S l in
@@ -780,13 +780,6 @@ Definition to_default runs S C l (prefo : option preftype) : result :=
       let lf := value_object lfo in
       match run_callable S lf with
       | Some fc =>
-        (* We burden from the beginning to the end those [run_call']
-        attributes, while we could burden only [call'] attributes
-        which seems lighter and clearer, all hat because of the next
-        line (which could actually be replaced by a [call], but would
-        it be clearer to add such a deferencing?) *)
-        (* In fact, that may be a bad idea as some non yet implemented
-        primitive may need to call directly run_call' afterwards. *)
         if_success_value runs C
           (wraped_run_call runs S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
           match v with
@@ -931,7 +924,7 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
           if_success (object_define_own_property S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
-Fixpoint binding_inst_formal_args runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
+Fixpoint binding_inst_formal_param runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
   match names with
   | nil => out_void S
   | argname :: names' =>
@@ -941,7 +934,7 @@ Fixpoint binding_inst_formal_args runs S C L (args : list value) (names : list s
         (if hb then (* TODO:  There might be a factorisation there:  look at the semantics for updates. *)
           env_record_set_mutable_binding runs S C L argname v (execution_ctx_strict C)
         else env_record_create_set_mutable_binding runs S C L argname None v (execution_ctx_strict C)) (fun S1 =>
-          binding_inst_formal_args runs S1 C L (tl args) names' str))
+          binding_inst_formal_param runs S1 C L (tl args) names' str))
   end.
 
 Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) (bconfig : strictness_flag) {struct fds} : result_void :=
@@ -1009,7 +1002,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
   let (o, names) := match ct, funco with (* TODO:  Alternative way of presenting that:  name the continuation at the bottom and don’t name “o”! *)
     | codetype_func, Some func =>
       let names := unsome_default nil (run_object_method object_formal_parameters_ S func) in
-      (binding_inst_formal_args runs S C L args names str, names)
+      (binding_inst_formal_param runs S C L args names str, names)
     | (codetype_global | codetype_eval), None => (out_void S : result, nil)
     | _, _ => (result_stuck, nil)
     end in

@@ -182,7 +182,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_var_decl_item_3 x o1) o ->
       red_stat S0 C (stat_var_decl_item_2 x r (out_ter S v)) o
   
-  | red_stat_var_decl_item_3 : forall S S0 C x r rv, 
+  | red_stat_var_decl_item_3 : forall S S0 C x r rv, (* Unused variable r. *)
       red_stat S0 C (stat_var_decl_item_3 x (out_ter S rv)) (out_ter S x)
 
   (** Expression (12.4) *)
@@ -236,7 +236,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o ->      
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
 
-  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv R o,
+  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv R o, (* Unused variable R. *)
       red_stat S C (spec_expr_get_value_conv_stat e2 spec_to_boolean (stat_do_while_5 labs t1 e2 rv)) o ->
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o
 
@@ -1651,7 +1651,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ref_base r = ref_base_type_value v ->
       ext_get = (If ref_has_primitive_base r
         then spec_prim_value_get
-        else spec_object_get) ->
+        else spec_object_get) -> (* It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
       red_expr S C (ext_get v (ref_name r)) o ->
       red_expr S C (spec_get_value r) o
 
