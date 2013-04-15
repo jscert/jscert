@@ -628,7 +628,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_call_4 (resvalue_value v) l is_eval_direct vs) o
    
   | red_expr_call_5_eval : forall S0 S C l is_eval_direct vs v o, (* Step 8, special for eval *)
-      red_expr S C (spec_eval is_eval_direct v vs) o ->
+      red_expr S C (spec_call_global_eval is_eval_direct vs) o ->
       red_expr S0 C (expr_call_5 prealloc_global_eval is_eval_direct vs (out_ter S v)) o
    
    | red_expr_call_5_not_eval : forall S0 S C l is_eval_direct vs v o, (* Step 8 *)
@@ -1924,10 +1924,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      
   (*------------------------------------------------------------*)
   (** ** Operations on execution contexts and entering of function code (10.4) *)
+  
+  (** Entering function code  (10.4.2) *)
       
-  | red_spec_entering_eval_code : forall S C bd o,
+  | red_spec_entering_eval_code : forall S C is_direct_call bd K o,
       (* TODO! *)
-      red_expr S C (spec_entering_eval_code bd) o  
+      red_expr S C (spec_entering_eval_code is_direct_call bd K) o  
 
   (** Entering function code  (10.4.3) *)
 
@@ -2357,26 +2359,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Eval (returns value) *)  
 
-  | red_spec_call_global_eval : forall S C args v o,
+  | red_spec_call_global_eval : forall S C is_direct_call args v o,
       arguments_from args (v::nil) ->
-      red_expr S C (spec_call_global_eval_1 v) o ->
-      red_expr S C (spec_call_prealloc prealloc_global_eval args) o
+      red_expr S C (spec_call_global_eval_1 is_direct_call v) o ->
+      red_expr S C (spec_call_global_eval is_direct_call args) o
 
-  | red_spec_call_global_eval_1_not_string : forall S C v,
+  | red_spec_call_global_eval_1_not_string : forall S C is_direct_call v,
       type_of v <> type_string ->
-      red_expr S C (spec_call_global_eval_1 v) (out_ter S v)  
+      red_expr S C (spec_call_global_eval_1 is_direct_call v) (out_ter S v)  
       
-  | red_spec_call_global_eval_1_string_not_parse : forall s S C o,
+  | red_spec_call_global_eval_1_string_not_parse : forall s S C is_direct_call o,
       parse s None ->
       red_expr S C (spec_error prealloc_syntax_error) o -> 
-      red_expr S C (spec_call_global_eval_1 s) o 
+      red_expr S C (spec_call_global_eval_1 is_direct_call s) o 
       
-  | red_spec_call_global_eval_1_string_parse : forall s p S C o,
+  | red_spec_call_global_eval_1_string_parse : forall s p S C is_direct_call o,
       parse s (Some p) ->
-      (* TODO: the entering is no longer in cps form
-      red_expr S C (spec_entering_eval_code (spec_call_global_eval_1_2 p) (funcbody_intro p s)) o -> 
-      *)
-      red_expr S C (spec_call_global_eval_1 s) o 
+      red_expr S C (spec_entering_eval_code is_direct_call (funcbody_intro p s) (spec_call_global_eval_1_2 p)) o -> 
+      red_expr S C (spec_call_global_eval_1 is_direct_call s) o 
       
   | red_spec_call_global_eval_1_2 : forall o1 S C p o,
       red_prog S C p o1 ->
