@@ -2140,7 +2140,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_formal_params args L xs (prog_intro_strictness code)) o1 ->
       red_expr S C (spec_binding_inst_2 codetype_func lf code xs args L o1) o -> 
       red_expr S C (spec_binding_inst_1 codetype_func (Some lf) code args L) o
-      
+
   | red_spec_binding_inst_2 : forall S0 xs S C lf code args L o, (* Step 4a *)
       red_expr S C (spec_binding_inst_3 codetype_func (Some lf) code xs args L) o -> 
       red_expr S0 C (spec_binding_inst_2 codetype_func lf code xs args L (out_void S)) o      
@@ -2150,7 +2150,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_3 ct None code nil args L) o ->
       red_expr S C (spec_binding_inst_1 ct None code args L) o
 
-  | red_spec_binding_inst_function_2 : forall o1 bconfig L S C ct lf code fds xs args o, (* Step 5 *)
+  | red_spec_binding_inst_function_2 (* red_spec_binding_inst_3? -- Martin *) : forall o1 bconfig L S C ct lf code fds xs args o, (* Step 5 *)
       bconfig = (If ct = codetype_eval then true else false) -> (* Step 2 *)
       fds = prog_funcdecl code -> 
       red_expr S C (spec_binding_inst_function_decls args L fds (prog_intro_strictness code) bconfig) o1 ->
@@ -2175,7 +2175,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_8 code bconfig L) o ->
       red_expr S C (spec_binding_inst_7 code bconfig L (out_void S)) o
       
-  | red_spec_binding_inst_6_false_not_function : forall o1 L S0 S C ct lf code xs args bconfig bdefined o, (* Step 7 not needed *)
+  | red_spec_binding_inst_6_false_not_function : forall o1 L S0 S C ct lf code xs args bconfig bdefined o, (* Step 7 not needed *) (* [lf] is of type [option object_loc] and not [object_loc]:  is that willingly? *)
       ct <> codetype_func \/ bdefined = true ->
       red_expr S C (spec_binding_inst_8 code bconfig L) o ->
       red_expr S0 C (spec_binding_inst_6 ct lf code xs args bconfig L (out_ter S bdefined)) o
