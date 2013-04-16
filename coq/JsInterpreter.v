@@ -4,15 +4,12 @@ Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 
 (* TODO list:
-    label_sets
     binding_inst_formal_params
     binding_inst_var_decls
     expr_new
     expr_get_value_conv_stat
-    expr_function_unnamed
     expr_conditional
-    spec_object_get
-    spec_object_get_own_prop
+    spec_object_get (* Need specification *)
     spec_object_can_put
     spec_call (split run_call)
     spec_call_to_default
@@ -29,7 +26,7 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     abort_intercepted_expr
     spec_creating_function_object_proto
     spec_call_object_is_sealed
-    spec_create_arguments_object
+    spec_create_arguments_object (* Not yet specified *)
 *)
 
 (**************************************************************)
@@ -335,36 +332,14 @@ Definition run_call_full runs S C l vthis args : result :=
 Definition run_decl_env_record_binds_value Ed x : value :=
   snd (pick (Heap.binds Ed x)).
 
-Definition run_object_get_own_prop_base P x : full_descriptor :=
-  match Heap.read_option P x with
-  | None => full_descriptor_undef
-  | Some A => full_descriptor_some A
+Definition run_object_get_own_prop S l x : option full_descriptor :=
+  match run_object_method object_get_own_prop_ S l with
+  | builtin_get_own_prop_default =>
+    let P := run_object_method object_properties_ S l in
+    morph_option (Some full_descriptor_undef)
+      (fun A => Some (A : full_descriptor))
+      (Heap.read_option P x)
   end.
-
-Definition run_object_get_own_property_default S l x : full_descriptor :=
-  run_object_get_own_prop_base (run_object_method object_properties_ S l) x.
-
-Definition run_object_get_own_property S l x : option full_descriptor :=
-  let sclass := run_object_method object_class_ S l in
-  let D := run_object_get_own_property_default S l x in
-  ifb sclass = "String" then (
-    ifb D <> full_descriptor_undef then Some D
-    else let ix := convert_primitive_to_integer x in
-    ifb prim_string x <> convert_prim_to_string (JsNumber.absolute ix) then
-      Some full_descriptor_undef
-    else (
-      match run_object_method object_prim_value_ S l with
-      | Some (prim_string s) =>
-        Some (
-          let len : int := String.length s in
-          let i := JsNumber_to_int ix in
-          ifb len <= i then full_descriptor_undef
-          else let s' := string_sub s i 1 in
-            attributes_data_intro s' false true false)
-      | _ => None
-      end
-    )
-  ) else Some D.
 
 Definition object_get_property_body run_object_get_property S v x : option full_descriptor :=
   match v with
@@ -377,7 +352,7 @@ Definition object_get_property_body run_object_get_property S v x : option full_
         let lproto := run_object_method object_proto_ S l in
         run_object_get_property S lproto x
       ) else Some D)
-      (run_object_get_own_property S l x)
+      (run_object_get_own_prop S l x)
   end.
 
 Definition run_object_get_property := FixFun3 object_get_property_body.
@@ -463,12 +438,12 @@ Definition object_get_builtin runs S C B vthis l x : result := (* Corresponds to
             run_call_full runs S C lf lthis nil
           | value_prim _ => result_stuck
           end
-        | value_prim _ => (* TODO:  Check the specification once it will have been updated. *)
+        | value_prim _ => (* TODO:  Wait for the specification. *)
           result_stuck
         end
       end)
   | builtin_get_function =>
-    result_stuck (* TODO:  Check *)
+    result_stuck (* TODO:  Wait for the specification *)
   end.
 
 Definition object_get runs S C v x : result := (* This [v] should be a location. *)
@@ -527,7 +502,7 @@ Definition env_record_get_binding_value runs S C L x str : result :=
     end).
 
 Definition object_can_put S l x : result :=
-  if_some (run_object_get_own_property S l x) (fun D =>
+  if_some (run_object_get_own_prop S l x) (fun D =>
     let oe := run_object_method object_extensible_ S l in
     match D with
     | full_descriptor_some A =>
@@ -559,7 +534,7 @@ Definition object_define_own_prop S l x Desc str : result :=
   let B := run_object_method object_define_own_prop_ S l
   in match B with
   | builtin_define_own_prop_default =>
-    if_some (run_object_get_own_property S l x) (fun D =>
+    if_some (run_object_get_own_prop S l x) (fun D =>
       let reject S :=
         out_error_or_cst S str prealloc_type_error false
       in match D, run_object_method object_extensible_ S l with
@@ -639,7 +614,7 @@ Definition object_put_complete runs S C B vthis l x v str : result_void :=
 
   | builtin_put_default =>
     if_success_bool (object_can_put S l x) (fun S1 =>
-      if_some (run_object_get_own_property S1 l x) (fun D =>
+      if_some (run_object_get_own_prop S1 l x) (fun D =>
         match D with
         
         | attributes_data_of Ad =>
@@ -1269,7 +1244,7 @@ Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
 
 Definition object_delete S l x str : result :=
   let B := run_object_method object_delete_ S l in
-  if_some (run_object_get_own_property S l x) (fun D =>
+  if_some (run_object_get_own_prop S l x) (fun D =>
     match D with
     | full_descriptor_undef => out_ter S true
     | full_descriptor_some A =>
@@ -1465,7 +1440,8 @@ Definition run_expr_assign run_binary_op' runs S C (opo : option binary_op) e1 e
 Definition run_expr_function runs S C fo args bd : result :=
   match fo with
   | None =>
-    creating_function_object runs S C args bd (execution_ctx_lexical_env C) (funcbody_is_strict bd)
+    let lex := execution_ctx_lexical_env C in
+    creating_function_object runs S C args bd lex (funcbody_is_strict bd)
   | Some fn =>
     let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
     let follow L :=
@@ -1474,7 +1450,7 @@ Definition run_expr_function runs S C fo args bd : result :=
         if_object (creating_function_object runs S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
           if_void (env_record_initialize_immutable_binding S2 L fn l) (fun S3 =>
             out_ter S3 l))) in
-    map_nth (fun _ : unit => arbitrary) (fun L _ => follow L) 0 lex' tt
+    map_nth (fun _ : unit => result_stuck) (fun L _ => follow L) 0 lex' tt
   end.
 
 Definition run_eval S C (is_eval_direct : bool) (vthis : value) (vs : list value) :=

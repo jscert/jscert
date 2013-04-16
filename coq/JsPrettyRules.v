@@ -650,7 +650,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_env_record_create_immutable_binding L s) o1 ->
       red_expr S' C (expr_function_1 s args bd L lex' o1) o -> 
       red_expr S C (expr_function (Some s) args bd) o 
-      
+
   | red_expr_function_named_1 : forall o1 S0 S C s args bd L scope o,
       red_expr S C (spec_creating_function_object args bd scope (funcbody_is_strict bd)) o1 ->
       red_expr S C (expr_function_2 s L o1) o ->
