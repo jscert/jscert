@@ -4,20 +4,16 @@ Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 
 (* TODO list:
-    binding_inst_formal_params
-    binding_inst_var_decls
     expr_new
     expr_get_value_conv_stat
     expr_conditional
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
-    (rename to_default)
     spec_call_to_prealloc
     spec_call_prog
     spec_constructor_builtin
     spec_error_type_error
     spec_constructor
     spec_function_constructor
-    spec_binding_inst
     spec_construct_to_prealloc
     spec_construct_default
     abort_intercepted_expr
@@ -734,31 +730,37 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
 (**************************************************************)
 (** Conversions *)
 
-Definition to_default runs S C l (prefo : option preftype) : result :=
-  let gpref := unsome_default preftype_number prefo in
-  let lpref := other_preftypes gpref in
-  let gmeth := method_of_preftype gpref in
-  let sub x K :=
-    if_object (object_get runs S C l x) (fun S1 lfo =>
-      let lf := value_object lfo in
-      match run_callable S lf with
-      | Some B =>
-        if_success_value runs C
-          (wraped_run_call_full runs S C lfo l nil) (fun S2 v =>
-          match v with
-          | value_prim w => out_ter S w
-          | value_object l => K tt
-          end)
-      | None => K tt
-      end) in
-  sub gmeth (fun _ =>
-    let lmeth := method_of_preftype lpref in
-    sub lmeth (fun _ => out_type_error S)).
+Definition object_default_value runs S C l (prefo : option preftype) : result :=
+  match run_object_method object_default_value_ S l with
+
+  | builtin_default_value_default =>
+    let gpref := unsome_default preftype_number prefo in
+    let lpref := other_preftypes gpref in
+    let gmeth := method_of_preftype gpref in
+    let sub S' x K :=
+      if_object (object_get runs S' C l x) (fun S1 lfo =>
+        let lf := value_object lfo in
+        match run_callable S lf with
+        | Some B =>
+          if_success_value runs C
+            (wraped_run_call_full runs S C lfo l nil) (fun S2 v =>
+            match v with
+            | value_prim w => out_ter S w
+            | value_object l => K S2
+            end)
+        | None => K S1
+        end) in
+    sub S gmeth (fun S' =>
+      let lmeth := method_of_preftype lpref in
+      sub S' lmeth (fun _ => out_type_error S))
+
+  end.
+
 
 Definition to_primitive runs S C v (prefo : option preftype) : result :=
   match v with
   | value_prim w => out_ter S w
-  | value_object l => to_default runs S C l prefo
+  | value_object l => object_default_value runs S C l prefo
   end.
 
 Definition to_number runs S C v : result :=
@@ -887,17 +889,17 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
           if_success (object_define_own_prop S4 l "arguments" A2 false) (fun S5 rv3 =>
             out_ter S5 l))))).
 
-Fixpoint binding_inst_formal_param runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
+Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
   match names with
   | nil => out_void S
   | argname :: names' =>
     let v := hd undef args in
     if_some (env_record_has_binding S L argname) (fun hb =>
-      if_void
-        (if hb then (* TODO:  There might be a factorisation there:  look at the semantics for updates. *)
-          env_record_set_mutable_binding runs S C L argname v (execution_ctx_strict C)
-        else env_record_create_set_mutable_binding runs S C L argname None v (execution_ctx_strict C)) (fun S1 =>
-          binding_inst_formal_param runs S1 C L (tl args) names' str))
+      let follow S' :=
+        if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S1 =>
+          binding_inst_formal_params runs S1 C L (tl args) names' str)
+      in if hb then follow S
+      else if_void (env_record_create_mutable_binding S L argname None) follow)
   end.
 
 Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfig {struct fds} : result_void :=
@@ -931,14 +933,14 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
             if_void (env_record_create_mutable_binding S1 L fname (Some bconfig)) follow))
   end.
 
-Fixpoint binding_inst_var_decls runs S C L (vds : list string) str : result_void :=
+Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : result_void :=
   match vds with
   | nil => out_void S
   | vd :: vds' =>
-    let bivd S := binding_inst_var_decls runs S C L vds' str in
+    let bivd S := binding_inst_var_decls runs S C L vds' bconfig str in
     if_bool_option_result (env_record_has_binding S L vd) (fun _ =>
       bivd S) (fun _ =>
-      if_void (env_record_create_set_mutable_binding runs S C L vd (Some str) undef (execution_ctx_strict C)) (fun S1 =>
+      if_void (env_record_create_set_mutable_binding runs S C L vd (Some bconfig) undef str) (fun S1 =>
         bivd S1))
   end.
 
@@ -965,7 +967,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
         if_some (env_record_has_binding S1 L "arguments") (fun bdefined =>
           let follow2 S' :=
             let vds := prog_vardecl p in
-            binding_inst_var_decls runs S' C L vds str
+            binding_inst_var_decls runs S' C L vds str (prog_intro_strictness p)
           in match ct, funco, bdefined with
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S1 C func p names args L) (fun S2 =>
@@ -976,7 +978,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
     in match ct, funco with
       | codetype_func, Some func =>
         if_some (run_object_method object_formal_parameters_ S func) (fun names =>
-          if_void (binding_inst_formal_param runs S C L args names str) (fun S' =>
+          if_void (binding_inst_formal_params runs S C L args names str) (fun S' =>
             follow S' names))
       | codetype_func, _ => result_stuck
       | _, None => follow S nil

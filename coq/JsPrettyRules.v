@@ -1083,6 +1083,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Conversions (9) *)
 
+  (* TODO:  spec_to_primitive_auto *)
+
   (** Conversion to primitive (returns prim) (9.1) *)
 
   | red_spec_to_primitive_pref_prim : forall S C w prefo,
@@ -2093,7 +2095,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_var_decls_cons : forall o1 L S0 S C vd vds bconfig str o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
       red_expr S C (spec_binding_inst_var_decls_1 L vd vds bconfig str o1) o ->
-      red_expr S0 C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o
+      red_expr S0 C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o (* I think this [S0] should be removed of this rule. -- Martin. *)
 
   | red_spec_binding_inst_var_decls_1_true : forall o1 L S0 S C vd vds bconfig str o, (* Step 8c *)
       red_expr S C (spec_binding_inst_var_decls L vds bconfig str) o ->
@@ -2162,7 +2164,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_function_4 : forall bconfig L S0 S C ct lf code xs args o, (* Step 5 not needed *)
       red_expr S C (spec_binding_inst_5 ct lf code xs args bconfig L) o ->
       red_expr S0 C (spec_binding_inst_4 ct lf code xs args bconfig L (out_void S)) o
-      
+
   | red_spec_binding_inst_5 : forall o1 L S C ct lf code xs args bconfig o, (* Step 6 *)
       red_expr S C (spec_env_record_has_binding L "arguments") o1 ->
       red_expr S C (spec_binding_inst_6 ct lf code xs args bconfig L o1) o ->
