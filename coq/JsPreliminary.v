@@ -898,6 +898,13 @@ Definition execution_ctx_intro_same X lthis strict :=
 Definition execution_ctx_with_lex C lex :=
   match C with execution_ctx_intro x1 x2 x3 x4 =>
     execution_ctx_intro lex x2 x3 x4 end.
+    
+(** A smart constructor for modifying the lexical environment
+    and variable environment are the same *)
+
+Definition execution_ctx_with_lex_same C lex :=
+  match C with execution_ctx_intro x1 x2 x3 x4 =>
+    execution_ctx_intro lex lex x3 x4 end.
 
 (** A smart constructor for modifying an execution context
     by changing the lexical environment and the this binding
