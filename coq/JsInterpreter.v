@@ -555,7 +555,7 @@ Definition object_define_own_prop S l x Desc str : result :=
           out_ter S' true
         in ifb descriptor_contains A Desc then
           out_ter S true
-        else ifb ~ (attributes_change_enumerable_on_non_configurable A Desc) then
+        else ifb attributes_change_enumerable_on_non_configurable A Desc then
           reject S
         else ifb descriptor_is_generic Desc then
           object_define_own_prop_write S A
