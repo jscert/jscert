@@ -2130,7 +2130,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_create_set_mutable_binding L "arguments" None largs false) o -> 
       red_expr S0 C (spec_binding_inst_arg_obj_1 code L false (out_ter S largs)) o
 
-  (* Declaration Binding Instantiation: main reduction rules *)    
+  (* Declaration Binding Instantiation: main reduction rules *)
 
   | red_spec_binding_inst : forall L Ls S C ct lf code args o, (* Step 1 *)
       execution_ctx_variable_env C = L::Ls ->
@@ -2294,7 +2294,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_call_default_1 l) o
       
   | red_spec_call_default_2_return : forall S C v,
-      red_expr S C (spec_call_default_2 (out_ter S (res_return v))) (out_ter S (res_normal v))
+      red_expr S C (spec_call_default_2 (out_ter S (res_return v))) (out_ter S (res_normal v)) (* Isn't that possible that a return does not actually return a value, but a reference or nothing? -- Martin. *)
       
   | red_spec_call_default_2_normal : forall S C v,
       red_expr S C (spec_call_default_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))

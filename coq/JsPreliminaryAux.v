@@ -205,7 +205,8 @@ Qed.
 Global Instance decl_env_record_pickable : forall Ed x,
   Pickable (Heap.binds Ed x).
 Proof.
-  introv. (*destruct Ed.*) skip. (* TODO:  Why is that opaque?!?! *)
+  introv. applys pickable_make (Heap.read Ed x). introv [a Ba].
+  erewrite~ @Heap.binds_equiv_read. erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
 Qed.
 
 (**************************************************************)

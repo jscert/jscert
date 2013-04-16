@@ -10,12 +10,9 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     expr_get_value_conv_stat
     expr_conditional
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
-    spec_call (split run_call)
-    run_call_default
-    spec_call_to_default (rename to_default)
+    (rename to_default)
     spec_call_to_prealloc
     spec_call_prog
-    spec_call_default
     spec_constructor_builtin
     spec_error_type_error
     spec_constructor
@@ -180,15 +177,11 @@ Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> v
     | _ => K1 o
     end).
 
-Definition if_success_or_return (o : result) (K1 : state -> resvalue -> result) (K2 : state -> value -> result) : result :=
+Definition if_success_or_return (o : result) (K1 : state -> result) (K2 : state -> resvalue -> result) : result :=
   if_ter o (fun S0 R =>
     match res_type R with
-    | restype_normal => K1 S0 (res_value R)
-    | restype_return =>
-      match res_value R with
-      | resvalue_value v => K2 S0 v
-      | _ => result_stuck
-      end
+    | restype_normal => K1 S0
+    | restype_return => K2 S0 (res_value R)
     | _ => o
     end).
 
@@ -310,22 +303,10 @@ Record runs_type : Type :=
     wraped_run_expr : state -> execution_ctx -> expr -> result;
     wraped_run_stat : state -> execution_ctx -> stat -> result;
     wraped_run_prog : state -> execution_ctx -> prog -> result;
-    wraped_run_call : state -> execution_ctx -> prealloc -> list value -> result
+    wraped_run_call : state -> execution_ctx -> prealloc -> list value -> result;
+    wraped_run_call_full : state -> execution_ctx -> object_loc -> value -> list value -> result
   }.
 Implicit Type runs : runs_type.
-
-Definition run_call_default S C l (vthis : value) (args : list value) : result :=
-  arbitrary (* TODO *).
-
-Definition run_call_full runs S C l vthis args : result :=
-  if_some (run_object_method object_call_ S l) (fun c =>
-    match c with
-    | call_default =>
-      run_call_default S C l vthis args
-    | call_prealloc B =>
-      wraped_run_call runs S C B args
-    | call_after_bind => result_stuck
-    end).
 
 
 (**************************************************************)
@@ -437,7 +418,7 @@ Definition object_get_builtin runs S C B vthis l x : result := (* Corresponds to
         | value_object lf =>
           match vthis with
           | value_object lthis =>
-            run_call_full runs S C lf lthis nil
+            wraped_run_call_full runs S C lf lthis nil
           | value_prim _ => result_stuck
           end
         | value_prim _ => (* TODO:  Wait for the specification. *)
@@ -639,7 +620,7 @@ Definition object_put_complete runs S C B vthis l x v str : result_void :=
               | attributes_accessor_of Aa' =>
                 match attributes_accessor_set Aa' with
                 | value_object lfsetter =>
-                  if_success (run_call_full runs S C lfsetter vthis (v::nil)) (fun S1 rv =>
+                  if_success (wraped_run_call_full runs S C lfsetter vthis (v::nil)) (fun S1 rv =>
                     out_void S1)
                 | value_prim _ => result_stuck
                 end
@@ -763,7 +744,7 @@ Definition to_default runs S C l (prefo : option preftype) : result :=
       match run_callable S lf with
       | Some B =>
         if_success_value runs C
-          (run_call_full runs S C lfo l nil) (fun S2 v =>
+          (wraped_run_call_full runs S C lfo l nil) (fun S2 v =>
           match v with
           | value_prim w => out_ter S w
           | value_object l => K tt
@@ -1016,6 +997,38 @@ Definition execution_ctx_function_call runs S C (lf : object_loc) (this : value)
       let C1 := execution_ctx_intro_same lex' this str in
       if_void (execution_ctx_binding_inst runs S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
         K S2 C1))).
+
+
+(**************************************************************)
+(** Function Calls *)
+
+Definition run_call_default runs S C (lf : object_loc) : result := (* Corresponds to the [spec_call_default_1] of the specification. *)
+  match run_object_method object_code_ S lf with
+  | None => out_ter S undef
+  | Some bd =>
+    if_success_or_return (wraped_run_prog runs S C (funcbody_prog bd))
+      (fun S' => out_ter S' undef)
+      (fun S' rv => out_ter S' rv)
+  end.
+
+Definition entering_func_code runs S C lf vthis (args : list value) : result :=
+  if_some (run_object_method object_code_ S lf) (fun bd =>
+    let str := funcbody_is_strict bd in
+    let follow S' vthis' :=
+      if_some (run_object_method object_scope_ S' lf) (fun lex =>
+        let (lex', S1) := lexical_env_alloc_decl S' lex in
+        let C' := execution_ctx_intro_same lex' vthis' str in
+        if_void (execution_ctx_binding_inst runs S1 C' codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
+        run_call_default runs S2 C' lf))
+    in if str then follow S vthis
+    else match vthis with
+    | value_object lthis => follow S vthis
+    | null | undef => follow S prealloc_global
+    | _ => if_value (to_object S vthis) follow
+    end).
+
+
+(**************************************************************)
 
 Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
   match max_step with
@@ -1476,7 +1489,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
             let follow vthis :=
               ifb l = prealloc_global_eval then
                 run_eval S3 C is_eval_direct vthis vs
-              else run_call_full runs S3 C l vthis vs in
+              else wraped_run_call_full runs S3 C l vthis vs in
             match rv with
             | resvalue_value v => follow undef
             | resvalue_ref r =>
@@ -1624,7 +1637,8 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let runs' := make_runs run_expr' run_stat' run_prog' run_call' in
+    let run_call_full' := run_call_full max_step' in
+    let runs' := make_runs run_expr' run_stat' run_prog' run_call' run_call_full' in
     let run_binary_op' := run_binary_op max_step' runs' in
     match e with
 
@@ -1682,7 +1696,8 @@ with run_stat (max_step : nat) S C t : result :=
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let runs' := make_runs run_expr' run_stat' run_prog' run_call' in
+    let run_call_full' := run_call_full max_step' in
+    let runs' := make_runs run_expr' run_stat' run_prog' run_call' run_call_full' in
     match t with
 
     | stat_expr e =>
@@ -1775,7 +1790,7 @@ with run_prog (max_step : nat) S C p : result :=
 
 (**************************************************************)
 
-with run_call (max_step : nat) S C B (args : list value) : result :=
+with run_call (max_step : nat) S C B (args : list value) : result := (* Corresponds to the [spec_call_prealloc] of the specification. *)
   match max_step with
   | O => result_bottom
   | S max_step' =>
@@ -1783,7 +1798,8 @@ with run_call (max_step : nat) S C B (args : list value) : result :=
     let run_stat' := run_stat max_step' in
     let run_prog' := run_prog max_step' in
     let run_call' := run_call max_step' in
-    let runs' := make_runs run_expr' run_stat' run_prog' run_call' in
+    let run_call_full' := run_call_full max_step' in
+    let runs' := make_runs run_expr' run_stat' run_prog' run_call' run_call_full' in
     match B with
 
     | prealloc_global_is_nan =>
@@ -1814,6 +1830,9 @@ with run_call (max_step : nat) S C B (args : list value) : result :=
           out_ter S1 ("[object " ++ s ++ "]"))
       end
 
+    | prealloc_object_proto_value_of =>
+      to_object S (execution_ctx_this_binding C)
+
     | prealloc_object_proto_is_prototype_of =>
       let v := get_arg 0 args in
       match v with
@@ -1823,6 +1842,9 @@ with run_call (max_step : nat) S C B (args : list value) : result :=
         if_object (to_object S vt) (fun S1 lo =>
           run_object_proto_is_prototype_of S1 lo l)
       end
+
+    | prealloc_function_proto =>
+      out_ter S undef
 
     | prealloc_bool =>
       let v := get_arg 0 args in
@@ -1848,10 +1870,37 @@ with run_call (max_step : nat) S C B (args : list value) : result :=
         let v := get_arg 0 args in
         to_number runs' S C v)
 
+    | prealloc_number_proto_value_of =>
+      let v := execution_ctx_this_binding C in
+      match run_value_viewable_as_prim "Number" S v with
+      | Some (prim_number n) => out_ter S n
+      | _ => out_type_error S
+      end
+
     | _ =>
       arbitrary (* TODO *)
 
     end
+  end
+
+with run_call_full (max_step : nat) S C l vthis args : result :=
+  match max_step with
+  | O => result_bottom
+  | S max_step' =>
+    let run_expr' := run_expr max_step' in
+    let run_stat' := run_stat max_step' in
+    let run_prog' := run_prog max_step' in
+    let run_call' := run_call max_step' in
+    let run_call_full' := run_call_full max_step' in
+    let runs' := make_runs run_expr' run_stat' run_prog' run_call' run_call_full' in
+    if_some (run_object_method object_call_ S l) (fun c =>
+      match c with
+      | call_default =>
+        entering_func_code runs' S C l vthis args
+      | call_prealloc B =>
+        run_call' S C B args
+      | call_after_bind => result_stuck
+      end)
   end.
 
 (**************************************************************)
@@ -1861,7 +1910,8 @@ Definition runs max_step :=
   let run_stat' := run_stat max_step in
   let run_prog' := run_prog max_step in
   let run_call' := run_call max_step in
-  make_runs run_expr' run_stat' run_prog' run_call'.
+  let run_call_full' := run_call_full max_step in
+  make_runs run_expr' run_stat' run_prog' run_call' run_call_full'.
 
 Definition run_javascript (max_step : nat) p : result :=
   let runs' := runs max_step in
