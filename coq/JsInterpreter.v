@@ -11,7 +11,8 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     expr_conditional
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
     spec_call (split run_call)
-    spec_call_to_default
+    run_call_default
+    spec_call_to_default (rename to_default)
     spec_call_to_prealloc
     spec_call_prog
     spec_call_default
@@ -309,20 +310,22 @@ Record runs_type : Type :=
     wraped_run_expr : state -> execution_ctx -> expr -> result;
     wraped_run_stat : state -> execution_ctx -> stat -> result;
     wraped_run_prog : state -> execution_ctx -> prog -> result;
-    wraped_run_call : state -> execution_ctx -> call -> option object_loc -> option value -> list value -> result
+    wraped_run_call : state -> execution_ctx -> prealloc -> list value -> result
   }.
 Implicit Type runs : runs_type.
 
+Definition run_call_default S C l (vthis : value) (args : list value) : result :=
+  arbitrary (* TODO *).
+
 Definition run_call_full runs S C l vthis args : result :=
-  morph_option result_stuck (fun c =>
+  if_some (run_object_method object_call_ S l) (fun c =>
     match c with
     | call_default =>
-      arbitrary (* TODO *)
+      run_call_default S C l vthis args
     | call_prealloc B =>
-      wraped_run_call runs S C B (Some l) (Some vthis) args
+      wraped_run_call runs S C B args
     | call_after_bind => result_stuck
-    end)
-    (run_object_method object_call_ S l).
+    end).
 
 
 (**************************************************************)
@@ -758,9 +761,9 @@ Definition to_default runs S C l (prefo : option preftype) : result :=
     if_object (object_get runs S C l x) (fun S1 lfo =>
       let lf := value_object lfo in
       match run_callable S lf with
-      | Some fc =>
+      | Some B =>
         if_success_value runs C
-          (wraped_run_call runs S C fc (Some lfo) (Some lf) nil) (fun S2 v =>
+          (run_call_full runs S C lfo l nil) (fun S2 v =>
           match v with
           | value_prim w => out_ter S w
           | value_object l => K tt
@@ -1772,7 +1775,7 @@ with run_prog (max_step : nat) S C p : result :=
 
 (**************************************************************)
 
-with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option value) (args : list value) : result := (* TODO:  This no longer takes so much arguments:  it should be only S, C, B (of type [prealloc] and not [call] as it is right now) and the arguments [args]. *)
+with run_call (max_step : nat) S C B (args : list value) : result :=
   match max_step with
   | O => result_bottom
   | S max_step' =>
@@ -1782,23 +1785,6 @@ with run_call (max_step : nat) S C B (lfo : option object_loc) (vo : option valu
     let run_call' := run_call max_step' in
     let runs' := make_runs run_expr' run_stat' run_prog' run_call' in
     match B with
-
-    | call_prealloc prealloc_function =>
-      if_some lfo (fun lf =>
-        if_some vo (fun vthis =>
-          execution_ctx_function_call runs' S C lf vthis args (fun S1 C1 =>
-            if run_object_code_empty S1 lf then (* TODO:  Here a match is better as I’m doing a let just afterwards *)
-              out_ter S1 (res_normal undef) (* Is that reachable? *)
-            else if_some (run_object_method object_code_ S1 lf) (fun pb =>
-              if_success_or_return
-                (wraped_run_prog runs' S1 C1 (funcbody_prog pb)) (fun S2 rv =>
-                out_ter S2 (res_normal undef)) (fun S2 v =>
-                out_ter S2 (res_normal v))))))
-
-    | call_after_bind =>
-      arbitrary (* TODO *)
-
-    (* call builtin *)
 
     | prealloc_global_is_nan =>
       let v := get_arg 0 args in
