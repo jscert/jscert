@@ -9,8 +9,7 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     expr_new
     expr_get_value_conv_stat
     expr_conditional
-    spec_object_get (* Need specification *)
-    spec_object_can_put
+    spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
     spec_call (split run_call)
     spec_call_to_default
     spec_call_to_prealloc
@@ -341,7 +340,7 @@ Definition run_object_get_own_prop S l x : option full_descriptor :=
       (Heap.read_option P x)
   end.
 
-Definition object_get_property_body run_object_get_property S v x : option full_descriptor :=
+Definition object_get_prop_body run_object_get_prop S v x : option full_descriptor :=
   match v with
   | value_prim w =>
     ifb v = null then Some full_descriptor_undef
@@ -350,17 +349,17 @@ Definition object_get_property_body run_object_get_property S v x : option full_
     morph_option None (fun D =>
       ifb D = full_descriptor_undef then (
         let lproto := run_object_method object_proto_ S l in
-        run_object_get_property S lproto x
+        run_object_get_prop S lproto x
       ) else Some D)
       (run_object_get_own_prop S l x)
   end.
 
-Definition run_object_get_property := FixFun3 object_get_property_body.
+Definition run_object_get_prop := FixFun3 object_get_prop_body.
 
 Definition object_has_prop S l x : option bool :=
   option_map (fun D =>
     decide (D <> full_descriptor_undef))
-    (run_object_get_property S l x).
+    (run_object_get_prop S l x).
 
 Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
   match run_object_method object_proto_ S l with
@@ -424,7 +423,7 @@ Definition identifier_res S C x :=
 Definition object_get_builtin runs S C B vthis l x : result := (* Corresponds to the construction [spec_object_get_1] of the specification. *)
   match B with
   | builtin_get_default =>
-    if_some (run_object_get_property S l x) (fun D =>
+    if_some (run_object_get_prop S l x) (fun D =>
       match D with
       | full_descriptor_undef => out_ter S undef
       | attributes_data_of Ad =>
@@ -501,34 +500,37 @@ Definition env_record_get_binding_value runs S C L x str : result :=
         out_error_or_cst S str prealloc_ref_error undef)
     end).
 
-Definition object_can_put S l x : result :=
-  if_some (run_object_get_own_prop S l x) (fun D =>
-    let oe := run_object_method object_extensible_ S l in
-    match D with
-    | full_descriptor_some A =>
-      match A with
+Definition object_can_put S l x : option bool :=
+  match run_object_method object_can_put_ S l with
+
+  | builtin_can_put_default =>
+    morph_option None (fun D =>
+      match D with
       | attributes_accessor_of Aa =>
-        out_ter S (decide (attributes_accessor_set Aa = undef))
+        Some (decide (attributes_accessor_set Aa <> undef))
       | attributes_data_of Ad =>
-        out_ter S (prim_bool (attributes_data_writable Ad))
-      end
-    | full_descriptor_undef =>
-      let lproto := run_object_method object_proto_ S l in
-      ifb lproto = null then out_ter S oe
-      else (
-        if_some (run_object_get_property S lproto x) (fun Anproto =>
-          match Anproto with
-          | full_descriptor_undef => out_ter S oe
-          | full_descriptor_some A =>
-            match A with
+        Some (attributes_data_writable Ad)
+      | full_descriptor_undef =>
+        match run_object_method object_proto_ S l with
+        | null =>
+          Some (run_object_method object_extensible_ S l)
+        | value_object lproto =>
+          option_map (fun D' =>
+            match D' with
+            | full_descriptor_undef =>
+              run_object_method object_extensible_ S l
             | attributes_accessor_of Aa =>
-              out_ter S (decide (attributes_accessor_set Aa = undef))
+              decide (attributes_accessor_set Aa <> undef)
             | attributes_data_of Ad =>
-              out_ter S (if oe then false else prim_bool (attributes_data_writable Ad))
-            end
-          end)
-      )
-    end).
+              if run_object_method object_extensible_ S l then
+                attributes_data_writable Ad
+              else false
+          end) (run_object_get_prop S lproto x)
+        | _ => None
+        end
+      end) (run_object_get_own_prop S l x)
+
+  end.
 
 Definition object_define_own_prop S l x Desc str : result :=
   let B := run_object_method object_define_own_prop_ S l
@@ -613,43 +615,45 @@ Definition object_put_complete runs S C B vthis l x v str : result_void :=
   match B with
 
   | builtin_put_default =>
-    if_success_bool (object_can_put S l x) (fun S1 =>
-      if_some (run_object_get_own_prop S1 l x) (fun D =>
-        match D with
-        
-        | attributes_data_of Ad =>
-          match vthis with
-          | value_object lthis =>
-            let Desc := descriptor_intro (Some v) None None None None None in
-            if_success (object_define_own_prop S1 l x Desc str) (fun S2 rv =>
-              out_void S2)
-          | value_prim wthis =>
-            out_error_or_void S1 str prealloc_type_error
-          end
-        
-        | _ =>
-          if_some (run_object_get_property S1 l x) (fun D' =>
-            match D' with
-            | attributes_accessor_of Aa' =>
-              match attributes_accessor_set Aa' with
-              | value_object lfsetter =>
-                if_success (run_call_full runs S1 C lfsetter vthis (v::nil)) (fun S2 rv =>
-                  out_void S2)
-              | value_prim _ => result_stuck
-              end
-            | _ =>
-              match vthis with
-              | value_object lthis =>
-                let Desc := descriptor_intro_data v true true true in
-                if_success (object_define_own_prop S1 l x Desc str) (fun S2 rv =>
-                  out_void S2)
-              | value_prim wthis =>
-                out_error_or_void S1 str prealloc_type_error
-              end
-            end)
-        
-        end))
-      (fun S' => out_error_or_void S str prealloc_type_error)
+    if_some (object_can_put S l x) (fun b =>
+      if b then
+        if_some (run_object_get_own_prop S l x) (fun D =>
+          match D with
+          
+          | attributes_data_of Ad =>
+            match vthis with
+            | value_object lthis =>
+              let Desc := descriptor_intro (Some v) None None None None None in
+              if_success (object_define_own_prop S l x Desc str) (fun S1 rv =>
+                out_void S1)
+            | value_prim wthis =>
+              out_error_or_void S str prealloc_type_error
+            end
+          
+          | _ =>
+            if_some (run_object_get_prop S l x) (fun D' =>
+              match D' with
+              | attributes_accessor_of Aa' =>
+                match attributes_accessor_set Aa' with
+                | value_object lfsetter =>
+                  if_success (run_call_full runs S C lfsetter vthis (v::nil)) (fun S1 rv =>
+                    out_void S1)
+                | value_prim _ => result_stuck
+                end
+              | _ =>
+                match vthis with
+                | value_object lthis =>
+                  let Desc := descriptor_intro_data v true true true in
+                  if_success (object_define_own_prop S l x Desc str) (fun S1 rv =>
+                    out_void S1)
+                | value_prim wthis =>
+                  out_error_or_void S str prealloc_type_error
+                end
+              end)
+          
+          end)
+        else
+          out_error_or_void S str prealloc_type_error)
 
     end.
 
@@ -926,7 +930,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
             binding_inst_function_decls runs S3 C L fds' str bconfig)
         in if_bool_option_result (env_record_has_binding S1 L fname) (fun _ =>
           ifb L = env_loc_global_env_record then (
-            if_some (run_object_get_property S1 prealloc_global fname) (fun D =>
+            if_some (run_object_get_prop S1 prealloc_global fname) (fun D =>
               match D with
               | full_descriptor_undef => result_stuck
               | full_descriptor_some A =>

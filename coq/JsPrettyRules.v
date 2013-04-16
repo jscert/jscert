@@ -1365,7 +1365,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_can_put_2_undef : forall S C l x o lproto, (* Step 3 *)
       object_proto S l lproto ->
-      red_expr S C (spec_object_can_put_4 l x lproto) o ->
+      red_expr S C (spec_object_can_put_4 l x lproto) o -> (* Isn't there any [spec_object_can_put_3]? *)
       red_expr S C (spec_object_can_put_2 l x full_descriptor_undef) o
 
   | red_spec_object_can_put_4_null : forall S C l x o b, (* Step 4 *)
