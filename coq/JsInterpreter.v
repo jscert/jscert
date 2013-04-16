@@ -5,10 +5,7 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
 
 (* TODO list:
     expr_new
-    expr_get_value_conv_stat
-    expr_conditional
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
-    spec_call_to_prealloc
     spec_call_prog
     spec_constructor_builtin
     spec_error_type_error
@@ -18,7 +15,6 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     spec_construct_default
     abort_intercepted_expr
     spec_creating_function_object_proto
-    spec_call_object_is_sealed
     spec_create_arguments_object (* Not yet specified *)
 *)
 
@@ -506,7 +502,7 @@ Definition object_can_put S l x : option bool :=
                 attributes_data_writable Ad
               else false
           end) (run_object_get_prop S lproto x)
-        | _ => None
+        | value_prim _ => None
         end
       end) (run_object_get_own_prop S l x)
 
@@ -1026,7 +1022,7 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
     else match vthis with
     | value_object lthis => follow S vthis
     | null | undef => follow S prealloc_global
-    | _ => if_value (to_object S vthis) follow
+    | value_prim _ => if_value (to_object S vthis) follow
     end).
 
 
@@ -1509,8 +1505,9 @@ Definition run_expr_call runs S C e1 e2s : result :=
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
-    let b1 := convert_value_to_boolean v1 in
-    if_success_value runs C (wraped_run_expr runs S1 C (if b1 then e2 else e3)) (fun S2 v2 =>
+    let b := convert_value_to_boolean v1 in
+    let e := if b then e2 else e3 in
+    if_success_value runs C (wraped_run_expr runs S1 C e) (fun S2 v2 =>
       out_ter S2 v2)).
 
 Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
@@ -1820,6 +1817,36 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
         result_stuck
       else
         out_ter S (resvalue_ref (ref_create_value v "prototype" false))
+
+    | prealloc_object_is_sealed =>
+      let v := get_arg 0 args in
+      match v with
+      | value_object l =>
+        let xs := List.map fst (Heap.to_list (run_object_method object_properties_ S l))
+        in (fix object_is_sealed xs : result :=
+          match xs with
+          | nil =>
+            out_ter S (neg (run_object_method object_extensible_ S l))
+          | x :: xs' =>
+            if_some (run_object_get_own_prop S l x) (fun D =>
+              match D with
+              | full_descriptor_some A =>
+                if attributes_configurable A then
+                  out_ter S false
+                else object_is_sealed xs'
+              | full_descriptor_undef => result_stuck
+              end)
+          end) xs
+      | value_prim _ => out_type_error S
+      end
+
+    | prealloc_object_is_extensible =>
+      let v := get_arg 0 args in
+      match v with
+      | value_object l =>
+        out_ter S (run_object_method object_extensible_ S l)
+      | value_prim _ => out_type_error S
+      end
 
     | prealloc_object_proto_to_string =>
       let v := execution_ctx_this_binding C in

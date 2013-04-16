@@ -2537,7 +2537,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_is_extensible_1 v) o ->
       red_expr S C (spec_call_prealloc prealloc_object_is_extensible args) o
-      
+
   | red_spec_call_object_is_extensible_1_not_object : forall S C v o, 
       type_of v <> type_object ->
       red_expr S C (spec_error prealloc_type_error) o ->
