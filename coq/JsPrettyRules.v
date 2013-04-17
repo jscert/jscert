@@ -2558,21 +2558,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
       red_expr S C (spec_call_object_is_frozen_3 l xs A) (out_ter S false)
 
-  (* Martin:  I've commented out those rules for compilation.
   | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S C A xs l x o, (* Step 2.b, false *)
       attributes_is_data A = false ->
-      red_expr S C (spec_call_object_is_frozen_5 l xs) o ->
+      red_expr S C (spec_call_object_is_frozen_5 l xs A) o ->
       red_expr S C (spec_call_object_is_frozen_3 l xs A) o
 
-  | red_spec_call_object_is_frozen_4_prop_is_writable: (* Step 2.b.i, true *)
+  | red_spec_call_object_is_frozen_4_prop_is_writable: forall S C A xs l x o, (* Step 2.b.i, true *)
       attributes_writable A = true ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) (out_ter S false)
 
-  | red_spec_call_object_is_frozen_4_prop_is_not_writable: (* Step 2.b.i, false *)
+  | red_spec_call_object_is_frozen_4_prop_is_not_writable: forall S C A xs l x o, (* Step 2.b.i, false *)
       attributes_writable A = false ->
-      red_expr S C (spec_call_object_is_frozen_5 l xs A) -> o
+      red_expr S C (spec_call_object_is_frozen_5 l xs A) o ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o
-*)
 
   | red_spec_call_object_is_frozen_5_prop_configurable : forall S C A xs l x o, (* Step 2.c, true *) 
       attributes_configurable A = true ->
