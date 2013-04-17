@@ -1084,6 +1084,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** ** Conversions (9) *)
 
   (* TODO:  spec_to_primitive_auto *)
+  (* TODO:  spec_prim_new_object *)
 
   (** Conversion to primitive (returns prim) (9.1) *)
 

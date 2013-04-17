@@ -6,6 +6,7 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
 (* TODO list:
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
     spec_creating_function_object_proto
+    spec_call_global_eval (= run_eval)
     expr_new
     spec_construct_prealloc (* Reread once the specification will have been debuged. *)
     spec_entering_eval_code
@@ -856,7 +857,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
   | prealloc_string =>
     arbitrary (* TODO *)
 
-  | _ => result_stuck (* TODO:  Is there others cases missing? *)
+  | _ => result_stuck (* TODO:  Is there other cases missing? *)
 
   end.
 
@@ -1010,21 +1011,6 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
       end).
 
 
-Definition execution_ctx_function_call runs S C (lf : object_loc) (this : value) (args : list value) (K : state -> execution_ctx -> result) : result :=
-  if_some (run_object_method object_code_ S lf) (fun bd => (* TODO:  Maybe this could be passed are arguments and thus avoid to recompute this [run_object_method object_code]_ again. *)
-    let str := funcbody_is_strict bd in
-    let newthis :=
-      if str then this
-      else ifb this = null \/ this = undef then prealloc_global
-      else ifb type_of this = type_object then this
-      else arbitrary in
-    if_some (run_object_method object_scope_ S lf) (fun scope =>
-      let (lex', S1) := lexical_env_alloc_decl S scope in
-      let C1 := execution_ctx_intro_same lex' this str in
-      if_void (execution_ctx_binding_inst runs S1 C1 codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
-        K S2 C1))).
-
-
 (**************************************************************)
 (** Function Calls *)
 
@@ -1056,33 +1042,42 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
 
 (**************************************************************)
 
-Fixpoint run_spec_object_has_instance_loop (max_step : nat) S lv lo : result :=
+Fixpoint run_object_has_instance_loop (max_step : nat) S lv vo : result :=
   match max_step with
   | O => result_bottom
   | S max_step' =>
-
-    match run_object_method object_proto_ S lv with
-    | null => out_ter S false
-    | value_object proto =>
-      ifb proto = lo then out_ter S true
-      else run_spec_object_has_instance_loop max_step' S proto lo
-    | value_prim _ => result_stuck
+    match vo with
+    | value_prim _ =>
+      out_type_error S
+    | value_object lo =>
+      match run_object_method object_proto_ S lv with
+      | null =>
+        out_ter S false
+      | value_object proto =>
+        ifb proto = lo then out_ter S true
+        else run_object_has_instance_loop max_step' S proto lo
+      | value_prim _ =>
+        result_stuck
+      end
     end
-
   end.
 
-Definition run_spec_object_has_instance (max_step : nat) runs B S C l v : result :=
+Definition run_object_has_instance (max_step : nat) runs B S C l v : result :=
   match B with
 
-  | builtin_has_instance_function =>
+  | builtin_has_instance_default =>
     match v with
     | value_prim w => out_ter S false
     | value_object lv =>
-      if_object (object_get runs S C l "prototype") (fun S1 lo =>
-        run_spec_object_has_instance_loop max_step S1 lv lo)
+      if_value (object_get runs S C l "prototype") (fun S1 v =>
+        run_object_has_instance_loop max_step S1 lv v)
     end
 
-  | _ => arbitrary (* TODO *)
+  | builtin_has_instance_function =>
+    arbitrary (* TODO:  Waiting for the specification *)
+
+  | builtin_has_instance_after_bind =>
+    arbitrary (* TODO:  Waiting for the specification *)
 
   end.
 
@@ -1242,7 +1237,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
     | value_object l =>
       morph_option (fun _ => out_type_error S : result)
       (fun has_instance_id _ =>
-        run_spec_object_has_instance max_step runs has_instance_id S C l v1)
+        run_object_has_instance max_step runs has_instance_id S C l v1)
       (run_object_method object_has_instance_ S l) tt
     | value_prim _ => out_type_error S
     end
