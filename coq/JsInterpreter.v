@@ -7,7 +7,6 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
     spec_creating_function_object_proto
     spec_call_global_eval (= run_eval)
-    expr_new
     spec_construct_prealloc (* Reread once the specification will have been debuged. *)
     spec_entering_eval_code
     spec_call_prog
@@ -1534,38 +1533,24 @@ Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
       out_ter S2 v2)).
 
 Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
-  arbitrary
-  (* TODO
-  (* Evaluate constructor *)
-  if_success_state (run_expr' h0 s e1) (fun h1 r1 =>
-    if_not_eq loc_null h1 (getvalue_comp h1 r1) (fun l1 =>
-      if_binds_scope_body h1 l1 (fun s3 lx P3 =>
-        if_binds_field field_normal_prototype h1 l1 (fun v1 =>
-          let l2 := obj_or_glob_of_value v1 in
-          (* Evaluate parameters *)
-          run_list_expr' h1 s nil le2 (fun h2 lv2 =>
-            (* Init new object *)
-            let l4 := fresh_for h2 in
-            let h3 := alloc_obj h2 l4 l2 in
-            (* Create activation record *)
-            let l3 := fresh_for h3 in
-            let ys := defs_prog lx P3 in
-            let h4 := write h3 l3 field_proto (value_loc loc_null) in
-            let h5 := write h4 l3 field_this (value_loc l4) in
-            let lfv := arguments_comp lx lv2 in
-            let h6 := write_fields h5 l3 lfv in
-            let h7 := reserve_local_vars h6 l3 ys in
-            (* Execute function (constructor) body *)
-            if_success_value (run_prog' h7 (l3 :: s3) P3) (fun h8 v3 =>
-              let l := obj_of_value v3 l4 in
-              out_return h8 (value_loc l)))))))
-  *).
+  if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v =>
+    run_list_expr runs S1 C nil e2s (fun S2 args =>
+      match v with
+      | value_object l =>
+        match run_object_method object_construct_ S l with
+        | None => out_type_error S2
+        | Some _ => run_construct runs S2 C l args
+        end
+      | value_prim _ =>
+        out_type_error S2
+      end)).
+
 
 (**************************************************************)
 
 Definition run_stat_label runs S C lab t : result :=
-  if_break (wraped_run_stat runs S C t)
-    (fun S1 R1 => out_ter S1 (res_value R1)).
+  if_break (wraped_run_stat runs S C t) (fun S1 R1 =>
+    out_ter S1 (res_value R1)).
 
 Definition run_stat_with runs S C e1 t2 : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
