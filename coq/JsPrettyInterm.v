@@ -297,7 +297,8 @@ Inductive ext_expr :=
   (** Extented expressions for eval *)
   
   | spec_entering_eval_code : bool -> funcbody -> ext_expr -> ext_expr
-  | spec_entering_eval_code_1 : out -> ext_expr -> ext_expr
+  | spec_entering_eval_code_1 : funcbody -> ext_expr -> ext_expr
+  | spec_entering_eval_code_2 : out -> ext_expr -> ext_expr
   
   | spec_call_global_eval : bool -> list value -> ext_expr
   | spec_call_global_eval_1 : bool -> value -> ext_expr
