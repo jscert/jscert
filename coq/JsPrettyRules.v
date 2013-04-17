@@ -2551,12 +2551,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_frozen_2 l (x::xs)) o
 
   | red_spec_call_object_is_frozen_3_desc_is_data : forall S C A xs l x o, (* Step 2.b, true *)
-      descriptor_is_data A = true ->
+      attributes_is_data A = true ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
       red_expr S C (spec_call_object_is_frozen_3 l xs A) (out_ter S false)
 
   | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S C A xs l x o, (* Step 2.b, false *)
-      descriptor_is_data A = false ->
+      attributes_is_data A = false ->
       red_expr S C (spec_call_object_is_frozen_5 l xs) o ->
       red_expr S C (spec_call_object_is_frozen_3 l xs A) o
 
