@@ -2529,7 +2529,57 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_sealed_2 l nil) (out_ter S (negb b))
 
   (** IsFrozen (returns bool)  (15.2.3.12) *)
-    (* TODO *)
+
+   | red_spec_call_object_is_frozen : forall S C v o args, (* Step 0 *)
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_call_object_is_frozen_1 v) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_is_frozen args) o
+ 
+  | red_spec_call_object_is_frozen_1_not_object : forall S C v o, (* Step 1 *)
+      type_of v <> type_object ->
+      red_expr S C (spec_error prealloc_type_error) o ->
+      red_expr S C (spec_call_object_is_frozen_1 v) o
+
+  | red_spec_call_object_is_frozen_1_object : forall S C l xs x o, (* Step 2 *)
+      object_properties_keys_as_list S l xs ->
+      red_expr S C (spec_call_object_is_frozen_2 l xs) o ->
+      red_expr S C (spec_call_object_is_frozen_1 l) o
+               
+  | red_spec_call_object_is_frozen_2_cons : forall S C l xs x o, (* Step 2.a *)
+      red_expr S C (spec_object_get_own_prop l x (spec_call_object_is_frozen_3 l xs)) o ->
+      red_expr S C (spec_call_object_is_frozen_2 l (x::xs)) o
+
+  | red_spec_call_object_is_frozen_3_desc_is_data : forall S C A xs l x o, (* Step 2.b, true *)
+      descriptor_is_data A = true ->
+      red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
+      red_expr S C (spec_call_object_is_frozen_3 l xs A) (out_ter S false)
+
+  | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S C A xs l x o, (* Step 2.b, false *)
+      descriptor_is_data A = false ->
+      red_expr S C (spec_call_object_is_frozen_5 l xs) o ->
+      red_expr S C (spec_call_object_is_frozen_3 l xs A) o
+
+  | red_spec_call_object_is_frozen_4_prop_is_writable: (* Step 2.b.i, true *)
+      attributes_writable A = true ->
+      red_expr S C (spec_call_object_is_frozen_4 l xs A) (out_ter S false)
+
+  | red_spec_call_object_is_frozen_4_prop_is_not_writable: (* Step 2.b.i, false *)
+      attributes_writable A = false ->
+      red_expr S C (spec_call_object_is_frozen_5 l xs A) -> o
+      red_expr S C (spec_call_object_is_frozen_4 l xs A) o
+
+  | red_spec_call_object_is_frozen_5_prop_configurable : forall S C A xs l x o, (* Step 2.c, true *) 
+      attributes_configurable A = true ->
+      red_expr S C (spec_call_object_is_frozen_5 l xs A) (out_ter S false)
+
+  | red_spec_call_object_is_frozen_5_prop_not_configurable : forall S C A xs l x o,  (* Step 2.c, false*)
+      attributes_configurable A = false ->
+      red_expr S C (spec_call_object_is_frozen_2 l xs) o ->
+      red_expr S C (spec_call_object_is_frozen_5 l xs A) o
+
+  | red_spec_call_object_is_frozen_2_nil : forall S C l b x o, (* Steps 3-4 *)
+      object_extensible S l b ->
+      red_expr S C (spec_call_object_is_frozen_2 l nil) (out_ter S (negb b))
   
   (** IsExtensible (returns bool)  (15.2.3.13) *)
 

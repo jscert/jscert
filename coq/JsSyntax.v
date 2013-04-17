@@ -213,7 +213,7 @@ Inductive prealloc :=
   | prealloc_object_freeze
   | prealloc_object_prevent_extensions
   | prealloc_object_is_sealed
-  | prealloc_object_is_frozen (* LATER: support *)
+  | prealloc_object_is_frozen
   | prealloc_object_is_extensible
   | prealloc_object_keys  (* LATER: support *)
   | prealloc_object_keys_call  (* LATER: support *)
@@ -558,7 +558,7 @@ Record object := object_intro {
    object_get_own_prop_ : builtin_get_own_prop;
    object_get_prop_ : builtin_get_prop;
    object_put_ : builtin_put;
-   object_can_put_ : builtin_can_put;
+   objectcan_put_ : builtin_can_put;
    object_has_prop_ : builtin_has_prop;
    object_delete_ : builtin_delete;
    object_default_value_ : builtin_default_value;
