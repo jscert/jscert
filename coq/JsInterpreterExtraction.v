@@ -133,6 +133,21 @@ Extract Constant object_prealloc_global_class => "(
     List.rev (aux s (String.length s))
   in aux2 ""GlobalClass"")".
 
+
+(* Parsing *)
+Extract Constant parse_pickable => "(fun s -> (*
+    let str = String.concat """" (List.map (String.make 1) s) in
+    let parserExp = Parser_main.exp_from_string str in
+    try
+      Some (Translate_syntax.exp_to_prog parserExp)
+    with
+    | Translate_syntax.CoqSyntaxDoesNotSupport _ -> raise Not_found (* Temporary *)
+    | Parser.InvalidArgument _ -> None *)
+    raise Not_found (* This does not work because there lacks [mli] files. *)
+  )".
+
+
+(* Final Extraction *)
 Extraction "interp/src/interpreter.ml" run_javascript.
 
 

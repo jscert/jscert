@@ -2384,31 +2384,31 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_global_eval_1_not_string : forall S C is_direct_call v,
       type_of v <> type_string ->
-      red_expr S C (spec_call_global_eval_1 is_direct_call v) (out_ter S v)  
-      
+      red_expr S C (spec_call_global_eval_1 is_direct_call v) (out_ter S v)
+
   | red_spec_call_global_eval_1_string_not_parse : forall s S C is_direct_call o,
       parse s None ->
-      red_expr S C (spec_error prealloc_syntax_error) o -> 
-      red_expr S C (spec_call_global_eval_1 is_direct_call s) o 
+      red_expr S C (spec_error prealloc_syntax_error) o ->
+      red_expr S C (spec_call_global_eval_1 is_direct_call s) o
       
   | red_spec_call_global_eval_1_string_parse : forall s p S C is_direct_call o,
       parse s (Some p) ->
       red_expr S C (spec_entering_eval_code is_direct_call (funcbody_intro p s) (spec_call_global_eval_1_2 p)) o -> 
-      red_expr S C (spec_call_global_eval_1 is_direct_call s) o 
-      
+      red_expr S C (spec_call_global_eval_1 is_direct_call s) o
+
   | red_spec_call_global_eval_1_2 : forall o1 S C p o,
       red_prog S C p o1 ->
       red_expr S C (spec_call_global_eval_1_3 o1) o ->
-      red_expr S C (spec_call_global_eval_1_2 p) o  
-      
-  | red_spec_call_global_eval_1_3_normal_value: forall S C v,
+      red_expr S C (spec_call_global_eval_1_2 p) o
+
+  | red_spec_call_global_eval_1_3_normal_value: forall S C v, (* Isn't it possible to get a reference at this point too?  -- Martin. *)
       red_expr S C (spec_call_global_eval_1_3 (out_ter S v)) (out_ter S v)
       
   | red_spec_call_global_eval_1_3_normal_empty: forall S C R lab,
       R = res_intro restype_normal resvalue_empty lab ->
       red_expr S C (spec_call_global_eval_1_3 (out_ter S R)) (out_ter S undef)
       
-  | red_spec_call_global_eval_1_3_throw: forall S C R,
+  | red_spec_call_global_eval_1_3_throw: forall S C R, (* Shouldn't it be added as a case of [abort_intercepted_expr]?  -- Martin *)
       res_type R = restype_throw ->
       red_expr S C (spec_call_global_eval_1_3 (out_ter S R)) (out_ter S (res_throw (res_value R)))     
      

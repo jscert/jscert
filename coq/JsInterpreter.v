@@ -6,9 +6,8 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
 (* TODO list:
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
     spec_creating_function_object_proto
-    spec_call_global_eval (= run_eval)
     spec_construct_prealloc (* Reread once the specification will have been debuged. *)
-    spec_entering_eval_code
+    spec_entering_eval_code (* Waiting for specification *)
     spec_call_prog
     spec_error_type_error
     spec_create_arguments_object (* Not yet specified *)
@@ -115,8 +114,16 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
   | cons a _ => f a
   end.
 
+
 (**************************************************************)
-(** Monadic constructors *)
+(** Error Handling *)
+
+Definition run_error S (B : prealloc) : result :=
+  arbitrary (* TODO *).
+
+
+(**************************************************************)
+(** Monadic Constructors *)
 
 Definition if_bool_option (A : Type) (d : A) (bo : option bool) (K1 : unit -> A) (K2 : unit -> A) : A :=
   morph_option d (fun b =>
@@ -1493,8 +1500,49 @@ Definition run_expr_function runs S C fo args bd : result :=
     map_nth (fun _ : unit => result_stuck) (fun L _ => follow L) 0 lex' tt
   end.
 
-Definition run_eval S C (is_eval_direct : bool) (vthis : value) (vs : list value) :=
-  arbitrary (* TODO *).
+Definition entering_eval_code runs S C direct bd K : result :=
+  if direct then
+    arbitrary (* TODO, waiting for specification *)
+  else
+    let str := funcbody_is_strict bd in
+    let (lex, S') :=
+      if str then
+        lexical_env_alloc_decl S (execution_ctx_lexical_env C)
+      else (execution_ctx_lexical_env C, S)
+    in let C' :=
+      if str then
+        execution_ctx_with_lex_same C lex
+      else C
+    in let p := funcbody_prog bd
+    in if_void (execution_ctx_binding_inst runs S' C' codetype_eval None p nil) (fun S1 =>
+      K S1 C').
+
+Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list value) : result :=
+  match get_arg 0 vs with
+  | prim_string s =>
+    match pick (parse s) with
+    | None =>
+      run_error S prealloc_syntax_error
+    | Some p =>
+      entering_eval_code runs S C is_direct_call (funcbody_intro p s) (fun S1 C' =>
+        if_ter (wraped_run_prog runs S1 C' p) (fun S2 R =>
+          match res_type R with
+          | restype_throw =>
+            out_ter S (res_throw (res_value R))
+          | restype_normal =>
+            match res_value R with
+            | resvalue_value v =>
+              out_ter S v
+            | resvalue_empty =>
+              out_ter S undef
+            | resvalue_ref r =>
+              arbitrary (* TODO:  I need more precision from the specification there. *)
+            end
+          | _ => result_stuck
+          end))
+    end
+  | v => out_ter S v
+  end.
 
 Definition run_expr_call runs S C e1 e2s : result :=
   let is_eval_direct :=
@@ -1508,7 +1556,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
           else
             let follow vthis :=
               ifb l = prealloc_global_eval then
-                run_eval S3 C is_eval_direct vthis vs
+                run_eval runs S3 C is_eval_direct vthis vs
               else wraped_run_call_full runs S3 C l vthis vs in
             match rv with
             | resvalue_value v => follow undef

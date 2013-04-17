@@ -1308,6 +1308,7 @@ Definition string_of_propname (pn : propname) : prop_name :=
 (** Axiomatized parsing relation for eval *)
 
 Axiom parse : string -> option prog -> Prop.
+Axiom parse_pickable : forall s, Pickable (parse s).
 
 
 (**************************************************************)
