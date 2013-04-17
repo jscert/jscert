@@ -2315,9 +2315,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_spec_call_default_2_normal : forall S C v,
       red_expr S C (spec_call_default_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))
-      
+
   (** Constructor calls *)
-  
+
   | red_spec_constructor : forall S C l co args o,
       object_construct S l (Some co) ->
       red_expr S C (spec_construct_1 co l args) o ->
@@ -2444,7 +2444,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_call : forall S C args v o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_call_1 v) o ->
-      red_expr S C (spec_construct_prealloc prealloc_object args) o
+      red_expr S C (spec_construct_prealloc prealloc_object args) o (* What's the difference of conclusion between this rule and [red_spec_call_object_new]?  There's surely a bug there. -- Martin. *)
 
   | red_spec_call_object_call_1_null_or_undef : forall S C v o,
       (v = null \/ v = undef) ->
@@ -2461,7 +2461,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_new : forall S C args v o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_new_1 v) o ->
-      red_expr S C (spec_construct_prealloc prealloc_object args) o
+      red_expr S C (spec_construct_prealloc prealloc_object args) o (* What's the difference of conclusion between this rule and [red_spec_call_object_call]?  There's surely a bug there. -- Martin. *)
       
   | red_spec_call_object_new_1_object : forall S C v,
       type_of v = type_object ->

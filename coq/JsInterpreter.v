@@ -4,17 +4,13 @@ Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 
 (* TODO list:
-    expr_new
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
-    spec_call_prog
-    spec_constructor_builtin
-    spec_error_type_error
-    spec_constructor
-    spec_function_constructor
-    spec_construct_to_prealloc
-    spec_construct_default
-    abort_intercepted_expr
     spec_creating_function_object_proto
+    expr_new
+    spec_construct_prealloc (* Reread once the specification will have been debuged. *)
+    spec_entering_eval_code
+    spec_call_prog
+    spec_error_type_error
     spec_create_arguments_object (* Not yet specified *)
 *)
 
@@ -824,14 +820,17 @@ Definition bool_proto_value_of_call S C : result :=
   | _ => out_type_error S
   end.
 
-Definition constructor_builtin runs S C B (args : list value) : result := (* TODO:  Change the type of [B] from [construct] to [prealloc]. (?) *)
+Definition run_construct_prealloc runs S C B (args : list value) : result :=
   match B with
 
-  | construct_prealloc prealloc_object =>
+  | prealloc_object =>
     let v := get_arg 0 args in
     call_object_new S v
 
-  | construct_prealloc prealloc_bool =>
+  | prealloc_function =>
+    arbitrary (* TODO *)
+
+  | prealloc_bool =>
     let v := get_arg 0 args in
     let b := convert_value_to_boolean v in
     let O1 := object_new prealloc_bool_proto "Boolean" in
@@ -839,27 +838,56 @@ Definition constructor_builtin runs S C B (args : list value) : result := (* TOD
     let (l, S') := object_alloc S O in
     out_ter S' l
 
-  | construct_prealloc prealloc_number =>
-    ifb args = nil then
-      out_ter S JsNumber.zero
-    else (
+  | prealloc_number =>
+    let follow S' v :=
+      let O1 := object_new prealloc_number_proto "Number" in
+      let O := object_with_primitive_value O1 v in
+      let (l, S1) := object_alloc S' O in
+      out_ter S1 l
+    in ifb args = nil then
+      follow S JsNumber.zero
+    else
       let v := get_arg 0 args in
-      if_value (to_number runs S C v) (fun S1 v1 =>
-        let O1 := object_new prealloc_number_proto "Number" in
-        let O := object_with_primitive_value O1 v in
-        let (l, S') := object_alloc S O in
-        out_ter S1 l))
+      if_value (to_number runs S C v) follow
 
-  | _ => arbitrary (* TODO *)
+  | prealloc_array =>
+    arbitrary (* TODO *)
+
+  | prealloc_string =>
+    arbitrary (* TODO *)
+
+  | _ => result_stuck (* TODO:  Is there others cases missing? *)
 
   end.
+
+Definition run_construct_default runs S C l args :=
+  if_value (object_get runs S C l "prototype") (fun S1 v1 =>
+    let vproto :=
+      ifb type_of v1 = type_object then v1
+      else prealloc_object_proto
+    in let O := object_new vproto "Object"
+    in let (l', S2) := object_alloc S1 O
+    in if_value (wraped_run_call_full runs S2 C l l' args) (fun S3 v2 =>
+      let vr :=
+        ifb type_of v2 = type_object then v2 else l'
+      in out_ter S3 vr)).
+
+Definition run_construct runs S C l args : result :=
+  if_some (run_object_method object_construct_ S l) (fun co =>
+    match co with
+    | construct_default =>
+      run_construct_default runs S C l args
+    | construct_prealloc B =>
+      run_construct_prealloc runs S C B args
+    | construct_after_bind =>
+      result_stuck
+    end).
 
 
 (**************************************************************)
 
 Definition creating_function_object_proto runs S C l (K : state -> result) : result :=
-  if_object (constructor_builtin runs S C
-    (construct_prealloc prealloc_object) nil) (fun S1 lproto =>
+  if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 lproto =>
     let A1 := attributes_data_intro l true false true in
     if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 rv1 =>
       let A2 := attributes_data_intro lproto true false false in
@@ -1654,8 +1682,7 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       run_expr_binary_op run_binary_op' runs' S C op e1 e2
 
     | expr_object pds =>
-      if_object (constructor_builtin runs' S C
-        (construct_prealloc prealloc_object) nil) (fun S1 l =>
+      if_object (run_construct_prealloc runs' S C prealloc_object nil) (fun S1 l =>
         init_object runs' S1 C l pds)
 
     | expr_member e1 f =>
@@ -1912,7 +1939,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
     end
   end
 
-with run_call_full (max_step : nat) S C l vthis args : result :=
+with run_call_full (max_step : nat) S C l vthis args : result := (* Corresponds to the [spec_call] of the specification. *)
   match max_step with
   | O => result_bottom
   | S max_step' =>
