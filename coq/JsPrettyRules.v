@@ -1928,7 +1928,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Operations on execution contexts and entering of function code (10.4) *)
   
-  (** Entering function code  (10.4.2) *)
+  (** Entering eval code  (10.4.2) *)
   
   (* TODO: What does it mean "If there is no calling context..."? *)
       
