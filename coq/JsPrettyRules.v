@@ -1928,26 +1928,29 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Operations on execution contexts and entering of function code (10.4) *)
   
-  (** Entering function code  (10.4.2) with arguments: is_direct_call, body, continuation *)
+  (** Entering function code  (10.4.2) *)
   
   (* TODO: What does it mean "If there is no calling context..."? *)
-  
-  | red_spec_entering_eval_code_direct : forall S C bd K o,
-      (* TODO *)
-      red_expr S C (spec_entering_eval_code true bd K) o 
       
-  | red_spec_entering_eval_code_not_direct : forall str lex S' C' o1 S C bd K o,
+  | red_spec_entering_eval_code : forall C' S C (is_direct_call : bool) bd K o, (* Steps 1 - 2 *)
+      (* TODO : is the initial strictness of the context set to false? *)
+      C' = (If is_direct_call then C
+                              else execution_ctx_initial false) ->
+      red_expr S C' (spec_entering_eval_code_1 bd K) o ->
+      red_expr S C (spec_entering_eval_code is_direct_call bd K) o  
+      
+  | red_spec_entering_eval_code_1 : forall str lex S' C' o1 S C bd K o, (* Steps 3 - 4 *)
       str = funcbody_is_strict bd ->
       (lex, S') = (If str then lexical_env_alloc_decl S (execution_ctx_lexical_env C)
-                         else (execution_ctx_lexical_env C, S)) ->
+                          else (execution_ctx_lexical_env C, S)) ->
       C' = (If str then (execution_ctx_with_lex_same C lex) else C) ->
       red_expr S' C' (spec_binding_inst codetype_eval None (funcbody_prog bd) nil) o1 -> 
-      red_expr S' C' (spec_entering_eval_code_1 o1 K) o ->
-      red_expr S C (spec_entering_eval_code false bd K) o  
+      red_expr S' C' (spec_entering_eval_code_2 o1 K) o ->
+      red_expr S C (spec_entering_eval_code_1 bd K) o 
       
-  | red_spec_entering_eval_code_1 : forall S0 C S K o,
+  | red_spec_entering_eval_code_2 : forall S0 C S K o,
       red_expr S C K o ->
-      red_expr S0 C (spec_entering_eval_code_1 (out_void S) K) o 
+      red_expr S0 C (spec_entering_eval_code_2 (out_void S) K) o 
 
   (** Entering function code  (10.4.3) *)
 
