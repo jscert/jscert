@@ -1,15 +1,3 @@
-
-(*let _ = (* TODO:  Remove *)
-  Interpreter.parse_pickable_hypothesis := fun s ->
-    let str = String.concat "" (List.map (String.make 1) s) in
-    let parserExp = Parser_main.exp_from_string str in
-    try
-      Some (Translate_syntax.exp_to_prog parserExp)
-    with
-    | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *)
-    | Parser.InvalidArgument _ -> None*)
-
-
 let file = ref ""
 let test_prelude = ref ""
 let test = ref false

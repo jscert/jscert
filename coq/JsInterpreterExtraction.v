@@ -134,20 +134,16 @@ Extract Constant object_prealloc_global_class => "(
   in aux2 ""GlobalClass"")".
 
 
-(*(* Parsing *)
-Axiom OCamlref : Type -> Type.
-Extract Constant OCamlref "'a" => "'a ref".
-
-Axiom unreffun : forall (A : Type) (B : A -> Type), OCamlref (forall a, B a) -> forall a, B a.
-Extract Constant unreffun => "(fun f x -> !f x)".
-
-Axiom parse_pickable_hypothesis : OCamlref (forall s, Pickable (parse s)).
-
-Definition parse_pickable_implem :=
-  unreffun _ parse_pickable_hypothesis.
-
-Extract Constant parse_pickable_hypothesis => "ref (fun s -> None)".
-Extract Constant parse_pickable => parse_pickable_implem. *)
+(* Parsing *)
+Extract Constant parse_pickable => "(fun s ->
+    let str = String.concat """" (List.map (String.make 1) s) in
+    let parserExp = Parser_main.exp_from_string str in
+    try
+      Some (Translate_syntax.exp_to_prog parserExp)
+    with
+    | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *)
+    | Parser.InvalidArgument _ -> None
+  )".
 
 
 (* Final Extraction *)

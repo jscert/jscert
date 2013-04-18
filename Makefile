@@ -165,10 +165,12 @@ interp/run_js: \
 	interp/src/extract/LibInt.cmx interp/src/extract/LibOption.cmx interp/src/extract/LibNat.cmx interp/src/extract/LibList.cmx interp/src/extract/List0.cmx \
 	interp/src/extract/LibBool.cmx interp/src/extract/LibHeap.cmx \
 	interp/src/extract/Zbool.cmx interp/src/extract/Fappli_IEEE.cmx interp/src/extract/Fappli_IEEE_bits.cmx interp/src/extract/Shared.cmx interp/src/extract/JsNumber.cmx \
-	interp/src/extract/JsSyntax.cmx interp/src/extract/JsSyntaxAux.cmx interp/src/extract/JsSyntaxInfos.cmx interp/src/extract/JsPreliminary.cmx interp/src/extract/JsPreliminaryAux.cmx \
+	interp/src/extract/JsSyntax.cmx interp/src/extract/JsSyntaxAux.cmx interp/src/extract/JsSyntaxInfos.cmx \
+	interp/src/pretty_print.cmx interp/src/parser_syntax.cmx interp/src/parser.cmx interp/src/parser_main.cmx interp/src/translate_syntax.cmx \
+	interp/src/extract/JsPreliminary.cmx interp/src/extract/JsPreliminaryAux.cmx \
 	interp/src/extract/JsInit.cmx interp/src/extract/JsInterpreter.cmx \
-	interp/src/parser_syntax.cmx interp/src/parser.cmx \
-	interp/src/pretty_print.cmx interp/src/parser_main.cmx interp/src/translate_syntax.cmx interp/src/prheap.cmx interp/src/run_js.ml
+	interp/src/prheap.cmx interp/src/run_js.ml
+	# Do not reorder the hypothesis (unless you really know what you are doing).
 	$(OCAMLOPT) $(PARSER_INC) -o $@ xml-light.cmxa unix.cmxa str.cmxa $^
 
 
