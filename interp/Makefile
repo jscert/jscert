@@ -29,3 +29,4 @@ build_run: copyfiles
 	-lflags ${BUILD_FLAGS} \
 	-Is src,src/parser/src \
 	run.byte
+

@@ -43,7 +43,7 @@ Extract Inductive Fappli_IEEE.binary_float => float [
   "nan"
   "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
 ].
-Extract Constant number_of_int => float_of_int.
+Extract Constant number_of_int => "float_of_int".
 
 (* Optimal fixpoint. *)
 Extraction Inline FixFun3 FixFun3Mod FixFun4 FixFun4Mod FixFunMod curry3 uncurry3 curry4 uncurry4.
@@ -60,8 +60,8 @@ Extract Inductive Fappli_IEEE.binary_float => float [
   "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
 ].
 
-Extract Constant number_of_int => float_of_int.
-Extract Constant JsNumber_to_int => "(int_of_float)".
+Extract Constant number_of_int => "float_of_int".
+Extract Constant JsNumber_to_int => "int_of_float".
 
 Extract Constant JsNumber.nan => "nan".
 Extract Constant JsNumber.zero => "0.".
@@ -92,7 +92,7 @@ Extract Constant JsNumber.sign => "(fun f -> float_of_int (compare f 0.))".
 Extract Constant JsNumber.number_comparable => "(fun n1 n2 -> 0 = compare n1 n2)".
 Extract Constant JsNumber.lt_bool => "(<)".
 
-Extract Constant JsNumber.to_int32 => "(int_of_float)".
+Extract Constant JsNumber.to_int32 => "int_of_float".
 Extract Constant JsNumber.to_uint32 => "(int_of_float (* TODO:  Replace by the right operation. *))".
 Extract Constant JsNumber.modulo_32 => "(fun x -> x (* TODO:  To be reread. *))".
 Extract Constant JsNumber.int32_bitwise_not => "(lnot)".
@@ -135,16 +135,19 @@ Extract Constant object_prealloc_global_class => "(
 
 
 (* Parsing *)
-Extract Constant parse_pickable => "(fun s -> (*
-    let str = String.concat """" (List.map (String.make 1) s) in
-    let parserExp = Parser_main.exp_from_string str in
-    try
-      Some (Translate_syntax.exp_to_prog parserExp)
-    with
-    | Translate_syntax.CoqSyntaxDoesNotSupport _ -> raise Not_found (* Temporary *)
-    | Parser.InvalidArgument _ -> None *)
-    raise Not_found (* This does not work because there lacks [mli] files. *)
-  )".
+Axiom OCamlref : Type -> Type.
+Extract Constant OCamlref "'a" => "'a ref".
+
+Axiom unreffun : forall (A : Type) (B : A -> Type), OCamlref (forall a, B a) -> forall a, B a.
+Extract Constant unreffun => "(fun f x -> !f x)".
+
+Axiom parse_pickable_hypothesis : OCamlref (forall s, Pickable (parse s)).
+
+Definition parse_pickable_implem :=
+  unreffun _ parse_pickable_hypothesis.
+
+Extract Constant parse_pickable_hypothesis => "ref (fun s -> None)".
+Extract Constant parse_pickable => parse_pickable_implem.
 
 
 (* Final Extraction *)

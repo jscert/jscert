@@ -7,7 +7,6 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
     spec_creating_function_object_proto
     spec_construct_prealloc (* Reread once the specification will have been debuged. *)
-    spec_entering_eval_code (* Waiting for specification *)
     spec_call_prog
     spec_error_type_error
     spec_create_arguments_object (* Not yet specified *)
@@ -1501,21 +1500,21 @@ Definition run_expr_function runs S C fo args bd : result :=
   end.
 
 Definition entering_eval_code runs S C direct bd K : result :=
-  if direct then
-    arbitrary (* TODO, waiting for specification *)
-  else
-    let str := funcbody_is_strict bd in
-    let (lex, S') :=
-      if str then
-        lexical_env_alloc_decl S (execution_ctx_lexical_env C)
-      else (execution_ctx_lexical_env C, S)
-    in let C' :=
-      if str then
-        execution_ctx_with_lex_same C lex
-      else C
-    in let p := funcbody_prog bd
-    in if_void (execution_ctx_binding_inst runs S' C' codetype_eval None p nil) (fun S1 =>
-      K S1 C').
+  let C' :=
+    if direct then C
+    else execution_ctx_initial false
+  in let str := funcbody_is_strict bd
+  in let (lex, S') :=
+    if str then
+      lexical_env_alloc_decl S (execution_ctx_lexical_env C')
+    else (execution_ctx_lexical_env C', S)
+  in let C1 :=
+    if str then
+      execution_ctx_with_lex_same C' lex
+    else C'
+  in let p := funcbody_prog bd
+  in if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
+    K S1 C').
 
 Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list value) : result :=
   match get_arg 0 vs with

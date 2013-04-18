@@ -130,26 +130,33 @@ interp/src/pretty_print.cmx: interp/parser/src/pretty_print.ml interp/src/parser
 interp/src/parser.cmx: interp/parser/src/parser.ml interp/src/parser_syntax.cmx
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ str.cmxa $<
 
-interp/src/parser_main.cmx: interp/parser/src/parser_main.ml interp/src/parser.cmx interp/src/pretty_print.cmx
+interp/src/parser_main.cmx: interp/parser/src/parser_main.ml interp/src/parser_main.cmi interp/src/parser.cmx interp/src/pretty_print.cmx
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
-interp/src/interpreter.cmi: interp/src/interpreter.mli interp/src/parser_main.cmx
-	$(OCAMLOPT) -c -I interp/src -o interp/src/interpreter.cmi interp/src/interpreter.mli
+interp/src/parser_main.cmi: interp/src/parser_main.mli
+	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
-interp/src/interpreter.cmx: interp/src/interpreter.ml interp/src/interpreter.cmi interp/src/parser_main.cmx
+interp/src/interpreter.cmi: interp/src/interpreter.mli interp/src/parser_main.cmi
+	$(OCAMLOPT) -c -I interp/src -o $@ $<
+
+interp/src/interpreter.cmx: interp/src/interpreter.ml interp/src/interpreter.cmi
 	$(OCAMLOPT) -c -w -20 -I interp/src -o $@ $<
 
-interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/interpreter.cmx
+interp/src/translate_syntax.cmi: interp/src/translate_syntax.mli interp/src/interpreter.cmi
+	$(OCAMLOPT) -c -I interp/src -o $@ $<
+
+interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/translate_syntax.cmi interp/src/interpreter.cmx
 	$(OCAMLOPT) -c -I interp/src -o $@ $<
 
 interp/src/prheap.cmi: interp/src/prheap.mli interp/src/interpreter.cmi
-	$(OCAMLOPT) -c -I interp/src -o interp/src/prheap.cmi interp/src/prheap.mli
+	$(OCAMLOPT) -c -I interp/src -o $@ $<
 
 interp/src/prheap.cmx: interp/src/prheap.ml interp/src/interpreter.cmx interp/src/prheap.cmi
-	$(OCAMLOPT) -c -I interp/src -o $@ ${^:cmi=mli}
+	$(OCAMLOPT) -c -I interp/src -o $@ $<
 
 interp/run_js: interp/src/parser_syntax.cmx interp/src/parser.cmx interp/src/pretty_print.cmx interp/src/parser_main.cmx interp/src/interpreter.cmx interp/src/translate_syntax.cmx interp/src/prheap.cmx interp/src/run_js.ml
-	$(OCAMLOPT) $(PARSER_INC) -o $@ xml-light.cmxa unix.cmxa str.cmxa $^
+	$(OCAMLOPT) $(PARSER_INC) -o $@ xml-light.cmxa unix.cmxa str.cmxa $<
+
 
 #######################################################
 # DEPENDENCIES
