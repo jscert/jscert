@@ -1,5 +1,5 @@
 
-let _ =
+(*let _ = (* TODO:  Remove *)
   Interpreter.parse_pickable_hypothesis := fun s ->
     let str = String.concat "" (List.map (String.make 1) s) in
     let parserExp = Parser_main.exp_from_string str in
@@ -7,7 +7,7 @@ let _ =
       Some (Translate_syntax.exp_to_prog parserExp)
     with
     | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *)
-    | Parser.InvalidArgument _ -> None
+    | Parser.InvalidArgument _ -> None*)
 
 
 let file = ref ""
@@ -42,23 +42,23 @@ let arguments () =
     usage_msg
 
 let get_value_ref state r =
-	match Interpreter.ref_get_value
-		(Interpreter.runs max_int)
-		state (Interpreter.execution_ctx_initial false)
-		(Interpreter.Resvalue_ref r) with
-    | Interpreter.Result_normal (
-	   Interpreter.Out_ter (_,
-	     { Interpreter.res_type = Interpreter.Restype_normal ;
-		   Interpreter.res_value =
-			 Interpreter.Resvalue_value v })) ->
+	match JsInterpreter.ref_get_value
+		(JsInterpreter.runs max_int)
+		state (JsPreliminary.execution_ctx_initial false)
+		(JsSyntax.Coq_resvalue_ref r) with
+    | JsInterpreter.Coq_result_normal (
+	   JsSyntax.Coq_out_ter (_,
+	     { JsSyntax.res_type = JsSyntax.Coq_restype_normal ;
+		   JsSyntax.res_value =
+			 JsSyntax.Coq_resvalue_value v })) ->
 		Some v
 	| _ -> None
 
 let get_global_value state name =
 	let x = Translate_syntax.string_to_coq name in
 	let r =
-	  Interpreter.ref_create_env_loc
-	    Interpreter.env_loc_global_env_record
+	  JsPreliminary.ref_create_env_loc
+	    JsSyntax.env_loc_global_env_record
 		x true in
 	get_value_ref state r
 
@@ -80,71 +80,71 @@ let _ =
     let exp = Translate_syntax.coq_syntax_from_file !file in
     let exp' = if (!test) then
                 begin
-					let Interpreter.Prog_intro (_, el) = exp in
-					let Interpreter.Prog_intro (str, el0) =
+					let JsSyntax.Coq_prog_intro (_, el) = exp in
+					let JsSyntax.Coq_prog_intro (str, el0) =
 						Translate_syntax.coq_syntax_from_file !test_prelude in
-					Interpreter.Prog_intro (str, el0 @ el)
+					JsSyntax.Coq_prog_intro (str, el0 @ el)
                   end
               else exp
-    in match Interpreter.run_javascript
+    in match JsInterpreter.run_javascript
             max_int
             exp'
     with
-    | Interpreter.Result_normal o ->
+    | JsInterpreter.Coq_result_normal o ->
        begin
          match o with
-         | Interpreter.Out_ter (state, res) ->
+         | JsSyntax.Coq_out_ter (state, res) ->
             begin
 			  if !printHeap then
 			    print_endline
 					(Prheap.prstate !skipInit state) ;
-              match Interpreter.res_type res with
-              | Interpreter.Restype_normal ->
+              match JsSyntax.res_type res with
+              | JsSyntax.Coq_restype_normal ->
                  (if (not !test) then
       		     begin
-                     match Interpreter.res_value res with
-                     | Interpreter.Resvalue_value v ->
+                     match JsSyntax.res_value res with
+                     | JsSyntax.Coq_resvalue_value v ->
                         print_endline "\n\nResult:\n";
                         print_endline (Prheap.prvalue v)
-                     | Interpreter.Resvalue_ref re ->
+                     | JsSyntax.Coq_resvalue_ref re ->
                         print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness from the result. -- Martin *)
-      	                                   Prheap.string_of_char_list re.Interpreter.ref_name ^
+      	                                   Prheap.string_of_char_list re.JsSyntax.ref_name ^
       		                                   " and of value:\n\t" ^
       	                                       (match get_value_ref state re with
       	                                        | Some v -> Prheap.prvalue v
       	                                        | None -> "Unknown!") ^ "\n")
-                     | Interpreter.Resvalue_empty ->
+                     | JsSyntax.Coq_resvalue_empty ->
                         print_endline "\n\nNo result\n"
 				 end;
 				 pr_test state)
-              | Interpreter.Restype_break ->
+              | JsSyntax.Coq_restype_break ->
 				print_endline "\n\nBREAK\n" ;
 				exit_if_test ()
-              | Interpreter.Restype_continue ->
+              | JsSyntax.Coq_restype_continue ->
 				print_endline "\n\nCONTINUE\n" ;
 				exit_if_test ()
-			  | Interpreter.Restype_return ->
+			  | JsSyntax.Coq_restype_return ->
 				print_endline "\n\nRETURN\n" ;
 				exit_if_test ()
-              | Interpreter.Restype_throw ->
+              | JsSyntax.Coq_restype_throw ->
                  print_endline "\n\nEXCEPTION THROWN\n" ;
-                 (match Interpreter.res_value res with
-                 | Interpreter.Resvalue_value v ->
+                 (match JsSyntax.res_value res with
+                 | JsSyntax.Coq_resvalue_value v ->
                    print_endline ("\tReturned value:\t" ^ Prheap.prvalue v)
-				 | Interpreter.Resvalue_ref _ ->
+				 | JsSyntax.Coq_resvalue_ref _ ->
 				   print_endline "With a reference."
-				 | Interpreter.Resvalue_empty ->
+				 | JsSyntax.Coq_resvalue_empty ->
 				   print_endline "No result with this throw.") ;
 				 exit_if_test ()
             end
-         | Interpreter.Out_div ->
+         | JsSyntax.Coq_out_div ->
 			print_endline "\n\nDIV\n" ;
 			exit_if_test ()
        end;
-    | Interpreter.Result_stuck ->
+    | JsInterpreter.Coq_result_stuck ->
 		print_endline "\n\nFIXME:  stuck!\n" ;
 		exit_if_test ()
-	| Interpreter.Result_bottom -> print_endline "\n\nBOTTOM\n"
+	| JsInterpreter.Coq_result_bottom -> print_endline "\n\nBOTTOM\n"
   with
   | Assert_failure (file, line, col) ->
 	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) ;

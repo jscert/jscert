@@ -123,7 +123,7 @@ Extract Constant Pos.succ => "Pervasives.succ (* Because of a bug of the extract
 
 (* These parameters are implementation-dependant according to the spec.
    I've chosed some very simple values, but we could choose another thing for them. *)
-Extract Constant object_prealloc_global_proto => "(Value_prim Prim_null)".
+Extract Constant object_prealloc_global_proto => "(Coq_value_prim Coq_prim_null)".
 Extract Constant object_prealloc_global_class => "(
   let rec aux s = function
   | 0 -> []
@@ -134,7 +134,7 @@ Extract Constant object_prealloc_global_class => "(
   in aux2 ""GlobalClass"")".
 
 
-(* Parsing *)
+(*(* Parsing *)
 Axiom OCamlref : Type -> Type.
 Extract Constant OCamlref "'a" => "'a ref".
 
@@ -147,11 +147,12 @@ Definition parse_pickable_implem :=
   unreffun _ parse_pickable_hypothesis.
 
 Extract Constant parse_pickable_hypothesis => "ref (fun s -> None)".
-Extract Constant parse_pickable => parse_pickable_implem.
+Extract Constant parse_pickable => parse_pickable_implem. *)
 
 
 (* Final Extraction *)
-Extraction "interp/src/interpreter.ml" run_javascript.
+Extraction Blacklist string list bool.
+Separate Extraction run_javascript.
 
 
 
