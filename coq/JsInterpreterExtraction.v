@@ -139,7 +139,8 @@ Extract Constant parse_pickable => "(fun s ->
     let str = String.concat """" (List.map (String.make 1) s) in
     let parserExp = Parser_main.exp_from_string str in
     try
-      Some (Translate_syntax.exp_to_prog parserExp)
+      Some (JsSyntaxInfos.add_infos_prog strictness_false (* TODO:  This should be called afterwards, and this be taken into account in the semantics. *)
+        (Translate_syntax.exp_to_prog parserExp))
     with
     | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *)
     | Parser.InvalidArgument _ -> None

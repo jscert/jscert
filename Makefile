@@ -90,7 +90,7 @@ init:
 	tar -xzf flocq-2.1.0.tar.gz 
 	mv flocq-2.1.0 flocq
 	chmod +x interp/run.sh
-	mkdir interp/src/extract || true
+	bash -c "mkdir interp/src/extract" || true
 
 # alternative: pull git from svn
 #	git clone https://gforge.inria.fr/git/flocq/flocq.git flocq

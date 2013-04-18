@@ -1307,6 +1307,12 @@ Definition string_of_propname (pn : propname) : prop_name :=
 
 (** Axiomatized parsing relation for eval *)
 
+(* TODO: There are actually two passes of parsing.  One that performs
+    the parsing, and the other that adds the additionnal informations,
+    such as [add_infos_prog].  The second part depends of the current
+    strictness flag.  Those function shouldn't thus perform this second
+    pass.  We thus have to change the semantics so that it take this into
+    account. *)
 Axiom parse : string -> option prog -> Prop.
 Axiom parse_pickable : forall s, Pickable (parse s).
 
