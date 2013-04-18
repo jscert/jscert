@@ -90,7 +90,7 @@ init:
 	tar -xzf flocq-2.1.0.tar.gz 
 	mv flocq-2.1.0 flocq
 	chmod +x interp/run.sh
-	mkdir interp/src/extract
+	mkdir interp/src/extract || true
 
 # alternative: pull git from svn
 #	git clone https://gforge.inria.fr/git/flocq/flocq.git flocq
@@ -158,19 +158,17 @@ interp/src/prheap.cmi: interp/src/prheap.mli interp/src/extract/JsSyntax.cmi
 interp/src/prheap.cmx: interp/src/prheap.ml interp/src/extract/JsSyntax.cmx interp/src/prheap.cmi
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
-interp/run_js: \
-	interp/src/extract/Bool0.cmx interp/src/extract/LibReflect.cmx interp/src/extract/String0.cmx interp/src/extract/LibString.cmx interp/src/extract/Datatypes.cmx \
-	interp/src/extract/OrdersTac.cmx interp/src/extract/GenericMinMax.cmx \
-	interp/src/extract/Peano.cmx interp/src/extract/BinPos.cmx interp/src/extract/BinNat.cmx interp/src/extract/BinInt.cmx \
-	interp/src/extract/LibInt.cmx interp/src/extract/LibOption.cmx interp/src/extract/LibNat.cmx interp/src/extract/LibList.cmx interp/src/extract/List0.cmx \
-	interp/src/extract/LibBool.cmx interp/src/extract/LibHeap.cmx \
-	interp/src/extract/Zbool.cmx interp/src/extract/Fappli_IEEE.cmx interp/src/extract/Fappli_IEEE_bits.cmx interp/src/extract/Shared.cmx interp/src/extract/JsNumber.cmx \
-	interp/src/extract/JsSyntax.cmx interp/src/extract/JsSyntaxAux.cmx interp/src/extract/JsSyntaxInfos.cmx \
-	interp/src/pretty_print.cmx interp/src/parser_syntax.cmx interp/src/parser.cmx interp/src/parser_main.cmx interp/src/translate_syntax.cmx \
-	interp/src/extract/JsPreliminary.cmx interp/src/extract/JsPreliminaryAux.cmx \
-	interp/src/extract/JsInit.cmx interp/src/extract/JsInterpreter.cmx \
-	interp/src/prheap.cmx interp/src/run_js.ml
-	# Do not reorder the hypothesis (unless you really know what you are doing).
+interp/src/print_syntax.cmx: interp/src/print_syntax.ml interp/src/extract/JsSyntax.cmx
+	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
+
+interp/src/run_js.cmx: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmx
+	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
+
+mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*.ml}
+mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
+mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
+
+interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
 	$(OCAMLOPT) $(PARSER_INC) -o $@ xml-light.cmxa unix.cmxa str.cmxa $^
 
 
