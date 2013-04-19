@@ -3,12 +3,6 @@ Require Import Shared.
 Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 
-(* TODO list:
-    spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
-    spec_construct_prealloc (* Reread once the specification will have been debuged. *)
-    spec_error (* Waiting for specification *)
-    spec_create_arguments_object (* Not yet specified *)
-*)
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -116,7 +110,14 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 (** Error Handling *)
 
 Definition run_error S (B : prealloc) : result :=
-  arbitrary (* TODO *).
+  match B with
+  | prealloc_syntax_error => out_syntax_error S
+  | prealloc_type_error => out_type_error S
+  | prealloc_ref_error => out_ref_error S
+  | prealloc_range_error => arbitrary (* TODO: Waiting for specification *)
+  | prealloc_throw_type_error => arbitrary (* TODO: Waiting for specification *)
+  | _ => result_stuck
+  end.
 
 
 (**************************************************************)
@@ -447,11 +448,11 @@ Definition object_get runs S C v x : result := (* This [v] should be a location.
 (** Conversions *)
 
 Definition prim_new_object S w : result :=
-  arbitrary (* TODO *).
+  arbitrary (* TODO: Waiting for the specification *).
 
 Definition to_object S v : result :=
   match v with
-  | prim_null | prim_undef => out_type_error S
+  | prim_null | prim_undef => run_error S prealloc_type_error
   | value_prim w =>
     prim_new_object S w
   | value_object l => out_ter S l
@@ -582,7 +583,7 @@ Definition ref_get_value runs S C rv : result :=
   | resvalue_value v => out_ter S v
   | resvalue_ref r =>
     match ref_kind_of r with
-    | ref_kind_null | ref_kind_undef => out_ref_error S
+    | ref_kind_null | ref_kind_undef => run_error S prealloc_ref_error
     | ref_kind_primitive_base | ref_kind_object =>
       match ref_base r with
       | ref_base_type_value v =>
@@ -657,7 +658,7 @@ Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
     ifb mutability_is_mutable mu then
       out_void (env_record_write_decl_env S L x mu v)
     else if str then
-      out_type_error S
+      run_error S prealloc_type_error
     else out_ter S prim_undef
   | env_record_object l pt =>
     object_put runs S C l x v str
@@ -669,10 +670,10 @@ Definition prim_value_put runs S C w x v str : result_void :=
 
 Definition ref_put_value runs S C rv v : result_void :=
   match rv with
-  | resvalue_value v => out_ref_error S
+  | resvalue_value v => run_error S prealloc_ref_error
   | resvalue_ref r =>
     ifb ref_is_unresolvable r then (
-      if ref_strict r then out_ref_error S
+      if ref_strict r then run_error S prealloc_ref_error
       else object_put runs S C prealloc_global (ref_name r) v throw_false)
     else
       match ref_base r with
@@ -693,7 +694,7 @@ Definition if_success_value runs C (o : result) (K : state -> value -> result) :
     if_success (ref_get_value runs S1 C rv1) (fun S2 rv2 =>
       match rv2 with
       | resvalue_value v => K S2 v
-      | _ => out_ref_error S2
+      | _ => run_error S2 prealloc_ref_error
       end)).
 
 
@@ -761,7 +762,7 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
         end) in
     sub S gmeth (fun S' =>
       let lmeth := method_of_preftype lpref in
-      sub S' lmeth (fun _ => out_type_error S))
+      sub S' lmeth (fun _ => run_error S prealloc_type_error))
 
   end.
 
@@ -834,7 +835,7 @@ Definition bool_proto_value_of_call S C : result :=
   let v := execution_ctx_this_binding C in
   match run_value_viewable_as_prim "Boolean" S v with
   | Some (prim_bool b) => out_ter S b
-  | _ => out_type_error S
+  | _ => run_error S prealloc_type_error
   end.
 
 Definition run_construct_prealloc runs S C B (args : list value) : result :=
@@ -845,7 +846,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     call_object_new S v
 
   | prealloc_function =>
-    arbitrary (* TODO *)
+    arbitrary (* TODO:  Waiting for specification *)
 
   | prealloc_bool =>
     let v := get_arg 0 args in
@@ -868,10 +869,10 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
       if_value (to_number runs S C v) follow
 
   | prealloc_array =>
-    arbitrary (* TODO *)
+    arbitrary (* TODO:  Waiting for specification*)
 
   | prealloc_string =>
-    arbitrary (* TODO *)
+    arbitrary (* TODO:  Waiting for specification *)
 
   | _ => result_stuck (* TODO:  Is there other cases missing? *)
 
@@ -966,7 +967,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
                     follow
                 ) else ifb descriptor_is_accessor A
                   \/ attributes_writable A = false \/ attributes_enumerable A = false then
-                    out_type_error S1
+                    run_error S1 prealloc_type_error
                 else follow S1
               end)
           ) else follow S1) (fun _ =>
@@ -1063,7 +1064,7 @@ Fixpoint run_object_has_instance_loop (max_step : nat) S lv vo : result :=
   | S max_step' =>
     match vo with
     | value_prim _ =>
-      out_type_error S
+      run_error S prealloc_type_error
     | value_object lo =>
       match run_object_method object_proto_ S lv with
       | null =>
@@ -1250,11 +1251,11 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
   | binary_op_instanceof =>
     match v2 with
     | value_object l =>
-      morph_option (fun _ => out_type_error S : result)
+      morph_option (fun _ => run_error S prealloc_type_error : result)
       (fun has_instance_id _ =>
         run_object_has_instance max_step runs has_instance_id S C l v1)
       (run_object_method object_has_instance_ S l) tt
-    | value_prim _ => out_type_error S
+    | value_prim _ => run_error S prealloc_type_error
     end
 
   | binary_op_in =>
@@ -1264,7 +1265,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
         if_bool_option_result (object_has_prop S2 l x) (fun _ =>
           out_ter S2 true) (fun _ =>
           out_ter S2 false))
-    | value_prim _ => out_type_error S
+    | value_prim _ => run_error S prealloc_type_error
     end
 
   | binary_op_equal | binary_op_disequal =>
@@ -1469,7 +1470,7 @@ Definition run_expr_access runs S C e1 e2 : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
     if_success_value runs C (wraped_run_expr runs S C e2) (fun S2 v2 =>
       ifb v1 = prim_undef \/ v1 = prim_null then
-        out_ref_error S2
+        run_error S2 prealloc_ref_error
       else
         if_string (to_string runs S2 C v2) (fun S3 x =>
           out_ter S3 (ref_create_value v1 x (execution_ctx_strict C))))).
@@ -1525,7 +1526,7 @@ Definition entering_eval_code runs S C direct bd K : result :=
   in if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
     K S1 C').
 
-Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list value) : result :=
+Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with
   | prim_string s =>
     match pick (parse s) with
@@ -1560,7 +1561,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
       run_list_expr runs S2 C nil e2s (fun S3 vs =>
         match f with
         | value_object l =>
-          ifb ~ (is_callable S3 l) then out_type_error S3
+          ifb ~ (is_callable S3 l) then run_error S3 prealloc_type_error
           else
             let follow vthis :=
               ifb l = prealloc_global_eval then
@@ -1578,7 +1579,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
               end
             | resvalue_empty => result_stuck
             end
-        | value_prim _ => out_type_error S3
+        | value_prim _ => run_error S3 prealloc_type_error
         end))).
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
@@ -1594,11 +1595,11 @@ Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
       match v with
       | value_object l =>
         match run_object_method object_construct_ S l with
-        | None => out_type_error S2
+        | None => run_error S2 prealloc_type_error
         | Some _ => run_construct runs S2 C l args
         end
       | value_prim _ =>
-        out_type_error S2
+        run_error S2 prealloc_type_error
       end)).
 
 
@@ -1900,7 +1901,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
               | full_descriptor_undef => result_stuck
               end)
           end) xs
-      | value_prim _ => out_type_error S
+      | value_prim _ => run_error S prealloc_type_error
       end
 
     | prealloc_object_is_frozen =>
@@ -1928,7 +1929,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
               | full_descriptor_undef => result_stuck
               end)
           end) xs
-      | value_prim _ => out_type_error S
+      | value_prim _ => run_error S prealloc_type_error
       end
 
     | prealloc_object_is_extensible =>
@@ -1936,7 +1937,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       match v with
       | value_object l =>
         out_ter S (run_object_method object_extensible_ S l)
-      | value_prim _ => out_type_error S
+      | value_prim _ => run_error S prealloc_type_error
       end
 
     | prealloc_object_prevent_extensions =>
@@ -1947,7 +1948,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
         let O1 := object_with_extension O false in
         let S' := object_write S l O1 in
         out_ter S' l
-      | value_prim _ => out_type_error S
+      | value_prim _ => run_error S prealloc_type_error
       end
 
     | prealloc_object_proto_to_string =>
@@ -2015,7 +2016,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       let v := execution_ctx_this_binding C in
       match run_value_viewable_as_prim "Number" S v with
       | Some (prim_number n) => out_ter S n
-      | _ => out_type_error S
+      | _ => run_error S prealloc_type_error
       end
 
     | _ =>
