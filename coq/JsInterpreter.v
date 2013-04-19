@@ -1939,6 +1939,17 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       | value_prim _ => out_type_error S
       end
 
+    | prealloc_object_prevent_extensions =>
+      let v := get_arg 0 args in
+      match v with
+      | value_object l =>
+        let O := pick (object_binds S l) in
+        let O1 := object_with_extension O false in
+        let S' := object_write S l O1 in
+        out_ter S' l
+      | value_prim _ => out_type_error S
+      end
+
     | prealloc_object_proto_to_string =>
       let v := execution_ctx_this_binding C in
       match v with

@@ -2584,7 +2584,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_frozen_2_nil : forall S C l b x o, (* Steps 3-4 *)
       object_extensible S l b ->
       red_expr S C (spec_call_object_is_frozen_2 l nil) (out_ter S (negb b))
-  
+
   (** IsExtensible (returns bool)  (15.2.3.13) *)
 
   | red_spec_call_object_is_extensible : forall S C v o args, 
@@ -2600,9 +2600,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_extensible_1_object : forall S C l b, 
       object_extensible S l b -> 
       red_expr S C (spec_call_object_is_extensible_1 l) (out_ter S b)
-  
+
   (** preventExtensions(O) (returns object)  (15.2.3.10) *)
-  
+
   | red_spec_call_object_prevent_extensions : forall S C v o args,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_prevent_extensions_1 v) o ->
