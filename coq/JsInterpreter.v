@@ -5,10 +5,8 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
 
 (* TODO list:
     spec_object_get (* Need replacement of [value] to [object_loc] in the specification *)
-    spec_creating_function_object_proto
     spec_construct_prealloc (* Reread once the specification will have been debuged. *)
-    spec_call_prog
-    spec_error_type_error
+    spec_error (* Waiting for specification *)
     spec_create_arguments_object (* Not yet specified *)
 *)
 
@@ -210,13 +208,17 @@ Definition if_value (o : result) (K : state -> value -> result) : result :=
     | _ => result_stuck
     end).
 
-Definition if_success_bool (o : result) (K1 K2 : state -> result) : result :=
+Definition if_bool (o : result) (K : state -> bool -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_bool b =>
-      (if b then K1 else K2) S
+      K S b
     | _ => result_stuck
     end).
+
+Definition if_success_bool (o : result) (K1 K2 : state -> result) : result :=
+  if_bool o (fun S b =>
+    (if b then K1 else K2) S).
 
 Definition if_success_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S v =>
@@ -901,13 +903,12 @@ Definition run_construct runs S C l args : result :=
 
 (**************************************************************)
 
-Definition creating_function_object_proto runs S C l (K : state -> result) : result :=
+Definition creating_function_object_proto runs S C l : result :=
   if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 lproto =>
     let A1 := attributes_data_intro l true false true in
-    if_success (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 rv1 =>
+    if_bool (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 b =>
       let A2 := attributes_data_intro lproto true false false in
-      if_success (object_define_own_prop S2 l "prototype" A2 false) (fun S3 rv2 =>
-        K S3))).
+      object_define_own_prop S2 l "prototype" A2 false)).
 
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
   let O := object_create prealloc_function_proto "Function" true Heap.empty in
@@ -919,7 +920,7 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 rv1 =>
-    creating_function_object_proto runs S2 C l (fun S3 =>
+    if_bool (creating_function_object_proto runs S2 C l) (fun S3 b =>
       if negb str then out_ter S3 l
       else (
         let vthrower := value_object prealloc_throw_type_error in
@@ -1273,9 +1274,8 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
       | binary_op_disequal => negb b
       | _ => arbitrary
       end in
-    if_success_bool (run_equal conv_number conv_primitive S v1 v2)
-      (fun S0 => out_ter S0 (finalPass true))
-      (fun S0 => out_ter S0 (finalPass false))
+    if_bool (run_equal conv_number conv_primitive S v1 v2) (fun S0 b0 =>
+      out_ter S0 (finalPass b0))
 
   | binary_op_strict_equal =>
     out_ter S (strict_equality_test v1 v2)
@@ -1974,6 +1974,18 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
           run_object_proto_is_prototype_of S1 lo l)
       end
 
+    | prealloc_object_proto_prop_is_enumerable =>
+      let v := get_arg 0 args in
+      if_string (to_string runs' S C v) (fun S1 x =>
+        if_object (to_object S1 (execution_ctx_this_binding C)) (fun S2 l =>
+          if_some (run_object_get_own_prop S2 l x) (fun D =>
+            match D with
+            | full_descriptor_undef =>
+              out_ter S2 false
+            | full_descriptor_some A =>
+              out_ter S2 (attributes_enumerable A)
+            end)))
+
     | prealloc_function_proto =>
       out_ter S undef
 
@@ -1986,10 +1998,8 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       out_ter S' l
 
     | prealloc_bool_proto_to_string =>
-      let follow b S :=
-        out_ter S (convert_bool_to_string b) in
-      if_success_bool (bool_proto_value_of_call S C)
-        (follow true) (follow false)
+      if_bool (bool_proto_value_of_call S C) (fun S b =>
+        out_ter S (convert_bool_to_string b))
 
     | prealloc_bool_proto_value_of =>
       bool_proto_value_of_call S C
@@ -1997,9 +2007,9 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
     | prealloc_number =>
       ifb args = nil then
         out_ter S JsNumber.zero
-      else (
+      else
         let v := get_arg 0 args in
-        to_number runs' S C v)
+        to_number runs' S C v
 
     | prealloc_number_proto_value_of =>
       let v := execution_ctx_this_binding C in
