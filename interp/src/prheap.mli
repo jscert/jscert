@@ -4,6 +4,7 @@ val proption : ('a -> string) -> 'a option -> string
 val string_of_char_list : char list -> string
 val char_list_of_string : string -> char list
 
+val prprealloc : JsSyntax.prealloc -> string
 val prloc : JsSyntax.object_loc -> string
 val prenv_loc : JsSyntax.env_loc -> string
 val prattributes : JsSyntax.attributes -> string

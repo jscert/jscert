@@ -285,6 +285,15 @@ Definition run_object_heap_set_properties S l P' : state :=
   let O := pick (object_binds S l) in
   object_write S l (object_with_properties O P').
 
+Global Instance object_properties_keys_as_list_pickable : forall S l,
+  Pickable (object_properties_keys_as_list S l).
+Proof.
+  introv. applys pickable_make
+    (List.map fst (Heap.to_list (run_object_method object_properties_ S l))).
+  introv [xs Hxs]. lets (P&HP&C): (rm Hxs). exists P. splits~.
+  skip. (* Needs properties about [heap_keys_as_list]. *)
+Qed.
+
 
 (**************************************************************)
 (* The functions taking such arguments can call any arbitrary code,
@@ -1876,7 +1885,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       let v := get_arg 0 args in
       match v with
       | value_object l =>
-        let xs := List.map fst (Heap.to_list (run_object_method object_properties_ S l))
+        let xs := pick (object_properties_keys_as_list S l)
         in (fix object_is_sealed xs : result :=
           match xs with
           | nil =>
@@ -1888,6 +1897,34 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                 if attributes_configurable A then
                   out_ter S false
                 else object_is_sealed xs'
+              | full_descriptor_undef => result_stuck
+              end)
+          end) xs
+      | value_prim _ => out_type_error S
+      end
+
+    | prealloc_object_is_frozen =>
+      let v := get_arg 0 args in
+      match v with
+      | value_object l =>
+        let xs := pick (object_properties_keys_as_list S l)
+        in (fix object_is_frozen xs : result :=
+          match xs with
+          | nil =>
+            out_ter S (neg (run_object_method object_extensible_ S l))
+          | x :: xs' =>
+            if_some (run_object_get_own_prop S l x) (fun D =>
+              let check_configurable A :=
+                if attributes_configurable A then
+                  out_ter S false : result
+                else object_is_frozen xs'
+              in match D with
+              | attributes_data_of Ad =>
+                if attributes_writable Ad then
+                  out_ter S false
+                else check_configurable Ad
+              | attributes_accessor_of Aa =>
+                check_configurable Aa
               | full_descriptor_undef => result_stuck
               end)
           end) xs
