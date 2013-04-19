@@ -51,13 +51,13 @@ JS_SRC=\
 	coq/JsSyntaxInfos.v \
 	coq/JsPreliminary.v \
 	coq/JsPreliminaryAux.v \
+	coq/JsInit.v \
+	coq/JsInterpreter.v \
+    coq/JsInterpreterExtraction.v \
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
-	coq/JsInit.v \
 	coq/JsPrettyRules.v \
-	coq/JsCorrectness.v \
-	coq/JsInterpreter.v \
-    coq/JsInterpreterExtraction.v
+	coq/JsCorrectness.v
 
 JS_VO=$(JS_SRC:.v=.vo)
 

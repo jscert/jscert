@@ -89,22 +89,32 @@ Proof.
 Qed.
 
 
+Ltac inverts_not_ter NT I :=
+  let NT' := fresh NT in
+  inverts NT as NT';
+  symmetry in NT';
+  try rewrite NT' in * |-;
+  try inverts I.
+
 (* [need_ter I NT E res S R] generates two goals:
    * one where [not_ter res]
    * one where [res = out_ter S R] *)
 Ltac need_ter I NT E res S R k :=
   tests NT: (not_ter res); [
-      try solve [ inverts NT; inverts I ]
+      try solve [ inverts_not_ter NT I ]
     | rewrite not_ter_forall in NT;
       lets (S&R&E): (rm NT); rewrite E in I; clear E; simpl in I; k ].
 
 (* Unfolds one monadic contructor in the environnement. *)
-Ltac if_unmonad :=
+Ltac if_unmonad := (* This removes some information... *)
   let NT := fresh "NT" in
   let E := fresh "Eq" in
   let S := fresh "S" in
   let R := fresh "R" in
   match goal with
+
+  | I: if_success_value ?runs ?C ?rev ?K = ?res |- ?g =>
+    unfold if_success_value in I; if_unmonad
 
   | I: if_success ?rev ?K = ?res |- ?g =>
     unfold if_success in I; if_unmonad
@@ -136,6 +146,7 @@ Ltac if_unmonad :=
   | I: result_normal (out_ter ?S1 ?R1)
       = result_normal (out_ter ?S0 ?R0) |- ?g =>
     inverts~ I
+
   | I: out_ter ?S1 ?R1 = out_ter ?S0 ?R0 |- ?g =>
     inverts~ I
 
@@ -161,18 +172,25 @@ Qed.
 (**************************************************************)
 (** Correctness of interpreter *)
 
-Definition follow_spec {T Te : Type} :=
-  fun (conv : T -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
-    (run : state -> execution_ctx -> T -> result) => forall S C (e : T) o,
-  (* TODO:  Add correctness statements. *)
+Definition follow_spec {T Te : Type}
+    (conv : T -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
+    (run : state -> execution_ctx -> T -> result) := forall S C (e : T) o,
   run S C e = o ->
   red S C (conv e) o.
 
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
 Definition follow_prog := follow_spec prog_basic red_prog.
-(* TODO:  Definition follow_call :=
-  follow_spec expr_call *)
+Definition follow_elements rv :=
+  follow_spec (prog_1 rv) red_prog.
+Definition follow_call vs :=
+  follow_spec
+    (fun B => spec_call_prealloc B vs)
+    red_expr.
+Definition follow_call_full l vs :=
+  follow_spec
+    (fun v => spec_call l v vs)
+    red_expr.
 
 
 (**************************************************************)
@@ -187,7 +205,66 @@ Theorem run_prog_correct : forall num,
 with run_stat_correct : forall num,
   follow_stat (run_stat num)
 with run_expr_correct : forall num,
-  follow_expr (run_expr num).
+  follow_expr (run_expr num)
+with run_elements_correct : forall num rv,
+  follow_elements rv (fun S C => run_elements num S C rv)
+with run_call_correct : forall num vs,
+  follow_call vs (fun S C B => run_call num S C B vs)
+with run_call_full_correct : forall num l vs,
+  follow_call_full l vs (fun S C v => run_call_full num S C l v vs).
 Proof.
+
+  (* run_prog_correct *)
+  induction num. auto*.
+  intros S0 C p o R. destruct p as [str es].
+  forwards RC: run_elements_correct R.
+  apply~ red_prog_prog.
+
+  (* run_stat_correct *)
+  induction num. auto*.
+  intros S0 C t o R. destruct t.
+
+   (* stat_expr *)
+   simpls. if_unmonad.
+    inverts_not_ter NT R. forwards: run_expr_correct NT0.
+     apply red_stat_abort. (* TODO:  This could be turned into a tactic. *)
+      skip. (* Needs implementation of [out_of_ext_stat]. *)
+      constructors.
+      intro A. inverts A.
+    skip.
+    skip.
+    skip.
+
+   (* stat_label *)
+   skip.
+
+   (* TODO: Complete *)
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+   skip.
+
+  (* run_expr_correct *)
+  skip.
+
+  (* run_elements_correct *)
+  skip.
+
+  (* run_call_correct *)
+  skip.
+
+  (* run_call_full_correct *)
+  skip.
+
 Admitted.
 

@@ -914,9 +914,9 @@ Definition creating_function_object_proto runs S C l : result :=
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
   let O := object_create prealloc_function_proto "Function" true Heap.empty in
   let O1 := object_with_invokation O
-    (Some (construct_prealloc prealloc_function))
-    (Some (call_prealloc prealloc_function))
-    (Some builtin_has_instance_function) in
+    (Some construct_default)
+    (Some call_default)
+    (Some builtin_has_instance_default) in
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
@@ -1035,8 +1035,7 @@ Definition run_call_default runs S C (lf : object_loc) : result := (* Correspond
   | None => out_ter S undef
   | Some bd =>
     if_success_or_return (wraped_run_prog runs S C (funcbody_prog bd))
-      (fun S' => out_ter S' undef)
-      (fun S' rv => out_ter S' rv)
+      (fun S' => out_ter S' undef) out_ter
   end.
 
 Definition entering_func_code runs S C lf vthis (args : list value) : result :=
@@ -1262,9 +1261,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
     match v2 with
     | value_object l =>
       if_string (to_string runs S C v1) (fun S2 x =>
-        if_bool_option_result (object_has_prop S2 l x) (fun _ =>
-          out_ter S2 true) (fun _ =>
-          out_ter S2 false))
+        if_some (object_has_prop S2 l x) (out_ter S2))
     | value_prim _ => run_error S prealloc_type_error
     end
 
@@ -1462,8 +1459,7 @@ Definition run_expr_binary_op run_binary_op' runs S C op e1 e2 : result :=
       let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then out_ter S1 v1
       else
-        if_success_value runs C (wraped_run_expr runs S1 C e2) (fun S2 v2 =>
-          out_ter S2 v2))
+        if_success_value runs C (wraped_run_expr runs S1 C e2) out_ter)
   end.
 
 Definition run_expr_access runs S C e1 e2 : result :=
@@ -1586,8 +1582,7 @@ Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
     let b := convert_value_to_boolean v1 in
     let e := if b then e2 else e3 in
-    if_success_value runs C (wraped_run_expr runs S1 C e) (fun S2 v2 =>
-      out_ter S2 v2)).
+    if_success_value runs C (wraped_run_expr runs S1 C e) out_ter).
 
 Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v =>
@@ -1764,7 +1759,7 @@ with run_stat (max_step : nat) S C t : result :=
     match t with
 
     | stat_expr e =>
-      wraped_run_expr runs' S C e
+      if_success_value runs' C (run_expr' S C e) out_ter
 
     | stat_var_decl xeos =>
       run_var_decl runs' S C xeos
