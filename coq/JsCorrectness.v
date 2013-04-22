@@ -156,65 +156,102 @@ Ltac if_unmonad := (* This removes some information... *)
 
   end.
 
-Ltac unfold_everything_in_goal k kloop :=
-  repeat (match goal with
-  | |- context[if_ter ?res ?K] =>
-    unfold if_ter
-  | |- context[if_success_state ?rv ?res ?K] =>
-    unfold if_success_state
-  | |- context[if_success ?res ?K] =>
-    unfold if_success
-  | |- context[if_success_value ?runs ?C ?res ?K] =>
-    unfold if_success_value
-  | |- context[ref_get_value ?runs ?S ?C ?rv] =>
-    unfold ref_get_value
-  | |- context[prim_value_get ?runs ?S ?C ?v ?x] =>
-    unfold prim_value_get
-  | |- context[if_object ?o ?k] =>
-    unfold if_object
-  | |- context[if_value ?o ?k] =>
-    unfold if_value
-  | |- context[run_prog ?num ?S ?C ?p] =>
-    let R := fresh "R" in
-    sets_eq R: (run_prog num S C p);
-    k R
-  | |- context[run_stat ?num ?S ?C ?t] =>
-    let R := fresh "R" in
-    sets_eq R: (run_stat num S C t);
-    k R
-  | |- context[run_expr ?num ?S ?C ?e] =>
-    let R := fresh "R" in
-    sets_eq R: (run_expr num S C e);
-    k R
-  | |- context[run_elements ?num ?S ?C ?rv ?els] =>
-    let R := fresh "R" in
-    sets_eq R: (run_elements num S C rv els);
-    k R
-  | |- context[run_call_full ?num ?S ?C ?l ?v ?args] =>
-    let R := fresh "R" in
-    sets_eq R: (run_call_full num S C l v args);
-    k R
-  | |- context[ref_kind_of ?r] =>
-    unfold ref_kind_of
-  | |- context[ref_base ?r] =>
-    let rb := fresh "rb" in
-    sets_eq rb: (ref_base r);
-    let v := fresh "v" in
-    destruct rb as [v|?];
-    [ let p := fresh "p" in
-      destruct v as [p|?];
-      [ destruct p|]
-    |]
-  | |- context[res_type ?r] =>
-    let rt := fresh "rt" in
-    sets_eq rt: (res_type r);
-    destruct rt
-  | |- context[res_value ?r] =>
-    let rv := fresh "rv" in
-    sets_eq rv: (res_value r);
-    destruct rv
-  end; kloop).
 
+(**************************************************************)
+(** Other Tactics *)
+
+Ltac unfold_matches_in T :=
+  match T with
+  | run_prog => auto*
+  | run_stat => auto*
+  | run_expr => auto*
+  | run_elements => auto*
+  | run_call_full => auto*
+  | match ?res with
+    | result_normal o => ?C1
+    | result_stuck => ?C2
+    | result_bottom => ?C3
+    end =>
+    let res0 := fresh "res" in
+    sets_eq res0: res;
+    destruct res0
+  | match ?o with
+    | out_div => ?C1
+    | out_ter s r => ?C2
+    end =>
+    let o0 := fresh "o" in
+    sets_eq o0: o;
+    destruct o0
+  | match ?t with
+    | restype_normal => ?C1
+    | restype_break => ?C2
+    | restype_continue => ?C3
+    | restype_return => ?C4
+    | restype_throw => ?C5
+    end =>
+    let t0 := fresh "t" in
+    sets_eq t0: t;
+    destruct t0
+  | match ?rv with
+    | resvalue_empty => ?C1
+    | resvalue_value v => ?C2
+    | resvalue_ref r => ?C3
+    end =>
+    let rv0 := fresh "rv" in
+    sets_eq rv0: rv;
+    destruct rv0
+  | match ?rk with
+    | ref_kind_null => ?C1
+    | ref_kind_undef => ?C2
+    | ref_kind_primitive_base => ?C3
+    | ref_kind_object => ?C4
+    | ref_kind_env_record => ?C5
+    end =>
+    let rk0 := fresh "rk" in
+    sets_eq rk0: rk;
+    destruct rk0
+  | match ?rb with
+    | ref_base_type_value v => ?C1
+    | ref_base_type_env_loc L => ?C2
+    end =>
+    let rb0 := fresh "rb" in
+    sets_eq rb0: rb;
+    destruct rb0
+  | match ?v with
+    | value_prim w => ?C1
+    | value_object l => ?C2
+    end =>
+    let v0 := fresh "v" in
+    sets_eq v0: v;
+    destruct v0
+  | match ?w with
+    | prim_undef => ?C1
+    | prim_null => ?C2
+    | prim_bool b => ?C3
+    | prim_number n => ?C4
+    | prim_string s => ?C5
+    end =>
+    let w0 := fresh "w" in
+    sets_eq w0: w;
+    destruct w0
+  | result_normal out_div => auto*
+  | result_normal ?o => discriminate || auto*
+  | result_stuck => discriminate
+  | result_bottom => discriminate
+  | context [ifb ?b then ?C1 else ?C2] => case_if
+  | ?f ?x => unfold_matches_in f
+  | ?f => unfolds f
+  end.
+
+Ltac prove_not_div :=
+  repeat match goal with
+  | H : result_normal out_div = ?f ?x
+    |- (result_normal out_div) <> (result_normal out_div) =>
+    asserts: (f x <> result_normal out_div);
+    [| auto*]
+  | |- ?T <> (result_normal out_div) =>
+    unfold_matches_in T
+  end.
 
 (**************************************************************)
 (** Operations on objects *)
@@ -276,18 +313,26 @@ with run_call_full_not_div : forall num S C l v args,
 Proof.
 
   (* run_prog_not_div *)
-  destruct num. auto*.
+  destruct num. discriminate.
   destruct p. simpls. auto*.
 
   (* run_stat_not_div *)
-  destruct num. auto*.
-  destruct t. simpls. auto*. unfold_everything_in_goal ltac:(fun R =>
-    asserts: (R <> out_div); [subst*|
-      let o := fresh "o" in
-      destruct R as [o| |]; tryfalse;
-      try destruct o; tryfalse]) ltac:(
-    repeat case_if; try discriminate).
+  destruct num. discriminate.
+  destruct t; prove_not_div.
 
+  (* run_expr_not_div *)
+  destruct num. discriminate.
+  destruct e; prove_not_div.
+
+  (* run_elements_not_div *)
+  destruct num. discriminate.
+  destruct els; prove_not_div.
+
+  (* run_call_full_not_div *)
+  destruct num. discriminate.
+  introv; prove_not_div.
+
+  Show Proof.
 Qed.
 
 Theorem run_prog_correct : forall num,
