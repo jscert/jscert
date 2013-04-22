@@ -168,6 +168,7 @@ Ltac unfold_matches_in T k :=
   | run_expr => auto*
   | run_elements => auto*
   | run_call_full => auto*
+  | run_call => auto*
 
   | result_normal out_div => auto*
   | result_normal ?o => discriminate || auto*
@@ -309,6 +310,15 @@ Ltac unfold_matches_in T k :=
     sets_eq B0: B;
     destruct B0
 
+  | match ?c with
+    | call_default => ?C1
+    | call_after_bind => ?C2
+    | call_prealloc C => ?C3
+    end =>
+    let c0 := fresh "c" in
+    sets_eq c0: c;
+    destruct c0
+
   | match ?op with
     | unary_op_delete => ?C1
     | unary_op_void => ?C2
@@ -366,7 +376,7 @@ Ltac unfold_matches_in T k :=
   end.
 
 Ltac prove_not_div :=
-  repeat match goal with
+  repeat progress match goal with
   | H : result_normal out_div = ?f ?x
     |- (result_normal out_div) <> (result_normal out_div) =>
     asserts: (f x <> result_normal out_div);
@@ -434,17 +444,19 @@ with run_expr_not_div : forall num S C e,
   run_expr num S C e <> out_div
 with run_elements_not_div : forall num S C rv els,
   run_elements num S C rv els <> out_div
+with run_call_not_div : forall num S C B args,
+  run_call num S C B args <> out_div
 with run_call_full_not_div : forall num S C l v args,
   run_call_full num S C l v args <> out_div.
 Proof.
 
   (* run_prog_not_div *)
   destruct num. discriminate.
-  destruct p. simpls. auto*.
+  introv. destruct p. simpls. auto*.
 
   (* run_stat_not_div *)
   destruct num. discriminate.
-  destruct t; simpls; prove_not_div.
+  introv. destruct t; simpls; prove_not_div.
 
   skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
   skip. (* Have to be proved in a separate lemma. *)
@@ -456,26 +468,40 @@ Proof.
   skip. (* Not yet implemented in the interpreter. *)
   skip. (* Not yet implemented in the interpreter. *)
   skip. (* Not yet implemented in the interpreter. *)
-  skip. (* I don't understand why this don't work. *)
+  skip. (* I doesn't understand why this don't work. *)
   skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
   skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
-  skip. (* I don't understand why this don't work. *)
+  skip. (* I doesn't understand why this don't work. *)
   skip. (* Not yet implemented in the interpreter. *)
   skip. (* Not yet implemented in the interpreter. *)
 
   (* run_expr_not_div *)
   destruct num. discriminate.
-  destruct e; simpls; prove_not_div.
+  introv. destruct e; simpls; auto*; skip. (* destruct e; simpls; prove_not_div. *) (* This is taking much too long...  Maybe the tactics are a little heavy there. *)
 
   (* run_elements_not_div *)
   destruct num. discriminate.
-  destruct els; simpls; prove_not_div; skip.
+  introv. destruct els as [|[?|?]]; simpls; prove_not_div.
+
+  (* run_call_not_div *)
+  destruct num. discriminate.
+  introv. destruct B; simpls; prove_not_div; skip.
 
   (* run_call_full_not_div *)
   destruct num. discriminate.
-  introv; prove_not_div.
+  introv. simpls. prove_not_div.
 
-  Show Proof.
+  skip. (* I doesn't understand why this don't work. *)
+  skip. (* I doesn't understand why this don't work. *)
+  skip. (* I doesn't understand why this don't work. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* I doesn't understand why this don't work. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* I doesn't understand why this don't work. *)
+  skip. (* I doesn't understand why this don't work. *)
+
 Qed.
 
 
