@@ -783,7 +783,7 @@ Lemma ok_heap_write_fields_user : forall h l fvs,
   has_some_proto h l ->
   l <> loc_null ->
   ok_heap h ->
-  Forall (fun c => let '(f, v) := c in
+  Forall (fun c => let (f, v) := c in
     ok_value h v /\ is_field_normal f) fvs ->
   ok_heap (write_fields h l fvs).
 Proof.
@@ -839,7 +839,7 @@ Qed.
 Lemma arguments_ok_value : forall lx lv lfv h,
   arguments lx lv lfv ->
   Forall (ok_value h) lv ->
-  Forall (fun c => let '(f, v) := c in
+  Forall (fun c => let (f, v) := c in
     ok_value h v /\ is_field_normal f) lfv.
 Proof.
   introv I. induction I; introv F; constructors.

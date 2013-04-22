@@ -859,9 +859,9 @@ Definition env_record_write_decl_env S L x mu v :=
     is bound to an environment record [E]. *)
 
 Definition lexical_env_alloc S lex E :=
-  let '(L,S') := env_record_alloc S E in
+  let (L, S') := env_record_alloc S E in
   let lex' := (L::lex) in
-  (lex',S').
+  (lex', S').
 
 (** [lexical_env_alloc_decl S lex] returns a pair [(lex',S')]
     made of lexical environment [lex'] that extends the

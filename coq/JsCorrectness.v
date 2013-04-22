@@ -160,28 +160,39 @@ Ltac if_unmonad := (* This removes some information... *)
 (**************************************************************)
 (** Other Tactics *)
 
-Ltac unfold_matches_in T :=
+Ltac unfold_matches_in T k :=
   match T with
+
   | run_prog => auto*
   | run_stat => auto*
   | run_expr => auto*
   | run_elements => auto*
   | run_call_full => auto*
+
+  | result_normal out_div => auto*
+  | result_normal ?o => discriminate || auto*
+  | result_stuck => discriminate
+  | result_bottom => discriminate
+
   | match ?res with
     | result_normal o => ?C1
     | result_stuck => ?C2
     | result_bottom => ?C3
     end =>
-    let res0 := fresh "res" in
-    sets_eq res0: res;
-    destruct res0
+    asserts: (res <> result_normal out_div);
+    [ k
+    | let res0 := fresh "res" in
+      sets_eq res0: res;
+      destruct res0 ]
+
   | match ?o with
     | out_div => ?C1
     | out_ter s r => ?C2
     end =>
     let o0 := fresh "o" in
     sets_eq o0: o;
-    destruct o0
+    destruct o0; tryfalse
+
   | match ?t with
     | restype_normal => ?C1
     | restype_break => ?C2
@@ -192,6 +203,7 @@ Ltac unfold_matches_in T :=
     let t0 := fresh "t" in
     sets_eq t0: t;
     destruct t0
+
   | match ?rv with
     | resvalue_empty => ?C1
     | resvalue_value v => ?C2
@@ -200,6 +212,7 @@ Ltac unfold_matches_in T :=
     let rv0 := fresh "rv" in
     sets_eq rv0: rv;
     destruct rv0
+
   | match ?rk with
     | ref_kind_null => ?C1
     | ref_kind_undef => ?C2
@@ -210,6 +223,7 @@ Ltac unfold_matches_in T :=
     let rk0 := fresh "rk" in
     sets_eq rk0: rk;
     destruct rk0
+
   | match ?rb with
     | ref_base_type_value v => ?C1
     | ref_base_type_env_loc L => ?C2
@@ -217,6 +231,7 @@ Ltac unfold_matches_in T :=
     let rb0 := fresh "rb" in
     sets_eq rb0: rb;
     destruct rb0
+
   | match ?v with
     | value_prim w => ?C1
     | value_object l => ?C2
@@ -224,6 +239,7 @@ Ltac unfold_matches_in T :=
     let v0 := fresh "v" in
     sets_eq v0: v;
     destruct v0
+
   | match ?w with
     | prim_undef => ?C1
     | prim_null => ?C2
@@ -234,6 +250,7 @@ Ltac unfold_matches_in T :=
     let w0 := fresh "w" in
     sets_eq w0: w;
     destruct w0
+
   | match ?op with
     | None => ?C1
     | Some s => ?C2
@@ -241,6 +258,7 @@ Ltac unfold_matches_in T :=
     let op0 := fresh "op" in
     sets_eq op0: op;
     destruct op0
+
   | match ?D with
     | full_descriptor_undef => ?C1
     | full_descriptor_some A => ?C2
@@ -248,6 +266,7 @@ Ltac unfold_matches_in T :=
     let D0 := fresh "D" in
     sets_eq D0: D;
     destruct D0
+
   | match ?A with
     | attributes_data_of Ad => ?C1
     | attributes_accessor_of Aa => ?C2
@@ -255,6 +274,7 @@ Ltac unfold_matches_in T :=
     let A0 := fresh "A" in
     sets_eq A0: A;
     destruct A0
+
   | match ?E with
     | env_record_decl Ed => ?C1
     | env_record_object l b => ?C2
@@ -262,6 +282,7 @@ Ltac unfold_matches_in T :=
     let E0 := fresh "E" in
     sets_eq E0: E;
     destruct E0
+
   | match ?t with
     | type_undef => ?C1
     | type_null => ?C2
@@ -273,18 +294,21 @@ Ltac unfold_matches_in T :=
     let t0 := fresh "t" in
     sets_eq t0: t;
     destruct t0
+
   | match ?B with
     | builtin_default_value_default => ?C
     end =>
     let B0 := fresh "B" in
     sets_eq B0: B;
     destruct B0
+
   | match ?B with
     | builtin_put_default => ?C
     end =>
     let B0 := fresh "B" in
     sets_eq B0: B;
     destruct B0
+
   | match ?op with
     | unary_op_delete => ?C1
     | unary_op_void => ?C2
@@ -301,6 +325,7 @@ Ltac unfold_matches_in T :=
     let op0 := fresh "op" in
     sets_eq op0: op;
     destruct op0
+
   | match ?op with
     | binary_op_mult => ?C1
     | binary_op_div => ?C2
@@ -330,14 +355,14 @@ Ltac unfold_matches_in T :=
     let op0 := fresh "op" in
     sets_eq op0: op;
     destruct op0
-  | result_normal out_div => auto*
-  | result_normal ?o => discriminate || auto*
-  | result_stuck => discriminate
-  | result_bottom => discriminate
-  | context [if ?b then ?C1 else ?C2] => case_if
-  | context [ifb ?b then ?C1 else ?C2] => case_if
-  | ?f ?x => unfold_matches_in f
+
+  | let a := ?f in ?C => unfold_matches_in f k
+  | let (a, b) := ?f in ?C => unfold_matches_in f k
+  | let '(a, b) := ?f in ?C => unfold_matches_in f k
+
+  | ?f ?x => unfold_matches_in f k
   | ?f => unfolds f
+
   end.
 
 Ltac prove_not_div :=
@@ -346,8 +371,12 @@ Ltac prove_not_div :=
     |- (result_normal out_div) <> (result_normal out_div) =>
     asserts: (f x <> result_normal out_div);
     [| auto*]
+  | |- (if ?b then ?C1 else ?C2) <> (result_normal out_div) =>
+    case_if
+  | |- (ifb ?b then ?C1 else ?C2) <> (result_normal out_div) =>
+    case_if
   | |- ?T <> (result_normal out_div) =>
-    unfold_matches_in T
+    unfold_matches_in T prove_not_div
   end.
 
 (**************************************************************)
@@ -415,7 +444,24 @@ Proof.
 
   (* run_stat_not_div *)
   destruct num. discriminate.
-  destruct t; simpls; prove_not_div; skip. (* There stay cases at the end. *)
+  destruct t; simpls; prove_not_div.
+
+  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
+  skip. (* Have to be proved in a separate lemma. *)
+  skip. (* Have to be proved in a separate lemma. *)
+  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* Have to be proved in a separate lemma. *)
+  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* I don't understand why this don't work. *)
+  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
+  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
+  skip. (* I don't understand why this don't work. *)
+  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* Not yet implemented in the interpreter. *)
 
   (* run_expr_not_div *)
   destruct num. discriminate.
@@ -423,7 +469,7 @@ Proof.
 
   (* run_elements_not_div *)
   destruct num. discriminate.
-  destruct els; prove_not_div.
+  destruct els; simpls; prove_not_div; skip.
 
   (* run_call_full_not_div *)
   destruct num. discriminate.
@@ -431,6 +477,7 @@ Proof.
 
   Show Proof.
 Qed.
+
 
 Theorem run_prog_correct : forall num,
   follow_prog (run_prog num)
