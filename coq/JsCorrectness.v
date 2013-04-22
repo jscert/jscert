@@ -91,7 +91,7 @@ Qed.
 
 Ltac inverts_not_ter NT I :=
   let NT' := fresh NT in
-  inverts NT as NT';
+  inversion NT as [NT'|NT'|NT']; clear NT; (* [inverts NT as NT'] does not work. *)
   symmetry in NT';
   try rewrite NT' in * |-;
   try inverts I.
@@ -100,7 +100,11 @@ Ltac inverts_not_ter NT I :=
    * one where [not_ter res]
    * one where [res = out_ter S R] *)
 Ltac need_ter I NT E res S R k :=
-  tests NT: (not_ter res); [
+  let res0 := fresh "res" in
+  let EQres0 := fresh I in
+  sets_eq res0 EQres0: res;
+  symmetry in EQres0;
+  tests NT: (not_ter res0); [
       try solve [ inverts_not_ter NT I ]
     | rewrite not_ter_forall in NT;
       lets (S&R&E): (rm NT); rewrite E in I; clear E; simpl in I; k ].
@@ -138,7 +142,7 @@ Ltac if_unmonad := (* This removes some information... *)
         lets (C1&C2&C3): (rm C);
         destruct (res_type R); [ apply C1 | apply C2
           | apply C3 | apply C3 | apply C3 ];
-          first [ reflexivity | inverts~ I; fail | idtac ] ])
+          first [ reflexivity | inverts~ I; fail | idtac] ])
 
   | I: if_ter ?res ?K = ?res' |- ?g =>
     need_ter I NT E res S R ltac:idtac
@@ -151,6 +155,65 @@ Ltac if_unmonad := (* This removes some information... *)
     inverts~ I
 
   end.
+
+Ltac unfold_everything_in_goal k kloop :=
+  repeat (match goal with
+  | |- context[if_ter ?res ?K] =>
+    unfold if_ter
+  | |- context[if_success_state ?rv ?res ?K] =>
+    unfold if_success_state
+  | |- context[if_success ?res ?K] =>
+    unfold if_success
+  | |- context[if_success_value ?runs ?C ?res ?K] =>
+    unfold if_success_value
+  | |- context[ref_get_value ?runs ?S ?C ?rv] =>
+    unfold ref_get_value
+  | |- context[prim_value_get ?runs ?S ?C ?v ?x] =>
+    unfold prim_value_get
+  | |- context[if_object ?o ?k] =>
+    unfold if_object
+  | |- context[if_value ?o ?k] =>
+    unfold if_value
+  | |- context[run_prog ?num ?S ?C ?p] =>
+    let R := fresh "R" in
+    sets_eq R: (run_prog num S C p);
+    k R
+  | |- context[run_stat ?num ?S ?C ?t] =>
+    let R := fresh "R" in
+    sets_eq R: (run_stat num S C t);
+    k R
+  | |- context[run_expr ?num ?S ?C ?e] =>
+    let R := fresh "R" in
+    sets_eq R: (run_expr num S C e);
+    k R
+  | |- context[run_elements ?num ?S ?C ?rv ?els] =>
+    let R := fresh "R" in
+    sets_eq R: (run_elements num S C rv els);
+    k R
+  | |- context[run_call_full ?num ?S ?C ?l ?v ?args] =>
+    let R := fresh "R" in
+    sets_eq R: (run_call_full num S C l v args);
+    k R
+  | |- context[ref_kind_of ?r] =>
+    unfold ref_kind_of
+  | |- context[ref_base ?r] =>
+    let rb := fresh "rb" in
+    sets_eq rb: (ref_base r);
+    let v := fresh "v" in
+    destruct rb as [v|?];
+    [ let p := fresh "p" in
+      destruct v as [p|?];
+      [ destruct p|]
+    |]
+  | |- context[res_type ?r] =>
+    let rt := fresh "rt" in
+    sets_eq rt: (res_type r);
+    destruct rt
+  | |- context[res_value ?r] =>
+    let rv := fresh "rv" in
+    sets_eq rv: (res_value r);
+    destruct rv
+  end; kloop).
 
 
 (**************************************************************)
@@ -198,7 +261,34 @@ Definition follow_call_full l vs :=
 
 
 (**************************************************************)
-(** ** Main theorem *)
+(** ** Main theorems *)
+
+Theorem run_prog_not_div : forall num S C p,
+  run_prog num S C p <> out_div
+with run_stat_not_div : forall num S C t,
+  run_stat num S C t <> out_div
+with run_expr_not_div : forall num S C e,
+  run_expr num S C e <> out_div
+with run_elements_not_div : forall num S C rv els,
+  run_elements num S C rv els <> out_div
+with run_call_full_not_div : forall num S C l v args,
+  run_call_full num S C l v args <> out_div.
+Proof.
+
+  (* run_prog_not_div *)
+  destruct num. auto*.
+  destruct p. simpls. auto*.
+
+  (* run_stat_not_div *)
+  destruct num. auto*.
+  destruct t. simpls. auto*. unfold_everything_in_goal ltac:(fun R =>
+    asserts: (R <> out_div); [subst*|
+      let o := fresh "o" in
+      destruct R as [o| |]; tryfalse;
+      try destruct o; tryfalse]) ltac:(
+    repeat case_if; try discriminate).
+
+Qed.
 
 Theorem run_prog_correct : forall num,
   follow_prog (run_prog num)
@@ -215,18 +305,24 @@ with run_call_full_correct : forall num l vs,
 Proof.
 
   (* run_prog_correct *)
-  induction num. auto*.
+  destruct num. auto*.
   intros S0 C p o R. destruct p as [str es].
   forwards RC: run_elements_correct R.
   apply~ red_prog_prog.
 
   (* run_stat_correct *)
-  induction num. auto*.
+  destruct num. auto*.
   intros S0 C t o R. destruct t.
 
    (* stat_expr *)
-   simpls. if_unmonad.
-    inverts_not_ter NT R. forwards: run_expr_correct NT0.
+   simpls. repeat if_unmonad.
+    inverts_not_ter NT R. forwards: run_expr_correct R2.
+     apply red_stat_abort. (* TODO:  This could be turned into a tactic. *)
+      skip. (* Needs implementation of [out_of_ext_stat]. *)
+      constructors.
+      intro A. inverts A.
+    inverts_not_ter NT R.
+    forwards: run_expr_correct R2.
      apply red_stat_abort. (* TODO:  This could be turned into a tactic. *)
       skip. (* Needs implementation of [out_of_ext_stat]. *)
       constructors.
