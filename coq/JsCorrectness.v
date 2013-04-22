@@ -234,10 +234,107 @@ Ltac unfold_matches_in T :=
     let w0 := fresh "w" in
     sets_eq w0: w;
     destruct w0
+  | match ?op with
+    | None => ?C1
+    | Some s => ?C2
+    end =>
+    let op0 := fresh "op" in
+    sets_eq op0: op;
+    destruct op0
+  | match ?D with
+    | full_descriptor_undef => ?C1
+    | full_descriptor_some A => ?C2
+    end =>
+    let D0 := fresh "D" in
+    sets_eq D0: D;
+    destruct D0
+  | match ?A with
+    | attributes_data_of Ad => ?C1
+    | attributes_accessor_of Aa => ?C2
+    end =>
+    let A0 := fresh "A" in
+    sets_eq A0: A;
+    destruct A0
+  | match ?E with
+    | env_record_decl Ed => ?C1
+    | env_record_object l b => ?C2
+    end =>
+    let E0 := fresh "E" in
+    sets_eq E0: E;
+    destruct E0
+  | match ?t with
+    | type_undef => ?C1
+    | type_null => ?C2
+    | type_bool => ?C3
+    | type_number => ?C4
+    | type_string => ?C5
+    | type_object => ?C6
+    end =>
+    let t0 := fresh "t" in
+    sets_eq t0: t;
+    destruct t0
+  | match ?B with
+    | builtin_default_value_default => ?C
+    end =>
+    let B0 := fresh "B" in
+    sets_eq B0: B;
+    destruct B0
+  | match ?B with
+    | builtin_put_default => ?C
+    end =>
+    let B0 := fresh "B" in
+    sets_eq B0: B;
+    destruct B0
+  | match ?op with
+    | unary_op_delete => ?C1
+    | unary_op_void => ?C2
+    | unary_op_typeof => ?C3
+    | unary_op_post_incr => ?C4
+    | unary_op_post_decr => ?C5
+    | unary_op_pre_incr => ?C6
+    | unary_op_pre_decr => ?C7
+    | unary_op_add => ?C8
+    | unary_op_neg => ?C9
+    | unary_op_bitwise_not => ?C10
+    | unary_op_not => ?C11
+    end =>
+    let op0 := fresh "op" in
+    sets_eq op0: op;
+    destruct op0
+  | match ?op with
+    | binary_op_mult => ?C1
+    | binary_op_div => ?C2
+    | binary_op_mod => ?C3
+    | binary_op_add => ?C4
+    | binary_op_sub => ?C5
+    | binary_op_left_shift => ?C6
+    | binary_op_right_shift => ?C7
+    | binary_op_unsigned_right_shift => ?C8
+    | binary_op_lt => ?C9
+    | binary_op_gt => ?C10
+    | binary_op_le => ?C11
+    | binary_op_ge => ?C12
+    | binary_op_instanceof => ?C13
+    | binary_op_in => ?C14
+    | binary_op_equal => ?C15
+    | binary_op_disequal => ?C16
+    | binary_op_strict_equal => ?C17
+    | binary_op_strict_disequal => ?C18
+    | binary_op_bitwise_and => ?C19
+    | binary_op_bitwise_or => ?C20
+    | binary_op_bitwise_xor => ?C21
+    | binary_op_and => ?C22
+    | binary_op_or => ?C23
+    | binary_op_coma => ?C24
+    end =>
+    let op0 := fresh "op" in
+    sets_eq op0: op;
+    destruct op0
   | result_normal out_div => auto*
   | result_normal ?o => discriminate || auto*
   | result_stuck => discriminate
   | result_bottom => discriminate
+  | context [if ?b then ?C1 else ?C2] => case_if
   | context [ifb ?b then ?C1 else ?C2] => case_if
   | ?f ?x => unfold_matches_in f
   | ?f => unfolds f
@@ -318,11 +415,11 @@ Proof.
 
   (* run_stat_not_div *)
   destruct num. discriminate.
-  destruct t; prove_not_div.
+  destruct t; simpls; prove_not_div; skip. (* There stay cases at the end. *)
 
   (* run_expr_not_div *)
   destruct num. discriminate.
-  destruct e; prove_not_div.
+  destruct e; simpls; prove_not_div.
 
   (* run_elements_not_div *)
   destruct num. discriminate.
