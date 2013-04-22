@@ -537,11 +537,13 @@ Proof.
       constructors.
       intro A. inverts A.
     inverts_not_ter NT R.
-    forwards: run_expr_correct R2.
+  (* forwards: run_expr_correct R2.
      apply red_stat_abort. (* TODO:  This could be turned into a tactic. *)
       skip. (* Needs implementation of [out_of_ext_stat]. *)
       constructors.
-      intro A. inverts A.
+      intro A. inverts A.*)
+    skip.
+    skip.
     skip.
     skip.
     skip.
@@ -550,6 +552,7 @@ Proof.
    skip.
 
    (* TODO: Complete *)
+   skip.
    skip.
    skip.
    skip.
