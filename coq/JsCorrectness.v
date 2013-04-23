@@ -628,7 +628,7 @@ Proof.
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
 
-Qed.
+Admitted.
 
 
 Theorem run_prog_correct : forall num,

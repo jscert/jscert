@@ -1,5 +1,5 @@
 // Copyright 2013 JScert, but we can give it away ;-)
-// Changelog: initial test by Alan Schmitt
+// Changelog: initial test by Alan Schmitt, update by Martin Bodin
 
 /**
 * @name: tofill;
@@ -11,24 +11,24 @@
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
 if (eval("try {3} finally {4}") !== 3) {
-    $ERROR('#1: (try {3} finally {4}) !== 3.  Actual: (try {3} finally {4}) === ' + eval("try {3} finally {4}"))
+    $ERROR('#1: eval("try {3} finally {4}") !== 3. Actual: ' + eval("try {3} finally {4}"))
 }
 
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (eval("while(true){try {3; break} finally {4}}") !== 3) {
-    $ERROR('#2: (while(true){try {3; break} finally {4}}) !== 3.  Actual: (while(true){try {3; break} finally {4}}) === ' + eval("while(true){try {3; break} finally {4}}"))
+    $ERROR('#2: eval("while(true){try {3; break} finally {4}}") !== 3. Actual: ' + eval("while(true){try {3; break} finally {4}}"))
 }
 
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#3
 if (eval("while(true){try {3} finally {4; break}}") !== 4) {
-    $ERROR('#3: (while(true){try {3} finally {4; break}}) !== 4.  Actual: (while(true){try {3} finally {4; break}}) === ' + eval("while(true){try {3} finally {4; break}}"))
+    $ERROR('#3: eval("while(true){try {3} finally {4; break}}") !== 4. Actual: ' + eval("while(true){try {3} finally {4; break}}"))
 }
 
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#4
 if (eval("while(true){try {3; break} finally {4; break}}") !== 4) {
-    $ERROR('#4: (while(true){try {3; break} finally {4; break}}) !== 4.  Actual: (while(true){try {3; break} finally {4; break}}) === ' + eval("while(true){try {3; break} finally {4; break}}"))
+    $ERROR('#4: eval("while(true){try {3; break} finally {4; break}}") !== 4. Actual: ' + eval("while(true){try {3; break} finally {4; break}}"))
 }
 
