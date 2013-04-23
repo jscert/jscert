@@ -145,7 +145,7 @@ Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : 
     | restype_normal =>
       let rv' := res_value R in
       K S0 (ifb rv' = resvalue_empty then rv else rv')
-    | restype_break => o
+    | restype_throw => o
     | _ =>
       out_ter S0 (res_overwrite_value_if_empty rv R)
     end).
@@ -1648,10 +1648,10 @@ Fixpoint run_stat_while (max_step : nat) runs rv S C ls e1 t2 : result :=
   end.
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=
-  let finally : result -> result :=
+  let finally res :=
     match t3o with
-    | None => fun res => res
-    | Some t3 => fun res =>
+    | None => res
+    | Some t3 =>
       if_ter res (fun S1 R =>
         if_success (wraped_run_stat runs S1 C t3) (fun S2 rv' =>
           out_ter S2 R))

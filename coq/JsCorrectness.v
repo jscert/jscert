@@ -163,6 +163,10 @@ Ltac if_unmonad := (* This removes some information... *)
 Ltac unfold_matches_in T :=
   match T with
 
+  (* Some exceptions to avoid looping *)
+  | arbitrary => fail 1
+  | run_equal => fail 1
+
   | run_prog => auto
   | run_stat => auto
   | run_expr => auto
@@ -388,32 +392,35 @@ Ltac unfold_matches_in T :=
 
   end.
 
-Ltac prove_not_div_with k :=
-  repeat (match goal with
-  | H : result_normal out_div = ?f ?x
-    |- (result_normal out_div) <> (result_normal out_div) =>
-    asserts: (f x <> result_normal out_div);
-    [ clear H | false~ ]
-  | |- (if ?b then ?C1 else ?C2) <> (result_normal out_div) =>
-    case_if
-  | |- (ifb ?b then ?C1 else ?C2) <> (result_normal out_div) =>
-    case_if
-  | |- (result_normal (if ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
-    case_if
-  | |- (result_normal (ifb ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
-    case_if
-  | |- ?T <> (result_normal out_div) =>
-    unfold_matches_in T
-  end; k).
+Ltac prove_not_div_with k1 k2 :=
+  repeat first
+    [ k1
+    | match goal with
+      | H : result_normal out_div = ?f ?x
+        |- (result_normal out_div) <> (result_normal out_div) =>
+        asserts: (f x <> result_normal out_div);
+        [ clear H | false~ ]
+      | |- (if ?b then ?C1 else ?C2) <> (result_normal out_div) =>
+        case_if
+      | |- (ifb ?b then ?C1 else ?C2) <> (result_normal out_div) =>
+        case_if
+      | |- (result_normal (if ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
+        case_if
+      | |- (result_normal (ifb ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
+        case_if
+      | |- ?T <> (result_normal out_div) =>
+        unfold_matches_in T
+      end
+    | k2].
 
 Ltac prove_not_div :=
-  prove_not_div_with ltac:simpl.
+  prove_not_div_with ltac:fail ltac:(simpl; auto).
 
 Ltac prove_not_div_using P :=
-  prove_not_div_with ltac:(simpl; first [ apply P | idtac ]; auto).
+  prove_not_div_with ltac:(apply P) ltac:(simpl; auto).
 
 Ltac prove_not_div_using2 P1 P2 :=
-  prove_not_div_with ltac:(simpl; first [ apply P1 | apply P2 | idtac ]; auto).
+  prove_not_div_with ltac:(apply P1 || apply P2) ltac:(simpl; auto).
 
 
 (**************************************************************)
@@ -512,17 +519,17 @@ Proof.
 
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
-  skip. (* I don't understand where this comes from. *)
+  skip. (* Needs implementation. *)
   skip. (* Has to be proved in a separate lemma. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
 
   (* run_expr_not_div *)
   destruct num. discriminate.
-  introv. destruct e; simpls; auto; skip. (* destruct e; simpls; prove_not_div. *) (* This is taking much too long...  Maybe the tactics are a little too heavy there. *)
+  introv. destruct e; simpls; auto*; skip. (* destruct e; simpls; prove_not_div. *) (* This is taking much too long...  Maybe the tactics are a little too heavy there. *)
 
   (* run_elements_not_div *)
   destruct num. discriminate.
@@ -532,65 +539,65 @@ Proof.
   destruct num. discriminate.
   introv. destruct B; simpls; prove_not_div_using ref_get_value_not_div.
 
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
-  skip. (* I don't understand where this comes from. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
+  skip. (* Needs implementation. *)
 
   (* run_call_full_not_div *)
   destruct num. discriminate.
@@ -608,17 +615,17 @@ Proof.
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
-  skip. (* I don't understand where this comes from. *)
+  skip. (* Needs implementation. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
-  skip. (* I don't understand where this comes from. *)
+  skip. (* Needs implementation. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
-  skip. (* I don't understand where this comes from. *)
+  skip. (* Needs implementation. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
@@ -673,12 +680,14 @@ Proof.
     skip.
     skip.
     skip.
+    skip.
+    skip.
+    skip.
 
    (* stat_label *)
    skip.
 
    (* TODO: Complete *)
-   skip.
    skip.
    skip.
    skip.
