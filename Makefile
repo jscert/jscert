@@ -12,11 +12,11 @@
 # Default paths for TLC and COQBIN are as follows:
 
 COQBIN=
-TLC=tlc 
+TLC=tlc
 FLOCQ=flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
-# Alternative definition for FLOCQ_INC: 
+# Alternative definition for FLOCQ_INC:
 # FLOCQ_FOLDERS=$(addprefix $(FLOCQ)/src/,Core Calc Appli Prop)
 # FLOCQ_INC=$(addprefix -I ,$(FLOCQ_FOLDERS))
 
@@ -33,7 +33,7 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 
 #######################################################
 
-INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC) 
+INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
 COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 OCAMLOPT=ocamlopt
@@ -85,9 +85,9 @@ tags: $(JS_SRC)
 # EXTERNAL LIBRARIES: TLC and Flocq
 
 init:
-	cd ../../../; git submodule init; git submodule update 
+	cd ../../../; git submodule init; git submodule update
 	svn checkout -r 214 svn://scm.gforge.inria.fr/svn/tlc/branches/v3.1 tlc
-	tar -xzf flocq-2.1.0.tar.gz 
+	tar -xzf flocq-2.1.0.tar.gz
 	mv flocq-2.1.0 flocq
 	chmod +x interp/run.sh
 	bash -c "mkdir interp/src/extract" || true
@@ -103,7 +103,8 @@ init:
 
 coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	$(COQC) -I coq -I $(TLC) $< # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
-	mv *.ml{,i} interp/src/extract/
+	mv *.ml interp/src/extract/
+	mv *.mli interp/src/extract/
 	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
 
@@ -209,4 +210,3 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
-

@@ -16,6 +16,14 @@ interpreter.
 *********************************************************************
 INSTALLATION AND COMPILATION
 
+0) Get coq, ocaml >= 4.0, ocamlfind and xml-light. Most of the project
+   devs seem to be using opam to manage this installs, which you can
+   get from here:
+
+   http://opam.ocamlpro.com/
+
+   Then run "opam install coq ; opam install ocamlfind ; opam install xml-light"
+
 1) Run "make init" to install the parser, TLC, and Flocq (requires subversion)
 
 1') If you did not obtain the files through git (typically if you got
