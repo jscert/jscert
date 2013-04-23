@@ -2302,14 +2302,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_entering_func_code l this args (spec_call_default_1 l)) o ->
       red_expr S C (spec_call_default l this args) o
       
-  | red_spec_call_default_1_no_body : forall S0 S C l,
+  | red_spec_call_default_1_no_body : forall bd S0 S C l o,
       (* todo: are we not supposed to get an exception when the object is not a function? *)
-      (* TODO: check if red_prog return (normal, undef, empty) if function body is empty *)
-      object_code S l None ->
-      red_expr S0 C (spec_call_default_1 l) (out_ter S (res_normal undef))
+      (* We know that the object is a function object since we use the "spec_call_default" only when we
+         create function objects (13.2) and for The [[ThrowTypeError]] Function Object (13.2.3). 
+         In both cases we have object_code set to some value. I do not see how it could be None (Daiva) *)
+      object_code S l None \/ (object_code S l (Some bd) /\ empty_funcbody bd) ->
+      red_expr S C (spec_call_default_2 (out_ter S (res_normal undef))) o ->
+      red_expr S0 C (spec_call_default_1 l) o
       
   | red_spec_call_default_1_body : forall S0 S C l bd o1 o,
       object_code S l (Some bd) ->
+      ~ (empty_funcbody bd) ->
       red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_call_default_2 o1) o ->
       red_expr S0 C (spec_call_default_1 l) o
