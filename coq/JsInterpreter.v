@@ -1535,13 +1535,13 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
         if_ter (wraped_run_prog runs S1 C' p) (fun S2 R =>
           match res_type R with
           | restype_throw =>
-            out_ter S (res_throw (res_value R))
+            out_ter S2 (res_throw (res_value R))
           | restype_normal =>
             match res_value R with
             | resvalue_value v =>
-              out_ter S v
+              out_ter S2 v
             | resvalue_empty =>
-              out_ter S undef
+              out_ter S2 undef
             | resvalue_ref r =>
               arbitrary (* TODO:  I need more precision from the specification there. *)
             end
