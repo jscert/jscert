@@ -596,6 +596,38 @@ Proof.
   destruct num. discriminate.
   introv. simpls. prove_not_div.
 
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+
 Qed.
 
 
