@@ -1,5 +1,4 @@
 *.cmi
 *.cmx
 *.o
-interpreter.ml-e
 extract
