@@ -176,6 +176,8 @@ interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
 #######################################################
 # DEPENDENCIES
 
+# TODO: split the dependencies between the coq files and the caml files
+
 DEPS=$(JS_SRC) $(TLC_SRC) $(FLOCQ_SRC)
 
 depend: .depend
