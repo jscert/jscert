@@ -160,18 +160,21 @@ Ltac if_unmonad := (* This removes some information... *)
 (**************************************************************)
 (** Other Tactics *)
 
-Ltac unfold_matches_in T k :=
+Ltac unfold_matches_in T :=
   match T with
 
-  | run_prog => auto*
-  | run_stat => auto*
-  | run_expr => auto*
-  | run_elements => auto*
-  | run_call_full => auto*
-  | run_call => auto*
+  | run_prog => auto
+  | run_stat => auto
+  | run_expr => auto
+  | run_elements => auto
+  | run_call_full => auto
+  | run_call => auto
 
   | result_normal out_div => auto*
-  | result_normal ?o => discriminate || auto*
+  | result_normal ?o =>
+    first [ discriminate
+          | let P := get_head o in unfold P
+          | auto* ]
   | result_stuck => discriminate
   | result_bottom => discriminate
 
@@ -181,7 +184,7 @@ Ltac unfold_matches_in T k :=
     | result_bottom => ?C3
     end =>
     asserts: (res <> result_normal out_div);
-    [ k
+    [ idtac
     | let res0 := fresh "res" in
       sets_eq res0: res;
       destruct res0 ]
@@ -224,14 +227,6 @@ Ltac unfold_matches_in T k :=
     let rk0 := fresh "rk" in
     sets_eq rk0: rk;
     destruct rk0
-
-  | match ?rb with
-    | ref_base_type_value v => ?C1
-    | ref_base_type_env_loc L => ?C2
-    end =>
-    let rb0 := fresh "rb" in
-    sets_eq rb0: rb;
-    destruct rb0
 
   | match ?v with
     | value_prim w => ?C1
@@ -310,6 +305,13 @@ Ltac unfold_matches_in T k :=
     sets_eq B0: B;
     destruct B0
 
+  | match ?B with
+    | builtin_define_own_prop_default => ?C
+    end =>
+    let B0 := fresh "B" in
+    sets_eq B0: B;
+    destruct B0
+
   | match ?c with
     | call_default => ?C1
     | call_after_bind => ?C2
@@ -366,28 +368,53 @@ Ltac unfold_matches_in T k :=
     sets_eq op0: op;
     destruct op0
 
-  | let a := ?f in ?C => unfold_matches_in f k
-  | let (a, b) := ?f in ?C => unfold_matches_in f k
-  | let '(a, b) := ?f in ?C => unfold_matches_in f k
+  | match ?rb with
+    | ref_base_type_value v => ?C1
+    | ref_base_type_env_loc L => ?C2
+    end =>
+    let rb0 := fresh "rb" in
+    sets_eq rb0: rb;
+    destruct rb0
 
-  | ?f ?x => unfold_matches_in f k
+  | let a := ?f in ?C =>
+    first [unfold_matches_in f | destruct~ f]
+  | let (a, b) := ?f in ?C =>
+    first [unfold_matches_in f | destruct~ f]
+  | let '(a, b) := ?f in ?C =>
+    first [unfold_matches_in f | destruct~ f]
+
+  | ?f ?x => unfold_matches_in f
   | ?f => unfolds f
 
   end.
 
-Ltac prove_not_div :=
-  repeat progress match goal with
+Ltac prove_not_div_with k :=
+  repeat (match goal with
   | H : result_normal out_div = ?f ?x
     |- (result_normal out_div) <> (result_normal out_div) =>
     asserts: (f x <> result_normal out_div);
-    [| auto*]
+    [ clear H | false~ ]
   | |- (if ?b then ?C1 else ?C2) <> (result_normal out_div) =>
     case_if
   | |- (ifb ?b then ?C1 else ?C2) <> (result_normal out_div) =>
     case_if
+  | |- (result_normal (if ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
+    case_if
+  | |- (result_normal (ifb ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
+    case_if
   | |- ?T <> (result_normal out_div) =>
-    unfold_matches_in T prove_not_div
-  end.
+    unfold_matches_in T
+  end; k).
+
+Ltac prove_not_div :=
+  prove_not_div_with ltac:simpl.
+
+Ltac prove_not_div_using P :=
+  prove_not_div_with ltac:(simpl; first [ apply P | idtac ]; auto).
+
+Ltac prove_not_div_using2 P1 P2 :=
+  prove_not_div_with ltac:(simpl; first [ apply P1 | apply P2 | idtac ]; auto).
+
 
 (**************************************************************)
 (** Operations on objects *)
@@ -403,6 +430,31 @@ Proof.
   skip. (* Need properties about [l]. *)
 Qed.
 *)
+
+Lemma prim_new_object_not_div : forall S w,
+  prim_new_object S w <> out_div.
+Proof.
+  introv. prove_not_div. skip. (* Needs implementation of [prim_new_object] *)
+Qed.
+
+Lemma ref_get_value_not_div : forall wrun_expr wrun_stat wrun_prog wrun_call wrun_call_full,
+  (forall S C e, wrun_expr S C e <> result_normal out_div) ->
+  (forall S C t, wrun_stat S C t <> result_normal out_div) ->
+  (forall S C p, wrun_prog S C p <> result_normal out_div) ->
+  (forall S C B args, wrun_call S C B args <> result_normal out_div) ->
+  (forall S C l v args, wrun_call_full S C l v args <> result_normal out_div) ->
+  forall S C rv,
+    ref_get_value (make_runs
+      wrun_expr wrun_stat wrun_prog wrun_call wrun_call_full)
+      S C rv <> out_div.
+Proof.
+  introv IHe IHt IHp IHc IHcf. introv.
+  prove_not_div.
+  (* The reason why it stops there is that there is an instance of [decide] applied
+   deep in the term that prevents from doing any useful deconstruction over the matched
+   term.  Let's split this [decide] and see what we can then do. *)
+  case_if; prove_not_div_using prim_new_object_not_div.
+Qed.
 
 
 (**************************************************************)
@@ -456,28 +508,21 @@ Proof.
 
   (* run_stat_not_div *)
   destruct num. discriminate.
-  introv. destruct t; simpls; prove_not_div.
+  introv. destruct t; simpls; prove_not_div_using ref_get_value_not_div.
 
-  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
-  skip. (* Have to be proved in a separate lemma. *)
-  skip. (* Have to be proved in a separate lemma. *)
-  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* Have to be proved in a separate lemma. *)
-  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* I doesn't understand why this don't work. *)
-  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
-  skip. (* Have to be proved manually (in a lemma) because some typeclass subtleties. *)
-  skip. (* I doesn't understand why this don't work. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* Not yet implemented in the interpreter. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
 
   (* run_expr_not_div *)
   destruct num. discriminate.
-  introv. destruct e; simpls; auto*; skip. (* destruct e; simpls; prove_not_div. *) (* This is taking much too long...  Maybe the tactics are a little heavy there. *)
+  introv. destruct e; simpls; auto; skip. (* destruct e; simpls; prove_not_div. *) (* This is taking much too long...  Maybe the tactics are a little too heavy there. *)
 
   (* run_elements_not_div *)
   destruct num. discriminate.
@@ -485,22 +530,71 @@ Proof.
 
   (* run_call_not_div *)
   destruct num. discriminate.
-  introv. destruct B; simpls; prove_not_div; skip.
+  introv. destruct B; simpls; prove_not_div_using ref_get_value_not_div.
+
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* Has to be proved in a separate lemma. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
+  skip. (* I don't understand where this comes from. *)
 
   (* run_call_full_not_div *)
   destruct num. discriminate.
   introv. simpls. prove_not_div.
-
-  skip. (* I doesn't understand why this don't work. *)
-  skip. (* I doesn't understand why this don't work. *)
-  skip. (* I doesn't understand why this don't work. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* I doesn't understand why this don't work. *)
-  skip. (* Not yet implemented in the interpreter. *)
-  skip. (* I doesn't understand why this don't work. *)
-  skip. (* I doesn't understand why this don't work. *)
 
 Qed.
 

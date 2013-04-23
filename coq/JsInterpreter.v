@@ -363,10 +363,7 @@ Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S 
 Definition run_object_proto_is_prototype_of := FixFun3 object_proto_is_prototype_of_body.
 
 Definition env_record_lookup {B : Type} (d : B) S L (K : env_record -> B) : B :=
-  match Heap.read_option (state_env_record_heap S) L with
-  | Some E => K E
-  | None => d
-  end.
+  morph_option d K (Heap.read_option (state_env_record_heap S) L).
 
 Definition env_record_has_binding S L x : option bool :=
   env_record_lookup (fun _ : unit => None) S L (fun E _ =>
@@ -480,10 +477,11 @@ Definition env_record_get_binding_value runs S C L x str : result :=
   env_record_lookup result_stuck S L (fun er =>
     match er with
     | env_record_decl Ed =>
-      let (mu, v) := Heap.read Ed x in
-      ifb mu = mutability_uninitialized_immutable then
-        out_error_or_cst S str prealloc_ref_error undef
-      else out_ter S v
+      if_some (Heap.read_option Ed x) (fun rm =>
+        let (mu, v) := rm in
+        ifb mu = mutability_uninitialized_immutable then
+          out_error_or_cst S str prealloc_ref_error undef
+        else out_ter S v)
     | env_record_object l pt =>
       if_bool_option_result (object_has_prop S l x) (fun _ =>
         object_get runs S C l x) (fun _ =>
@@ -654,12 +652,13 @@ Definition object_put runs S C l x v str : result_void :=
 Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
-    let (mu, v_old) := Heap.read Ed x in
-    ifb mutability_is_mutable mu then
-      out_void (env_record_write_decl_env S L x mu v)
-    else if str then
-      run_error S prealloc_type_error
-    else out_ter S prim_undef
+    if_some (Heap.read_option Ed x) (fun rm =>
+      let (mu, v_old) := rm in
+      ifb mutability_is_mutable mu then
+        out_void (env_record_write_decl_env S L x mu v)
+      else if str then
+        run_error S prealloc_type_error
+      else out_ter S prim_undef)
   | env_record_object l pt =>
     object_put runs S C l x v str
   end.
@@ -986,7 +985,10 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
   end.
 
 Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
-  arbitrary (* TODO, but not yet formalised in the specification. *).
+  (* LATER:  This code is only temporary for tests and does not follow the specification. *)
+  let obj := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
+  let (l, S') := object_alloc S obj in
+  out_ter S' l.
 
 Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
   let arguments := "arguments" in
