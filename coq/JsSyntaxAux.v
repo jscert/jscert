@@ -510,50 +510,6 @@ Qed.
 Global Instance expr_inhab : Inhab expr.
 Proof. apply (prove_Inhab expr_this). Qed.
 
-(** Boolean comparison *)
-
-(* Note:  this funcion is not yet complete (and it would actually require much more work to be fully complete.  However, the only place where it is used is to test the syntactical equality to [eval], which part is correct.  This function is thus relatively acceptable for he moment. -- Martin. *)
-Fixpoint expr_compare e1 e2 :=
-  match e1, e2 with
-  | expr_this, expr_this => true
-  | expr_identifier s1, expr_identifier s2 => decide (s1 = s2)
-  | expr_literal l1, expr_literal l2 => decide (l1 = l2)
-  | expr_object l1, expr_object l2 => false (* TODO LATER:  decide (l1 = l2) *)
-  | expr_function f1 a1 b1, expr_function f2 a2 b2 =>
-    false (* TODO LATER:  decide (f1 = f2 /\ a1 = a2 /\ b1 = b2) *)
-  | expr_access e1 f1, expr_access e2 f2 =>
-    expr_compare e1 e2 && expr_compare f1 f2
-  | expr_member e1 f1, expr_member e2 f2 =>
-    expr_compare e1 e2 && decide (f1 = f2)
-  | expr_new e1 l1, expr_new e2 l2 =>
-    expr_compare e1 e2 (* todo later:  && decide (l1 = l2) *)
-  | expr_call e1 l1, expr_call e2 l2 =>
-    expr_compare e1 e2 (* todo later:  && decide (l1 = l2) *)
-  | expr_unary_op op1 e1, expr_unary_op op2 e2 =>
-    expr_compare e1 e2 && decide (op1 = op2)
-  | expr_binary_op e11 op1 e12, expr_binary_op e21 op2 e22 =>
-    decide (op1 = op2) && expr_compare e11 e21 && expr_compare e12 e22
-  | expr_conditional e11 e12 e13, expr_conditional e21 e22 e23 =>
-    expr_compare e11 e21 && expr_compare e12 e22 && expr_compare e13 e23
-  | expr_assign e11 op1 e12, expr_assign e21 op2 e22 =>
-    decide (op1 = op2) && expr_compare e11 e21 && expr_compare e12 e22
-  | _, _ => false
-  end.
-
-(** Decidable comparison *)
-
-Global Instance expr_comparable : Comparable expr.
-Proof.
-  applys (comparable_beq expr_compare).
-  skip. (* TODO:  Performs this proof (mutually recursively with syntactical equality with [stat], [prog], etc.) *)
-  (*induction x; induction y; simpl; rew_refl; iff;
-   tryfalse; auto;
-     repeat match goal with
-            | [H : _ /\ _ |- _ ] => destruct H
-            end;
-     try splits; fequals; auto; try congruence.*)
-Qed.
-
 
 (**************************************************************)
 (** ** Type [stat] *)

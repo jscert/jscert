@@ -1561,9 +1561,14 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
   | v => out_ter S v
   end.
 
+Definition is_syntactic_eval e :=
+  match e with
+  | expr_literal (literal_string "eval") => true
+  | _ => false
+  end.
+
 Definition run_expr_call runs S C e1 e2s : result :=
-  let is_eval_direct :=
-    decide (e1 = expr_literal (literal_string "eval"))
+  let is_eval_direct := is_syntactic_eval e1
   in if_success (wraped_run_expr runs S C e1) (fun S1 rv =>
     if_success_value runs C (out_ter S1 rv) (fun S2 f =>
       run_list_expr runs S2 C nil e2s (fun S3 vs =>
