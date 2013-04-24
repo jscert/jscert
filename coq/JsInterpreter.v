@@ -1033,11 +1033,16 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
 (** Function Calls *)
 
 Definition run_call_default runs S C (lf : object_loc) : result := (* Corresponds to the [spec_call_default_1] of the specification. *)
-  match run_object_method object_code_ S lf with
-  | None => out_ter S undef
-  | Some bd =>
-    if_success_or_return (wraped_run_prog runs S C (funcbody_prog bd))
+  let follow (o : result) :=
+    if_success_or_return o
       (fun S' => out_ter S' undef) out_ter
+  in let default := out_ter S undef
+  in match run_object_method object_code_ S lf with
+  | None => follow default
+  | Some bd =>
+    follow
+      (ifb empty_funcbody bd then default
+      else wraped_run_prog runs S C (funcbody_prog bd))
   end.
 
 Definition entering_func_code runs S C lf vthis (args : list value) : result :=
@@ -1309,6 +1314,11 @@ Definition object_delete S l x str : result :=
         out_error_or_cst S str prealloc_type_error false
     end).
 
+Definition run_typeof_value S v :=
+  match v with
+  | value_prim w => typeof_prim w
+  | value_object l => ifb is_callable S l then "function" else "object"
+  end.
 
 Definition run_unary_op runs S C (op : unary_op) e : result :=
   ifb prepost_unary_op op then
@@ -1345,13 +1355,13 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
       if_success (wraped_run_expr runs S C e) (fun S1 rv =>
         match rv with
         | resvalue_value v =>
-          out_ter S1 (typeof_value S1 v)
+          out_ter S1 (run_typeof_value S1 v)
         | resvalue_ref r =>
           ifb ref_is_unresolvable r then
             out_ter S1 "undefined"
           else
             if_success_value runs C (out_ter S1 r) (fun S2 v =>
-              out_ter S2 (typeof_value S2 v))
+              out_ter S2 (run_typeof_value S2 v))
         | resvalue_empty => result_stuck
         end)
 
@@ -1543,7 +1553,7 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
             | resvalue_empty =>
               out_ter S2 undef
             | resvalue_ref r =>
-              arbitrary (* TODO:  I need more precision from the specification there. *)
+              result_stuck
             end
           | _ => result_stuck
           end))

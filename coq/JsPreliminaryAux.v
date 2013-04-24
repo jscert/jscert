@@ -319,6 +319,9 @@ Global Instance is_callable_dec : forall S v,
 Proof.
   introv. applys decidable_make
     (morph_option false (fun _ => true) (run_callable S v)).
+  destruct v; simpl.
+   fold_bool. rewrite is_False with (P := is_callable _ _). rewrite* isTrue_false.
+    intro A. do 2 inverts A as A.
   skip. (* TODO:  This proof has already been done, but with the old version of heaps. *)
 Qed.
 

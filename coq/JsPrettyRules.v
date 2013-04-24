@@ -2301,7 +2301,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (* Using CPS to change the context *)    
       red_expr S C (spec_entering_func_code l this args (spec_call_default_1 l)) o ->
       red_expr S C (spec_call_default l this args) o
-      
+
   | red_spec_call_default_1_no_body : forall bd S0 S C l o,
       (* todo: are we not supposed to get an exception when the object is not a function? *)
       (* We know that the object is a function object since we use the "spec_call_default" only when we
@@ -2310,14 +2310,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_code S l None \/ (object_code S l (Some bd) /\ empty_funcbody bd) ->
       red_expr S C (spec_call_default_2 (out_ter S (res_normal undef))) o ->
       red_expr S0 C (spec_call_default_1 l) o
-      
+
   | red_spec_call_default_1_body : forall S0 S C l bd o1 o,
       object_code S l (Some bd) ->
       ~ (empty_funcbody bd) ->
       red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_call_default_2 o1) o ->
       red_expr S0 C (spec_call_default_1 l) o
-      
+
   | red_spec_call_default_2_return : forall S C v,
       red_expr S C (spec_call_default_2 (out_ter S (res_return v))) (out_ter S (res_normal v)) (* Isn't that possible that a return does not actually return a value, but a reference or nothing? -- Martin. *)
       

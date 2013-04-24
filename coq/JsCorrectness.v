@@ -73,6 +73,7 @@ Qed.
 
 (**************************************************************)
 (** Monadic constructors *)
+(* TODO:  Remove this section once I'll be sure it's useless. *)
 
 Inductive not_ter : result -> Prop :=
   | not_ter_div : not_ter out_div
@@ -160,12 +161,44 @@ Ltac if_unmonad := (* This removes some information... *)
 (**************************************************************)
 (** Other Tactics *)
 
+(*
+Ltac add_header_properties t k :=
+  match t with
+  | result =>
+    let o := fresh "o" in
+    let L := k o in
+    constr:(forall o, L)
+  end.
+
+Ltac construct_general_lemma t f :=
+  match t with
+  | result => constr:(f <> result_normal out_div)
+  | ?t1 -> ?t2 =>
+    add_header_properties t1 ltac:(fun n =>
+      construct_general_lemma t2 (f n))
+  end.
+
+Ltac add_lemma_about f :=
+  match type of f with
+  | result => fail (* We don't want to make a lemma out of a constant! *) (* No *)
+  | ?t =>
+    let H := fresh in
+    let L := construct_general_lemma t f in
+    asserts H: L;
+    [ simpl
+    | simpl in H; apply H ]
+  end.
+
+Goal (result -> result) -> True.
+  intro f.
+  add_lemma_about f. *)
+
+
 Ltac unfold_matches_in T :=
   match T with
 
   (* Some exceptions to avoid looping *)
   | arbitrary => fail 1
-  | run_equal => fail 1
 
   | run_prog => auto
   | run_stat => auto
@@ -387,6 +420,8 @@ Ltac unfold_matches_in T :=
   | let '(a, b) := ?f in ?C =>
     first [unfold_matches_in f | destruct~ f]
 
+  (* | ?f => add_lemma_about f (* May fail (and thus switch to the next rule). *) *)
+
   | ?f ?x => unfold_matches_in f
   | ?f => unfolds f
 
@@ -424,48 +459,7 @@ Ltac prove_not_div_using2 P1 P2 :=
 
 
 (**************************************************************)
-(** Operations on objects *)
-
-(* TODO
-Lemma run_object_method_correct :
-  forall Proj S l,
-  (* TODO:  Add correctness properties. *)
-    object_method Proj S l (run_object_method Proj S l).
-Proof.
-  introv. eexists. splits*.
-  apply pick_spec.
-  skip. (* Need properties about [l]. *)
-Qed.
-*)
-
-Lemma prim_new_object_not_div : forall S w,
-  prim_new_object S w <> out_div.
-Proof.
-  introv. prove_not_div. skip. (* Needs implementation of [prim_new_object] *)
-Qed.
-
-Lemma ref_get_value_not_div : forall wrun_expr wrun_stat wrun_prog wrun_call wrun_call_full,
-  (forall S C e, wrun_expr S C e <> result_normal out_div) ->
-  (forall S C t, wrun_stat S C t <> result_normal out_div) ->
-  (forall S C p, wrun_prog S C p <> result_normal out_div) ->
-  (forall S C B args, wrun_call S C B args <> result_normal out_div) ->
-  (forall S C l v args, wrun_call_full S C l v args <> result_normal out_div) ->
-  forall S C rv,
-    ref_get_value (make_runs
-      wrun_expr wrun_stat wrun_prog wrun_call wrun_call_full)
-      S C rv <> out_div.
-Proof.
-  introv IHe IHt IHp IHc IHcf. introv.
-  prove_not_div.
-  (* The reason why it stops there is that there is an instance of [decide] applied
-   deep in the term that prevents from doing any useful deconstruction over the matched
-   term.  Let's split this [decide] and see what we can then do. *)
-  case_if; prove_not_div_using prim_new_object_not_div.
-Qed.
-
-
-(**************************************************************)
-(** Correctness of interpreter *)
+(** Correctness Properties *)
 
 Definition follow_spec {T Te : Type}
     (conv : T -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
@@ -486,6 +480,48 @@ Definition follow_call_full l vs :=
   follow_spec
     (fun v => spec_call l v vs)
     red_expr.
+
+
+Definition propOnRuns (P : result -> Prop) runs :=
+  (forall S C e, P (wraped_run_expr runs S C e)) /\
+  (forall S C t, P (wraped_run_stat runs S C t)) /\
+  (forall S C p, P (wraped_run_prog runs S C p)) /\
+  (forall S C B args, P (wraped_run_call runs S C B args)) /\
+  (forall S C l v args, P (wraped_run_call_full runs S C l v args)).
+
+
+(**************************************************************)
+(** Operations on objects *)
+
+(* TODO
+Lemma run_object_method_correct :
+  forall Proj S l,
+  (* TODO:  Add correctness properties. *)
+    object_method Proj S l (run_object_method Proj S l).
+Proof.
+  introv. eexists. splits*.
+  apply pick_spec.
+  skip. (* Need properties about [l]. *)
+Qed.
+*)
+
+Lemma prim_new_object_not_div : forall S w,
+  prim_new_object S w <> out_div.
+Proof.
+  introv. prove_not_div. skip. (* Needs implementation of [prim_new_object] *)
+Qed.
+
+Lemma ref_get_value_not_div : forall runs,
+  propOnRuns (fun res => res <> out_div) runs -> forall S C rv,
+    ref_get_value runs S C rv <> out_div.
+Proof.
+  introv [IHe IHt IHp IHc IHcf]. introv.
+  prove_not_div.
+  (* The reason why it stops there is that there is an instance of [decide] applied
+   deep in the term that prevents from doing any useful deconstruction over the matched
+   term.  Let's split this [decide] and see what we can then do. *)
+  case_if; prove_not_div_using prim_new_object_not_div.
+Qed.
 
 
 (**************************************************************)
