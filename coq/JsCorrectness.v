@@ -326,12 +326,15 @@ Ltac get_lemma_about not_res f :=
 
   end.
 
-Ltac add_lemma_about not_res f :=
+Ltac add_lemma_about k not_res f :=
   let L := get_lemma_about not_res f in
   let Lem := fresh "Lem" in
   asserts Lem: L;
   [ simpl; intros; unfold f
-  | simpl in Lem; apply Lem; intros ].
+  | simpl in Lem; k Lem ].
+
+Ltac add_lemma_about_apply :=
+  add_lemma_about ltac:(fun Lem => apply~ Lem; intros).
 
 Ltac unfold_matches_in not_res T :=
   match T with
@@ -629,29 +632,31 @@ Ltac unfold_matches_in not_res T :=
   | ?f ?x ?y =>
     match type of x with
     | prealloc => (* Avoid unrolling [prealloc] as they are pretty numerous. *)
-      add_lemma_about not_res (f x)
+      add_lemma_about_apply not_res (f x)
     | runs_type =>
-      add_lemma_about not_res (f x)
+      add_lemma_about_apply not_res (f x)
     | _ =>
       unfold_matches_in not_res (f x)
     end
   | ?f ?x =>
     unfold_matches_in not_res f
   | ?f => first
-    [ add_lemma_about not_res f
+    [ add_lemma_about_apply not_res f
     | unfold f ]
 
   end.
 
-Ltac prove_result_not_equal_with k1 k2 :=
-  let not_res :=
-    match goal with
-    | |- ?T <> ?T' =>
-      match type of T' with
-      | result => constr:T'
-      | _ => fail "needs a `result'."
-      end
+Ltac get_not_eq :=
+  match goal with
+  | |- ?T <> ?T' =>
+    match type of T' with
+    | result => constr:T'
+    | _ => fail "needs a `result'."
     end
+  end.
+
+Ltac prove_result_not_equal_with k1 k2 :=
+  let not_res := get_not_eq
   in match goal with
     | |- ?T <> ?T' =>
       let f := get_head T in
@@ -679,7 +684,12 @@ Ltac prove_result_not_equal_with k1 k2 :=
       | |- (result_normal (ifb ?b then ?C1 else ?C2)) <> not_res =>
         case_if
       | |- ?T <> not_res =>
-        unfold_matches_in not_res T
+        let T0 := get_head T in
+        match goal with
+        | H : context [ T0 ] |- _ => apply~ H; intros
+        | _ =>
+          unfold_matches_in not_res T
+        end
       | |- propOnRuns ?P ?runs =>
         splits*
       end
@@ -689,11 +699,10 @@ Ltac prove_result_not_equal_with k1 k2 :=
 Ltac prove_result_not_equal :=
   prove_result_not_equal_with ltac:fail ltac:(simpl; auto).
 
-Ltac prove_result_not_equal_using P0 :=
-  prove_result_not_equal_with ltac:(apply P0) ltac:(simpl; auto).
-
-Ltac prove_result_not_equal_using2 P1 P2 :=
-  prove_result_not_equal_with ltac:(apply P1 || apply P2) ltac:(simpl; auto).
+Ltac intermediate_form f :=
+  let not_res := get_not_eq in
+  add_lemma_about ltac:(fun _ => idtac) not_res f;
+  [ prove_result_not_equal |].
 
 
 (**************************************************************)
@@ -721,19 +730,23 @@ Lemma ref_get_value_not_div : forall runs,
   propOnRuns (fun res => res <> out_div) runs -> forall S C rv,
     ref_get_value runs S C rv <> out_div.
 Proof.
-  intros. prove_result_not_equal. _using prim_new_object_not_div.
- 
-  skip. (* Needs implementation *)
-  skip. (* Needs implementation *)
-  skip. (* Needs implementation *)
-  skip. (* Needs implementation *)
-  skip. (* Needs implementation *)
-  skip. (* Needs implementation *)
-  skip. (* Needs implementation *)
-  skip. (* Needs implementation *)
+  intros.
+  hint prim_new_object_not_div.
+  intermediate_form if_bool_option_result.
+  intermediate_form if_success.
+  intermediate_form if_object.
+  intermediate_form object_get_builtin.
+  intermediate_form env_record_get_binding_value.
+  prove_result_not_equal.
+    skip. (* Needs implementation. *)
+    skip. (* Needs implementation. *)
+    skip. (* Needs implementation. *)
+    skip. (* Needs implementation. *)
+    skip. (* Needs implementation. *)
+    skip. (* Needs implementation. *)
+    skip. (* Needs implementation. *)
+    skip. (* Needs implementation. *)
 Qed.
-
-Set Printing Depth 10000.
 
 
 (**************************************************************)
@@ -762,8 +775,8 @@ Proof.
   introv. destruct p. simpls. auto*.
 
   (* run_stat_not_div *)
-  destruct num. discriminate.
-  introv. destruct t; simpls; prove_result_not_equal_using ref_get_value_not_div.
+  destruct num. discriminate. hint ref_get_value_not_div.
+  introv. destruct t; simpls; prove_result_not_equal.
 
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
@@ -784,8 +797,8 @@ Proof.
   introv. destruct els as [|[?|?]]; simpls; prove_result_not_equal.
 
   (* run_call_not_div *)
-  destruct num. discriminate.
-  introv. destruct B; simpls; prove_result_not_equal_using ref_get_value_not_div.
+  destruct num. discriminate. hint ref_get_value_not_div.
+  introv. destruct B; simpls; prove_result_not_equal.
 
   skip. (* Needs implementation. *)
   skip. (* Needs implementation. *)
