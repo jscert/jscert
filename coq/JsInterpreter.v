@@ -407,7 +407,7 @@ Definition identifier_res S C x :=
   let str := execution_ctx_strict C in
   lexical_env_get_identifier_ref S X x str.
 
-Definition object_get_builtin runs S C B vthis l x : result := (* Corresponds to the construction [spec_object_get_1] of the specification. *)
+Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to the construction [spec_object_get_1] of the specification. *)
   match B with
   | builtin_get_default =>
     if_some (run_object_get_prop S l x) (fun D =>
@@ -436,7 +436,7 @@ Definition object_get runs S C v x : result := (* This [v] should be a location.
   match v with
   | value_object l =>
     let B := run_object_method object_get_ S l in
-    object_get_builtin runs S C B l l x
+    object_get_builtin runs B S C l l x
   | value_prim _ => result_stuck
   end.
 
@@ -457,7 +457,7 @@ Definition to_object S v : result :=
 
 Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
-    object_get_builtin runs S' C builtin_get_default v l x).
+    object_get_builtin runs builtin_get_default S' C v l x).
 
 Definition run_value_viewable_as_prim s S v : option prim :=
   match v with
@@ -599,7 +599,7 @@ Definition ref_get_value runs S C rv : result :=
     end
   end.
 
-Definition object_put_complete runs S C B vthis l x v str : result_void :=
+Definition object_put_complete runs B S C vthis l x v str : result_void :=
   match B with
 
   | builtin_put_default =>
@@ -647,7 +647,7 @@ Definition object_put_complete runs S C B vthis l x v str : result_void :=
 
 Definition object_put runs S C l x v str : result_void :=
   let B := run_object_method object_put_ S l in
-  object_put_complete runs S C B l l x v str.
+  object_put_complete runs B S C l l x v str.
 
 Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
   match pick (env_record_binds S L) with
@@ -665,7 +665,7 @@ Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
 
 Definition prim_value_put runs S C w x v str : result_void :=
   if_object (to_object S w) (fun S1 l =>
-    object_put_complete runs S1 C builtin_put_default w l x v str).
+    object_put_complete runs builtin_put_default S1 C w l x v str).
 
 Definition ref_put_value runs S C rv v : result_void :=
   match rv with
@@ -837,7 +837,7 @@ Definition bool_proto_value_of_call S C : result :=
   | _ => run_error S prealloc_type_error
   end.
 
-Definition run_construct_prealloc runs S C B (args : list value) : result :=
+Definition run_construct_prealloc runs B S C (args : list value) : result :=
   match B with
 
   | prealloc_object =>
@@ -895,7 +895,7 @@ Definition run_construct runs S C l args : result :=
     | construct_default =>
       run_construct_default runs S C l args
     | construct_prealloc B =>
-      run_construct_prealloc runs S C B args
+      run_construct_prealloc runs B S C args
     | construct_after_bind =>
       result_stuck
     end).
@@ -904,7 +904,7 @@ Definition run_construct runs S C l args : result :=
 (**************************************************************)
 
 Definition creating_function_object_proto runs S C l : result :=
-  if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 lproto =>
+  if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S1 lproto =>
     let A1 := attributes_data_intro l true false true in
     if_bool (object_define_own_prop S1 lproto "constructor" A1 false) (fun S2 b =>
       let A2 := attributes_data_intro lproto true false false in
@@ -1731,7 +1731,7 @@ Fixpoint run_expr (max_step : nat) S C e : result :=
       run_expr_binary_op run_binary_op' runs' S C op e1 e2
 
     | expr_object pds =>
-      if_object (run_construct_prealloc runs' S C prealloc_object nil) (fun S1 l =>
+      if_object (run_construct_prealloc runs' prealloc_object S C nil) (fun S1 l =>
         init_object runs' S1 C l pds)
 
     | expr_member e1 f =>

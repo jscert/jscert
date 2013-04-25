@@ -193,38 +193,6 @@ Definition propOnRuns (P : result -> Prop) runs :=
 (**************************************************************)
 (** Some Tactics *)
 
-(*
-Ltac add_header_properties t k :=
-  match t with
-  | result =>
-    let o := fresh "o" in
-    let L := k o in
-    constr:(forall o, L)
-  end.
-
-Ltac construct_general_lemma t f :=
-  match t with
-  | result => constr:(f <> result_normal out_div)
-  | ?t1 -> ?t2 =>
-    add_header_properties t1 ltac:(fun n =>
-      construct_general_lemma t2 (f n))
-  end.
-
-Ltac add_lemma_about f :=
-  match type of f with
-  | result => fail (* We don't want to make a lemma out of a constant! *) (* No *)
-  | ?t =>
-    let H := fresh in
-    let L := construct_general_lemma t f in
-    asserts H: L;
-    [ simpl
-    | simpl in H; apply H ]
-  end.
-
-Goal (result -> result) -> True.
-  intro f.
-  add_lemma_about f. *)
-
 Ltac get_prop not_res t :=
   match t with
   | result =>
@@ -362,7 +330,7 @@ Ltac add_lemma_about not_res f :=
   let L := get_lemma_about not_res f in
   let Lem := fresh "Lem" in
   asserts Lem: L;
-  [ simpl; intros; unfolds f
+  [ simpl; intros; unfold f
   | simpl in Lem; apply Lem; intros ].
 
 Ltac unfold_matches_in not_res T :=
@@ -591,10 +559,87 @@ Ltac unfold_matches_in not_res T :=
   | let '(a, b) := ?f in ?C =>
     first [unfold_matches_in not_res f | destruct~ f]
 
-  | ?f ?x => unfold_matches_in not_res f
+  | match ?B with
+    | prealloc_global => ?C1
+    | prealloc_global_eval => ?C2
+    | prealloc_global_is_finite => ?C3
+    | prealloc_global_is_nan => ?C4
+    | prealloc_global_parse_float => ?C5
+    | prealloc_global_parse_int => ?C6
+    | prealloc_object => ?C7
+    | prealloc_object_get_proto_of => ?C8
+    | prealloc_object_get_own_prop_descriptor => ?C9
+    | prealloc_object_get_own_prop_name => ?C10
+    | prealloc_object_create => ?C11
+    | prealloc_object_define_prop => ?C12
+    | prealloc_object_define_properties => ?C13
+    | prealloc_object_seal => ?C14
+    | prealloc_object_freeze => ?C15
+    | prealloc_object_prevent_extensions => ?C16
+    | prealloc_object_is_sealed => ?C17
+    | prealloc_object_is_frozen => ?C18
+    | prealloc_object_is_extensible => ?C19
+    | prealloc_object_keys => ?C20
+    | prealloc_object_keys_call => ?C21
+    | prealloc_object_proto => ?C22
+    | prealloc_object_proto_to_string => ?C23
+    | prealloc_object_proto_value_of => ?C24
+    | prealloc_object_proto_has_own_prop => ?C25
+    | prealloc_object_proto_is_prototype_of => ?C26
+    | prealloc_object_proto_prop_is_enumerable => ?C27
+    | prealloc_function => ?C28
+    | prealloc_function_proto => ?C29
+    | prealloc_function_proto_to_string => ?C30
+    | prealloc_function_proto_apply => ?C31
+    | prealloc_function_proto_bind => ?C32
+    | prealloc_bool => ?C33
+    | prealloc_bool_proto => ?C34
+    | prealloc_bool_proto_to_string => ?C35
+    | prealloc_bool_proto_value_of => ?C36
+    | prealloc_number => ?C37
+    | prealloc_number_proto => ?C38
+    | prealloc_number_proto_to_string => ?C39
+    | prealloc_number_proto_value_of => ?C40
+    | prealloc_number_proto_to_fixed => ?C41
+    | prealloc_number_proto_to_exponential => ?C42
+    | prealloc_number_proto_to_precision => ?C43
+    | prealloc_array => ?C44
+    | prealloc_array_is_array => ?C45
+    | prealloc_array_proto => ?C46
+    | prealloc_array_proto_to_string => ?C47
+    | prealloc_string => ?C48
+    | prealloc_string_proto => ?C49
+    | prealloc_string_proto_to_string => ?C50
+    | prealloc_string_proto_value_of => ?C51
+    | prealloc_string_proto_char_at => ?C52
+    | prealloc_string_proto_char_code_at => ?C53
+    | prealloc_math => ?C54
+    | prealloc_mathop _ => ?C55
+    | prealloc_error => ?C56
+    | prealloc_range_error => ?C57
+    | prealloc_ref_error => ?C58
+    | prealloc_syntax_error => ?C59
+    | prealloc_type_error => ?C60
+    | prealloc_throw_type_error => ?C61
+    end =>
+    let B0 := fresh "B" in
+    sets_eq B0: B;
+    destruct B0
+
+  | ?f ?x ?y =>
+    match type of x with
+    | prealloc => (* Avoid unrolling [prealloc] as they are pretty numerous. *)
+      add_lemma_about not_res (f x)
+    | runs_type =>
+      add_lemma_about not_res (f x)
+    | _ =>
+      unfold_matches_in not_res (f x)
+    end
+  | ?f ?x =>
+    unfold_matches_in not_res f
   | ?f => first
     [ add_lemma_about not_res f
-    | unfolds f ]
+    | unfold f ]
 
   end.
 
@@ -607,7 +652,12 @@ Ltac prove_result_not_equal_with k1 k2 :=
       | _ => fail "needs a `result'."
       end
     end
-  in repeat first
+  in match goal with
+    | |- ?T <> ?T' =>
+      let f := get_head T in
+      try unfold f
+    end;
+  repeat (first
     [ k1
     | match goal with
       | H : True |- _ =>
@@ -617,7 +667,7 @@ Ltac prove_result_not_equal_with k1 k2 :=
       | H : ?A /\ ?B |- _ =>
         inverts H
       | H : not_res = ?f ?x
-        |- not_res <> not_res =>
+        |- _ =>
         asserts: (f x <> not_res);
         [ clear H | false~ ]
       | |- (if ?b then ?C1 else ?C2) <> not_res =>
@@ -633,7 +683,8 @@ Ltac prove_result_not_equal_with k1 k2 :=
       | |- propOnRuns ?P ?runs =>
         splits*
       end
-    | k2].
+    | progress k2
+    | cases_if]; substs).
 
 Ltac prove_result_not_equal :=
   prove_result_not_equal_with ltac:fail ltac:(simpl; auto).
@@ -660,8 +711,6 @@ Proof.
 Qed.
 *)
 
-  Unset Ltac Debug. (* TODO:  Temporary *)
-
 Lemma prim_new_object_not_div : forall S w,
   prim_new_object S w <> out_div.
 Proof.
@@ -672,17 +721,16 @@ Lemma ref_get_value_not_div : forall runs,
   propOnRuns (fun res => res <> out_div) runs -> forall S C rv,
     ref_get_value runs S C rv <> out_div.
 Proof.
-  intros. prove_result_not_equal.
-  (* The reason why it stops there is that there is an instance of [decide] applied
-   deep in the term that prevents from doing any useful deconstruction over the matched
-   term.  Let's split this [decide] and see what we can then do. *)
-  (* Set Ltac Debug. *) (* TODO:  Temporary *)
-  case_if; prove_result_not_equal_using prim_new_object_not_div.
-
-  skip.
-  skip.
-  skip.
-  skip.
+  intros. prove_result_not_equal. _using prim_new_object_not_div.
+ 
+  skip. (* Needs implementation *)
+  skip. (* Needs implementation *)
+  skip. (* Needs implementation *)
+  skip. (* Needs implementation *)
+  skip. (* Needs implementation *)
+  skip. (* Needs implementation *)
+  skip. (* Needs implementation *)
+  skip. (* Needs implementation *)
 Qed.
 
 Set Printing Depth 10000.
