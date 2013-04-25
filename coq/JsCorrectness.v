@@ -159,7 +159,39 @@ Ltac if_unmonad := (* This removes some information... *)
 
 
 (**************************************************************)
-(** Other Tactics *)
+(** Correctness Properties *)
+
+Definition follow_spec {T Te : Type}
+    (conv : T -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
+    (run : state -> execution_ctx -> T -> result) := forall S C (e : T) o,
+  run S C e = o ->
+  red S C (conv e) o.
+
+Definition follow_expr := follow_spec expr_basic red_expr.
+Definition follow_stat := follow_spec stat_basic red_stat.
+Definition follow_prog := follow_spec prog_basic red_prog.
+Definition follow_elements rv :=
+  follow_spec (prog_1 rv) red_prog.
+Definition follow_call vs :=
+  follow_spec
+    (fun B => spec_call_prealloc B vs)
+    red_expr.
+Definition follow_call_full l vs :=
+  follow_spec
+    (fun v => spec_call l v vs)
+    red_expr.
+
+
+Definition propOnRuns (P : result -> Prop) runs :=
+  (forall S C e, P (wraped_run_expr runs S C e)) /\
+  (forall S C t, P (wraped_run_stat runs S C t)) /\
+  (forall S C p, P (wraped_run_prog runs S C p)) /\
+  (forall S C B args, P (wraped_run_call runs S C B args)) /\
+  (forall S C l v args, P (wraped_run_call_full runs S C l v args)).
+
+
+(**************************************************************)
+(** Some Tactics *)
 
 (*
 Ltac add_header_properties t k :=
@@ -193,8 +225,101 @@ Goal (result -> result) -> True.
   intro f.
   add_lemma_about f. *)
 
+Ltac get_letter t :=
+  match t with
+  | result => fresh "res"
+  | option _ => fresh "op"
+  | bool => fresh "b"
+  | value => fresh "v"
+  | prim => fresh "w"
+  | object_loc => fresh "l"
+  | prop_name => fresh "x"
+  | state => fresh "S"
+  | execution_ctx => fresh "C"
+  | expr => fresh "e"
+  | stat => fresh "t"
+  | prog => fresh "p"
+  | _ => fresh "a"
+  end.
 
-Ltac unfold_matches_in T :=
+Ltac get_prop t :=
+  match t with
+  | _ => constr:(fun _ : t => True)
+  end.
+
+Ltac get_lemma_about not_res f :=
+  match type of f with
+  | result => fail
+  | ?t1 -> result =>
+    let H := fresh "H" in
+    let l1 := get_letter t1 in
+    let p1 := get_prop t1 in
+    constr:(forall l1, p1 l1 -> f l1 <> not_res)
+  | ?t1 -> ?t2 -> result =>
+    let H := fresh "H" in
+    let l1 := get_letter t1 in
+    let p1 := get_prop t1 in
+    let l2 := get_letter t2 in
+    let p2 := get_prop t2 in
+    constr:(forall l1 l2, p1 l1 -> p2 l2 -> f l1 l2 <> not_res)
+  | ?t1 -> ?t2 -> ?t3 -> result =>
+    let H := fresh "H" in
+    let l1 := get_letter t1 in
+    let p1 := get_prop t1 in
+    let l2 := get_letter t2 in
+    let p2 := get_prop t2 in
+    let l3 := get_letter t3 in
+    let p3 := get_prop t3 in
+    constr:(forall l1 l2 l3, p1 l1 -> p2 l2 -> p3 l3 -> f l1 l2 l3 <> not_res)
+  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> result =>
+    let H := fresh "H" in
+    let l1 := get_letter t1 in
+    let p1 := get_prop t1 in
+    let l2 := get_letter t2 in
+    let p2 := get_prop t2 in
+    let l3 := get_letter t3 in
+    let p3 := get_prop t3 in
+    let l4 := get_letter t4 in
+    let p4 := get_prop t4 in
+    constr:(forall l1 l2 l3 l4, p1 l1 -> p2 l2 -> p3 l3 -> p4 l4 -> f l1 l2 l3 l4 <> not_res)
+  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> ?t5 -> result =>
+    let H := fresh "H" in
+    let l1 := get_letter t1 in
+    let p1 := get_prop t1 in
+    let l2 := get_letter t2 in
+    let p2 := get_prop t2 in
+    let l3 := get_letter t3 in
+    let p3 := get_prop t3 in
+    let l4 := get_letter t4 in
+    let p4 := get_prop t4 in
+    let l5 := get_letter t5 in
+    let p5 := get_prop t5 in
+    constr:(forall l1 l2 l3 l4 l5, p1 l1 -> p2 l2 -> p3 l3 -> p4 l4 -> p5 l5 -> f l1 l2 l3 l4 l5 <> not_res)
+  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> ?t5 -> ?t6 result =>
+    let H := fresh "H" in
+    let l1 := get_letter t1 in
+    let p1 := get_prop t1 in
+    let l2 := get_letter t2 in
+    let p2 := get_prop t2 in
+    let l3 := get_letter t3 in
+    let p3 := get_prop t3 in
+    let l4 := get_letter t4 in
+    let p4 := get_prop t4 in
+    let l5 := get_letter t5 in
+    let p5 := get_prop t5 in
+    let l6 := get_letter t6 in
+    let p6 := get_prop t6 in
+    constr:(forall l1 l2 l3 l4 l5 l6, p1 l1 -> p2 l2 -> p3 l3 -> p4 l4 -> p5 l5 -> p6 l6 -> f l1 l2 l3 l4 l5 l6 <> not_res)
+  end.
+
+Ltac add_lemma_about not_res f :=
+  let L := get_lemma_about not_res f in
+  let H := fresh "Lem" in
+  asserts H: L;
+  [ simpl
+  | simpl in H; try apply H ].
+
+Ltac unfold_matches_in not_res T :=
   match T with
 
   (* Some exceptions to avoid looping *)
@@ -207,7 +332,7 @@ Ltac unfold_matches_in T :=
   | run_call_full => auto
   | run_call => auto
 
-  | result_normal out_div => auto*
+  | not_res => auto*
   | result_normal ?o =>
     first [ discriminate
           | let P := get_head o in unfold P
@@ -220,7 +345,7 @@ Ltac unfold_matches_in T :=
     | result_stuck => ?C2
     | result_bottom => ?C3
     end =>
-    asserts: (res <> result_normal out_div);
+    asserts: (res <> not_res);
     [ idtac
     | let res0 := fresh "res" in
       sets_eq res0: res;
@@ -414,80 +539,58 @@ Ltac unfold_matches_in T :=
     destruct rb0
 
   | let a := ?f in ?C =>
-    first [unfold_matches_in f | destruct~ f]
+    first [unfold_matches_in not_res f | destruct~ f]
   | let (a, b) := ?f in ?C =>
-    first [unfold_matches_in f | destruct~ f]
+    first [unfold_matches_in not_res f | destruct~ f]
   | let '(a, b) := ?f in ?C =>
-    first [unfold_matches_in f | destruct~ f]
+    first [unfold_matches_in not_res f | destruct~ f]
 
-  (* | ?f => add_lemma_about f (* May fail (and thus switch to the next rule). *) *)
-
-  | ?f ?x => unfold_matches_in f
-  | ?f => unfolds f
+  | ?f ?x => unfold_matches_in not_res f
+  | ?f => first
+    [ add_lemma_about not_res f
+    | unfolds f ]
 
   end.
 
-Ltac prove_not_div_with k1 k2 :=
-  repeat first
+Ltac prove_result_not_equal_with k1 k2 :=
+  let not_res :=
+    match goal with
+    | |- ?T <> ?T' =>
+      match type of T' with
+      | result => constr:T'
+      | _ => fail "needs a `result'."
+      end
+    end
+  in repeat first
     [ k1
     | match goal with
-      | H : result_normal out_div = ?f ?x
-        |- (result_normal out_div) <> (result_normal out_div) =>
-        asserts: (f x <> result_normal out_div);
+      | H : not_res = ?f ?x
+        |- not_res <> not_res =>
+        asserts: (f x <> not_res);
         [ clear H | false~ ]
-      | |- (if ?b then ?C1 else ?C2) <> (result_normal out_div) =>
+      | |- (if ?b then ?C1 else ?C2) <> not_res =>
         case_if
-      | |- (ifb ?b then ?C1 else ?C2) <> (result_normal out_div) =>
+      | |- (ifb ?b then ?C1 else ?C2) <> not_res =>
         case_if
-      | |- (result_normal (if ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
+      | |- (result_normal (if ?b then ?C1 else ?C2)) <> not_res =>
         case_if
-      | |- (result_normal (ifb ?b then ?C1 else ?C2)) <> (result_normal out_div) =>
+      | |- (result_normal (ifb ?b then ?C1 else ?C2)) <> not_res =>
         case_if
-      | |- ?T <> (result_normal out_div) =>
-        unfold_matches_in T
+      | |- ?T <> not_res =>
+        unfold_matches_in not_res T
+      | |- propOnRuns ?P ?runs =>
+        splits*
       end
     | k2].
 
-Ltac prove_not_div :=
-  prove_not_div_with ltac:fail ltac:(simpl; auto).
+Ltac prove_result_not_equal :=
+  prove_result_not_equal_with ltac:fail ltac:(simpl; auto).
 
-Ltac prove_not_div_using P :=
-  prove_not_div_with ltac:(apply P) ltac:(simpl; auto).
+Ltac prove_result_not_equal_using P0 :=
+  prove_result_not_equal_with ltac:(apply P0) ltac:(simpl; auto).
 
-Ltac prove_not_div_using2 P1 P2 :=
-  prove_not_div_with ltac:(apply P1 || apply P2) ltac:(simpl; auto).
-
-
-(**************************************************************)
-(** Correctness Properties *)
-
-Definition follow_spec {T Te : Type}
-    (conv : T -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
-    (run : state -> execution_ctx -> T -> result) := forall S C (e : T) o,
-  run S C e = o ->
-  red S C (conv e) o.
-
-Definition follow_expr := follow_spec expr_basic red_expr.
-Definition follow_stat := follow_spec stat_basic red_stat.
-Definition follow_prog := follow_spec prog_basic red_prog.
-Definition follow_elements rv :=
-  follow_spec (prog_1 rv) red_prog.
-Definition follow_call vs :=
-  follow_spec
-    (fun B => spec_call_prealloc B vs)
-    red_expr.
-Definition follow_call_full l vs :=
-  follow_spec
-    (fun v => spec_call l v vs)
-    red_expr.
-
-
-Definition propOnRuns (P : result -> Prop) runs :=
-  (forall S C e, P (wraped_run_expr runs S C e)) /\
-  (forall S C t, P (wraped_run_stat runs S C t)) /\
-  (forall S C p, P (wraped_run_prog runs S C p)) /\
-  (forall S C B args, P (wraped_run_call runs S C B args)) /\
-  (forall S C l v args, P (wraped_run_call_full runs S C l v args)).
+Ltac prove_result_not_equal_using2 P1 P2 :=
+  prove_result_not_equal_with ltac:(apply P1 || apply P2) ltac:(simpl; auto).
 
 
 (**************************************************************)
@@ -505,23 +608,29 @@ Proof.
 Qed.
 *)
 
+Unset Ltac Debug. (* TODO:  Temporary *)
+
 Lemma prim_new_object_not_div : forall S w,
   prim_new_object S w <> out_div.
 Proof.
-  introv. prove_not_div. skip. (* Needs implementation of [prim_new_object] *)
+  introv. prove_result_not_equal. skip. (* Needs implementation of [prim_new_object] *)
 Qed.
 
 Lemma ref_get_value_not_div : forall runs,
   propOnRuns (fun res => res <> out_div) runs -> forall S C rv,
     ref_get_value runs S C rv <> out_div.
 Proof.
-  introv [IHe IHt IHp IHc IHcf]. introv.
-  prove_not_div.
+  introv (IHe&IHt&IHp&IHc&IHcf). introv.
+
+  Set Ltac Debug. (* TODO:  Temporary *)
+  prove_result_not_equal.
   (* The reason why it stops there is that there is an instance of [decide] applied
    deep in the term that prevents from doing any useful deconstruction over the matched
    term.  Let's split this [decide] and see what we can then do. *)
-  case_if; prove_not_div_using prim_new_object_not_div.
+  case_if; prove_result_not_equal_using prim_new_object_not_div.
 Qed.
+
+Set Printing Depth 10000.
 
 
 (**************************************************************)
@@ -551,7 +660,7 @@ Proof.
 
   (* run_stat_not_div *)
   destruct num. discriminate.
-  introv. destruct t; simpls; prove_not_div_using ref_get_value_not_div.
+  introv. destruct t; simpls; prove_result_not_equal_using ref_get_value_not_div.
 
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
@@ -565,15 +674,15 @@ Proof.
 
   (* run_expr_not_div *)
   destruct num. discriminate.
-  introv. destruct e; simpls; auto*; skip. (* destruct e; simpls; prove_not_div. *) (* This is taking much too long...  Maybe the tactics are a little too heavy there. *)
+  introv. destruct e; simpls; auto*; skip. (* destruct e; simpls; prove_result_not_equal. *) (* This is taking much too long...  Maybe the tactics are a little too heavy there. *)
 
   (* run_elements_not_div *)
   destruct num. discriminate.
-  introv. destruct els as [|[?|?]]; simpls; prove_not_div.
+  introv. destruct els as [|[?|?]]; simpls; prove_result_not_equal.
 
   (* run_call_not_div *)
   destruct num. discriminate.
-  introv. destruct B; simpls; prove_not_div_using ref_get_value_not_div.
+  introv. destruct B; simpls; prove_result_not_equal_using ref_get_value_not_div.
 
   skip. (* Needs implementation. *)
   skip. (* Needs implementation. *)
@@ -637,7 +746,7 @@ Proof.
 
   (* run_call_full_not_div *)
   destruct num. discriminate.
-  introv. simpls. prove_not_div.
+  introv. simpls. prove_result_not_equal.
 
   skip. (* Has to be proved in a separate lemma. *)
   skip. (* Has to be proved in a separate lemma. *)
