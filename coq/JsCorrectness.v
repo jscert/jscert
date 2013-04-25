@@ -225,23 +225,6 @@ Goal (result -> result) -> True.
   intro f.
   add_lemma_about f. *)
 
-Ltac get_letter t :=
-  match t with
-  | result => fresh "res"
-  | option _ => fresh "op"
-  | bool => fresh "b"
-  | value => fresh "v"
-  | prim => fresh "w"
-  | object_loc => fresh "l"
-  | prop_name => fresh "x"
-  | state => fresh "S"
-  | execution_ctx => fresh "C"
-  | expr => fresh "e"
-  | stat => fresh "t"
-  | prog => fresh "p"
-  | _ => fresh "a"
-  end.
-
 Ltac get_prop t :=
   match t with
   | _ => constr:(fun _ : t => True)
@@ -250,74 +233,85 @@ Ltac get_prop t :=
 Ltac get_lemma_about not_res f :=
   match type of f with
   | result => fail
-  | ?t1 -> result =>
+
+  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> ?t5 -> ?t6 -> ?t7 -> result =>
     let H := fresh "H" in
-    let l1 := get_letter t1 in
     let p1 := get_prop t1 in
-    constr:(forall l1, p1 l1 -> f l1 <> not_res)
-  | ?t1 -> ?t2 -> result =>
-    let H := fresh "H" in
-    let l1 := get_letter t1 in
-    let p1 := get_prop t1 in
-    let l2 := get_letter t2 in
     let p2 := get_prop t2 in
-    constr:(forall l1 l2, p1 l1 -> p2 l2 -> f l1 l2 <> not_res)
-  | ?t1 -> ?t2 -> ?t3 -> result =>
-    let H := fresh "H" in
-    let l1 := get_letter t1 in
-    let p1 := get_prop t1 in
-    let l2 := get_letter t2 in
-    let p2 := get_prop t2 in
-    let l3 := get_letter t3 in
     let p3 := get_prop t3 in
-    constr:(forall l1 l2 l3, p1 l1 -> p2 l2 -> p3 l3 -> f l1 l2 l3 <> not_res)
-  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> result =>
-    let H := fresh "H" in
-    let l1 := get_letter t1 in
-    let p1 := get_prop t1 in
-    let l2 := get_letter t2 in
-    let p2 := get_prop t2 in
-    let l3 := get_letter t3 in
-    let p3 := get_prop t3 in
-    let l4 := get_letter t4 in
     let p4 := get_prop t4 in
-    constr:(forall l1 l2 l3 l4, p1 l1 -> p2 l2 -> p3 l3 -> p4 l4 -> f l1 l2 l3 l4 <> not_res)
+    let p5 := get_prop t5 in
+    let p6 := get_prop t6 in
+    let p7 := get_prop t7 in
+    constr:(forall (a1 : t1) (a2 : t2) (a3 : t3) (a4 : t4) (a5 : t5) (a6 : t6) (a7 : t7),
+              p1 a1 -> p2 a2 -> p3 a3 -> p4 a4 -> p5 a5 -> p6 a6 -> p7 a7 ->
+              f a1 a2 a3 a4 a5 a6 a7 <> not_res)
+
+  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> ?t5 -> ?t6 -> result =>
+    let H := fresh "H" in
+    let p1 := get_prop t1 in
+    let p2 := get_prop t2 in
+    let p3 := get_prop t3 in
+    let p4 := get_prop t4 in
+    let p5 := get_prop t5 in
+    let p6 := get_prop t6 in
+    constr:(forall (a1 : t1) (a2 : t2) (a3 : t3) (a4 : t4) (a5 : t5) (a6 : t6),
+              p1 a1 -> p2 a2 -> p3 a3 -> p4 a4 -> p5 a5 -> p6 a6 ->
+              f a1 a2 a3 a4 a5 a6 <> not_res)
+
   | ?t1 -> ?t2 -> ?t3 -> ?t4 -> ?t5 -> result =>
     let H := fresh "H" in
-    let l1 := get_letter t1 in
     let p1 := get_prop t1 in
-    let l2 := get_letter t2 in
     let p2 := get_prop t2 in
-    let l3 := get_letter t3 in
     let p3 := get_prop t3 in
-    let l4 := get_letter t4 in
     let p4 := get_prop t4 in
-    let l5 := get_letter t5 in
     let p5 := get_prop t5 in
-    constr:(forall l1 l2 l3 l4 l5, p1 l1 -> p2 l2 -> p3 l3 -> p4 l4 -> p5 l5 -> f l1 l2 l3 l4 l5 <> not_res)
-  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> ?t5 -> ?t6 result =>
+    constr:(forall (a1 : t1) (a2 : t2) (a3 : t3) (a4 : t4) (a5 : t5),
+              p1 a1 -> p2 a2 -> p3 a3 -> p4 a4 -> p5 a5 ->
+              f a1 a2 a3 a4 a5 <> not_res)
+
+  | ?t1 -> ?t2 -> ?t3 -> ?t4 -> result =>
     let H := fresh "H" in
-    let l1 := get_letter t1 in
     let p1 := get_prop t1 in
-    let l2 := get_letter t2 in
     let p2 := get_prop t2 in
-    let l3 := get_letter t3 in
     let p3 := get_prop t3 in
-    let l4 := get_letter t4 in
     let p4 := get_prop t4 in
-    let l5 := get_letter t5 in
-    let p5 := get_prop t5 in
-    let l6 := get_letter t6 in
-    let p6 := get_prop t6 in
-    constr:(forall l1 l2 l3 l4 l5 l6, p1 l1 -> p2 l2 -> p3 l3 -> p4 l4 -> p5 l5 -> p6 l6 -> f l1 l2 l3 l4 l5 l6 <> not_res)
+    constr:(forall (a1 : t1) (a2 : t2) (a3 : t3) (a4 : t4),
+              p1 a1 -> p2 a2 -> p3 a3 -> p4 a4 ->
+              f a1 a2 a3 a4 <> not_res)
+
+  | ?t1 -> ?t2 -> ?t3 -> result =>
+    let H := fresh "H" in
+    let p1 := get_prop t1 in
+    let p2 := get_prop t2 in
+    let p3 := get_prop t3 in
+    constr:(forall (a1 : t1) (a2 : t2) (a3 : t3),
+              p1 a1 -> p2 a2 -> p3 a3 ->
+              f a1 a2 a3 <> not_res)
+
+  | ?t1 -> ?t2 -> result =>
+    let H := fresh "H" in
+    let p1 := get_prop t1 in
+    let p2 := get_prop t2 in
+    constr:(forall (a1 : t1) (a2 : t2),
+              p1 a1 -> p2 a2 ->
+              f a1 a2 <> not_res)
+
+  | ?t1 -> result =>
+    let H := fresh "H" in
+    let p1 := get_prop t1 in
+    constr:(forall (a1 : t1),
+              p1 a1 ->
+              f a1 <> not_res)
+
   end.
 
 Ltac add_lemma_about not_res f :=
   let L := get_lemma_about not_res f in
-  let H := fresh "Lem" in
-  asserts H: L;
-  [ simpl
-  | simpl in H; try apply H ].
+  let Lem := fresh "Lem" in
+  asserts Lem: L;
+  [ simpl; intros; unfolds f
+  | simpl in Lem; apply Lem ].
 
 Ltac unfold_matches_in not_res T :=
   match T with
@@ -564,6 +558,8 @@ Ltac prove_result_not_equal_with k1 k2 :=
   in repeat first
     [ k1
     | match goal with
+      | H : True |- _ =>
+        clear H
       | H : not_res = ?f ?x
         |- not_res <> not_res =>
         asserts: (f x <> not_res);
@@ -608,7 +604,7 @@ Proof.
 Qed.
 *)
 
-Unset Ltac Debug. (* TODO:  Temporary *)
+  Unset Ltac Debug. (* TODO:  Temporary *)
 
 Lemma prim_new_object_not_div : forall S w,
   prim_new_object S w <> out_div.
@@ -622,7 +618,7 @@ Lemma ref_get_value_not_div : forall runs,
 Proof.
   introv (IHe&IHt&IHp&IHc&IHcf). introv.
 
-  Set Ltac Debug. (* TODO:  Temporary *)
+  (* Set Ltac Debug. *) (* TODO:  Temporary *)
   prove_result_not_equal.
   (* The reason why it stops there is that there is an instance of [decide] applied
    deep in the term that prevents from doing any useful deconstruction over the matched
