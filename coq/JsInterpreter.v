@@ -1947,6 +1947,41 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       | value_prim _ => run_error S prealloc_type_error
       end
 
+    | prealloc_object_freeze =>
+      let v := get_arg 0 args in
+      match v with
+      | value_object l =>
+        let xs := pick (object_properties_keys_as_list S l)
+        in (fix object_freeze S0 xs : result :=
+          match xs with
+          | nil =>
+            let S1 := run_object_heap_set_extensible_false S0 l
+            in out_ter S1 l
+          | x :: xs' =>
+            if_some (run_object_get_own_prop S l x) (fun D =>
+              match D with
+              | full_descriptor_some A =>
+                let A' :=
+                  ifb attributes_is_data A /\ attributes_writable A then
+                    let Desc :=
+                      descriptor_intro None (Some false) None None None None
+                    in attributes_update A Desc
+                  else A
+                in let A'' :=
+                  if attributes_configurable A' then
+                    let Desc :=
+                      descriptor_intro None None None None None (Some false)
+                    in attributes_update A' Desc
+                  else A'
+                in if_void (object_define_own_prop S0 l x A'' true) (fun S1 =>
+                  object_freeze S1 xs')
+              | full_descriptor_undef => result_stuck
+              end)
+          end) S xs
+      | value_prim _ => run_error S prealloc_type_error
+      end
+        
+
     | prealloc_object_is_frozen =>
       let v := get_arg 0 args in
       match v with

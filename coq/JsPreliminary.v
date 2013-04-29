@@ -381,7 +381,7 @@ Definition attributes_enumerable A :=
 
 (** True is its argument is a data *)
 
-Definition attributes_is_data A : Prop :=
+Definition attributes_is_data A : Prop := (* In practise, this function is used as [attributes_is_data A = true] using an implicit [isTrue]:  wouldn't it be better if it were a boolean instead of a proposition? -- Martin. *)
   match A with
   | attributes_data_of Ad => True
   | attributes_accessor_of Aa => False
