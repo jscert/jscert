@@ -116,6 +116,10 @@ run_tests: interpreter
 	interp/run.sh -init
 	find tests/ -type f -name \*.js -exec interp/run.py -makefile {} \;
 
+run_tests_spidermonkey:
+	interp/run.sh -init
+	find tests/ -type f -name \*.js -exec interp/run.py --spidermonkey --interp_path ~/Mozilla/Central/Central/js/src/build_release/js {} \;
+
 interpreter: interp/run_js
 
 interp/src/extract/%.ml: coq/JsInterpreterExtraction.vo

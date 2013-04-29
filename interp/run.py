@@ -63,13 +63,25 @@ def end_message(signal,frame):
 if args.makefile:
     signal.signal(signal.SIGINT, end_message)
 
+# How should we run this test? With what?
+
+test_runner = ['echo "Something weird is happening!"']
+
+if args.spidermonkey:
+    print "Warning: SpiderMonkey support is still experimental"
+    test_runner = [args.interp_path, args.filename]
+elif args.lambdaS5:
+    test_runner = ['echo "lambdaS5 not yet supported"']
+else:
+    test_runner = [args.interp_path,
+                   "-jsparser","interp/parser/lib/js_parser.jar",
+                   "-test_prelude","interp/test_prelude.js",
+                   "-file",args.filename]
+
 # Now let's get down to the business of running a test
 colours.print_heading(args.filename)
 
-ret = subprocess.call([args.interp_path,
-                       "-jsparser","interp/parser/lib/js_parser.jar",
-                       "-test_prelude","interp/test_prelude.js",
-                       "-file",args.filename])
+ret = subprocess.call(test_runner)
 
 passed = ret
 
