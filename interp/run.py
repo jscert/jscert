@@ -36,6 +36,17 @@ argp.add_argument(
 argp.add_argument("filename", metavar="filename",
                   help="The test file we want to run.")
 
+engines_grp = argp.add_mutually_exclusive_group()
+
+engines_grp.add_argument("--spidermonkey", action="store_true",
+    help="Test SpiderMonkey instead of JSRef. If you use this, you should probably also use --interp_path")
+
+engines_grp.add_argument("--lambdaS5", action="store_true",
+    help="Test LambdaS5 instead of JSRef. If you use this, you should probably also use --interp_path")
+
+argp.add_argument("--interp_path", action="store",
+                  default="interp/run_js", help="Where to find the interpreter.")
+
 args = argp.parse_args()
 
 # The file where test failure messages will be reported to
@@ -55,7 +66,7 @@ if args.makefile:
 # Now let's get down to the business of running a test
 colours.print_heading(args.filename)
 
-ret = subprocess.call(["interp/run_js",
+ret = subprocess.call([args.interp_path,
                        "-jsparser","interp/parser/lib/js_parser.jar",
                        "-test_prelude","interp/test_prelude.js",
                        "-file",args.filename])
