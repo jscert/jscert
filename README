@@ -35,6 +35,8 @@ INSTALLATION AND COMPILATION
 2) Run "make" to compile the files (ignore the warnings),
    Run "make -j 2" if your machine has two cores.
 
+   The first time you do this it WILL FAIL. Run "make" a second time before worrying.
+
 3) Run "./open.sh & " to edit files in CoqIDE
 
 4) Run "make clean" to clean JS files,
