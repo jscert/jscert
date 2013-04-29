@@ -2452,7 +2452,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_call : forall S C args v o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_call_1 v) o ->
-      red_expr S C (spec_construct_prealloc prealloc_object args) o (* What's the difference of conclusion between this rule and [red_spec_call_object_new]?  There's surely a bug there. -- Martin. *)
+      red_expr S C (spec_call_prealloc prealloc_object args) o
 
   | red_spec_call_object_call_1_null_or_undef : forall S C v o,
       (v = null \/ v = undef) ->
@@ -2469,7 +2469,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_new : forall S C args v o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_new_1 v) o ->
-      red_expr S C (spec_construct_prealloc prealloc_object args) o (* What's the difference of conclusion between this rule and [red_spec_call_object_call]?  There's surely a bug there. -- Martin. *)
+      red_expr S C (spec_construct_prealloc prealloc_object args) o 
       
   | red_spec_call_object_new_1_object : forall S C v,
       type_of v = type_object ->
@@ -2492,7 +2492,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_get_proto_of : forall S C v r args o, 
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_get_proto_of_1 v) o ->
-      red_expr S C (spec_construct_prealloc prealloc_object_get_proto_of args) o (* Isn't that a [spec_call_prealloc] instead of [spec_construct_prealloc]? -- Martin *)
+      red_expr S C (spec_call_prealloc prealloc_object_get_proto_of args) o
 
   | red_spec_call_object_get_proto_of_1_not_object : forall S C w o, 
       red_expr S C (spec_error prealloc_type_error) o ->

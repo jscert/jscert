@@ -222,7 +222,7 @@ Inductive prealloc :=
   | prealloc_object_proto_value_of
   | prealloc_object_proto_has_own_prop (* LATER: support *)
   | prealloc_object_proto_is_prototype_of
-  | prealloc_object_proto_prop_is_enumerable (* LATER: support *)
+  | prealloc_object_proto_prop_is_enumerable
   | prealloc_function
   | prealloc_function_proto
   | prealloc_function_proto_to_string
