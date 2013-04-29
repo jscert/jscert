@@ -408,6 +408,12 @@ Inductive ext_expr :=
   | spec_call_object_new_1 : value -> ext_expr
   | spec_call_object_get_proto_of_1 : value -> ext_expr
   | spec_call_object_is_extensible_1 : value -> ext_expr
+
+  | spec_call_object_seal_1 : value -> ext_expr
+  | spec_call_object_seal_2 : object_loc -> list prop_name -> ext_expr
+  | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_seal_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : object_loc -> list prop_name -> ext_expr
   | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> full_descriptor -> ext_expr

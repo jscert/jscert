@@ -2502,6 +2502,50 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_proto S l v ->
       red_expr S C (spec_call_object_get_proto_of_1 l) (out_ter S v)
 
+ (** Seal (returns Object) (15.2.3.8) *)
+
+  | red_spec_call_object_seal : forall S C v o args,  (* Step 0 *)
+     arguments_from args (v::nil) ->
+     red_expr S C (spec_call_object_seal_1 v) o ->
+     red_expr S C (spec_call_prealloc prealloc_object_seal args) o
+
+ | red_spec_call_object_seal_1_not_object : forall S C v o,  (* Step 1 *)
+     type_of v <> type_object ->
+     red_expr S C (spec_error prealloc_type_error) o ->
+     red_expr S C (spec_call_object_seal_1 v) o
+
+ | red_spec_call_object_seal_1_object : forall S C l xs x o,  (* Step 2 *)
+     object_properties_keys_as_list S l xs ->
+     red_expr S C (spec_call_object_seal_2 l xs) o ->
+     red_expr S C (spec_call_object_seal_1 l) o
+
+ | red_spec_call_object_seal_2_cons : forall S C l xs x o,  (* Step 2.a *)
+     red_expr S C (spec_object_get_own_prop l x (spec_call_object_seal_3 l x xs)) o ->
+     red_expr S C (spec_call_object_seal_2 l (x::xs)) o
+
+  | red_spec_call_object_seal_3_prop_configurable : forall S C Desc A A' xs l x o, (* Step 2.b, true *)
+      attributes_configurable A = true ->
+      Desc = descriptor_intro None None None None None (Some false) ->
+      A' = attributes_update A Desc -> 
+      red_expr S C (spec_call_object_seal_4 l x xs A') o -> 
+      red_expr S C (spec_call_object_seal_3 l x xs A) (out_ter S false)
+
+  | red_spec_call_object_seal_3_prop_not_configurable : forall S C A xs l x o, (* Step 2.b, false *)
+      attributes_configurable A = false ->
+      red_expr S C (spec_call_object_seal_4 l x xs A) o ->
+      red_expr S C (spec_call_object_seal_3 l x xs A) o
+
+  | red_spec_call_object_seal_4 : forall S C A xs l x o o1, (* Step 2.c, false *)
+      red_expr S C (spec_object_define_own_prop l x A true) o1 ->
+      o1 = (out_void S) ->
+      red_expr S C (spec_call_object_seal_2 l xs) o ->
+      red_expr S C (spec_call_object_seal_4 l x xs A) o
+ 
+ | red_spec_call_object_seal_2_nil : forall S S' C l b x o,
+      object_heap_set_extensible_false S l S' ->
+      red_expr S C (spec_call_object_seal_2 l nil) (out_ter S' l)
+
+
   (** IsSealed (returns bool)  (15.2.3.11) *)  
 
   | red_spec_call_object_is_sealed : forall S C v o args, (* Step 0 *)

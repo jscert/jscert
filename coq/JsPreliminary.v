@@ -314,6 +314,16 @@ Definition object_heap_map_properties S l F S' :=
   exists O, object_binds S l O
          /\ S' = object_write S l (object_map_properties O F).
 
+(** [object_heap_set_extensible_false S l S'] asserts that the state
+    [S] contains an object at location [l], and that [S']
+    describes the heap after the object at location [l] has
+    been updated by settin its [extensible] internal property to false *)
+(* TODO: we need something more general? (i.e. giving a boolean as an arg?*)
+
+Definition object_heap_set_extensible_false S l S' :=
+  exists O, object_binds S l O
+         /\ S' = object_write S l (object_set_extensible_false O).
+
 (** [object_has_property S l x] asserts that the object stored
     at address [l] in [S] has a properties field that binds the
     property name [x]. *)
