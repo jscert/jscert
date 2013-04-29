@@ -2535,10 +2535,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_seal_4 l x xs A) o ->
       red_expr S C (spec_call_object_seal_3 l x xs A) o
 
-  | red_spec_call_object_seal_4 : forall S C A xs l x o o1, (* Step 2.c, false *)
+  | red_spec_call_object_seal_4 : forall S S' C A xs l x o o1, (* Step 2.c, false *)
       red_expr S C (spec_object_define_own_prop l x A true) o1 ->
-      o1 = (out_void S) -> (* Do not link the input state of [spec_object_define_own_prop] with the output one! -- Martin *)
-      red_expr S C (spec_call_object_seal_2 l xs) o ->
+      o1 = (out_void S') -> (* Prefer to use pretty-big-step style for such construction. -- Martin. *)
+      red_expr S' C (spec_call_object_seal_2 l xs) o ->
       red_expr S C (spec_call_object_seal_4 l x xs A) o
  
  | red_spec_call_object_seal_2_nil : forall S S' C l b x o,
@@ -2580,6 +2580,71 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_extensible S l b ->
       red_expr S C (spec_call_object_is_sealed_2 l nil) (out_ter S (negb b))
 
+  (** Freeze (returns object) (15.2.3.9) *)
+
+   | red_spec_call_object_freeze : forall S C v o args,  (* Step 0 *)
+     arguments_from args (v::nil) ->
+     red_expr S C (spec_call_object_freeze_1 v) o ->
+     red_expr S C (spec_call_prealloc prealloc_object_freeze args) o
+
+ | red_spec_call_object_freeze_1_not_object : forall S C v o,  (* Step 1 *)
+     type_of v <> type_object ->
+     red_expr S C (spec_error prealloc_type_error) o ->
+     red_expr S C (spec_call_object_freeze_1 v) o
+
+ | red_spec_call_object_freeze_1_object : forall S C l xs x o,  (* Step 2 *)
+     object_properties_keys_as_list S l xs ->
+     red_expr S C (spec_call_object_freeze_2 l xs) o ->
+     red_expr S C (spec_call_object_freeze_1 l) o
+
+ | red_spec_call_object_freeze_2_cons : forall S C l xs x o,  (* Step 2.a *)
+     red_expr S C (spec_object_get_own_prop l x (spec_call_object_freeze_3 l x xs)) o ->
+     red_expr S C (spec_call_object_freeze_2 l (x::xs)) o
+
+  | red_spec_call_object_freeze_3_desc_is_data : forall S C A xs l x o, (* Step 2.b, true *)
+      attributes_is_data A = true ->
+      red_expr S C (spec_call_object_freeze_4 l x xs A) o ->
+      red_expr S C (spec_call_object_freeze_3 l x xs A) o 
+
+  | red_spec_call_object_freeze_3_desc_is_not_data : forall S C A xs l x o, (* Step 2.b, false *)
+      attributes_is_data A = false ->
+      red_expr S C (spec_call_object_freeze_5 l x xs A) o ->
+      red_expr S C (spec_call_object_freeze_3 l x xs A) o
+
+  | red_spec_call_object_freeze_4_prop_is_writable: forall S C Desc A A' xs l x o, (* Step 2.b.i, true *)
+      attributes_writable A = true ->
+      Desc = descriptor_intro None (Some false) None None None None ->
+      A' = attributes_update A Desc ->
+      red_expr S C (spec_call_object_freeze_5 l x xs A') o ->
+      red_expr S C (spec_call_object_freeze_4 l x xs A) o
+
+  | red_spec_call_object_freeze_4_prop_is_not_writable: forall S C A xs l x o, (* Step 2.b.i, false *)
+      attributes_writable A = false ->
+      red_expr S C (spec_call_object_freeze_5 l x xs A) o ->
+      red_expr S C (spec_call_object_freeze_4 l x xs A) o
+
+  | red_spec_call_object_freeze_5_prop_configurable : forall S C Desc A A' xs l x o, (* Step 2.c, true *) 
+      attributes_configurable A = true ->
+      Desc = descriptor_intro None None None None None (Some false) ->
+      A' = attributes_update A Desc ->
+      red_expr S C (spec_call_object_freeze_6 l x xs A') o ->
+      red_expr S C (spec_call_object_freeze_5 l x xs A) o
+
+  | red_spec_call_object_freeze_5_prop_not_configurable : forall S C A xs l x o,  (* Step 2.c, false*)
+      attributes_configurable A = false ->
+      red_expr S C (spec_call_object_freeze_6 l x xs A) o ->
+      red_expr S C (spec_call_object_freeze_5 l x xs A) o
+
+  | red_spec_call_object_freeze_6 : forall S S' C A xs l x o o1, (* Step 2.d *)
+      red_expr S C (spec_object_define_own_prop l x A true) o1 ->
+      o1 = (out_void S') -> 
+      red_expr S' C (spec_call_object_freeze_2 l xs) o ->
+      red_expr S C (spec_call_object_freeze_6 l x xs A) o
+
+ | red_spec_call_object_freeze_2_nil : forall S S' C l b x o,
+      object_heap_set_extensible_false S l S' ->
+      red_expr S C (spec_call_object_freeze_2 l nil) (out_ter S' l)
+ 
   (** IsFrozen (returns bool)  (15.2.3.12) *)
 
    | red_spec_call_object_is_frozen : forall S C v o args, (* Step 0 *)
@@ -2603,8 +2668,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_is_frozen_3_desc_is_data : forall S C A xs l x o, (* Step 2.b, true *)
       attributes_is_data A = true ->
-      red_expr S C (spec_call_object_is_frozen_4 l xs A) o -> (* This output is completely forgotten there, this can't be correct. -- Martin. *)
-      red_expr S C (spec_call_object_is_frozen_3 l xs A) (out_ter S false)
+      red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
+      red_expr S C (spec_call_object_is_frozen_3 l xs A) o 
 
   | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S C A xs l x o, (* Step 2.b, false *)
       attributes_is_data A = false ->
