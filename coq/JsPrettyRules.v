@@ -2537,7 +2537,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_seal_4 : forall S C A xs l x o o1, (* Step 2.c, false *)
       red_expr S C (spec_object_define_own_prop l x A true) o1 ->
-      o1 = (out_void S) ->
+      o1 = (out_void S) -> (* Do not link the input state of [spec_object_define_own_prop] with the output one! -- Martin *)
       red_expr S C (spec_call_object_seal_2 l xs) o ->
       red_expr S C (spec_call_object_seal_4 l x xs A) o
  

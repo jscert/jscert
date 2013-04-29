@@ -297,6 +297,10 @@ Proof.
   skip. (* Needs properties about [heap_keys_as_list]. *)
 Qed.
 
+Definition run_object_heap_set_extensible_false S l : state :=
+  let O := pick (object_binds S l) in
+  object_write S l (object_set_extensible_false O).
+
 
 (**************************************************************)
 (* The functions taking such arguments can call any arbitrary code,
@@ -1893,6 +1897,33 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
         result_stuck
       else
         out_ter S (resvalue_ref (ref_create_value v "prototype" false))
+
+    | prealloc_object_seal =>
+      match get_arg 0 args with
+      | value_object l =>
+        let xs := pick (object_properties_keys_as_list S l)
+        in (fix object_seal S0 xs : result :=
+          match xs with
+          | nil =>
+            let S1 := run_object_heap_set_extensible_false S0 l in
+            out_ter S1 l
+          | x :: xs' =>
+            if_some (run_object_get_own_prop S0 l x) (fun D =>
+              match D with
+              | full_descriptor_some A =>
+                let A' :=
+                  if attributes_configurable A then
+                    let Desc :=
+                      descriptor_intro None None None None None (Some false)
+                    in attributes_update A Desc
+                  else A
+                in if_void (object_define_own_prop S0 l x A' true) (fun S1 =>
+                  object_seal S1 xs')
+              | full_descriptor_undef => result_stuck
+              end)
+          end) S xs
+      | value_prim _ => run_error S prealloc_type_error
+      end
 
     | prealloc_object_is_sealed =>
       let v := get_arg 0 args in
