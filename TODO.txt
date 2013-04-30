@@ -1,4 +1,7 @@
+ TODO: we need to check whether the rules handle correctly the
+  behaviors with an empty res_value. (they should use rv instead of v to propagate)
 
+---------
 
 (* SameValue: TODO: problem of the several representations of NaN *)
 

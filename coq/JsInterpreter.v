@@ -3,6 +3,22 @@ Require Import Shared.
 Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 
+(* todo: move below in the file *)
+
+(** [out_error_or_cst S str B R] throws the builtin B if
+    [str] is true, the value [R] otherwise. *)
+
+Definition out_error_or_cst S str B R :=
+  if str then out_ter S (res_throw B)
+  else out_ter S R.
+
+(** [out_error_or_cst S str B R] throws the builtin B if
+    [str] is true, empty otherwise. *)
+
+Definition out_error_or_void S str B :=
+  if str then out_ter S (res_throw B)
+  else out_void S.
+  
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -111,9 +127,9 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 
 Definition run_error S (B : prealloc) : result :=
   match B with
-  | prealloc_syntax_error => out_syntax_error S
-  | prealloc_type_error => out_type_error S
-  | prealloc_ref_error => out_ref_error S
+  | prealloc_syntax_error => arbitrary (* TODO: Waiting for specification *)
+  | prealloc_type_error => arbitrary (* TODO: Waiting for specification *)
+  | prealloc_ref_error => arbitrary (* TODO: Waiting for specification *)
   | prealloc_range_error => arbitrary (* TODO: Waiting for specification *)
   | prealloc_throw_type_error => arbitrary (* TODO: Waiting for specification *)
   | _ => result_stuck

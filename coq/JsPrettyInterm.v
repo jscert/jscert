@@ -302,8 +302,8 @@ Inductive ext_expr :=
   
   | spec_call_global_eval : bool -> list value -> ext_expr
   | spec_call_global_eval_1 : bool -> value -> ext_expr
-  | spec_call_global_eval_1_2 : prog -> ext_expr
-  | spec_call_global_eval_1_3 : out -> ext_expr
+  | spec_call_global_eval_2 : prog -> ext_expr
+  | spec_call_global_eval_3 : out -> ext_expr
 
   (** Extended expressions for function calls *)
 
@@ -392,7 +392,8 @@ Inductive ext_expr :=
   
   | spec_call_default : object_loc -> value -> list value -> ext_expr
   | spec_call_default_1 : object_loc -> ext_expr
-  | spec_call_default_2 : out -> ext_expr
+  | spec_call_default_2 : option funcbody -> ext_expr
+  | spec_call_default_3 : out -> ext_expr
   
   | spec_construct : object_loc -> list value -> ext_expr
   | spec_construct_1 : construct -> object_loc -> list value -> ext_expr
@@ -685,11 +686,14 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
   | abort_intercepted_stat_try_3 : forall S R fo,
       abort_intercepted_stat (stat_try_3 (out_ter S R) fo).
-  
+
 Inductive abort_intercepted_expr : ext_expr -> Prop :=
   | abort_intercepted_expr_call_default_2 : forall S R,
       res_type R = restype_return ->
-      abort_intercepted_expr (spec_call_default_2 (out_ter S R)).
+      abort_intercepted_expr (spec_call_default_3 (out_ter S R))
+  | abort_intercepted_expr_call_global_eval_3 : forall S R,
+      res_type R = restype_throw ->
+      abort_intercepted_expr (spec_call_global_eval_3 (out_ter S R)).
 
 
 (**************************************************************)

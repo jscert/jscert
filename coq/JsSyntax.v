@@ -261,7 +261,7 @@ Inductive prealloc :=
 
 (* Identifiers for "Callable" methods *)
 
-Inductive call :=
+Inductive call := (* Note: could be named [builtin_call] *)
   | call_default  (* 13.2.1 *)  
   | call_after_bind (* 15.3.4.5.1 *)
   | call_prealloc : prealloc -> call. (* all are functions except those tagged not callable *)
@@ -270,7 +270,7 @@ Coercion call_prealloc : prealloc >-> call.
 
 (** Identifiers for "Construct" methods *)
 
-Inductive construct :=
+Inductive construct := (* Note: could be named [builtin_construct] *)
   | construct_default (* 13.2.2 *)
   | construct_after_bind (* 15.3.4.5.2 *) (* LATER: support *)
   | construct_prealloc : prealloc -> construct.
@@ -640,6 +640,12 @@ Definition res_throw v := res_intro restype_throw v label_empty.
 Inductive out :=
   | out_div : out
   | out_ter : state -> res -> out.
+
+(** Special outcome used by specification operations, i.e.
+    specification-level functions which do not produce any 
+    value, but only perform side effects. *)
+
+Definition out_void S := out_ter S res_empty.
 
 
 (**************************************************************)
