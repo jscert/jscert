@@ -1628,7 +1628,7 @@ Definition run_stat_with runs S C e1 t2 : result :=
       let lex := execution_ctx_lexical_env C in
       let (lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
       let C' := execution_ctx_with_lex_this C lex' l in
-      wraped_run_stat runs S3 C' t2))
+      wraped_run_stat runs S3 C' t2)).
 
 Definition run_stat_if runs S C e1 t2 to : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
