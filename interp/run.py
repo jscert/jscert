@@ -1,27 +1,30 @@
 #!/usr/bin/env python
+"""
+A mini test harness. Runs all the files you specify through an interpreter
+you specify, and collates the exit codes for you. Call with the -h switch to
+find out about options.
+"""
+
 import argparse
 import signal
 import subprocess
 import os
 
-# A gadget for printing pretty colours for us
-class colour_handler:
-    NORMAL = "\033[00m"
-    HEADING = "\033[35m"
-    PASS = "\033[32m"
-    FAIL = "\033[31m"
-    ABANDON = "\033[33m"
+# Some pretty colours for our output messages.
+NORMAL = "\033[00m"
+HEADING = "\033[35m"
+PASS = "\033[32m"
+FAIL = "\033[31m"
+ABANDON = "\033[33m"
 
-    def print_heading(self,s):
-        print self.HEADING+s+self.NORMAL
-    def print_pass(self,s):
-        print self.PASS+s+self.NORMAL
-    def print_fail(self,s):
-        print self.FAIL+s+self.NORMAL
-    def print_abandon(self,s):
-        print self.ABANDON+s+self.NORMAL
-
-colours = colour_handler()
+def print_heading(s):
+    print HEADING+s+NORMAL
+def print_pass(s):
+    print PASS+s+NORMAL
+def print_fail(s):
+    print FAIL+s+NORMAL
+def print_abandon(s):
+    print ABANDON+s+NORMAL
 
 # Our command-line interface
 argp = argparse.ArgumentParser(
@@ -69,11 +72,14 @@ setup = lambda : 0
 teardown = lambda : 0
 test_runner = lambda filename : ['echo "Something weird is happening!"']
 
+# By default, we expect a pass to exit with code 0, and a fail to exit with code 1.
+pass_code = 0
+fail_code = 1
+
 if args.spidermonkey:
-    print "Warning: SpiderMonkey support is still experimental"
+    fail_code = 3 # SpiderMonkey fails on 3.
     test_runner = lambda filename : [args.interp_path, filename]
 elif args.lambdaS5:
-    print "Warning: LambdaS5 support is still experimental"
     current_dir = os.getcwd()
     setup = lambda : os.chdir(os.path.dirname(args.interp_path))
     teardown = lambda : os.chdir(current_dir)
@@ -88,7 +94,7 @@ else:
 
 # Now let's get down to the business of running the tests
 for filename in args.filenames:
-    colours.print_heading(filename)
+    print_heading(filename)
     filename = os.path.abspath(filename)
 
     setup()
@@ -101,20 +107,21 @@ for filename in args.filenames:
     # If so, we invert the return value.
     with open(filename) as f:
         if "@negative" in f.read():
-            if ret==0 :
-                passed = 1
-            elif ret==1 :
-                passed = 0
+            if ret==pass_code :
+                passed = fail_code
+            elif ret==fail_code :
+                passed = pass_code
 
     # Report the result of this test, and collate the results.
-    if passed==0:
-        colours.print_pass("Passed!")
+    if passed==pass_code:
+        print_pass("Passed!")
         passed_tests.append(filename)
-    elif passed==1:
-        colours.print_fail("Failed :/")
+    elif passed==fail_code:
+        print_fail("Failed :/")
         failed_tests.append(filename)
     else:
-        colours.print_abandon("Abandoned...")
+        # JSRef uses a third code for when something really odd happened.
+        print_abandon("Abandoned...")
         abandoned_tests.append(filename)
 
 print "There were "+len(passed_tests)+" passes, "+len(failed_tests)+"  fails, and "+len(abandoned_tests)+" abandoned."
