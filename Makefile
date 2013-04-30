@@ -9,12 +9,15 @@
 # Note that if you rebind COQBIN you need to do the same in the TLC folder.
 # Note that if you add a settings.sh file, you need to do "make clean" first.
 
-# Default paths for TLC and COQBIN are as follows:
+# Default paths for TLC and COQBIN, etc are as follows:
 
 COQBIN=
 TLC=tlc
 FLOCQ=flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
+
+LAMBDAS5=~/Documents/data/LambdaS5/tests/s5
+SPIDERMONKEY=~/Mozilla/Central/Central/js/src/build_release/js
 
 # Alternative definition for FLOCQ_INC:
 # FLOCQ_FOLDERS=$(addprefix $(FLOCQ)/src/,Core Calc Appli Prop)
@@ -116,10 +119,10 @@ run_tests: interpreter
 	interp/run.py `find tests/ -type f -name \*.js`
 
 run_tests_spidermonkey:
-	interp/run.py --spidermonkey --interp_path ~/Mozilla/Central/Central/js/src/build_release/js `find tests/ -type f -name \*.js`
+	interp/run.py --spidermonkey --interp_path $(SPIDERMONKEY) `find tests/ -type f -name \*.js`
 
 run_tests_lambdaS5:
-	interp/run.py --lambdaS5 --interp_path ~/Documents/data/LambdaS5/tests/s5 `find tests/ -type f -name \*.js`
+	interp/run.py --lambdaS5 --interp_path $(LAMBDAS5) `find tests/ -type f -name \*.js`
 
 interpreter: interp/run_js
 
