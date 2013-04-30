@@ -41,6 +41,9 @@ engines_grp.add_argument("--spidermonkey", action="store_true",
 engines_grp.add_argument("--lambdaS5", action="store_true",
     help="Test LambdaS5 instead of JSRef. If you use this, you should probably also use --interp_path")
 
+engines_grp.add_argument("--nodejs", action="store_true",
+    help="Test node.js instead of JSRef. If you use this, you should probably also use --interp_path")
+
 argp.add_argument("--interp_path", action="store", metavar="path",
                   default="interp/run_js", help="Where to find the interpreter.")
 
@@ -78,6 +81,8 @@ fail_code = 1
 
 if args.spidermonkey:
     fail_code = 3 # SpiderMonkey fails on 3.
+    test_runner = lambda filename : [args.interp_path, filename]
+elif args.nodejs:
     test_runner = lambda filename : [args.interp_path, filename]
 elif args.lambdaS5:
     current_dir = os.getcwd()

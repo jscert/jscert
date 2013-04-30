@@ -18,6 +18,7 @@ FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
 LAMBDAS5=~/Documents/data/LambdaS5/tests/s5
 SPIDERMONKEY=~/Mozilla/Central/Central/js/src/build_release/js
+NODEJS=/usr/bin/nodejs
 
 # Alternative definition for FLOCQ_INC:
 # FLOCQ_FOLDERS=$(addprefix $(FLOCQ)/src/,Core Calc Appli Prop)
@@ -123,6 +124,9 @@ run_tests_spidermonkey:
 
 run_tests_lambdaS5:
 	interp/run.py --lambdaS5 --interp_path $(LAMBDAS5) `find tests/ -type f -name \*.js`
+
+run_tests_nodejs:
+	interp/run.py --nodejs --interp_path $(NODEJS) `find tests/ -type f -name \*.js`
 
 interpreter: interp/run_js
 
