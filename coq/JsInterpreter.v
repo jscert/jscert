@@ -919,7 +919,7 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
   let O1 := object_with_invokation O
     (Some construct_default)
     (Some call_default)
-    (Some builtin_has_instance_default) in
+    (Some builtin_has_instance_function) in
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
   let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
@@ -1045,7 +1045,7 @@ Definition run_call_default runs S C (lf : object_loc) : result := (* Correspond
   | None => follow default
   | Some bd =>
     follow
-      (ifb empty_funcbody bd then default
+      (ifb funcbody_empty bd then default
       else wraped_run_prog runs S C (funcbody_prog bd))
   end.
 
@@ -1091,16 +1091,13 @@ Fixpoint run_object_has_instance_loop (max_step : nat) S lv vo : result :=
 Definition run_object_has_instance (max_step : nat) runs B S C l v : result :=
   match B with
 
-  | builtin_has_instance_default =>
+  | builtin_has_instance_function =>
     match v with
     | value_prim w => out_ter S false
     | value_object lv =>
       if_value (object_get runs S C l "prototype") (fun S1 v =>
         run_object_has_instance_loop max_step S1 lv v)
     end
-
-  | builtin_has_instance_function =>
-    arbitrary (* TODO:  Waiting for the specification *)
 
   | builtin_has_instance_after_bind =>
     arbitrary (* TODO:  Waiting for the specification *)

@@ -209,8 +209,9 @@ Proof.
   erewrite~ @Heap.binds_equiv_read. erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
 Qed.
 
+
 (**************************************************************)
-(** ** Some decidable instances *)
+(** ** Proof of decidability properties *)
 
 Global Instance descriptor_is_data_dec : forall Desc,
   Decidable (descriptor_is_data Desc).
@@ -305,7 +306,6 @@ Global Instance attributes_change_accessor_on_non_configurable_dec : forall Aa D
   Decidable (attributes_change_accessor_on_non_configurable Aa Desc).
 Proof. introv. typeclass. Qed.
 
-
 (** Decidable instance for [is_callable] *)
 
 Definition run_callable S v : option call :=
@@ -323,28 +323,5 @@ Proof.
    fold_bool. rewrite is_False with (P := is_callable _ _). rewrite* isTrue_false.
     intro A. do 2 inverts A as A.
   skip. (* TODO:  This proof has already been done, but with the old version of heaps. *)
-Qed.
-
-
-(**************************************************************)
-(** ** Type [codetype] *)
-
-(** Boolean comparison *)
-
-Definition codetype_compare ct1 ct2 :=
-  match ct1, ct2 with
-  | codetype_func, codetype_func => true
-  | codetype_global, codetype_global => true
-  | codetype_eval, codetype_eval => true
-  | _, _ => false
-  end.
-
-(** Decidable comparison *)
-
-Global Instance codetype_comparable : Comparable codetype.
-Proof.
-  applys (comparable_beq codetype_compare). intros x y.
-  destruct x; destruct y; simpl; rew_refl; iff;
-   tryfalse; auto; try congruence.
 Qed.
 

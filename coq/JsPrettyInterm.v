@@ -345,8 +345,11 @@ Inductive ext_expr :=
   
   (* Execution of "has_instance" *)
 
-  | spec_object_has_instance : builtin_has_instance -> object_loc -> value -> ext_expr
-  | spec_object_has_instance_1 : object_loc -> out -> ext_expr
+  | spec_object_has_instance : object_loc -> value -> ext_expr
+  | spec_object_has_instance_1 : builtin_has_instance -> object_loc -> value -> ext_expr
+  | spec_object_has_instance_2 : object_loc -> out -> ext_expr
+  | spec_object_has_instance_3 : object_loc -> object_loc -> ext_expr
+  | spec_object_has_instance_4 : object_loc -> value -> ext_expr
 
   (* Throwing of errors *)
 
@@ -579,9 +582,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_unary_op_2 _ _ => None
   | expr_binary_op_1 o _ _ => Some o
   | expr_binary_op_2 _ _ _ _ => None
-     (* TODO (Arthur does not understand this comment:
-        If the `option out' is not `None' then the `out' is returned anyway,
-        independently of wheither it aborts or not. *)
         (*
   | expr_binary_op_3 _ _ _ => None
   | expr_binary_op_add_1 _ _ => None
@@ -671,7 +671,7 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
   | abort_intercepted_stat_label_1 : forall lab rv S R,
       R = res_intro restype_break rv lab ->
       abort_intercepted_stat (stat_label_1 lab (out_ter S R))
-  | abort_intercepted_do_while_3 : forall labs e1 t2 rv S R,
+  | abort_intercepted_do_while_2 : forall labs e1 t2 rv S R,
       res_label_in R labs ->
       (res_type R = restype_continue \/ res_type R = restype_break) ->
       abort_intercepted_stat (stat_do_while_2 labs t2 e1 rv (out_ter S R)) 
@@ -684,13 +684,6 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
   | abort_intercepted_stat_try_3 : forall S R fo,
       abort_intercepted_stat (stat_try_3 (out_ter S R) fo).
-
-
-
-  (* TODO: abort_intercepted check whether we need to add this:
-  | abort_intercepted_stat_try_3 : forall S r fio o,
-      abort_intercepted (stat_try_3 o fio) (out_ter S r).
-  *)
   
 Inductive abort_intercepted_expr : ext_expr -> Prop :=
   | abort_intercepted_expr_call_default_2 : forall S R,

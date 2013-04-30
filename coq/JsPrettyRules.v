@@ -127,7 +127,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       ~ abort_intercepted_stat extt ->
       red_stat S C extt o
 
-  (** Block statement (See also [abort_intercepted_stat]) (12.1) *)
+  (** Block statement (12.1)
+      -- See also the definition of [abort_intercepted_stat]. *)
 
   | red_stat_block : forall S C ts o,
       red_stat S C (stat_block_1 resvalue_empty ts) o ->
@@ -209,7 +210,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_if_1_false_implicit : forall S C t2,
       red_stat S C (stat_if_1 false t2 None) (out_ter S undef)
 
-  (** Do-while statement (See also [abort_intercepted_stat]) (12.6) *)
+  (** Do-while statement (12.6.1)
+      -- See also the definition of [abort_intercepted_stat].*)
 
   | red_stat_do_while : forall S C labs t1 e2 o,
       red_stat S C (stat_do_while_1 labs t1 e2 resvalue_empty) o ->
@@ -225,14 +227,19 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o ->
       red_stat S0 C (stat_do_while_2 labs t1 e2 rv_old (out_ter S R)) o 
 
-  (* --> TODO_ARTHUR: update these rules following "while" rules after we approve them (12.6.1) *)
   | red_stat_do_while_3_break : forall S0 S C labs t1 e2 rv R,
-      res_type R = restype_break ->
-      res_label_in R labs ->
+      (res_type R = restype_break /\ res_label_in R labs) ->
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) (out_ter S rv)
 
-  | red_stat_do_while_3_not_break : forall S0 S C labs t1 e2 rv R o,
+  | red_stat_do_while_3_abrupt : forall S0 S C labs t1 e2 rv R o,
+      abrupt_res R -> 
       ~ (res_type R = restype_break /\ res_label_in R labs) ->
+      ~ (res_type R = restype_continue /\ res_label_in R labs) ->
+      red_stat S C (stat_do_while_3 labs t1 e2 rv R) (out_ter S R)
+
+  | red_stat_do_while_3_continue : forall S0 S C labs t1 e2 rv R o,
+      (   (res_type R = restype_continue /\ res_label_in R labs)
+        \/ res_type R = restype_normal) ->
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o ->      
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
 
@@ -247,7 +254,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o ->
       red_stat S C (stat_do_while_5 labs t1 e2 rv true) o
 
-  (** While statement (See also [abort_intercepted_stat]) (12.6.2) *)
+  (** While statement (12.6.2)
+      -- See also the definition of [abort_intercepted_stat]. *)
 
   | red_stat_while : forall S C labs e1 t2 o,
       red_stat S C (stat_while_1 labs e1 t2 resvalue_empty) o ->
@@ -274,17 +282,17 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       (res_type R = restype_break /\ res_label_in R labs) ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S rv)
 
-  | red_stat_while_4_continue : forall S0 S C labs e1 t2 rv R o,
-      (   (res_type R = restype_continue /\ res_label_in R labs)
-        \/ res_type R = restype_normal) ->
-      red_stat S C (stat_while_1 labs e1 t2 rv) o ->      
-      red_stat S C (stat_while_4 labs e1 t2 rv R) o
-
   | red_stat_while_4_abrupt : forall S0 S C labs e1 t2 rv R,
       abrupt_res R -> 
       ~ (res_type R = restype_break /\ res_label_in R labs) ->
       ~ (res_type R = restype_continue /\ res_label_in R labs) ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S R)
+
+  | red_stat_while_4_continue : forall S0 S C labs e1 t2 rv R o,
+      (   (res_type R = restype_continue /\ res_label_in R labs)
+        \/ res_type R = restype_normal) ->
+      red_stat S C (stat_while_1 labs e1 t2 rv) o ->      
+      red_stat S C (stat_while_4 labs e1 t2 rv R) o
 
   (** For statement: LATER (12.6.3) *)
 
@@ -328,7 +336,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Switch statement : LATER (12.11) *)
 
-  (** Labelled statement (See also [abort_intercepted_stat]) (12.12) *)
+  (** Labelled statement (12.12) 
+      -- See also the definition of [abort_intercepted_stat]. *)
 
   | red_stat_label : forall S C slab t o1 o,
       red_stat S C t o1 ->
@@ -352,7 +361,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_throw_1 : forall S0 S C v,
       red_stat S0 C (stat_throw_1 (out_ter S v)) (out_ter S (res_throw v))
 
-  (** Try statement (See also [abort_intercepted_stat]) (12.14) *)
+  (** Try statement (12.14)
+      -- See also the definition of [abort_intercepted_stat]. *)
 
   | red_stat_try : forall S C t co fo o o1,
       red_stat S C t o1 ->
@@ -376,7 +386,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       lex' = L::oldlex -> (* Note: oldlex is in fact equal to lex *)
       res_value R = resvalue_value v ->
       red_expr S' C (spec_env_record_create_set_mutable_binding L x None v throw_irrelevant) o1 ->
-      red_stat S' C (stat_try_2 o1 lex' t1 fo) o -> (* [stat_try_2] is marked as intercepting [abort] rules in [abort_intercepted_stat]:  does that mean that there actually is a way not to execute the [finally] part of a [try/catch/finally] while actually executing a part of the [try] block?  -- Martin. *)
+      red_stat S' C (stat_try_2 o1 lex' t1 fo) o -> 
       red_stat S0 C (stat_try_1 (out_ter S R) (Some (x,t1)) fo) o
 
   | red_stat_try_2_catch : forall C S0 S lex' t1 fo o o1,
@@ -513,7 +523,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
 
-  | red_expr_object_2_set : forall S S0 C A l x v pds o o1 bd args,
+  | red_expr_object_2_set : forall S S0 C l x v pds o o1 bd args,
       red_expr S C (spec_create_new_function_in C args bd) o1 ->
       red_expr S C (expr_object_3_set l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
@@ -898,9 +908,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error prealloc_type_error) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
-  | red_expr_binary_op_instanceof_normal : forall B S C v1 l o,
-      object_has_instance S l (Some B) ->
-      red_expr S C (spec_object_has_instance B l v1) o ->
+  | red_expr_binary_op_instanceof_normal : forall S C v1 l o,
+      red_expr S C (spec_object_has_instance l v1) o ->
       red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
 
   (** Binary op : in (11.8.7) *)
@@ -1278,7 +1287,38 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_1 B l x Desc throw) o ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o
   
-  (* TODO_ARTHUR: move here [call], [has_instance], [construct] *)
+  (** HasInstance (returns bool) *)
+
+  | red_spec_object_has_instance : forall S C l x B o,
+      object_method object_has_instance_ S l (Some B) ->
+      red_expr S C (spec_object_has_instance_1 B l x) o ->
+      red_expr S C (spec_object_has_instance l x) o
+
+  (** Function calls (returns value) *)
+
+  | red_spec_call : forall S C l B this args o,
+      object_method object_call_ S l (Some B) ->
+      red_expr S C (spec_call_1 B l this args) o ->
+      red_expr S C (spec_call l this args) o
+
+  (** Constructor calls (returns value) *)
+
+  | red_spec_constructor : forall S C l B args o,
+      object_method object_construct_ S l (Some B) ->
+      red_expr S C (spec_construct_1 B l args) o ->
+      red_expr S C (spec_construct l args) o
+    
+  (** Shorthand: builtin function calls (returns value) *)
+
+  | red_spec_call_1_prealloc : forall S C B lo this args o,
+      red_expr S C (spec_call_prealloc B args) o -> 
+      red_expr S C (spec_call_1 (call_prealloc B) lo this args) o
+
+  (** Shorthand: builtin constructor calls (returns value) *)
+      
+  | red_spec_construct_1_prealloc : forall S C B l args o,
+      red_expr S C (spec_construct_prealloc B args) o -> 
+      red_expr S C (spec_construct_1 (construct_prealloc B) l args) o   
 
 
   (*------------------------------------------------------------*)
@@ -2003,6 +2043,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
                    red_call S' C' f.body)  // K=red_call
           *)
 
+
   (*------------------------------------------------------------*)
   (** Binding instantiation (10.5) *)   
 
@@ -2083,6 +2124,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_function_decls_3_false_type_error : forall o1 L S C args fd fds str fo A bconfig o, (* Step 5e iv *)
       attributes_configurable A = false -> 
       descriptor_is_accessor A \/ (attributes_writable A = false \/ attributes_enumerable A = false) ->
+      (* TODO: changer la gestion de l'erreur *)
       red_expr S C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (full_descriptor_some A)) (out_type_error S)
 
   | red_spec_binding_inst_function_decls_3_false : forall o1 L S C args fd fds str fo Ad bconfig o, (* Step 5e iv else *)
@@ -2247,7 +2289,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       let O2 := object_with_invokation O1 (* Steps 6 - 8 *)
         (Some construct_default) 
         (Some call_default) 
-        (Some builtin_has_instance_default) in
+        (Some builtin_has_instance_function) in
       let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in (* Steps 9 - 12 *)
       (l, S') = object_alloc S O3 ->
       let A := attributes_data_intro (JsNumber.of_int (length names)) false false false in 
@@ -2280,22 +2322,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_creating_function_object_4 : forall o1 S0 S C l b o, (* Step 20 *)
       red_expr S0 C (spec_creating_function_object_4 l (out_ter S b)) (out_ter S l)
       
-  (** Function calls *)
+  (** Function calls for regular functions 13.2.1 *)      
 
-  | red_spec_call : forall S C l c this args o,
-      object_call S l (Some c) ->
-      red_expr S C (spec_call_1 c l this args) o ->
-      red_expr S C (spec_call l this args) o
-
-  | red_spec_call_to_default : forall S C l this args o,
+  | red_spec_call_1_default : forall S C l this args o,
       red_expr S C (spec_call_default l this args) o -> 
       red_expr S C (spec_call_1 call_default l this args) o
-
-  | red_spec_call_to_prealloc : forall S C B lo this args o,
-      red_expr S C (spec_call_prealloc B args) o -> 
-      red_expr S C (spec_call_1 (call_prealloc B) lo this args) o
-
-  (** Function calls for regular functions 13.2.1 *)      
 
   | red_spec_call_default : forall S C l this args o1 o,  
       (* Using CPS to change the context *)    
@@ -2307,13 +2338,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (* We know that the object is a function object since we use the "spec_call_default" only when we
          create function objects (13.2) and for The [[ThrowTypeError]] Function Object (13.2.3). 
          In both cases we have object_code set to some value. I do not see how it could be None (Daiva) *)
-      object_code S l None \/ (object_code S l (Some bd) /\ empty_funcbody bd) ->
+      object_code S l None \/ (object_code S l (Some bd) /\ funcbody_empty bd) ->
       red_expr S C (spec_call_default_2 (out_ter S (res_normal undef))) o ->
       red_expr S0 C (spec_call_default_1 l) o
 
   | red_spec_call_default_1_body : forall S0 S C l bd o1 o,
       object_code S l (Some bd) ->
-      ~ (empty_funcbody bd) ->
+      ~ (funcbody_empty bd) ->
       red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_call_default_2 o1) o ->
       red_expr S0 C (spec_call_default_1 l) o
@@ -2323,23 +2354,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_spec_call_default_2_normal : forall S C v,
       red_expr S C (spec_call_default_2 (out_ter S (res_normal v))) (out_ter S (res_normal undef))
-
-  (** Constructor calls *)
-
-  | red_spec_constructor : forall S C l co args o,
-      object_construct S l (Some co) ->
-      red_expr S C (spec_construct_1 co l args) o ->
-      red_expr S C (spec_construct l args) o
-      
-  | red_spec_construct_to_default : forall S C l args o,
-      red_expr S C (spec_construct_default l args) o -> 
-      red_expr S C (spec_construct_1 construct_default l args) o
-      
-  | red_spec_construct_to_prealloc : forall S C B l args o,
-      red_expr S C (spec_construct_prealloc B args) o -> 
-      red_expr S C (spec_construct_1 (construct_prealloc B) l args) o   
       
   (** Constructor for regular functions *)       
+      
+  | red_spec_construct_1_default : forall S C l args o,
+      red_expr S C (spec_construct_default l args) o -> 
+      red_expr S C (spec_construct_1 construct_default l args) o
       
   | red_spec_construct_default : forall o1 S C l args o,
       red_expr S C (spec_object_get (value_object l) "prototype") o1 ->
@@ -2541,7 +2561,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_call_object_seal_2 l xs) o ->
       red_expr S C (spec_call_object_seal_4 l x xs A) o
  
- | red_spec_call_object_seal_2_nil : forall S S' C l b x o,
+  | red_spec_call_object_seal_2_nil : forall S S' C l b x o,
       object_heap_set_extensible_false S l S' ->
       red_expr S C (spec_call_object_seal_2 l nil) (out_ter S' l)
 
@@ -2582,24 +2602,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Freeze (returns object) (15.2.3.9) *)
 
-   | red_spec_call_object_freeze : forall S C v o args,  (* Step 0 *)
-     arguments_from args (v::nil) ->
-     red_expr S C (spec_call_object_freeze_1 v) o ->
-     red_expr S C (spec_call_prealloc prealloc_object_freeze args) o
+  | red_spec_call_object_freeze : forall S C v o args,  (* Step 0 *)
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_call_object_freeze_1 v) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_freeze args) o
 
- | red_spec_call_object_freeze_1_not_object : forall S C v o,  (* Step 1 *)
-     type_of v <> type_object ->
-     red_expr S C (spec_error prealloc_type_error) o ->
-     red_expr S C (spec_call_object_freeze_1 v) o
+  | red_spec_call_object_freeze_1_not_object : forall S C v o,  (* Step 1 *)
+      type_of v <> type_object ->
+      red_expr S C (spec_error prealloc_type_error) o ->
+      red_expr S C (spec_call_object_freeze_1 v) o
 
- | red_spec_call_object_freeze_1_object : forall S C l xs x o,  (* Step 2 *)
-     object_properties_keys_as_list S l xs ->
-     red_expr S C (spec_call_object_freeze_2 l xs) o ->
-     red_expr S C (spec_call_object_freeze_1 l) o
+  | red_spec_call_object_freeze_1_object : forall S C l xs x o,  (* Step 2 *)
+      object_properties_keys_as_list S l xs ->
+      red_expr S C (spec_call_object_freeze_2 l xs) o ->
+      red_expr S C (spec_call_object_freeze_1 l) o
 
- | red_spec_call_object_freeze_2_cons : forall S C l xs x o,  (* Step 2.a *)
-     red_expr S C (spec_object_get_own_prop l x (spec_call_object_freeze_3 l x xs)) o ->
-     red_expr S C (spec_call_object_freeze_2 l (x::xs)) o
+  | red_spec_call_object_freeze_2_cons : forall S C l xs x o,  (* Step 2.a *)
+      red_expr S C (spec_object_get_own_prop l x (spec_call_object_freeze_3 l x xs)) o ->
+      red_expr S C (spec_call_object_freeze_2 l (x::xs)) o
 
   | red_spec_call_object_freeze_3_desc_is_data : forall S C A xs l x o, (* Step 2.b, true *)
       attributes_is_data A = true ->
@@ -2641,13 +2661,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_call_object_freeze_2 l xs) o ->
       red_expr S C (spec_call_object_freeze_6 l x xs A) o
 
- | red_spec_call_object_freeze_2_nil : forall S S' C l b x o,
+  | red_spec_call_object_freeze_2_nil : forall S S' C l b x o,
       object_heap_set_extensible_false S l S' ->
       red_expr S C (spec_call_object_freeze_2 l nil) (out_ter S' l)
  
   (** IsFrozen (returns bool)  (15.2.3.12) *)
 
-   | red_spec_call_object_is_frozen : forall S C v o args, (* Step 0 *)
+  | red_spec_call_object_is_frozen : forall S C v o args, (* Step 0 *)
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_is_frozen_1 v) o ->
       red_expr S C (spec_call_prealloc prealloc_object_is_frozen args) o
@@ -2760,7 +2780,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_call_object_proto_to_string_2 (out_ter S l)) (out_ter S s)
  
   (** Object.prototype.valueOf() (returns value)  (15.2.4.4) *)
-
+ 
   | red_spec_call_object_proto_value_of : forall S C args o,   
       red_expr S C (spec_to_object (execution_ctx_this_binding C)) o ->
       red_expr S C (spec_call_prealloc prealloc_object_proto_value_of args) o 
@@ -2864,37 +2884,45 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
          also arrays & string have special stuff *)
 *)
 
-(** TODO: HasInstance  15.3.4.5.3 and  15.3.5.3 *)
-
-  | red_spec_object_has_instance_prim : forall S C l w o,
-      red_expr S C (spec_object_has_instance builtin_has_instance_default l (value_prim w)) (out_ter S false)
-  
-  | red_spec_object_has_instance_object : forall o1 S C l lv o,
-      red_expr S C (spec_object_get l "prototype") o1 ->
-      red_expr S C (spec_object_has_instance_1 lv o1) o ->
-      red_expr S C (spec_object_has_instance builtin_has_instance_default l (value_object lv)) o
-      
-  | red_spec_object_has_instance_1_prim : forall S0 S C lv v o,
-      type_of v <> type_object ->
-      red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S v)) o
-      
-  | red_spec_object_has_instance_1_false : forall S0 S C lv lo,
-      object_proto S lv null ->     
-      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) (out_ter S false)
-      
-  | red_spec_object_has_instance_1_true : forall proto lo S0 S C lv,
-      object_proto S lv (value_object proto) ->
-      proto = lo ->     
-      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) (out_ter S true)
-      
-   | red_spec_object_has_instance_1 : forall proto lo S0 S C lv v o,
-      object_proto S lv (value_object proto) ->
-      proto <> lo ->     
-      red_expr S C (spec_object_has_instance_1 proto (out_ter S (value_object lo))) o ->
-      red_expr S0 C (spec_object_has_instance_1 lv (out_ter S (value_object lo))) o
-
 (*---end todo---*)
+
+   (** HasInstance  (returns bool)  (15.3.5.3) *)
+
+   | red_spec_object_has_instance_1_prim : forall S C l w o, (* Step 1 *)
+       red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_prim w)) (out_ter S false)
+  
+   | red_spec_object_has_instance_1_object : forall o1 S C l lv o, (* Step 2 *)
+       red_expr S C (spec_object_get l "prototype") o1 ->
+       red_expr S C (spec_object_has_instance_2 lv o1) o ->
+       red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_object lv)) o
+       
+   | red_spec_object_has_instance_2_prim : forall S0 S C lv v o, (* Step 3 *)
+       type_of v <> type_object ->
+       red_expr S C (spec_error prealloc_type_error) o ->
+       red_expr S0 C (spec_object_has_instance_2 lv (out_ter S v)) o
+
+   | red_spec_object_has_instance_2_object : forall S0 S C lv lo o, (* Step 4 *)
+       red_expr S C (spec_object_has_instance_3 lv lo) o ->
+       red_expr S0 C (spec_object_has_instance_2 lv (out_ter S (value_object lo))) o
+
+   | red_spec_object_has_instance_3_proto : forall S C lv lo vproto o, (* Step 4a *)
+       object_proto S lo vproto ->     
+       red_expr S C (spec_object_has_instance_4 lv vproto) o ->
+       red_expr S C (spec_object_has_instance_3 lv lo) o
+
+   | red_spec_object_has_instance_4_null : forall S C lv, (* Step 4b *)
+       red_expr S C (spec_object_has_instance_4 lv null) (out_ter S false)
+      
+   | red_spec_object_has_instance_4_eq : forall S C lv lo, (* Step 4c *)
+       lv = lo ->
+       red_expr S C (spec_object_has_instance_4 lv lo) (out_ter S true)
+      
+   | red_spec_object_has_instance_4_neq : forall S C lv lo o, (* Step 4 (repeat) *)
+       lv <> lo ->     
+       red_expr S C (spec_object_has_instance_3 lv lo) o ->
+       red_expr S C (spec_object_has_instance_4 lv lo) o
+
+   (** TODO: HasInstance  15.3.4.5.3  *)
 
   (*------------------------------------------------------------*)
   (** ** Array builtin functions : LATER *)
@@ -2966,7 +2994,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (forall b, ~ value_viewable_as "Boolean" S v b) ->
       red_expr S C (spec_error prealloc_type_error) o ->
       red_expr S C (spec_call_bool_proto_value_of_1 v) o
-
 
   (*------------------------------------------------------------*)
   (** ** Number builtin functions *)

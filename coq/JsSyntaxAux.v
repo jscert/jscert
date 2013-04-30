@@ -530,12 +530,17 @@ Proof. apply (prove_Inhab (prog_intro true nil)). Qed.
 
 (** Projections **)
 
-Definition prog_elements p :=
-  match p with prog_intro bstrict els => els end.
-  
+Definition prog_intro_strictness p :=
+  match p with prog_intro str els => str end.
 
-Definition empty_prog (p : prog) :=
+Definition prog_elements p :=
+  match p with prog_intro str els => els end.
+
+(** Emptiness test *)
+
+Definition prog_empty (p : prog) :=
   prog_elements p = nil.
+
 
 (**************************************************************)
 (** ** Type [funcbody] *)
@@ -545,21 +550,25 @@ Definition empty_prog (p : prog) :=
 Global Instance body_inhab : Inhab funcbody.
 Proof. apply prove_Inhab. apply (funcbody_intro arbitrary arbitrary). Qed.
 
-
 (** Projections **)
 
-Definition funcbody_prog bd :=
-  match bd with
+Definition funcbody_prog fb :=
+  match fb with
   | funcbody_intro p _ => p
   end.
 
-Definition funcbody_string bd :=
-  match bd with
+Definition funcbody_string fb :=
+  match fb with
   | funcbody_intro _ s => s
   end.
 
-Definition empty_funcbody (bd : funcbody) :=
-  empty_prog (funcbody_prog bd).
+Definition funcbody_is_strict fb := 
+  match fb with funcbody_intro (prog_intro b_strict _) _ => b_strict end.
+
+(** Emptiness test *)
+
+Definition funcbody_empty (bd : funcbody) :=
+  prog_empty (funcbody_prog bd).
 
 
 (**************************************************************)
@@ -629,6 +638,29 @@ Definition label_set_add lab labs := lab :: labs.
 Definition label_set_add_empty labs := label_set_add label_empty labs.
 
 Definition label_set_mem lab labs := decide (In lab labs).
+
+
+(**************************************************************)
+(** ** Type [codetype] *)
+
+(** Boolean comparison *)
+
+Definition codetype_compare ct1 ct2 :=
+  match ct1, ct2 with
+  | codetype_func, codetype_func => true
+  | codetype_global, codetype_global => true
+  | codetype_eval, codetype_eval => true
+  | _, _ => false
+  end.
+
+(** Decidable comparison *)
+
+Global Instance codetype_comparable : Comparable codetype.
+Proof.
+  applys (comparable_beq codetype_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
 
 
 (**************************************************************)

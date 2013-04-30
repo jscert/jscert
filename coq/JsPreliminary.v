@@ -1,5 +1,6 @@
 Set Implicit Arguments.
 Require Export JsSyntax JsSyntaxAux.
+Open Scope string_scope.
 
 (**************************************************************)
 (** ** Implicit Types *)
@@ -47,11 +48,6 @@ Implicit Type t : stat.
 
 
 (**************************************************************)
-
-Definition prog_intro_strictness p :=
-  match p with prog_intro str els => str end.
-
-(**************************************************************)
 (** ** Auxiliary functions for results *)
 
 (** Update the value field if it is empty *)
@@ -73,16 +69,9 @@ Definition res_label_in R labs := label_set_mem (res_label R) labs.
 
 
 (**************************************************************)
-(** ** Auxiliary functions for function bodies *)
-
-Definition funcbody_is_strict fb := 
-  match fb with funcbody_intro (prog_intro b_strict _) _ => b_strict end.
-
-
-(**************************************************************)
 (** ** Auxiliary functions on values and types *)
 
-(** Convert a literal into a primitive -- TODO: add section number *)
+(** Convert a literal into a primitive (11.1.3 and 7.8) *)
 
 Definition convert_literal_to_prim (i:literal) :=
   match i with
@@ -141,8 +130,10 @@ Definition type_of v :=
 
     Which is equivalent to:
 *)
+(* TODO: problem of the several representations of NaN *)
 
 Definition same_value v1 v2 := (v1 = v2).
+
 
 
 (**************************************************************)
@@ -226,7 +217,8 @@ Definition object_prim_value S l v :=
 Definition object_get S l B :=
   exists O, object_binds S l O /\ object_get_ O = B.  
 
-(** Generalization of the above -- TODO *)
+(** Generalization of the above -- TODO:
+    Note that a number of the fct below are deprecated... *)
 
 Definition object_method (X:Type) Proj S l (B:X) :=
   exists O, object_binds S l O /\ Proj O = B.
@@ -394,7 +386,7 @@ Definition attributes_writable A : bool :=
   | attributes_data_of Ad => attributes_data_writable Ad
   | attributes_accessor_of Aa => false
   end.
-(* Even if it's used in the semantics, is that wanted? -- Martin *)
+(* TODO: check:  Even if it's used in the semantics, is that wanted? -- Martin *)
 
 
 (**************************************************************)
@@ -563,7 +555,7 @@ Definition descriptor_of_attributes A :=
        descriptor_configurable := Some (attributes_accessor_configurable Aa) |}
   end.
 
-(* Coercion associated to [descriptor_of_attributes] *) (* I've added it as I used it a lot in the interpreter and it seems it does not add conflicts. -- Martin *)
+(* Coercion associated to [descriptor_of_attributes] *)
 
 Coercion descriptor_of_attributes : attributes >-> descriptor.
 
@@ -603,27 +595,25 @@ Definition descriptor_contains Desc_old Desc_new :=
 
 Definition descriptor_enumerable_not_same A Desc :=
    match descriptor_enumerable Desc with
-   | None => False (* TODO Check: Changed from True to False since the spec says (8.12.9 Step 7b):
-                      "Reject, if the [[Enumerable]] field of Desc is present 
-                      and the [[Enumerable]] fields of current and Desc are the Boolean negation of each other" *)
+   | None => False 
    | Some b => b <> (attributes_enumerable A)
    end.
 
 Definition descriptor_value_not_same Ad Desc :=
    match descriptor_value Desc with
-   | None => True
+   | None => False
    | Some v => ~ same_value v (attributes_data_value Ad)
    end.
 
 Definition descriptor_get_not_same Aa Desc :=
    match descriptor_get Desc with
-   | None => True
+   | None => False
    | Some v => ~ same_value v (attributes_accessor_get Aa)
    end.
 
 Definition descriptor_set_not_same Aa Desc :=
    match descriptor_set Desc with
-   | None => True
+   | None => False
    | Some v => ~ same_value v (attributes_accessor_set Aa)
    end.
 
@@ -726,23 +716,6 @@ Definition ref_create_env_loc L x strict :=
      ref_name := x;
      ref_strict := strict |}.
 
-(** [valid_lhs_for_assign R] asserts that [R] will not satisfy
-    the condition under which a SyntaxError gets triggered
-    (see the semantics of simple assignement in the spec).
-    LATER: will be used if we do not rely on parser for raising
-    the SyntaxError. *)
-
-Open Scope string_scope. (* TODO: move to top of the file *)
-
-(* LATER: only for syntax errors
-Definition valid_lhs_for_assign R :=
-  ~ (exists r,
-         R = ret_ref r
-      /\ ref_strict r = true
-      /\ ref_kind_of r = ref_kind_env_record
-      /\ let s := ref_name r in
-         (s = "eval" \/ s = "arguments")).
-*)
 
 (**************************************************************)
 (** ** Operations on mutability flags *)
@@ -939,8 +912,10 @@ Definition execution_ctx_initial str :=
 
 
 (**************************************************************)
-(** Grammar of preferred types for use by the default_value
+(** Grammar of preferred types for use by the defaultValue
     conversion. *)
+
+(** A prefered type for defaultValue is either "number" or "string" *)
 
 Inductive preftype :=
   | preftype_number
@@ -1174,8 +1149,6 @@ Definition regular_unary_op op :=
 (**************************************************************)
 (** ** Factorization of rules for binary operators *)
 
-(* TODO: move a bunch of these defs into js_pretty_inter *)
-
 (** Characterizes pure mathematical operators, which always call toNumber
     before applying a mathematical function *)
 
@@ -1229,7 +1202,7 @@ Definition regular_binary_op op :=
   | binary_op_or => False
   | _ => True
   end.
-  (* TODO: use alternative definition below
+  (* Note: could use the alternative definition:
       ~ (exists b, lazy_op op b). *)
 
 
@@ -1255,11 +1228,6 @@ Definition is_callable S v :=
 
 
 (**************************************************************)
-(** ** Implementation of [SameValue] *)
-
-(** The same value algorithm matches exactly logical equality. *)
-
-(**************************************************************)
 (** ** Auxiliary definitions for reduction of [typeof] *)
 
 Open Scope string_scope.
@@ -1283,6 +1251,7 @@ Definition typeof_value S v :=
   | value_object l => If is_callable S l then "function" else "object"
   end.
 
+
 (**************************************************************)
 (** ** Auxiliary definitions for reduction of [valueOf] for primitive  *)
 
@@ -1302,7 +1271,9 @@ Inductive value_viewable_as : string -> state -> value -> prim -> Prop :=
 
 
 (**************************************************************)
-(** ** Auxiliary definition used by object initializers (11.1.5) *)
+(** ** Auxiliary definition used by object initializers *)
+
+(** Interpretation of a string as a property name (11.1.5) *)
 
 Definition string_of_propname (pn : propname) : prop_name :=
   match pn with 
@@ -1323,6 +1294,7 @@ Definition string_of_propname (pn : propname) : prop_name :=
     strictness flag.  Those function shouldn't thus perform this second
     pass.  We thus have to change the semantics so that it take this into
     account. *)
+
 Axiom parse : string -> option prog -> Prop.
 Axiom parse_pickable : forall s, Pickable (parse s).
 
@@ -1357,9 +1329,7 @@ Inductive object_all_enumerable_properties : state -> value -> set prop_name -> 
 (**************************************************************)
 (** Macros for exceptional behaviors in reduction rules *)
 
-(* I've found those definitions in the file `JsPrettyInterm.v'.  As they were similar ones in the interpreter, I've moved them here. -- Martin *)
-
-(* TODO: change to proper transitions into allocated errors *)
+(* ------TODO: remove this section *)
 
 (** "Syntax error" behavior *)
 
@@ -1413,11 +1383,4 @@ Definition out_error_or_void S str B :=
   if str then out_ter S (res_throw B)
   else out_void S.
   
-(**************************************************************)
-(** ** Auxiliary definition used in Declaration Binding Instantiation *)
-
-Inductive codetype :=
-  | codetype_func : codetype
-  | codetype_global : codetype
-  | codetype_eval : codetype.
 
