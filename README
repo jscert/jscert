@@ -57,6 +57,13 @@ instructions here:
 
 https://developer.mozilla.org/en-US/docs/SpiderMonkey/Build_Documentation
 
+Be aware that the Central repo is quite big, and hg isn't good at
+downloading large quantities of stuff. If you want to be bleeding
+edge, you may be best off downloading an hg bundle, then pulling the
+latest changes onto it. This is described here:
+
+https://developer.mozilla.org/en/docs/Developer_Guide/Source_Code/Mercurial
+
 Then, you'll need to edit settings.sh and add a line setting the
 SPIDERMONKEY variable to point to your install. Finally, you can run
 
