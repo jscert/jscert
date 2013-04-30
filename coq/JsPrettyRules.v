@@ -2561,7 +2561,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_seal_4 l x xs A) o
  
   | red_spec_call_object_seal_5: forall S S' C A xs l x o o1,
-      red_expr S C (spec_call_object_seal_2 l xs) o ->
+      red_expr S' C (spec_call_object_seal_2 l xs) o ->
       red_expr S C (spec_call_object_seal_5 l xs (out_void S')) o
 
   | red_spec_call_object_seal_2_nil : forall S S' C l b x o,
@@ -2663,10 +2663,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_freeze_6 l x xs A) o
 
   | red_spec_call_object_freeze_7: forall S S' C A xs l x o o1,
-      red_expr S C (spec_call_object_freeze_2 l xs) o ->
+      red_expr S' C (spec_call_object_freeze_2 l xs) o ->
       red_expr S C (spec_call_object_freeze_7 l xs (out_void S')) o
-
-
 
   | red_spec_call_object_freeze_2_nil : forall S S' C l b x o,
       object_heap_set_extensible_false S l S' ->
