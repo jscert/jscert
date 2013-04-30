@@ -2557,14 +2557,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_seal_4 : forall S S' C A xs l x o o1, (* Step 2.c, false *)
       red_expr S C (spec_object_define_own_prop l x A true) o1 ->
-      o1 = (out_void S') -> (* Prefer to use pretty-big-step style for such constructions. -- Martin. *)
-      red_expr S' C (spec_call_object_seal_2 l xs) o ->
+      red_expr S C (spec_call_object_seal_5 l xs o1) o ->
       red_expr S C (spec_call_object_seal_4 l x xs A) o
  
+  | red_spec_call_object_seal_5: forall S S' C A xs l x o o1,
+      red_expr S C (spec_call_object_seal_2 l xs) o ->
+      red_expr S C (spec_call_object_seal_5 l xs (out_void S')) o
+
   | red_spec_call_object_seal_2_nil : forall S S' C l b x o,
       object_heap_set_extensible_false S l S' ->
       red_expr S C (spec_call_object_seal_2 l nil) (out_ter S' l)
-
 
   (** IsSealed (returns bool)  (15.2.3.11) *)  
 
@@ -2657,9 +2659,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_freeze_6 : forall S S' C A xs l x o o1, (* Step 2.d *)
       red_expr S C (spec_object_define_own_prop l x A true) o1 ->
-      o1 = (out_void S') -> 
-      red_expr S' C (spec_call_object_freeze_2 l xs) o ->
+      red_expr S C (spec_call_object_freeze_7 l xs o1) o ->
       red_expr S C (spec_call_object_freeze_6 l x xs A) o
+
+  | red_spec_call_object_freeze_7: forall S S' C A xs l x o o1,
+      red_expr S C (spec_call_object_freeze_2 l xs) o ->
+      red_expr S C (spec_call_object_freeze_7 l xs (out_void S')) o
+
+
 
   | red_spec_call_object_freeze_2_nil : forall S S' C l b x o,
       object_heap_set_extensible_false S l S' ->

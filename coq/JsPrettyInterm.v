@@ -416,6 +416,7 @@ Inductive ext_expr :=
   | spec_call_object_seal_2 : object_loc -> list prop_name -> ext_expr
   | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_seal_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_seal_5 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : object_loc -> list prop_name -> ext_expr
@@ -427,6 +428,7 @@ Inductive ext_expr :=
   | spec_call_object_freeze_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_freeze_5 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_freeze_6 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_freeze_7 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_frozen_1 : value -> ext_expr
   | spec_call_object_is_frozen_2 : object_loc -> list prop_name -> ext_expr
