@@ -113,16 +113,13 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 # INTERPRETER
 
 run_tests: interpreter
-	interp/run.sh -init
-	find tests/ -type f -name \*.js -exec interp/run.py -makefile {} \;
+	interp/run.py `find tests/ -type f -name \*.js`
 
 run_tests_spidermonkey:
-	interp/run.sh -init
-	find tests/ -type f -name \*.js -exec interp/run.py --spidermonkey --interp_path ~/Mozilla/Central/Central/js/src/build_release/js {} \;
+	interp/run.py --spidermonkey --interp_path ~/Mozilla/Central/Central/js/src/build_release/js `find tests/ -type f -name \*.js`
 
 run_tests_lambdaS5:
-	interp/run.sh -init
-	find tests/ -type f -name \*.js -exec interp/run.py --lambdaS5 --interp_path ~/Documents/data/LambdaS5/tests/s5 {} \;
+	interp/run.py --lambdaS5 --interp_path ~/Documents/data/LambdaS5/tests/s5 `find tests/ -type f -name \*.js`
 
 interpreter: interp/run_js
 
@@ -220,4 +217,3 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
-
