@@ -1,4 +1,24 @@
- TODO: we need to check whether the rules handle correctly the
+
+
+x = { a: 1 }
+y = { b: 2 }
+y.__proto___ = x
+z = { c: 3 }
+z.__proto___ = y
+
+(function demo()) {
+	count = 0
+	for (k in z) {
+		if (count++ == 0)
+			z.___proto___ = x
+		if (k == "a")
+			return 1
+	}
+	return 0 })()
+   
+---------
+ 
+   TODO: we need to check whether the rules handle correctly the
   behaviors with an empty res_value. (they should use rv instead of v to propagate)
 
 ---------
