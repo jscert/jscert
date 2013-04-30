@@ -1624,15 +1624,11 @@ Definition run_stat_label runs S C lab t : result :=
 
 Definition run_stat_with runs S C e1 t2 : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
-    if_success (to_object S1 v1) (fun S2 rv2 =>
-      match rv2 with
-      | value_object l =>
-        let lex := execution_ctx_lexical_env C in
-        let (lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
-        let C' := execution_ctx_with_lex_this C lex' l in
-        wraped_run_stat runs S3 C' t2
-      | _ => result_stuck
-      end)).
+    if_object (to_object S1 v1) (fun S2 l =>
+      let lex := execution_ctx_lexical_env C in
+      let (lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
+      let C' := execution_ctx_with_lex_this C lex' l in
+      wraped_run_stat runs S3 C' t2)).
 
 Definition run_stat_if runs S C e1 t2 to : result :=
   if_success_value runs C (wraped_run_expr runs S C e1) (fun S1 v1 =>
