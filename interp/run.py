@@ -2,6 +2,7 @@
 import argparse
 import signal
 import subprocess
+import os
 
 # A gadget for printing pretty colours for us
 class colour_handler:
@@ -64,14 +65,21 @@ if args.makefile:
     signal.signal(signal.SIGINT, end_message)
 
 # How should we run this test? With what?
-
+# By default, we do no setup or teardown, and the test runner is a plaintive echo.
+setup = lambda : 0
+teardown = lambda : 0
 test_runner = ['echo "Something weird is happening!"']
 
 if args.spidermonkey:
     print "Warning: SpiderMonkey support is still experimental"
     test_runner = [args.interp_path, args.filename]
 elif args.lambdaS5:
-    test_runner = ['echo "lambdaS5 not yet supported"']
+    print "Warning: LambdaS5 support is still experimental"
+    current_dir = os.getcwd()
+    setup = lambda : os.chdir(os.path.dirname(args.interp_path))
+    teardown = lambda : os.chdir(current_dir)
+    test_runner = [os.path.abspath(args.interp_path),
+                   os.path.abspath(args.filename)]
 else:
     test_runner = [args.interp_path,
                    "-jsparser","interp/parser/lib/js_parser.jar",
@@ -81,7 +89,9 @@ else:
 # Now let's get down to the business of running a test
 colours.print_heading(args.filename)
 
+setup()
 ret = subprocess.call(test_runner)
+teardown()
 
 passed = ret
 

@@ -120,6 +120,10 @@ run_tests_spidermonkey:
 	interp/run.sh -init
 	find tests/ -type f -name \*.js -exec interp/run.py --spidermonkey --interp_path ~/Mozilla/Central/Central/js/src/build_release/js {} \;
 
+run_tests_lambdaS5:
+	interp/run.sh -init
+	find tests/ -type f -name \*.js -exec interp/run.py --lambdaS5 --interp_path ~/Documents/data/LambdaS5/tests/s5 {} \;
+
 interpreter: interp/run_js
 
 interp/src/extract/%.ml: coq/JsInterpreterExtraction.vo
