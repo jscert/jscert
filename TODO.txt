@@ -1,4 +1,41 @@
 
+
+(* SameValue: TODO: problem of the several representations of NaN *)
+
+(* File JsPreliminary: Martin: move what you don't use in the interpreter
+   from section "Factorization of rules for binary operators"
+   into JsPrettyInterm. *)
+
+TODO: discuter de :
+   Axiom parse_pickable : forall s, Pickable (parse s).
+
+TODO: discuter des boucles
+
+TODO: remove preallocated errors 
+
+Le makefile ne fait pas  
+   mkdir -p interp/src/extract
+du coup error sur coqdep 
+
+
+TODO: abort_intercepted check whether we need to add this:
+
+comprend pas:
+      (* [stat_try_3] is marked as intercepting [abort] rules in [abort_intercepted_stat]:  does that mean that there actually is a way not to execute the [finally] part of a [try/catch/finally] while actually executing a part of the [try] block?  -- Martin. *)
+
+attributes_writable (* TODO: check:  Even if it's used in the semantics, is that wanted? -- Martin *)
+
+
+  (** ** Conversions (9) *)
+  (* TODO:  spec_to_primitive_auto *)
+  (* TODO:  spec_prim_new_object *)
+
+
+=======
+=======
+=======
+
+
 ARTHUR:
 * Changed semantics of loop to better match paper
 * 12.6.2 seems boggus: if continue, then even if not good label, will loop
@@ -103,3 +140,24 @@ function f() {  y: { x : { try { break x } catch (e) { break y } finally { 2 } ;
 TEST:
 
 delete {}
+
+
+
+
+(** [valid_lhs_for_assign R] asserts that [R] will not satisfy
+    the condition under which a SyntaxError gets triggered
+    (see the semantics of simple assignement in the spec).
+    LATER: will be used if we do not rely on parser for raising
+    the SyntaxError. *)
+
+Open Scope string_scope. (* TODO: move to top of the file *)
+
+(* LATER: only for syntax errors
+Definition valid_lhs_for_assign R :=
+  ~ (exists r,
+         R = ret_ref r
+      /\ ref_strict r = true
+      /\ ref_kind_of r = ref_kind_env_record
+      /\ let s := ref_name r in
+         (s = "eval" \/ s = "arguments")).
+*)

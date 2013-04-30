@@ -274,7 +274,7 @@ Inductive construct :=
   | construct_default (* 13.2.2 *)
   | construct_after_bind (* 15.3.4.5.2 *) (* LATER: support *)
   | construct_prealloc : prealloc -> construct.
-    (* only the ones below are actually used
+    (* only the ones below are actually used by construct_prealloc
       | construct_object
       | construct_function
       | construct_bool
@@ -294,16 +294,15 @@ Coercion construct_prealloc : prealloc >-> construct.
 (** Identifiers for "HasInstance" methods *)
 
 Inductive builtin_has_instance :=
-  | builtin_has_instance_default (* 15.3.5.3 *)
-  | builtin_has_instance_function (* TODO ref? *)
-  | builtin_has_instance_after_bind. (* 15.34.5.3 *)  (* LATER: support *)
+  | builtin_has_instance_function (* 15.3.5.3 *)
+  | builtin_has_instance_after_bind. (* 15.3.4.5.3 *)  (* LATER: support *)
 
 (** Identifiers for "Get" methods *)
 
 Inductive builtin_get :=
   | builtin_get_default (* 8.12.3 *)
   | builtin_get_function. (* 15.3.5.4 *)
-  (* TODO: string and array *)
+  (* LATER: string and array *)
 
 (** Identifiers for "GetOwnProperty" methods *)
 
@@ -319,37 +318,37 @@ Inductive builtin_get_prop :=
 
 Inductive builtin_put :=
   | builtin_put_default.
-  (* TODO: string and array *)
+  (* LATER: string and array *)
 
 (** Identifiers for "CanPut" methods *)
 
 Inductive builtin_can_put :=
   | builtin_can_put_default.
-  (* TODO: string and array *)
+  (* LATER: string and array *)
 
 (** Identifiers for "HasProperty" methods *)
 
 Inductive builtin_has_prop :=
   | builtin_has_prop_default.
-  (* TODO: string and array *)
+  (* LATER: string and array *)
 
 (** Identifiers for "Delete" methods *)
 
 Inductive builtin_delete :=
   | builtin_delete_default.
-  (* TODO: string and array *)
+  (* LATER: string and array *)
 
 (** Identifiers for "DefaultValue" methods *)
 
 Inductive builtin_default_value :=
   | builtin_default_value_default.
-  (* TODO: date *)
+  (* LATER: date *)
 
 (** Identifiers for "DefineOwnProp" methods *)
 
 Inductive builtin_define_own_prop :=
   | builtin_define_own_prop_default.
-  (* TODO: string and array *)
+  (* LATER: string and array *)
 
 
 (**************************************************************)
@@ -642,3 +641,14 @@ Inductive out :=
   | out_div : out
   | out_ter : state -> res -> out.
 
+
+(**************************************************************)
+(** ** Auxiliary definition for DeclarationBindingnstantiation *)
+
+(** A code originates either from a function body, from global
+    code, or from the argument of a call to eval. *)
+
+Inductive codetype :=
+  | codetype_func : codetype
+  | codetype_global : codetype
+  | codetype_eval : codetype.
