@@ -44,6 +44,52 @@ INSTALLATION AND COMPILATION
 
 
 *********************************************************************
+TESTING OTHER PLATFORMS
+
+We have a test harness that can run our tests (currenly mostly the
+test262 ones) on JSRef, LambdaS5, SpiderMonkey and node.js. To test
+JSRef, just do:
+
+ $ make run_tests
+
+To test SpiderMonkey, you will first have to install it. You can find
+instructions here:
+
+https://developer.mozilla.org/en-US/docs/SpiderMonkey/Build_Documentation
+
+Be aware that the Central repo is quite big, and hg isn't good at
+downloading large quantities of stuff. If you want to be bleeding
+edge, you may be best off downloading an hg bundle, then pulling the
+latest changes onto it. This is described here:
+
+https://developer.mozilla.org/en/docs/Developer_Guide/Source_Code/Mercurial
+
+Then, you'll need to edit settings.sh and add a line setting the
+SPIDERMONKEY variable to point to your install. Finally, you can run
+
+ $ make run_tests_spidermonkey
+
+To test node.js, you'll need a node install. There are many ways to
+get these, but a popular one is:
+
+ $ sudo apt-get install nodejs
+
+Then, you'll need to edit settings.sh and add a line setting the
+NODEJS variable to point to your install. Finally, you can run
+
+ $ make run_tests_nodejs
+
+To test LambdaS5, you'll first need to install it. Follow their
+instructions here:
+
+https://github.com/brownplt/LambdaS5             
+
+Then, you'll need to edit settings.sh and add a line setting the
+LAMBDAS5 variable to point to your install. Finally, you can run
+
+ $ make run_tests_lambdaS5
+
+*********************************************************************
 USING THE CERTIFIED INTERPRETER		(* TODO:  Update *)
 
 The interpreter is defined and proven in the file “JsInterpreter.v” by
