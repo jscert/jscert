@@ -42,10 +42,10 @@ Definition object_create vproto sclass bextens P :=
 
 (** Sets extensible to false to an object. *)
 
-Definition object_set_extensible_false O :=
+Definition object_set_extensible b O :=
   match O with
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
-    object_intro x1 x2 false x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
+    object_intro x1 x2 b x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
   end.
 
 (** Modifies the primitive value field of an object *)
@@ -638,6 +638,32 @@ Definition label_set_add lab labs := lab :: labs.
 Definition label_set_add_empty labs := label_set_add label_empty labs.
 
 Definition label_set_mem lab labs := decide (In lab labs).
+
+
+(**************************************************************)
+(** ** Type [attributes_data] *)
+
+(** Modifies the writable field of a data attribute *)
+
+Definition attributes_data_with_writable Ad bw' :=
+  match Ad with attributes_data_intro v bw be bc =>
+                attributes_data_intro v bw' be bc end.
+
+(** Modifies the configurable field of a data attribute *)
+
+Definition attributes_data_with_configurable Ad bc' :=
+  match Ad with attributes_data_intro v bw be bc =>
+                attributes_data_intro v bw be bc' end.
+
+
+(**************************************************************)
+(** ** Type [attributes_accessor] *)
+
+(** Modifies the configurable field of an accessor attribute *)
+
+Definition attributes_acccessor_with_configurable Aa bc' :=
+  match Aa with attributes_accessor_intro vg vs be bc =>
+                attributes_accessor_intro vg vs be bc' end.
 
 
 (**************************************************************)

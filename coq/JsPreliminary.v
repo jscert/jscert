@@ -312,9 +312,9 @@ Definition object_heap_map_properties S l F S' :=
     been updated by settin its [extensible] internal property to false *)
 (* TODO: we need something more general? (i.e. giving a boolean as an arg?*)
 
-Definition object_heap_set_extensible_false S l S' :=
+Definition object_heap_set_extensible b S l S' :=
   exists O, object_binds S l O
-         /\ S' = object_write S l (object_set_extensible_false O).
+         /\ S' = object_write S l (object_set_extensible b O).
 
 (** [object_has_property S l x] asserts that the object stored
     at address [l] in [S] has a properties field that binds the
@@ -355,25 +355,12 @@ Definition object_new vproto sclass :=
 (**************************************************************)
 (** ** Auxiliary definitions for attributes *)
 
-(** Returns the value of the configurable field of an attribute *)
-
-Definition attributes_configurable A :=
-  match A with
-  | attributes_data_of Ad => attributes_data_configurable Ad
-  | attributes_accessor_of Aa => attributes_accessor_configurable Aa
-  end.
-
-(** Returns the value of the enumerable field of an attribute *)
-
-Definition attributes_enumerable A :=
-  match A with
-  | attributes_data_of Ad => attributes_data_enumerable Ad
-  | attributes_accessor_of Aa => attributes_accessor_enumerable Aa
-  end.
-
 (** True is its argument is a data *)
 
-Definition attributes_is_data A : Prop := (* In practise, this function is used as [attributes_is_data A = true] using an implicit [isTrue]:  wouldn't it be better if it were a boolean instead of a proposition? -- Martin. *)
+(* In practice, this function is used as [attributes_is_data A = true] using an implicit [isTrue]:  wouldn't it be better if it were a boolean instead of a proposition? -- Martin. 
+   TODO: can't we simply use pattern matching instead? *)
+
+Definition attributes_is_data A : Prop := 
   match A with
   | attributes_data_of Ad => True
   | attributes_accessor_of Aa => False
@@ -561,6 +548,34 @@ Coercion descriptor_of_attributes : attributes >-> descriptor.
 
 
 (**************************************************************)
+(** ** Type [attributes] *)
+
+(** Returns the value of the configurable field of an attribute *)
+
+Definition attributes_configurable A :=
+  match A with
+  | attributes_data_of Ad => attributes_data_configurable Ad
+  | attributes_accessor_of Aa => attributes_accessor_configurable Aa
+  end.
+
+(** Returns the value of the enumerable field of an attribute *)
+
+Definition attributes_enumerable A :=
+  match A with
+  | attributes_data_of Ad => attributes_data_enumerable Ad
+  | attributes_accessor_of Aa => attributes_accessor_enumerable Aa
+  end.
+
+(** Modifies the configurable field of an attribute *)
+
+Definition attributes_with_configurable A bc' :=
+  match A with
+  | attributes_data_of Ad => attributes_data_of (attributes_data_with_configurable Ad bc')
+  | attributes_accessor_of Aa => attributes_accessor_of (attributes_acccessor_with_configurable Aa bc')
+  end.
+
+
+(**************************************************************)
 (** ** Auxiliary definitions for reduction of [get_own_property]  *)
 
 (** The following definitions are used to define when
@@ -636,6 +651,16 @@ Definition attributes_change_accessor_on_non_configurable Aa Desc : Prop := (* 8
      attributes_configurable Aa = false
   /\ (   descriptor_get_not_same Aa Desc
       \/ descriptor_set_not_same Aa Desc).
+
+
+(**************************************************************)
+(** ** Auxiliary definitions for reduction of [has_instance]  *)
+
+(** Characterize the case where an error is thrown (15.3.5.4, step 2) *)
+
+Definition spec_function_get_error_case S x v := 
+  x = "caller" /\ exists l bd, 
+    v = value_object l /\ object_code S l (Some bd) /\ funcbody_is_strict bd = true.
 
 
 (**************************************************************)

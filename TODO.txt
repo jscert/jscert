@@ -161,3 +161,28 @@ Definition valid_lhs_for_assign R :=
       /\ let s := ref_name r in
          (s = "eval" \/ s = "arguments")).
 *)
+
+
+
+
+(**************************************************************)
+(** ** Read and updates on descriptors *)
+
+(** Assumes fully-populated in the sense of 
+
+Definition descriptor_is_writable Desc :=
+  match Ad with descriptor_intro ov ow og os oe oc =>
+                descriptor_intro ov (Some false) og os oe oc end.
+
+Definition descriptor_is_configurable Desc :=
+  match Ad with descriptor_intro ov ow og os oe oc =>
+                descriptor_intro ov (Some false) og os oe oc end.
+
+
+Definition descriptor_with_writable_false Desc :=
+  match Ad with descriptor_intro ov ow og os oe oc =>
+                descriptor_intro ov (Some false) og os oe oc end.
+
+Definition descriptor_with_configurable_false Desc :=
+  match Ad with descriptor_intro ov ow og os oe oc =>
+                descriptor_intro ov ow og os oe (Some false) end.

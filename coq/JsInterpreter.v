@@ -297,9 +297,9 @@ Proof.
   skip. (* Needs properties about [heap_keys_as_list]. *)
 Qed.
 
-Definition run_object_heap_set_extensible_false S l : state :=
+Definition run_object_heap_set_extensible b S l : state :=
   let O := pick (object_binds S l) in
-  object_write S l (object_set_extensible_false O).
+  object_write S l (object_set_extensible b O).
 
 
 (**************************************************************)
@@ -1902,7 +1902,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
         in (fix object_seal S0 xs : result :=
           match xs with
           | nil =>
-            let S1 := run_object_heap_set_extensible_false S0 l in
+            let S1 := run_object_heap_set_extensible false S0 l in
             out_ter S1 l
           | x :: xs' =>
             if_some (run_object_get_own_prop S0 l x) (fun D =>
@@ -1952,7 +1952,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
         in (fix object_freeze S0 xs : result :=
           match xs with
           | nil =>
-            let S1 := run_object_heap_set_extensible_false S0 l
+            let S1 := run_object_heap_set_extensible false S0 l
             in out_ter S1 l
           | x :: xs' =>
             if_some (run_object_get_own_prop S l x) (fun D =>

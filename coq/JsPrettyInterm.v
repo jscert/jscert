@@ -343,13 +343,15 @@ Inductive ext_expr :=
   
   | spec_create_arguments_object : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
   
-  (* Execution of "has_instance" *)
+  (* Functions *)
 
   | spec_object_has_instance : object_loc -> value -> ext_expr
   | spec_object_has_instance_1 : builtin_has_instance -> object_loc -> value -> ext_expr
-  | spec_object_has_instance_2 : object_loc -> out -> ext_expr
-  | spec_object_has_instance_3 : object_loc -> object_loc -> ext_expr
-  | spec_object_has_instance_4 : object_loc -> value -> ext_expr
+  | spec_function_has_instance_1 : object_loc -> out -> ext_expr
+  | spec_function_has_instance_2 : object_loc -> object_loc -> ext_expr
+  | spec_function_has_instance_3 : object_loc -> value -> ext_expr
+
+  | spec_function_get_1 : object_loc -> prop_name -> out -> ext_expr
 
   (* Throwing of errors *)
 
@@ -415,7 +417,7 @@ Inductive ext_expr :=
   | spec_call_object_seal_1 : value -> ext_expr
   | spec_call_object_seal_2 : object_loc -> list prop_name -> ext_expr
   | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
-  | spec_call_object_seal_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_seal_4 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : object_loc -> list prop_name -> ext_expr
@@ -425,8 +427,7 @@ Inductive ext_expr :=
   | spec_call_object_freeze_2 : object_loc -> list prop_name -> ext_expr
   | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_freeze_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
-  | spec_call_object_freeze_5 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
-  | spec_call_object_freeze_6 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_freeze_5 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_frozen_1 : value -> ext_expr
   | spec_call_object_is_frozen_2 : object_loc -> list prop_name -> ext_expr
