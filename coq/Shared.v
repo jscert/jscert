@@ -124,6 +124,24 @@ Admitted.
 
 Implicit Arguments FixFun4_fix_partial [A1 A2 A3 A4 B IB F f].
 
+Definition FixFun5Mod B {IB:Inhab B} (E:binary B)
+  A1 A2 A3 A4 A5 (F:(A1->A2->A3->A4->A5->B)->(A1->A2->A3->A4->A5->B)) :=
+  curry5 (FixFunMod E (fun f' => uncurry5 (F (curry5 f')))).
+
+Definition FixFun5 B {IB:Inhab B} := FixFun5Mod eq.
+
+Lemma FixFun5_fix_partial : forall A1 A2 A3 A4 A5 (R:binary (A1*A2*A3*A4*A5)) (P:A1->A2->A3->A4->A5->Prop)
+  B {IB:Inhab B} F (f:A1->A2->A3->A4->A5->B),
+  f = FixFun5 F -> wf R ->
+  (forall x1 x2 x3 x4 x5 f1 f2, P x1 x2 x3 x4 x5 ->
+    (forall y1 y2 y3 y4 y5, P y1 y2 y3 y4 y5 -> R (y1,y2,y3,y4,y5) (x1,x2,x3,x4,x5) -> f1 y1 y2 y3 y4 y5 = f2 y1 y2 y3 y4 y5) ->
+     F f1 x1 x2 x3 x4 x5 = F f2 x1 x2 x3 x4 x5) ->
+  (forall x1 x2 x3 x4 x5, P x1 x2 x3 x4 x5 -> f x1 x2 x3 x4 x5 = F f x1 x2 x3 x4 x5).
+Admitted.
+
+Implicit Arguments FixFun5_fix_partial [A1 A2 A3 A4 A5 B IB F f].
+
+
 (**************************************************************)
 (** ** move to LibList (or LibReflect?) *)
 

@@ -130,3 +130,4 @@ for filename in args.filenames:
         abandoned_tests.append(filename)
 
 print "There were "+len(passed_tests)+" passes, "+len(failed_tests)+"  fails, and "+len(abandoned_tests)+" abandoned."
+
