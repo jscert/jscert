@@ -7,6 +7,7 @@ Implicit Type rt : restype.
 Implicit Type rv : resvalue.
 Implicit Type lab : label.
 Implicit Type R : res.
+Implicit Type Desc : descriptor.
 
 
 (**************************************************************)
@@ -654,6 +655,46 @@ Definition attributes_data_with_writable Ad bw' :=
 Definition attributes_data_with_configurable Ad bc' :=
   match Ad with attributes_data_intro v bw be bc =>
                 attributes_data_intro v bw be bc' end.
+
+
+(**************************************************************)
+(** ** Type [descriptor] *)
+
+(** Modifies the value field of a descriptor *)
+
+Definition descriptor_with_value Desc v' :=
+  match Desc with descriptor_intro v bw vg vs be bc =>
+                descriptor_intro v' bw vg vs be bc end.
+
+(** Modifies the writable field of a descriptor *)
+
+Definition descriptor_with_writable Desc bw' :=
+  match Desc with descriptor_intro v bw vg vs be bc =>
+                descriptor_intro v bw' vg vs be bc end.
+
+(** Modifies the get field of a descriptor *)
+
+Definition descriptor_with_get Desc vg' :=
+  match Desc with descriptor_intro v bw vg vs be bc =>
+                descriptor_intro v bw vg' vs be bc end.
+
+(** Modifies the set field of a descriptor *)
+
+Definition descriptor_with_set Desc vs' :=
+  match Desc with descriptor_intro v bw vg vs be bc =>
+                descriptor_intro v bw vg vs' be bc end.
+
+(** Modifies the enumerable field of a descriptor *)
+
+Definition descriptor_with_enumerable Desc be' :=
+  match Desc with descriptor_intro v bw vg vs be bc =>
+                descriptor_intro v bw vg vs be' bc end.
+
+(** Modifies the configurable field of a descriptor *)
+
+Definition descriptor_with_configurable Desc bc' :=
+  match Desc with descriptor_intro v bw vg vs be bc =>
+                descriptor_intro v bw vg vs be bc' end.
 
 
 (**************************************************************)

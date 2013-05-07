@@ -434,6 +434,16 @@ Definition descriptor_intro_accessor vg vs be bc :=
      descriptor_enumerable := Some be;
      descriptor_configurable := Some bc |}.
 
+(** Builds an empty property descriptor. We use it it 'ToPropertyDescriptor' (8.10.5) *)
+
+Definition descriptor_intro_empty := 
+  {| descriptor_value := None;
+     descriptor_writable := None;
+     descriptor_get := None;
+     descriptor_set := None;
+     descriptor_enumerable := None;
+     descriptor_configurable := None |}.
+
 
 (**************************************************************)
 (** ** Classification of property descriptors (8.10) *)
