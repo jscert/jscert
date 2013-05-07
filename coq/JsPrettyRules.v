@@ -2404,7 +2404,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_prop_descriptor_from_prop_descriptor full_descriptor_undef) (out_ter S undef) 
 
   | red_spec_prop_descriptor_from_prop_descriptor_some : forall S C A o o1, (* step 2 *)
-      red_expr S C (spec_construct_prealloc prealloc_object (undef::nil)) o1 -> (* Daniele: what arg should I pass to new Object()? Spec says no arg, but our rule require one. I pass undef here. *)
+      red_expr S C (spec_construct_prealloc prealloc_object (undef::nil)) o1 -> (* Daniele: what arg should I pass to new Object()? Spec says no arg, but our rule require one. I pass undef here. *) (* Martin:  Our rules does not require any actually.  That's the purpose of the [arguments_from] predicate to add those [undef] where needed. *)
       red_expr S C (spec_prop_descriptor_from_prop_descriptor_1 o1 A) o -> 
       red_expr S C (spec_prop_descriptor_from_prop_descriptor A) o
                
@@ -2414,7 +2414,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_prop_descriptor_from_prop_descriptor_2: forall S C Ad A' l o o1, (* step 3.a *)
       A' = attributes_data_intro_all_true (attributes_data_value Ad) -> 
-      red_expr S C (spec_object_define_own_prop l "value" (descriptor_of_attributes A') throw_false) o1 -> (* Daniele: is it ok to write "value", "get" etc. or there is another syntax? *)
+      red_expr S C (spec_object_define_own_prop l "value" (descriptor_of_attributes A') throw_false) o1 -> (* Daniele: is it ok to write "value", "get" etc. or there is another syntax? *) (* Martin:  Given the Ecma spec, I think it's correct. *)
       red_expr S C (spec_prop_descriptor_from_prop_descriptor_3 o1 l Ad) o ->
       red_expr S C (spec_prop_descriptor_from_prop_descriptor_2 l Ad) o 
 
