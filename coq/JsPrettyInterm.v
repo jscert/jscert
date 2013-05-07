@@ -228,10 +228,7 @@ Inductive ext_expr :=
   | spec_object_define_own_prop_6c : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr  
   | spec_object_define_own_prop_reject : bool -> ext_expr
   | spec_object_define_own_prop_write : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
-(* Daniele: FIX                                                                                
-  | spec_object_iter_own_prop : object_loc -> (prop_name -> full_descriptor -> ext_expr -> ext_expr) -> ext_expr -> ext_expr
-  | spec_object_iter_own_prop_1 : list (prop_name * attributes) -> ext_expr -> ext_expr -> ext_expr
-*)
+
   | spec_prim_value_get : value -> prop_name -> ext_expr
   | spec_prim_value_get_1 : value -> prop_name -> out -> ext_expr
   
@@ -294,6 +291,17 @@ Inductive ext_expr :=
   | spec_lexical_env_get_identifier_ref_1 : env_loc -> lexical_env -> prop_name -> bool -> ext_expr
   | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_expr
 
+  (** Extended expressions for operations on property descriptors (8.10) *)
+  | spec_prop_descriptor_from_prop_descriptor : full_descriptor -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_1 : out -> attributes -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_2 : object_loc -> attributes -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_3 : out -> object_loc -> attributes -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_4 : object_loc -> attributes -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_5 : out -> object_loc -> attributes -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_6 : out -> object_loc -> attributes -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_7 : out -> object_loc -> attributes -> ext_expr
+  | spec_prop_descriptor_from_prop_descriptor_8 : out -> object_loc -> ext_expr
+                                                                                
   (** Extented expressions for eval *)
   
   | spec_entering_eval_code : bool -> funcbody -> ext_expr -> ext_expr
@@ -461,6 +469,11 @@ Inductive ext_expr :=
   | spec_call_number_new_1 : out -> ext_expr
   | spec_call_number_proto_value_of_1 : value -> ext_expr
  
+  
+
+
+
+
 
   (** Special state for returning an outcome *)   
 

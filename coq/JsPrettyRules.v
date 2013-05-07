@@ -2395,6 +2395,65 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
       red_expr S C (spec_create_new_function_in C args bd) o
 
+(*------------------------------------------------------------*)
+(** ** Operations on property descriptors (8.10) *)
+ 
+  (**  FromPropertyDescriptor ( Desc ) - return Object (8.10.4) *)    
+
+  | red_spec_prop_descriptor_from_prop_descriptor_undef : forall S C, (* step 1 *)
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor full_descriptor_undef) (out_ter S undef) 
+
+  | red_spec_prop_descriptor_from_prop_descriptor_some : forall S C A o o1, (* step 2 *)
+      red_expr S C (spec_construct_prealloc prealloc_object (undef::nil)) o1 -> (* Daniele: what arg should I pass to new Object()? Spec says no arg, but our rule require one. I pass undef here. *)
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_1 o1 A) o -> 
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor A) o
+               
+  | red_spec_prop_descriptor_from_prop_descriptor_1_is_data : forall S S' C Ad l o o1, (* step 3 *)
+      red_expr S' C (spec_prop_descriptor_from_prop_descriptor_2 l Ad) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_1 (out_ter S' l) Ad) o
+
+  | red_spec_prop_descriptor_from_prop_descriptor_2: forall S C Ad A' l o o1, (* step 3.a *)
+      A' = attributes_data_intro_all_true (attributes_data_value Ad) -> 
+      red_expr S C (spec_object_define_own_prop l "value" (descriptor_of_attributes A') throw_false) o1 -> (* Daniele: is it ok to write "value", "get" etc. or there is another syntax? *)
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_3 o1 l Ad) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_2 l Ad) o 
+
+  | red_spec_prop_descriptor_from_prop_descriptor_3: forall S S' C Ad A' l o o1, (* step 3.b *)
+      A' = attributes_data_intro_all_true (attributes_data_writable Ad) ->
+      red_expr S' C (spec_object_define_own_prop l "writable" (descriptor_of_attributes A') throw_false) o1 ->
+      red_expr S' C (spec_prop_descriptor_from_prop_descriptor_6 o1 l Ad) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_3 (out_void S') l Ad) o
+
+  | red_spec_prop_descriptor_from_prop_descriptor_1_is_accessor : forall S S' C Aa l o o1, (* step 4 *)
+      red_expr S' C (spec_prop_descriptor_from_prop_descriptor_4 l Aa) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_1 (out_ter S' l) Aa) o
+
+ | red_spec_prop_descriptor_from_prop_descriptor_4:forall S C Aa A' l o o1, (* step 4.a *)
+      A' = attributes_accessor_intro_all_true (attributes_accessor_get Aa) ->
+      red_expr S C (spec_object_define_own_prop l "get" (descriptor_of_attributes A') throw_false) o1 ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_5 o1 l Aa) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_4 l Aa) o 
+
+  | red_spec_prop_descriptor_from_prop_descriptor_5: forall S S' C Aa A' l o o1,(* step 4.b *)
+      A' = attributes_accessor_intro_all_true (attributes_accessor_set Aa) ->
+      red_expr S' C (spec_object_define_own_prop l "set" (descriptor_of_attributes A') throw_false) o1 ->
+      red_expr S' C (spec_prop_descriptor_from_prop_descriptor_6 o1 l Aa) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_5 (out_void S') l Aa) o
+
+  | red_spec_prop_descriptor_from_prop_descriptor_6: forall S S' C A A' l o o1, (* step 5 *)
+      A' = attributes_data_intro_all_true (attributes_enumerable A) -> 
+      red_expr S' C (spec_object_define_own_prop l "enumerable" (descriptor_of_attributes A') throw_false) o1 ->
+      red_expr S' C (spec_prop_descriptor_from_prop_descriptor_7 o1 l A) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_6 (out_void S') l A) o 
+
+  | red_spec_prop_descriptor_from_prop_descriptor_7: forall S S' C A A' l o o1, (* step 6 *)
+      A' = attributes_data_intro_all_true (attributes_configurable A) ->
+      red_expr S' C (spec_object_define_own_prop l "configurable" (descriptor_of_attributes A') throw_false) o1 ->
+      red_expr S' C (spec_prop_descriptor_from_prop_descriptor_8 o1 l) o ->
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_7 (out_void S') l A) o
+
+  | red_spec_prop_descriptor_from_prop_descriptor_8: forall S S' C l, (* step 7 *)
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor_8 (out_void S') l) (out_ter S' l)
 
 
 (**************************************************************)
@@ -3012,6 +3071,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (forall n, ~ value_viewable_as "Number" S v n) ->
       red_expr S C (spec_error prealloc_type_error) o ->
       red_expr S C (spec_call_number_proto_value_of_1 v) o
+
+
+
 
   (*------------------------------------------------------------*)
   (** ** Error builtin functions *)

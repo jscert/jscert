@@ -403,6 +403,12 @@ Definition attributes_data_intro_configurable v :=
 Definition attributes_data_intro_all_true v :=
    attributes_data_intro v true true true.
 
+(**************************************************************)
+(** ** Smart constructors for accessor attributes *)
+
+Definition attributes_accessor_intro_all_true v :=
+   attributes_accessor_intro v true true true.
+
 
 (**************************************************************)
 (** ** Smart constructors for property descriptors *)
