@@ -130,11 +130,11 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 
 Definition run_error S (B : prealloc) : result :=
   match B with
-  | prealloc_syntax_error => arbitrary (* TODO: Waiting for specification *)
-  | prealloc_type_error => arbitrary (* TODO: Waiting for specification *)
-  | prealloc_ref_error => arbitrary (* TODO: Waiting for specification *)
-  | prealloc_range_error => arbitrary (* TODO: Waiting for specification *)
-  | prealloc_throw_type_error => arbitrary (* TODO: Waiting for specification *)
+  | prealloc_syntax_error => arbitrary (* TODO:  Waiting for specification *)
+  | prealloc_type_error => arbitrary (* TODO:  Waiting for specification *)
+  | prealloc_ref_error => arbitrary (* TODO:  Waiting for specification *)
+  | prealloc_range_error => arbitrary (* TODO:  Waiting for specification *)
+  | prealloc_throw_type_error => arbitrary (* TODO:  Waiting for specification *)
   | _ => result_stuck
   end.
 
@@ -449,12 +449,12 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
                   runs_type_full runs S C lf lthis nil
               | value_prim _ => result_stuck
               end
-          | value_prim _ => (* TODO:  Wait for the specification. *)
+          | value_prim _ => (* TODO:  Waiting for the specification. *)
               result_stuck
           end
       end)
   | builtin_get_function =>
-    result_stuck (* TODO:  Wait for the specification *)
+    result_stuck (* TODO:  Waiting for the specification *)
   end.
 
 Definition object_get runs S C v x : result := (* This [v] should be a location. *)
@@ -470,7 +470,7 @@ Definition object_get runs S C v x : result := (* This [v] should be a location.
 (** Conversions *)
 
 Definition prim_new_object S w : result :=
-  arbitrary (* TODO: Waiting for the specification *).
+  arbitrary (* TODO:  Waiting for the specification *).
 
 Definition to_object S v : result :=
   match v with
@@ -928,34 +928,6 @@ Definition run_construct runs S C l args : result :=
 
 (**************************************************************)
 
-Definition from_prop_descriptor runs S C D : result :=
-  match D with
-  | full_descriptor_undef => out_ter S undef
-  | full_descriptor_some A =>
-    if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S1 l =>
-      let follow S0 :=
-        let A1 := attributes_data_intro_all_true (attributes_enumerable A) in
-        if_void (object_define_own_prop S0 l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' =>
-          let A2 := attributes_data_intro_all_true (attributes_configurable A) in
-          if_void (object_define_own_prop S0' l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' =>
-            out_ter S' l))
-      in match A with
-      | attributes_data_of Ad =>
-        let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
-        if_void (object_define_own_prop S1 l "value" (descriptor_of_attributes A1) throw_false) (fun S2 =>
-          let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
-          if_void (object_define_own_prop S2 l "writable" (descriptor_of_attributes A2) throw_false) follow)
-      | attributes_accessor_of Aa =>
-        let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
-        if_void (object_define_own_prop S1 l "get" (descriptor_of_attributes A1) throw_false) (fun S2 =>
-          let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
-          if_void (object_define_own_prop S2 l "set" (descriptor_of_attributes A2) throw_false) follow)
-      end)
-  end.
-
-
-(**************************************************************)
-
 Definition creating_function_object_proto runs S C l : result :=
   if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S1 lproto =>
     let A1 := attributes_data_intro l true false true in
@@ -1151,6 +1123,34 @@ Definition run_object_has_instance (max_step : nat) runs B S C l v : result :=
   | builtin_has_instance_after_bind =>
     arbitrary (* TODO:  Waiting for the specification *)
 
+  end.
+
+
+(**************************************************************)
+
+Definition from_prop_descriptor runs S C D : result :=
+  match D with
+  | full_descriptor_undef => out_ter S undef
+  | full_descriptor_some A =>
+    if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S1 l =>
+      let follow S0 :=
+        let A1 := attributes_data_intro_all_true (attributes_enumerable A) in
+        if_void (object_define_own_prop S0 l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' =>
+          let A2 := attributes_data_intro_all_true (attributes_configurable A) in
+          if_void (object_define_own_prop S0' l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' =>
+            out_ter S' l))
+      in match A with
+      | attributes_data_of Ad =>
+        let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
+        if_void (object_define_own_prop S1 l "value" (descriptor_of_attributes A1) throw_false) (fun S2 =>
+          let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
+          if_void (object_define_own_prop S2 l "writable" (descriptor_of_attributes A2) throw_false) follow)
+      | attributes_accessor_of Aa =>
+        let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
+        if_void (object_define_own_prop S1 l "get" (descriptor_of_attributes A1) throw_false) (fun S2 =>
+          let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
+          if_void (object_define_own_prop S2 l "set" (descriptor_of_attributes A2) throw_false) follow)
+      end)
   end.
 
 End LexicalEnvironments.
@@ -1939,6 +1939,9 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
         result_stuck
       else
         out_ter S (resvalue_ref (ref_create_value v "prototype" false))
+
+    | prealloc_object_get_own_prop_descriptor =>
+      arbitrary (* TODO:  Waiting for specification *)
 
     | prealloc_object_seal =>
       match get_arg 0 args with
