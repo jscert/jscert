@@ -129,5 +129,4 @@ for filename in args.filenames:
         print_abandon("Abandoned...")
         abandoned_tests.append(filename)
 
-print "There were "+len(passed_tests)+" passes, "+len(failed_tests)+"  fails, and "+len(abandoned_tests)+" abandoned."
-
+print "There were "+str(len(passed_tests))+" passes, "+str(len(failed_tests))+"  fails, and "+str(len(abandoned_tests))+" abandoned."
