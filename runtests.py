@@ -30,8 +30,8 @@ def print_abandon(s):
 argp = argparse.ArgumentParser(
     description="Run some Test262-style tests with some JS implementation")
 
-argp.add_argument("filenames", metavar="filename", nargs="+",
-                  help="The test file we want to run.")
+argp.add_argument("filenames", metavar="filename", nargs="*",
+                  help="The test file we want to run. If you don't specify, we'll recursively find all .js files under the current directory.")
 
 engines_grp = argp.add_mutually_exclusive_group()
 
@@ -48,6 +48,13 @@ argp.add_argument("--interp_path", action="store", metavar="path",
                   default="interp/run_js", help="Where to find the interpreter.")
 
 args = argp.parse_args()
+
+# If no test files are specified, search for some and use them.
+if not args.filenames:
+    for r,d,f in os.walk("."):
+        for filename in f:
+            if filename.endswith(".js"):
+                args.filenames.append(os.path.join(r,filename))
 
 # Which tests passed, and which failed?
 passed_tests = []

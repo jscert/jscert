@@ -89,6 +89,14 @@ LAMBDAS5 variable to point to your install. Finally, you can run
 
  $ make run_tests_lambdaS5
 
+If you want to generate a pretty web page that presents all the
+results of the test run, you'll first need to install pystache:
+
+ $ pip install --user pystache
+ $ pystache-test
+
+ .....TODO... What else?
+
 *********************************************************************
 USING THE CERTIFIED INTERPRETER		(* TODO:  Update *)
 

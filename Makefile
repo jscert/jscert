@@ -117,16 +117,16 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 # INTERPRETER
 
 run_tests: interpreter
-	interp/run.py `find tests/ -type f -name \*.js`
+	./runtests.py
 
 run_tests_spidermonkey:
-	interp/run.py --spidermonkey --interp_path $(SPIDERMONKEY) `find tests/ -type f -name \*.js`
+	./runtests.py --spidermonkey --interp_path $(SPIDERMONKEY)
 
 run_tests_lambdaS5:
-	interp/run.py --lambdaS5 --interp_path $(LAMBDAS5) `find tests/ -type f -name \*.js`
+	./runtests.py --lambdaS5 --interp_path $(LAMBDAS5)
 
 run_tests_nodejs:
-	interp/run.py --nodejs --interp_path $(NODEJS) `find tests/ -type f -name \*.js`
+	./runtests.py --nodejs --interp_path $(NODEJS)
 
 interpreter: interp/run_js
 
