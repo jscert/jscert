@@ -18,7 +18,7 @@ Definition out_error_or_cst S str B R :=
 Definition out_error_or_void S str B :=
   if str then out_ter S (res_throw B)
   else out_void S.
-  
+
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -209,7 +209,7 @@ Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
           if search_label R then K1 else out_ter
       | restype_normal => K1
       | _ => out_ter
-      end in 
+      end in
     K S R).
 
 Definition if_break (o : result) (K : state -> res -> result) : result :=
@@ -235,8 +235,8 @@ Definition if_bool (o : result) (K : state -> bool -> result) : result :=
     end).
 
 Definition if_success_bool (o : result) (K1 K2 : state -> result) : result :=
-  if_bool o (fun S b => 
-    let K := if b then K1 else K2 in 
+  if_bool o (fun S b =>
+    let K := if b then K1 else K2 in
     K S).
 
 Definition if_success_primitive (o : result) (K : state -> prim -> result) : result :=
@@ -331,7 +331,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_stat : state -> execution_ctx -> stat -> result;
     runs_type_prog : state -> execution_ctx -> prog -> result;
     runs_type_call : state -> execution_ctx -> prealloc -> list value -> result;
-    runs_type_full : state -> execution_ctx -> object_loc -> value -> list value -> result
+    runs_type_call_full : state -> execution_ctx -> object_loc -> value -> list value -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -378,13 +378,13 @@ Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S 
   match run_object_method object_proto_ S l with
   | null => out_ter S false
   | value_object l' =>
-      ifb l' = l0 
+      ifb l' = l0
         then out_ter S true
         else run_object_proto_is_prototype_of S l0 l'
   | value_prim _ => result_stuck
   end.
 
-Definition run_object_proto_is_prototype_of := 
+Definition run_object_proto_is_prototype_of :=
   FixFun3 object_proto_is_prototype_of_body.
 
 Definition env_record_lookup Z (d : Z) S L (K : env_record -> Z) : Z :=
@@ -410,7 +410,7 @@ Fixpoint lexical_env_get_identifier_ref S X x str : option ref :=
   end.
 
 Definition env_record_delete_binding S L x : result :=
-  env_record_lookup (fun _ : unit => arbitrary) S L (fun E _ =>
+  env_record_lookup (fun _ : unit => result_stuck) S L (fun E _ =>
     match E return result with
     | env_record_decl Ed =>
       match Heap.read_option Ed x with
@@ -446,7 +446,7 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
           | value_object lf =>
               match vthis with
               | value_object lthis =>
-                  runs_type_full runs S C lf lthis nil
+                  runs_type_call_full runs S C lf lthis nil
               | value_prim _ => result_stuck
               end
           | value_prim _ => (* TODO:  Waiting for the specification. *)
@@ -631,7 +631,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
       if b then
         if_some (run_object_get_own_prop S l x) (fun D =>
           match D with
-          
+
           | attributes_data_of Ad =>
             match vthis with
             | value_object lthis =>
@@ -641,14 +641,14 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
             | value_prim wthis =>
               out_error_or_void S str prealloc_type_error
             end
-          
+
           | _ =>
             if_some (run_object_get_prop S l x) (fun D' =>
               match D' with
               | attributes_accessor_of Aa' =>
                 match attributes_accessor_set Aa' with
                 | value_object lfsetter =>
-                  if_success (runs_type_full runs S C lfsetter vthis (v::nil)) (fun S1 rv =>
+                  if_success (runs_type_call_full runs S C lfsetter vthis (v::nil)) (fun S1 rv =>
                     out_void S1)
                 | value_prim _ => result_stuck
                 end
@@ -662,7 +662,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
                   out_error_or_void S str prealloc_type_error
                 end
               end)
-          
+
           end)
         else
           out_error_or_void S str prealloc_type_error)
@@ -776,7 +776,7 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
         match run_callable S lf with
         | Some B =>
           if_success_value runs C
-            (runs_type_full runs S C lfo l nil) (fun S2 v =>
+            (runs_type_call_full runs S C lfo l nil) (fun S2 v =>
             match v with
             | value_prim w => out_ter S w
             | value_object l => K S2
@@ -885,7 +885,7 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
       let O := object_with_primitive_value O1 v in
       let (l, S1) := object_alloc S' O in
       out_ter S1 l
-      in 
+      in
     ifb args = nil then
       follow S JsNumber.zero
     else
@@ -907,11 +907,11 @@ Definition run_construct_default runs S C l args :=
     let vproto :=
       ifb type_of v1 = type_object then v1
       else prealloc_object_proto
-      in 
+      in
     let O := object_new vproto "Object" in
-    let (l', S2) := object_alloc S1 O in 
-    if_value (runs_type_full runs S2 C l l' args) (fun S3 v2 =>
-      let vr := ifb type_of v2 = type_object then v2 else l' in 
+    let (l', S2) := object_alloc S1 O in
+    if_value (runs_type_call_full runs S2 C l l' args) (fun S3 v2 =>
+      let vr := ifb type_of v2 = type_object then v2 else l' in
       out_ter S3 vr)).
 
 Definition run_construct runs S C l args : result :=
@@ -1221,7 +1221,7 @@ Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state
     let dc_conv v1 F v2 :=
       if_value (F S v2) (fun S0 v2' =>
         match max_depth with
-        | O => arbitrary
+        | O => result_bottom
         | S max_depth' => run_equal_partial max_depth' conv_number conv_primitive S0 v1 v2'
         end) in
     let so b :=
@@ -1568,15 +1568,15 @@ Definition run_expr_function runs S C fo args bd : result :=
   end.
 
 Definition entering_eval_code runs S C direct bd K : result :=
-  let C' := if direct then C else execution_ctx_initial false in 
-  let str := funcbody_is_strict bd in 
+  let C' := if direct then C else execution_ctx_initial false in
+  let str := funcbody_is_strict bd in
   let (lex, S') :=
-    if str 
+    if str
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
-      else (execution_ctx_lexical_env C', S) 
+      else (execution_ctx_lexical_env C', S)
     in
   let C1 :=
-    if str 
+    if str
       then execution_ctx_with_lex_same C' lex
       else C'
     in
@@ -1629,7 +1629,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
             let follow vthis :=
               ifb l = prealloc_global_eval then
                 run_eval runs S3 C is_eval_direct vthis vs
-              else runs_type_full runs S3 C l vthis vs in
+              else runs_type_call_full runs S3 C l vthis vs in
             match rv with
             | resvalue_value v => follow undef
             | resvalue_ref r =>
@@ -2025,7 +2025,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
           end) S xs
       | value_prim _ => run_error S prealloc_type_error
       end
-        
+
 
     | prealloc_object_is_frozen =>
       let v := get_arg 0 args in

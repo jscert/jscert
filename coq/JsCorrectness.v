@@ -183,11 +183,11 @@ Definition follow_call_full l vs :=
 
 
 Definition propOnRuns (P : result -> Prop) runs :=
-  (forall S C e, P (wraped_run_expr runs S C e)) /\
-  (forall S C t, P (wraped_run_stat runs S C t)) /\
-  (forall S C p, P (wraped_run_prog runs S C p)) /\
-  (forall S C B args, P (wraped_run_call runs S C B args)) /\
-  (forall S C l v args, P (wraped_run_call_full runs S C l v args)).
+  (forall S C e, P (runs_type_expr runs S C e)) /\
+  (forall S C t, P (runs_type_stat runs S C t)) /\
+  (forall S C p, P (runs_type_prog runs S C p)) /\
+  (forall S C B args, P (runs_type_call runs S C B args)) /\
+  (forall S C l v args, P (runs_type_call_full runs S C l v args)).
 
 
 (**************************************************************)
@@ -697,7 +697,7 @@ Ltac prove_result_not_equal_with k1 k2 :=
     | cases_if]; substs).
 
 Ltac prove_result_not_equal :=
-  prove_result_not_equal_with ltac:fail ltac:(simpl; auto).
+  prove_result_not_equal_with ltac:fail ltac:auto.
 
 Ltac intermediate_form f :=
   let not_res := get_not_eq in
@@ -726,26 +726,24 @@ Proof.
   introv. prove_result_not_equal. skip. (* Needs implementation of [prim_new_object] *)
 Qed.
 
+Lemma run_error_not_div : forall S B,
+  run_error S B <> out_div.
+Proof.
+Admitted. (* Needs implementation. *)
+
 Lemma ref_get_value_not_div : forall runs,
   propOnRuns (fun res => res <> out_div) runs -> forall S C rv,
     ref_get_value runs S C rv <> out_div.
 Proof.
   intros.
   hint prim_new_object_not_div.
+  hint run_error_not_div.
   intermediate_form if_bool_option_result.
   intermediate_form if_success.
   intermediate_form if_object.
   intermediate_form object_get_builtin.
   intermediate_form env_record_get_binding_value.
   prove_result_not_equal.
-    skip. (* Needs implementation. *)
-    skip. (* Needs implementation. *)
-    skip. (* Needs implementation. *)
-    skip. (* Needs implementation. *)
-    skip. (* Needs implementation. *)
-    skip. (* Needs implementation. *)
-    skip. (* Needs implementation. *)
-    skip. (* Needs implementation. *)
 Qed.
 
 
@@ -776,21 +774,11 @@ Proof.
 
   (* run_stat_not_div *)
   destruct num. discriminate. hint ref_get_value_not_div.
-  introv. destruct t; simpls; prove_result_not_equal.
-
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Needs implementation. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
+  introv. destruct t; simpls; auto*; skip. (* destruct t; simpls; prove_result_not_equal. *) (* This is far to long:  I really need to implement memoisation there. *)
 
   (* run_expr_not_div *)
   destruct num. discriminate.
-  introv. destruct e; simpls; auto*; skip. (* destruct e; simpls; prove_result_not_equal. *) (* This is taking much too long...  Maybe the tactics are a little too heavy there. *)
+  introv. destruct e; simpls; auto*; skip. (* destruct e; simpls; prove_result_not_equal. *) (* This is far to long:  I really need to implement memoisation there. *)
 
   (* run_elements_not_div *)
   destruct num. discriminate.
@@ -798,103 +786,11 @@ Proof.
 
   (* run_call_not_div *)
   destruct num. discriminate. hint ref_get_value_not_div.
-  introv. destruct B; simpls; prove_result_not_equal.
-
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
-  skip. (* Needs implementation. *)
+  introv. destruct B; simpls; skip. (* destruct B; simpls; prove_result_not_equal. *) (* Too much unimplemented things *)
 
   (* run_call_full_not_div *)
   destruct num. discriminate.
-  introv. simpls. prove_result_not_equal.
-
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Needs implementation. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Needs implementation. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Needs implementation. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
-  skip. (* Has to be proved in a separate lemma. *)
+  introv. simpls. skip. (* prove_result_not_equal. *) (* Too much unimplemented things *)
 
 Admitted.
 
