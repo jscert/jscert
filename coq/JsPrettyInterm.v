@@ -480,6 +480,10 @@ Inductive ext_expr :=
   | spec_call_object_define_prop_3: object_loc -> string -> descriptor -> ext_expr
   | spec_call_object_define_prop_4: object_loc -> out -> ext_expr
 
+  | spec_call_object_get_own_prop_descriptor_1: value -> value -> ext_expr
+  | spec_call_object_get_own_prop_descriptor_2: object_loc -> out -> ext_expr
+  | spec_call_object_get_own_prop_descriptor_3: full_descriptor -> ext_expr
+
 
   | spec_call_object_proto_to_string_1 : value -> ext_expr
   | spec_call_object_proto_to_string_2 : out -> ext_expr
@@ -984,6 +988,10 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_define_prop_2 _ o _ => Some o
   | spec_call_object_define_prop_3 _ _ _ => None
   | spec_call_object_define_prop_4 _ o => Some o
+
+  | spec_call_object_get_own_prop_descriptor_1 _ _ => None
+  | spec_call_object_get_own_prop_descriptor_2 _ o => Some o
+  | spec_call_object_get_own_prop_descriptor_3 _ => None
 
   | spec_call_object_proto_to_string_1 _ => None
   | spec_call_object_proto_to_string_2 o => Some o

@@ -3001,8 +3001,34 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_prop_4 l o1) o ->
       red_expr S C (spec_call_object_define_prop_3 l s Desc) o
  
-  | red_spec_call_object_object_define_prop_4  : forall S0 S C xs l x o o1, (* Step 5, loop *)
+  | red_spec_call_object_object_define_prop_4  : forall S0 S C xs l x o o1, (* Step 5 *)
       red_expr S0 C (spec_call_object_define_prop_4 l (out_void S)) (out_ter S l)
+
+  (** Object.getOwnPropertyDescriptor (returns object) (15.2.3.3) *)
+
+  | red_spec_call_object_get_own_prop_descriptor : forall S C vo vx o args, (* step 0 *)
+      arguments_from args (vo::vx::nil) ->
+      red_expr S C (spec_call_object_get_own_prop_descriptor_1 vo vx) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_get_own_prop_descriptor args) o
+ 
+  | red_spec_call_object_get_own_prop_descriptor_1_not_object : forall S C vo vx o, (* step 1 *)
+      type_of vo <> type_object ->
+      red_expr S C (spec_error prealloc_type_error) o ->
+      red_expr S C (spec_call_object_get_own_prop_descriptor_1 vo vx) o
+
+  | red_spec_call_object_get_own_prop_descriptor_1_object : forall S C l vx o o1 , (* step 2 *)
+      red_expr S C (spec_to_string vx) o1 ->
+      red_expr S C (spec_call_object_get_own_prop_descriptor_2 l o1) o ->
+      red_expr S C (spec_call_object_get_own_prop_descriptor_1 l vx) o
+ 
+  | red_spec_call_object_get_own_prop_descriptor_2 : forall S C l s o1 o, (* step 3 *)
+      red_expr S C (spec_object_get_own_prop l s spec_call_object_get_own_prop_descriptor_3) o ->
+      red_expr S C (spec_call_object_get_own_prop_descriptor_2 l (out_ter S s)) o
+ 
+  | red_spec_call_object_get_own_prop_descriptor_3  : forall S C D o, (* Step 4 *)
+      red_expr S C (spec_prop_descriptor_from_prop_descriptor D) o ->
+      red_expr S C (spec_call_object_get_own_prop_descriptor_3 D) o
+
 
 (*------------------------------------------------------------*)
 (** ** Object prototype builtin functions (15.2.3) *)
