@@ -141,12 +141,24 @@ Ltac if_unmonad k :=
           | restype_continue => ?C3
           | restype_return => ?C4
           | restype_throw => ?C5
-          end = _ |- _ =>
-      tests: (abort r)
-    | _ => idtac
+          end = ?o0,
+      I' : _ = result_normal (out_ter ?s ?r) |- _ =>
+      let rt := fresh "rt" in
+      sets_eq <- rt: (res_type r);
+      let T1 := fresh "T" in
+      tests_basic T1: (rt = restype_normal);
+        [ rewrite T1 in * |- *; clear T1
+        | (*let T2 := fresh "T" in
+          tests T2: (res_type r = restype_throw);
+            [ rewrite T2 in I
+            | (*let I'' := fresh "R" in
+              asserts I'': (C2 = o0);
+                [ destruct (res_type r); tryfalse; auto*
+                | clear I; rename I'' into I]*)]*)]
     end
 
   end.
+
 
 (**************************************************************)
 (** Operations on objects *)
@@ -196,22 +208,19 @@ Proof.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
      if_unmonad ltac:(fun I => try inverts I).
-    match goal with
-    | I : match res_type ?r with
-          | restype_normal => ?C1
-          | restype_break => ?C2
-          | restype_continue => ?C3
-          | restype_return => ?C4
-          | restype_throw => ?C5
-          end = _,
-      I' : _ = result_normal (out_ter ?s ?r) |- _ =>
-      tests: (abort (out_ter s r)) end.
+      inverts R. forwards RC: IHs Eqo.
+       applys~ red_prog_1_cons_stat RC.
+       apply~ red_prog_2. rewrite~ EQrt. discriminate.
+       forwards RCE: IHel H0. skip. (*apply~ red_prog_3.*)
+       apply~ red_prog_abort. intro AB. inverts AB; tryfalse.
 
-       destruct (res_type r). skip.
-       inverts R. forwards RC: IHs Eqo.
-         applys~ red_prog_1_cons_stat RC.
-         apply~ red_prog_2. skip.
-         apply red_prog_abort. reflexivity.
+      asserts I: (out_ter s0 (res_overwrite_value_if_empty rv r)
+          = out_ter S' res).
+      sets_eq : (res_type r).
+      destruct X; tryfalse. inverts A. auto. inverts* R.
+
+       apply~ red_prog_2. skip.
+       apply red_prog_abort. reflexivity.
        skip.
      forwards RC: IHel R. apply~ red_prog_1_cons_funcdecl.
 
@@ -220,6 +229,7 @@ Proof.
 
    (* run_call_full *)
    intros l vs S C v S' res R. simpls.
+
    skip.
 
 Qed.

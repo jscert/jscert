@@ -103,7 +103,7 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
       red_prog S C (prog_3 (out_ter S (res_overwrite_value_if_empty rv R)) els) o ->
       red_prog S0 C (prog_2 rv (out_ter S R) els) o
 
-  | red_prog_3 : forall S0 S C rv els o,
+  | red_prog_3 : forall S0 S C rv els o, (* Are you sure this is a [rv] and not an [R]?  It seems really odd there. -- Martin. *)
       red_prog S C (prog_1 rv els) o ->
       red_prog S0 C (prog_3 (out_ter S rv) els) o
 
