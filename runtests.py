@@ -10,21 +10,6 @@ import signal
 import subprocess
 import os
 
-# Some pretty colours for our output messages.
-NORMAL = "\033[00m"
-HEADING = "\033[35m"
-PASS = "\033[32m"
-FAIL = "\033[31m"
-ABANDON = "\033[33m"
-
-def print_heading(s):
-    print HEADING+s+NORMAL
-def print_pass(s):
-    print PASS+s+NORMAL
-def print_fail(s):
-    print FAIL+s+NORMAL
-def print_abandon(s):
-    print ABANDON+s+NORMAL
 
 # Our command-line interface
 argp = argparse.ArgumentParser(
@@ -49,6 +34,118 @@ argp.add_argument("--interp_path", action="store", metavar="path",
 
 args = argp.parse_args()
 
+# Some handy data structures
+
+class TestResult:
+    """
+    A test result knows what file it came from, whether it passed, failed or
+    aborted, and what output it generated along the way.
+    """
+
+    # By default, we expect a pass to exit with code 0,
+    # and a fail to exit with code 1.
+    pass_code = 0
+    fail_code = 1
+
+    filename = ""
+    result = 0
+    stdout = ""
+    stderr = ""
+    negative = False
+
+    def __init__(self,filename,result,stdout,stderr):
+        # Are we testing on SpiderMonkey?
+        # That changes the meaning of result codes.
+        if args.spidermonkey:
+            self.fail_code = 3
+
+        self.filename = filename
+        self.result = result
+        self.stdout = stdout
+        self.stderr = stderr
+
+        # If this was a sputnik test, it may have expected to fail.
+        # If so, we will need to invert the return value later on.
+        with open(filename) as f:
+            # Report the result of this test
+            negative = "@negative" in f.read()
+
+    def passed(self):
+        if(self.negative):
+            return self.result==self.fail_code
+        else:
+            return self.result==self.pass_code
+    def failed(self):
+        if(self.negative):
+            return self.result==self.pass_code
+        else:
+            return self.result==self.fail_code
+    def aborted(self):
+        return not (self.passed() or self.failed())
+
+class ResultPrinter:
+
+    """
+    This class maintains the results of our test run, and provides methods to
+    report those results, on the command line or on the web.
+
+    """
+    # Some pretty colours for our output messages.
+    NORMAL = "\033[00m"
+    HEADING = "\033[35m"
+    PASS = "\033[32m"
+    FAIL = "\033[31m"
+    ABANDON = "\033[33m"
+
+    # Which tests passed, and which failed?
+    passed_tests = []
+    failed_tests = []
+    abandoned_tests = []
+
+    def print_heading(self,s):
+        print self.HEADING+s+self.NORMAL
+    def print_pass(self,s):
+        print self.PASS+s+self.NORMAL
+    def print_fail(self,s):
+        print self.FAIL+s+self.NORMAL
+    def print_abandon(self,s):
+        print self.ABANDON+s+self.NORMAL
+
+    def __record_results__(self,result):
+        if result.passed():
+            self.print_pass("Passed!")
+            self.passed_tests.append(result)
+        elif result.failed():
+            self.print_fail("Failed :/")
+            self.failed_tests.append(result)
+        elif result.aborted():
+            self.print_abandon("Aborted...")
+            self.abandoned_tests.append(result)
+        else:
+              print "Something really weird happened"
+              exit(1)
+
+    def start_test(self,filename):
+        self.print_heading(filename)
+        return lambda code,stdout,stderr: self.__record_results__(TestResult(filename,code,stdout,stderr))
+
+    def end_message(self):
+        if len(self.failed_tests)>0:
+            print "The following tests failed:"
+            for failure in self.failed_tests:
+                print failure.filename
+        if len(self.abandoned_tests)>0:
+            print "The following tests were abandoned"
+            for abandoned in self.abandoned_tests:
+                print abandoned.filename
+        print "There were "+str(len(self.passed_tests))+" passes, "+str(len(self.failed_tests))+"  fails, and "+str(len(self.abandoned_tests))+" abandoned."
+
+    def interrupt_handler(self,signal,frame):
+        print "Interrupted..."
+        self.end_message()
+        exit(1)
+
+
 # If no test files are specified, search for some and use them.
 if not args.filenames:
     for r,d,f in os.walk("."):
@@ -56,25 +153,10 @@ if not args.filenames:
             if filename.endswith(".js"):
                 args.filenames.append(os.path.join(r,filename))
 
-# Which tests passed, and which failed?
-passed_tests = []
-failed_tests = []
-abandoned_tests = []
+printer = ResultPrinter()
 
 # What to do if the user hits control-C
-def end_message(signal,frame):
-    print "Interrupted..."
-    if len(failed_tests)>0:
-        print "The following tests failed:"
-        for failure in failed_tests:
-            print failure
-    if len(abandoned_tests)>0:
-        print "The following tests were abandoned"
-        for abandoned in abandoned_tests:
-            print abandoned
-    exit(1)
-
-signal.signal(signal.SIGINT, end_message)
+signal.signal(signal.SIGINT, printer.interrupt_handler)
 
 # How should we run this test? With what?
 # By default, we do no setup or teardown, and the test runner is a plaintive echo.
@@ -82,12 +164,7 @@ setup = lambda : 0
 teardown = lambda : 0
 test_runner = lambda filename : ['echo "Something weird is happening!"']
 
-# By default, we expect a pass to exit with code 0, and a fail to exit with code 1.
-pass_code = 0
-fail_code = 1
-
 if args.spidermonkey:
-    fail_code = 3 # SpiderMonkey fails on 3.
     test_runner = lambda filename : [args.interp_path, filename]
 elif args.nodejs:
     test_runner = lambda filename : [args.interp_path, filename]
@@ -106,34 +183,16 @@ else:
 
 # Now let's get down to the business of running the tests
 for filename in args.filenames:
-    print_heading(filename)
     filename = os.path.abspath(filename)
+    current_test = printer.start_test(filename)
 
     setup()
-    ret = subprocess.call(test_runner(filename))
+
+    test_pipe = subprocess.Popen(test_runner(filename), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output,errors = test_pipe.communicate()
+    ret = test_pipe.returncode
     teardown()
 
-    passed = ret
+    current_test(ret,output,errors)
 
-    # If this was a sputnik test, it may have expected to fail.
-    # If so, we invert the return value.
-    with open(filename) as f:
-        if "@negative" in f.read():
-            if ret==pass_code :
-                passed = fail_code
-            elif ret==fail_code :
-                passed = pass_code
-
-    # Report the result of this test, and collate the results.
-    if passed==pass_code:
-        print_pass("Passed!")
-        passed_tests.append(filename)
-    elif passed==fail_code:
-        print_fail("Failed :/")
-        failed_tests.append(filename)
-    else:
-        # JSRef uses a third code for when something really odd happened.
-        print_abandon("Abandoned...")
-        abandoned_tests.append(filename)
-
-print "There were "+str(len(passed_tests))+" passes, "+str(len(failed_tests))+"  fails, and "+str(len(abandoned_tests))+" abandoned."
+printer.end_message()
