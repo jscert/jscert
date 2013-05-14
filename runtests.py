@@ -30,7 +30,27 @@ engines_grp.add_argument("--nodejs", action="store_true",
     help="Test node.js instead of JSRef. If you use this, you should probably also use --interp_path")
 
 argp.add_argument("--interp_path", action="store", metavar="path",
-                  default="interp/run_js", help="Where to find the interpreter.")
+                  default=os.path.join("interp","run_js"), help="Where to find the interpreter.")
+
+argp.add_argument("--webreport",action="store_true",
+    help="Produce a web-page of your results in the default web directory. Requires pystache.")
+
+argp.add_argument("--templatedir",action="store",metavar="path",
+    default=os.path.join(os.pardir,os.pardir,os.pardir,"web","test_results"),
+    help="Where to find our web-templates when producing reports")
+
+argp.add_argument("--reportdir",action="store",metavar="path",
+    default=os.path.join(os.pardir,os.pardir,os.pardir,"web","test_results"),
+    help="Where to put our test reports")
+
+argp.add_argument("--title",action="store",metavar="string", default="",
+    help="Optional title for this test. Will be used in the report filename, so no spaces please!")
+
+argp.add_argument("--note",action="store",metavar="string", default="",
+    help="Optional explanatory note to be added to the test report.")
+
+argp.add_argument("--noindex",action="store_true",
+    help="Don't attempt to build an index.html for the reportdir")
 
 args = argp.parse_args()
 
@@ -47,6 +67,7 @@ class TestResult:
     pass_code = 0
     fail_code = 1
 
+    testname = ""
     filename = ""
     result = 0
     stdout = ""
@@ -60,6 +81,7 @@ class TestResult:
             self.fail_code = 3
 
         self.filename = filename
+        self.testname = os.path.basename(filename)
         self.result = result
         self.stdout = stdout
         self.stderr = stderr
@@ -83,6 +105,12 @@ class TestResult:
     def aborted(self):
         return not (self.passed() or self.failed())
 
+    def report_dict(self):
+        return {"testname":self.testname,
+                "filename":self.filename,
+                "stdout":self.stdout,
+                "stderr":self.stderr}
+
 class ResultPrinter:
 
     """
@@ -100,7 +128,7 @@ class ResultPrinter:
     # Which tests passed, and which failed?
     passed_tests = []
     failed_tests = []
-    abandoned_tests = []
+    aborted_tests = []
 
     def print_heading(self,s):
         print self.HEADING+s+self.NORMAL
@@ -120,7 +148,7 @@ class ResultPrinter:
             self.failed_tests.append(result)
         elif result.aborted():
             self.print_abandon("Aborted...")
-            self.abandoned_tests.append(result)
+            self.aborted_tests.append(result)
         else:
               print "Something really weird happened"
               exit(1)
@@ -129,16 +157,73 @@ class ResultPrinter:
         self.print_heading(filename)
         return lambda code,stdout,stderr: self.__record_results__(TestResult(filename,code,stdout,stderr))
 
+    def produce_web_page(self):
+        import pystache
+        import time
+        import getpass
+
+        impl_name = "JSRef"
+        if args.spidermonkey: impl_name = "SpiderMonkey"
+        if args.nodejs: impl_name = "node.js"
+        if args.lambdaS5: impl_name = "LambdaS5"
+
+        (sysname, nodename, release, version, machine) = os.uname()
+
+        report = {"testtitle":args.title,
+                  "testnote":args.note,
+                  "implementation":impl_name,
+                  "system":sysname,
+                  "osnodename":nodename,
+                  "osrelease":release,
+                  "osversion":version,
+                  "hardware":machine,
+                  "time":time.asctime(time.gmtime()),
+                  "user":getpass.getuser(),
+                  "numpasses":len(self.passed_tests),
+                  "numfails":len(self.failed_tests),
+                  "numaborts":len(self.aborted_tests),
+                  "aborts":map(lambda x:x.report_dict() , self.aborted_tests),
+                  "failures":map(lambda x:x.report_dict() , self.failed_tests),
+                  "passes":map(lambda x:x.report_dict() , self.passed_tests)}
+
+        simplerenderer = pystache.Renderer(escape = lambda u: u)
+        with open(os.path.join(args.templatedir,"template.tmpl"),"r") as outer:
+            with open(os.path.join(args.templatedir,"test_results.tmpl"),"r") as template:
+                outfilenamebits = ["report",getpass.getuser(),impl_name]
+                if args.title : outfilenamebits.append(args.title)
+                outfilenamebits.extend([time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime())])
+                outfilename = "-".join(outfilenamebits)+".html"
+                with open(os.path.join(args.reportdir,outfilename),"w") as outfile:
+                    outfile.write(simplerenderer.render(outer.read(),{"body":pystache.render(template.read(),report)}))
+
+        if not args.noindex: self.index_reports()
+
+    def index_reports(self):
+        import pystache
+        import urllib
+        # Get a list of all non-index html files in the reportdir
+        filenames = filter(lambda x:x!="index.html",filter(lambda x:x.endswith(".html"),os.listdir(args.reportdir)))
+        filenames.sort()
+        filenames = map(lambda x:{"linkname":os.path.basename(x),"filename":urllib.quote(os.path.basename(x))},filenames)
+        simplerenderer = pystache.Renderer(escape = lambda u: u)
+        with open(os.path.join(args.templatedir,"template.tmpl"),"r") as outer:
+            with open(os.path.join(args.templatedir,"index.tmpl"),"r") as template:
+                with open(os.path.join(args.reportdir,"index.html"),"w") as outfile:
+                    outfile.write(simplerenderer.render(outer.read(),{"body":pystache.render(template.read(),{"testlist":filenames})}))
+
+
     def end_message(self):
         if len(self.failed_tests)>0:
             print "The following tests failed:"
             for failure in self.failed_tests:
                 print failure.filename
-        if len(self.abandoned_tests)>0:
+        if len(self.aborted_tests)>0:
             print "The following tests were abandoned"
-            for abandoned in self.abandoned_tests:
+            for abandoned in self.aborted_tests:
                 print abandoned.filename
-        print "There were "+str(len(self.passed_tests))+" passes, "+str(len(self.failed_tests))+"  fails, and "+str(len(self.abandoned_tests))+" abandoned."
+        print "There were "+str(len(self.passed_tests))+" passes, "+str(len(self.failed_tests))+"  fails, and "+str(len(self.aborted_tests))+" abandoned."
+        if args.webreport:
+            self.produce_web_page()
 
     def interrupt_handler(self,signal,frame):
         print "Interrupted..."
@@ -177,8 +262,9 @@ elif args.lambdaS5:
 else:
     test_runner = lambda filename : [args.interp_path,
                                      "-jsparser",
-                                     "interp/parser/lib/js_parser.jar",
-                                     "-test_prelude","interp/test_prelude.js",
+                                     os.path.join("interp","parser","lib","js_parser.jar"),
+                                     "-test_prelude",
+                                     os.path.join("interp","test_prelude.js"),
                                      "-file",filename]
 
 # Now let's get down to the business of running the tests
@@ -190,6 +276,8 @@ for filename in args.filenames:
 
     test_pipe = subprocess.Popen(test_runner(filename), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output,errors = test_pipe.communicate()
+    output = output.decode("utf8").encode("ascii","xmlcharrefreplace")
+    errors = errors.decode("utf8").encode("ascii","xmlcharrefreplace")
     ret = test_pipe.returncode
     teardown()
 

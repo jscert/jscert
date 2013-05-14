@@ -89,13 +89,36 @@ LAMBDAS5 variable to point to your install. Finally, you can run
 
  $ make run_tests_lambdaS5
 
+*********************************************************************
+GENERATING TEST REPORTS
+
 If you want to generate a pretty web page that presents all the
 results of the test run, you'll first need to install pystache:
 
  $ pip install --user pystache
  $ pystache-test
 
- .....TODO... What else?
+Now you can run
+
+ $ ./runtests.py --webreport
+
+This will run exactly the same tests as the makefile, but it will also
+generate a new results page in the web directory of the repo, and add
+this page to the web index. You can see all the reports we have
+generated so far by browsing to jscert/web/test_results/index.html
+
+Try running:
+
+ $ ./runtests.py --help
+
+to see what options are available. Notice in particular that you can
+choose to run only a subset of the available tests, give this testrun
+a title, and add a note explaining why that subset is interesting.
+
+For example, you may wish to run only the tests in the "more_tests"
+directory:
+
+ $ ./runtests.py --webreport --title more-tests --note "These 'more-tests' show up a fascinating behaviour!" tests/more-tests/*.js
 
 *********************************************************************
 USING THE CERTIFIED INTERPRETER		(* TODO:  Update *)
