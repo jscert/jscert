@@ -128,13 +128,23 @@ Ltac if_unmonad k :=
     sets_eq <- o' Eqo': o;
     destruct o' as [o''| |]; cbv beta in I;
       [destruct o'';
-        [ k I |]
+        [k I|]
       | k I | k I]
 
   | I : if_success_state ?rv ?o ?K = ?o0 |- ?g =>
     unfold if_success_state in I;
     if_unmonad k;
-    idtac
+    match goal with
+    | I : match res_type ?r with
+          | restype_normal => ?C1
+          | restype_break => ?C2
+          | restype_continue => ?C3
+          | restype_return => ?C4
+          | restype_throw => ?C5
+          end = _ |- _ =>
+      tests: (abort r)
+    | _ => idtac
+    end
 
   end.
 
@@ -185,7 +195,18 @@ Proof.
    intros rv S C es S' res R. destruct es; simpls.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
-     unfold if_success_state in R. if_unmonad ltac:(fun I => try inverts I).
+     if_unmonad ltac:(fun I => try inverts I).
+    match goal with
+    | I : match res_type ?r with
+          | restype_normal => ?C1
+          | restype_break => ?C2
+          | restype_continue => ?C3
+          | restype_return => ?C4
+          | restype_throw => ?C5
+          end = _,
+      I' : _ = result_normal (out_ter ?s ?r) |- _ =>
+      tests: (abort (out_ter s r)) end.
+
        destruct (res_type r). skip.
        inverts R. forwards RC: IHs Eqo.
          applys~ red_prog_1_cons_stat RC.
