@@ -2456,197 +2456,196 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_prop_descriptor_from_prop_descriptor_8 (out_void S') l) (out_ter S' l)
 
 (**  ToPropertyDescriptor ( Obj ) - return Descriptor (8.10.5) *)    
-
-  (* Daniele: this is extremely long and there are lot of repetitions. Maybe it needs to be factorized somehow? *)
-  (* Daniele: it is commented because the last line of the last rule (the one that returns) doesn't work. See comment there... *)
-  (*
-  | red_spec_prop_descriptor_to_prop_descriptor_not_object : forall S C v o, (* Step 1 *)
+  
+  | red_spec_prop_descriptor_to_prop_descriptor_not_object : forall S C K v o, (* Step 1 *)
       type_of v <> type_object ->
       red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor v) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor v K) o
 
-  | red_spec_prop_descriptor_to_prop_descriptor_object : forall S C l xs x o Desc, (* Step 2 *)
+  | red_spec_prop_descriptor_to_prop_descriptor_object : forall S C l K xs x o Desc, (* Step 2 *)
       Desc = descriptor_intro_empty ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor l) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor l K) o
 
   (*---*)
 
-  | red_spec_prop_descriptor_to_prop_descriptor_1 : forall S C o o1 l Desc, 
+  | red_spec_prop_descriptor_to_prop_descriptor_1 : forall S C K o o1 l Desc, 
       red_expr S C (spec_object_has_prop l "enumerable") o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_2 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_1 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_2 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_1 l Desc K) o
 
-  | red_spec_prop_descriptor_to_prop_descriptor_2_enumerable : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_2_enumerable : forall S C K o o1 l Desc,
       red_expr S C (spec_object_get l "enumerable")  o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_3 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_2 (out_ter S true) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_3 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_2 (out_ter S true) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_3 : forall S C o o1 l v Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_3 : forall S C K o o1 l v Desc,
       red_expr S C (spec_to_boolean v) o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_4 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_3 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_4 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_3 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_4 : forall S C o l b Desc Desc',
+  | red_spec_prop_descriptor_to_prop_descriptor_4 : forall S C K o l b Desc Desc',
       Desc' = descriptor_with_enumerable Desc (Some b) ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_5 l Desc') o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_4 (out_ter S b) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_5 l Desc' K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_4 (out_ter S b) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_2_not_enumerable : forall S C o l Desc,
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_5 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_2 (out_ter S false) l Desc) o 
+  | red_spec_prop_descriptor_to_prop_descriptor_2_not_enumerable : forall S C K o l Desc,
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_5 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_2 (out_ter S false) l Desc K) o 
 
   (*---*)
 
-  | red_spec_prop_descriptor_to_prop_descriptor_5 : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_5 : forall S C K o o1 l Desc,
       red_expr S C (spec_object_has_prop l "configurable") o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_6 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_5 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_6 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_5 l Desc K) o
 
-  | red_spec_prop_descriptor_to_prop_descriptor_6_configurable : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_6_configurable : forall S C K o o1 l Desc,
       red_expr S C (spec_object_get l "configurable")  o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_7 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_6 (out_ter S true) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_7 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_6 (out_ter S true) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_7 : forall S C o o1 l v Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_7 : forall S C K o o1 l v Desc,
       red_expr S C (spec_to_boolean v) o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_8 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_7 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_8 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_7 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_8 : forall S C o o1 l b Desc Desc',
+  | red_spec_prop_descriptor_to_prop_descriptor_8 : forall S C K o o1 l b Desc Desc',
       Desc' = descriptor_with_configurable Desc (Some b) ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_9 l Desc') o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_8 (out_ter S b) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_9 l Desc' K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_8 (out_ter S b) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_6_not_configurable : forall S C o o1 l Desc,
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_9 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_6 (out_ter S false) l Desc) o 
+  | red_spec_prop_descriptor_to_prop_descriptor_6_not_configurable : forall S C K o o1 l Desc,
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_9 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_6 (out_ter S false) l Desc K) o 
 
  (*---*)
 
-  | red_spec_prop_descriptor_to_prop_descriptor_9 : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_9 : forall S C K o o1 l Desc,
       red_expr S C (spec_object_has_prop l "value") o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_10 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_9 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_10 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_9 l Desc K) o
 
-  | red_spec_prop_descriptor_to_prop_descriptor_10_value : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_10_value : forall S C K o o1 l Desc,
       red_expr S C (spec_object_get l "value")  o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_11 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_10 (out_ter S true) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_11 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_10 (out_ter S true) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_11 : forall S C o o1 l v Desc Desc',
+  | red_spec_prop_descriptor_to_prop_descriptor_11 : forall S C K o o1 l v Desc Desc',
       Desc' = descriptor_with_value Desc (Some v) ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_12 l Desc') o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_11 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_12 l Desc' K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_11 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_10_not_value : forall S C o o1 l Desc,
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_12 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_10 (out_ter S false) l Desc) o 
+  | red_spec_prop_descriptor_to_prop_descriptor_10_not_value : forall S C K o o1 l Desc,
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_12 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_10 (out_ter S false) l Desc K) o 
 
   (*---*)
 
-  | red_spec_prop_descriptor_to_prop_descriptor_12 : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_12 : forall S C K o o1 l Desc,
       red_expr S C (spec_object_has_prop l "writable") o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_13 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_12 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_13 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_12 l Desc K) o
 
-  | red_spec_prop_descriptor_to_prop_descriptor_13_writable : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_13_writable : forall S C K o o1 l Desc,
       red_expr S C (spec_object_get l "writable")  o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_14 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_13 (out_ter S true) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_14 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_13 (out_ter S true) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_14 : forall S C o o1 l v Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_14 : forall S C K o o1 l v Desc,
       red_expr S C (spec_to_boolean v) o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_15 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_14 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_15 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_14 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_15 : forall S C o l b Desc Desc',
+  | red_spec_prop_descriptor_to_prop_descriptor_15 : forall S C K o l b Desc Desc',
       Desc' = descriptor_with_writable Desc (Some b) ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_16 l Desc') o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_15 (out_ter S b) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_16 l Desc' K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_15 (out_ter S b) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_13_not_writable : forall S C o o1 l Desc,
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_16 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_13 (out_ter S false) l Desc) o 
+  | red_spec_prop_descriptor_to_prop_descriptor_13_not_writable : forall S C K o o1 l Desc,
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_16 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_13 (out_ter S false) l Desc K) o 
 
 (*---*)
 
-  | red_spec_prop_descriptor_to_prop_descriptor_16 :forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_16 :forall S C K o o1 l Desc,
       red_expr S C (spec_object_has_prop l "get") o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_17 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_16 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_17 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_16 l Desc K) o
 
-  | red_spec_prop_descriptor_to_prop_descriptor_17_get : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_17_get : forall S C K o o1 l Desc,
       red_expr S C (spec_object_get l "get")  o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_18 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_17 (out_ter S true) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_18 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_17 (out_ter S true) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_18_error : forall S C o o1 l v Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_18_error : forall S C K o o1 l v Desc,
       (is_callable S v) = false /\ ~(v = undef) ->
       red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_18 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_18 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_18_ok : forall S C o l v Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_18_ok : forall S C K o l v Desc,
       is_callable S v = true \/ v = undef ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_19 v l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_18 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_19 v l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_18 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_19 : forall S C o l v Desc Desc',
+  | red_spec_prop_descriptor_to_prop_descriptor_19 : forall S C K o l v Desc Desc',
       Desc' = descriptor_with_get Desc (Some v) ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_20 l Desc') o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_19 v l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_20 l Desc' K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_19 v l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_17_not_get : forall S C o o1 l Desc,
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_20 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_17 (out_ter S false) l Desc) o 
+  | red_spec_prop_descriptor_to_prop_descriptor_17_not_get : forall S C K o o1 l Desc,
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_20 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_17 (out_ter S false) l Desc K) o 
 
 (*---*)
 
-  | red_spec_prop_descriptor_to_prop_descriptor_20 : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_20 : forall S C K o o1 l Desc,
       red_expr S C (spec_object_has_prop l "get") o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_21 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_20 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_21 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_20 l Desc K) o
 
-  | red_spec_prop_descriptor_to_prop_descriptor_21_set : forall S C o o1 l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_21_set : forall S C K o o1 l Desc,
       red_expr S C (spec_object_get l "get")  o1 ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_22 o1 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_21 (out_ter S true) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_22 o1 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_21 (out_ter S true) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_22_error : forall S C o l v Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_22_error : forall S C K o l v Desc,
       is_callable S v = false /\ ~ (v = undef) ->
       red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_22 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_22 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_22_ok : forall S C o l v Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_22_ok : forall S C K o l v Desc,
       is_callable S v = true \/ v = undef ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_23 v l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_22 (out_ter S v) l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_23 v l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_22 (out_ter S v) l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_23 : forall S C o l v Desc Desc',
+  | red_spec_prop_descriptor_to_prop_descriptor_23 : forall S C K o l v Desc Desc',
       Desc' = descriptor_with_get Desc (Some v) ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc') o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_23 v l Desc) o 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc' K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_23 v l Desc K) o 
 
-  | red_spec_prop_descriptor_to_prop_descriptor_21_not_set : forall S C o o1 l Desc,
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_21 (out_ter S false) l Desc) o 
+  | red_spec_prop_descriptor_to_prop_descriptor_21_not_set : forall S C K o o1 l Desc,
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc K) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_21 (out_ter S false) l Desc K) o 
 
 (*---*)
 
-  | red_spec_prop_descriptor_to_prop_descriptor_24_true : forall S C o v v' l Desc,
+  | red_spec_prop_descriptor_to_prop_descriptor_24_true : forall S C K o v v' l Desc,
       (descriptor_get Desc = Some v \/ descriptor_set Desc = Some v') ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_25 l Desc) o -> 
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_25 l Desc K) o -> 
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc K) o
 
-| red_spec_prop_descriptor_to_prop_descriptor_25 : forall S C o o1 v b l Desc,
+| red_spec_prop_descriptor_to_prop_descriptor_25 : forall S C K o o1 v b l Desc,
       (descriptor_value Desc = Some v \/ descriptor_writable Desc = Some b) ->
       red_expr S C (spec_error prealloc_type_error) o ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_25 l Desc) o
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_25 l Desc K) o
 
-| red_spec_prop_descriptor_to_prop_descriptor_24_false : forall S C o o1 l Desc,
+| red_spec_prop_descriptor_to_prop_descriptor_24_false : forall S C K o o1 l Desc,
       (descriptor_get Desc = None  /\ descriptor_set Desc = None) ->
-      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc) (out_ter S Desc) (* Daniele: The spec says we have to return Desc. How to do it?! *)
-*)
+      red_expr S C (K Desc) o ->
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor_24 l Desc K) o
+
+
 (**************************************************************)
 (** ** Reduction rules for builtin functions *)
 
@@ -2976,6 +2975,34 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_extensible S l b -> 
       red_expr S C (spec_call_object_is_extensible_1 l) (out_ter S b)
 
+  (** Object.defineProperty (returns object) (15.2.3.6) *)
+
+  | red_spec_call_object_object_define_prop : forall S C vo vx va o args, (* step 0 *)
+      arguments_from args (vo::vx::va::nil) ->
+      red_expr S C (spec_call_object_define_prop_1 vo vx va) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_define_prop args) o
+ 
+  | red_spec_call_object_object_define_prop_1_not_object : forall S C vo vx va o, (* step 1 *)
+      type_of vo <> type_object ->
+      red_expr S C (spec_error prealloc_type_error) o ->
+      red_expr S C (spec_call_object_define_prop_1 vo vx va) o
+
+  | red_spec_call_object_object_define_prop_1_object : forall S C l vx va o o1 , (* step 2 *)
+      red_expr S C (spec_to_string vx) o1 ->
+      red_expr S C (spec_call_object_define_prop_2 l o1 va) o ->
+      red_expr S C (spec_call_object_define_prop_1 l vx va) o
+ 
+  | red_spec_call_object_object_define_prop_2 : forall S C l s la o, (* step 3 *)
+      red_expr S C (spec_prop_descriptor_to_prop_descriptor la (spec_call_object_define_prop_3 l s)) o -> (* Daniele: 'spec_prop_descriptor_to_prop_descriptor' ( (8.10.5)) is supposed to take an object as argument. But the spec for 'define_prop' doesn't say what happens if the initial argument (va here) is not an object. In this rule match the case that it is an object. Don't know what happens otherwise.  *)
+      red_expr S C (spec_call_object_define_prop_2 l (out_ter S s) la) o
+ 
+  | red_spec_call_object_object_define_prop_3 : forall S C l s Desc o1 o, (* step 4 *)
+      red_expr S C (spec_object_define_own_prop l s Desc throw_true) o1 ->
+      red_expr S C (spec_call_object_define_prop_4 l o1) o ->
+      red_expr S C (spec_call_object_define_prop_3 l s Desc) o
+ 
+  | red_spec_call_object_object_define_prop_4  : forall S0 S C xs l x o o1, (* Step 5, loop *)
+      red_expr S0 C (spec_call_object_define_prop_4 l (out_void S)) (out_ter S l)
 
 (*------------------------------------------------------------*)
 (** ** Object prototype builtin functions (15.2.3) *)

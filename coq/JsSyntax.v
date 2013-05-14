@@ -207,7 +207,7 @@ Inductive prealloc :=
   | prealloc_object_get_own_prop_descriptor  (* LATER: support *)
   | prealloc_object_get_own_prop_name  (* LATER: support *)
   | prealloc_object_create  (* LATER: support *)
-  | prealloc_object_define_prop  (* LATER: support *)
+  | prealloc_object_define_prop
   | prealloc_object_define_properties  (* LATER: support *)
   | prealloc_object_seal
   | prealloc_object_freeze
