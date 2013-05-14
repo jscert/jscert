@@ -3,22 +3,6 @@ Require Import Shared.
 Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 
-(* todo: move below in the file *)
-
-(** [out_error_or_cst S str B R] throws the builtin B if
-    [str] is true, the value [R] otherwise. *)
-
-Definition out_error_or_cst S str B R :=
-  if str then out_ter S (res_throw B)
-  else out_ter S R.
-
-(** [out_error_or_cst S str B R] throws the builtin B if
-    [str] is true, empty otherwise. *)
-
-Definition out_error_or_void S str B :=
-  if str then out_ter S (res_throw B)
-  else out_void S.
-
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -65,6 +49,7 @@ Implicit Type t : stat.
 
 
 Implicit Type Z : Type.
+
 
 (**************************************************************)
 (** ** Structure of This File *)
@@ -127,6 +112,20 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 
 (**************************************************************)
 (** Error Handling *)
+
+(** [out_error_or_cst S str B R] throws the builtin B if
+    [str] is true, the value [R] otherwise. *)
+
+Definition out_error_or_cst S str B R :=
+  if str then out_ter S (res_throw B)
+  else out_ter S R.
+
+(** [out_error_or_cst S str B R] throws the builtin B if
+    [str] is true, empty otherwise. *)
+
+Definition out_error_or_void S str B :=
+  if str then out_ter S (res_throw B)
+  else out_void S.
 
 Definition run_error S (B : prealloc) : result :=
   match B with
