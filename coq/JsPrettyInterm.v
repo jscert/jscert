@@ -74,11 +74,11 @@ Inductive ext_expr :=
   | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_4 : object_loc -> string -> attributes -> propdefs -> ext_expr
   | expr_object_5 : object_loc -> propdefs -> out -> ext_expr
-  
+
   | expr_function_1 : string -> list string -> funcbody -> env_loc -> lexical_env -> out -> ext_expr
   | expr_function_2 : string -> env_loc -> out -> ext_expr
   | expr_function_3 : object_loc -> out -> ext_expr
-  
+
   | expr_access_1 : out -> expr -> ext_expr (* The left expression has been executed *)
   | expr_access_2 : value -> out -> ext_expr (* The right expression is executed. *)
   | expr_access_3 : value -> out -> value -> ext_expr
@@ -87,12 +87,12 @@ Inductive ext_expr :=
   | expr_new_1 : out -> list expr -> ext_expr (* The arguments too. *)
   | expr_new_2 : value -> list value -> ext_expr (* The call has been executed. *)
 
-  | expr_call_1 : out -> bool -> list expr -> ext_expr 
+  | expr_call_1 : out -> bool -> list expr -> ext_expr
   | expr_call_2 : res -> bool -> list expr -> out -> ext_expr (* The function has been evaluated. *)
   | expr_call_3 : res -> value -> bool -> list value -> ext_expr (* The arguments have been executed. *)
   | expr_call_4 : res -> object_loc -> bool -> list value -> ext_expr
   | expr_call_5 : object_loc -> bool -> list value -> out -> ext_expr (* The call has been executed. *)
-  
+
   | spec_eval : bool -> value -> list value -> ext_expr (* TODO *)
 
   | expr_unary_op_1 : unary_op -> out -> ext_expr (* The argument have been executed. *)
@@ -225,13 +225,13 @@ Inductive ext_expr :=
   | spec_object_define_own_prop_5 : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_6a : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_6b : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
-  | spec_object_define_own_prop_6c : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr  
+  | spec_object_define_own_prop_6c : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_reject : bool -> ext_expr
   | spec_object_define_own_prop_write : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
 
   | spec_prim_value_get : value -> prop_name -> ext_expr
   | spec_prim_value_get_1 : value -> prop_name -> out -> ext_expr
-  
+
   | spec_prim_value_put : value -> prop_name -> value -> bool -> ext_expr
   | spec_prim_value_put_1 : prim -> prop_name -> value -> bool -> out -> ext_expr
 
@@ -253,10 +253,10 @@ Inductive ext_expr :=
 
   (** Shorthand for calling [red_expr] then [ref_get_value] *)
 
-  | spec_expr_get_value : expr -> ext_expr 
+  | spec_expr_get_value : expr -> ext_expr
   | spec_expr_get_value_1 : out -> ext_expr
-  | spec_expr_get_value_conv : (value -> ext_expr) -> expr -> ext_expr 
-  | spec_expr_get_value_conv_1 : (value -> ext_expr) -> out -> ext_expr 
+  | spec_expr_get_value_conv : (value -> ext_expr) -> expr -> ext_expr
+  | spec_expr_get_value_conv_1 : (value -> ext_expr) -> out -> ext_expr
 
   (** Extended expressions for operations on environment records *)
 
@@ -303,7 +303,7 @@ Inductive ext_expr :=
   | spec_prop_descriptor_from_prop_descriptor_8 : out -> object_loc -> ext_expr
 
   | spec_prop_descriptor_to_prop_descriptor : value -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_1 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                       
+  | spec_prop_descriptor_to_prop_descriptor_1 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
   | spec_prop_descriptor_to_prop_descriptor_2 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
   | spec_prop_descriptor_to_prop_descriptor_3 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
   | spec_prop_descriptor_to_prop_descriptor_4 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
@@ -329,13 +329,13 @@ Inductive ext_expr :=
   | spec_prop_descriptor_to_prop_descriptor_24 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
   | spec_prop_descriptor_to_prop_descriptor_25 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
 
-                                     
+                                 
   (** Extented expressions for eval *)
-  
+
   | spec_entering_eval_code : bool -> funcbody -> ext_expr -> ext_expr
   | spec_entering_eval_code_1 : funcbody -> ext_expr -> ext_expr
   | spec_entering_eval_code_2 : out -> ext_expr -> ext_expr
-  
+
   | spec_call_global_eval : bool -> list value -> ext_expr
   | spec_call_global_eval_1 : bool -> value -> ext_expr
   | spec_call_global_eval_2 : prog -> ext_expr
@@ -348,7 +348,7 @@ Inductive ext_expr :=
   | spec_entering_func_code_2 : object_loc -> list value -> funcbody -> out -> ext_expr -> ext_expr
   | spec_entering_func_code_3 : object_loc -> list value -> strictness_flag -> funcbody -> value -> ext_expr -> ext_expr
   | spec_entering_func_code_4 : out -> ext_expr -> ext_expr
-  
+
   | spec_binding_inst_formal_params : list value -> env_loc -> list string -> strictness_flag -> ext_expr
   | spec_binding_inst_formal_params_1 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
   | spec_binding_inst_formal_params_2 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
@@ -368,7 +368,7 @@ Inductive ext_expr :=
   | spec_binding_inst_var_decls_1 : env_loc -> string -> list string -> bool -> strictness_flag -> out -> ext_expr
   | spec_binding_inst_var_decls_2 : env_loc -> list string -> bool -> strictness_flag -> out -> ext_expr
   | spec_binding_inst : codetype -> option object_loc -> prog -> list value -> ext_expr
-  | spec_binding_inst_1 : codetype -> option object_loc -> prog -> list value -> env_loc -> ext_expr 
+  | spec_binding_inst_1 : codetype -> option object_loc -> prog -> list value -> env_loc -> ext_expr
   | spec_binding_inst_2 : codetype -> object_loc -> prog -> list string -> list value -> env_loc -> out -> ext_expr
   | spec_binding_inst_3 : codetype -> option object_loc -> prog -> list string -> list value -> env_loc -> ext_expr
   | spec_binding_inst_4 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> out -> ext_expr
@@ -376,9 +376,9 @@ Inductive ext_expr :=
   | spec_binding_inst_6 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_7 : prog -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_8 : prog -> bool -> env_loc -> ext_expr
-  
+
   | spec_create_arguments_object : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
-  
+
   (* Functions *)
 
   | spec_object_has_instance : object_loc -> value -> ext_expr
@@ -394,7 +394,7 @@ Inductive ext_expr :=
   | spec_error : prealloc -> ext_expr (* todo: reduction rules *)
   | spec_error_or_cst : bool -> prealloc -> value -> ext_expr (* todo: reduction rules *)
   | spec_error_or_void : bool -> prealloc -> ext_expr (* todo: reduction rules *)
-  
+
   | spec_init_throw_type_error : ext_expr
   | spec_init_throw_type_error_1 : out -> ext_expr
 
@@ -402,10 +402,10 @@ Inductive ext_expr :=
 
   | spec_new_object : (object_loc -> ext_expr) -> ext_expr
   | spec_new_object_1 : out -> (object_loc -> ext_expr) -> ext_expr
-  
+
   | spec_prim_new_object : prim -> ext_expr
 
-  (* Auxiliary reduction for creating function object steps 16 - 18 *) 
+  (* Auxiliary reduction for creating function object steps 16 - 18 *)
   | spec_creating_function_object_proto : object_loc -> ext_expr
   | spec_creating_function_object_proto_1 : object_loc -> out -> ext_expr
   | spec_creating_function_object_proto_2 : object_loc -> object_loc -> out -> ext_expr
@@ -415,7 +415,7 @@ Inductive ext_expr :=
   | spec_creating_function_object_2 : strictness_flag -> object_loc -> out -> ext_expr
   | spec_creating_function_object_3 : object_loc -> out -> ext_expr
   | spec_creating_function_object_4 : object_loc -> out -> ext_expr
-  
+
   (* Function creation in give execution context*)
   | spec_create_new_function_in :  execution_ctx -> list string -> funcbody -> ext_expr
 
@@ -423,29 +423,29 @@ Inductive ext_expr :=
   (* TODO: get rid of this: | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr *)
   | spec_call : object_loc -> value -> list value -> ext_expr (* object with the call method, this value, arguments *)
   | spec_call_1 : call -> object_loc -> value -> list value -> ext_expr
-  
+
   | spec_call_prealloc : prealloc -> list value -> ext_expr
-  
+
   | spec_call_default : object_loc -> value -> list value -> ext_expr
   | spec_call_default_1 : object_loc -> ext_expr
   | spec_call_default_2 : option funcbody -> ext_expr
   | spec_call_default_3 : out -> ext_expr
-  
+
   | spec_construct : object_loc -> list value -> ext_expr
   | spec_construct_1 : construct -> object_loc -> list value -> ext_expr
-  
+
   | spec_construct_prealloc : prealloc -> list value -> ext_expr (* todo??*)
-  
+
   | spec_construct_default : object_loc -> list value -> ext_expr
   | spec_construct_default_1 : object_loc -> list value -> out -> ext_expr
   | spec_construct_default_2 : object_loc -> out -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
   (* TODO: rename all the spec_call into spec_builtin *)
-  
+
   | spec_call_global_is_nan_1 : out -> ext_expr
   | spec_call_global_is_finite_1 : out -> ext_expr
- 
+
   | spec_call_object_call_1 : value -> ext_expr
   | spec_call_object_new_1 : value -> ext_expr
   | spec_call_object_get_proto_of_1 : value -> ext_expr
@@ -459,7 +459,7 @@ Inductive ext_expr :=
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : object_loc -> list prop_name -> ext_expr
   | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> full_descriptor -> ext_expr
-  
+
   | spec_call_object_freeze_1 : value -> ext_expr
   | spec_call_object_freeze_2 : object_loc -> list prop_name -> ext_expr
   | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
@@ -485,31 +485,31 @@ Inductive ext_expr :=
   | spec_call_object_proto_to_string_2 : out -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_1 : value -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_2 : out -> object_loc -> ext_expr
-  | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr 
-  | spec_call_object_proto_is_prototype_of_2_4 : object_loc -> value -> ext_expr 
- 
+  | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr
+  | spec_call_object_proto_is_prototype_of_2_4 : object_loc -> value -> ext_expr
+
   | spec_call_object_proto_prop_is_enumerable_1 : value -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_2 : out -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_4 : full_descriptor -> ext_expr
-      
-  | spec_call_bool_new_1 : out -> ext_expr 
+  
+  | spec_call_bool_new_1 : out -> ext_expr
   | spec_call_bool_proto_to_string_1 : out -> ext_expr
   | spec_call_bool_proto_value_of_1 : value -> ext_expr
   | spec_call_bool_proto_value_of_2 : value -> ext_expr
- 
+
   | spec_call_number_proto_to_string_1 : value -> list value -> ext_expr
   | spec_call_number_proto_to_string_2 : value -> out -> ext_expr
   | spec_call_number_new_1 : out -> ext_expr
   | spec_call_number_proto_value_of_1 : value -> ext_expr
- 
-  
 
 
 
 
 
-  (** Special state for returning an outcome *)   
+
+
+  (** Special state for returning an outcome *)
 
   | spec_returns : out -> ext_expr
 
@@ -523,7 +523,7 @@ with ext_stat :=
 
   (** Extended statements associated with primitive statements *)
 
-  | stat_block_1 : resvalue -> list stat -> ext_stat 
+  | stat_block_1 : resvalue -> list stat -> ext_stat
   | stat_block_2 : resvalue -> out -> list stat -> ext_stat
   | stat_block_3 : out -> list stat -> ext_stat
 
@@ -537,14 +537,14 @@ with ext_stat :=
 
   | stat_if_1 : value -> stat -> option stat -> ext_stat
 
-  | stat_while_1 : label_set -> expr -> stat -> resvalue -> ext_stat 
-  | stat_while_2 : label_set -> expr -> stat -> resvalue -> value -> ext_stat 
-  | stat_while_3 : label_set -> expr -> stat -> resvalue -> out -> ext_stat 
-  | stat_while_4 : label_set -> expr -> stat -> resvalue -> res -> ext_stat 
-  
-  | stat_do_while_1 : label_set -> stat ->  expr -> resvalue -> ext_stat 
+  | stat_while_1 : label_set -> expr -> stat -> resvalue -> ext_stat
+  | stat_while_2 : label_set -> expr -> stat -> resvalue -> value -> ext_stat
+  | stat_while_3 : label_set -> expr -> stat -> resvalue -> out -> ext_stat
+  | stat_while_4 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
+
+  | stat_do_while_1 : label_set -> stat ->  expr -> resvalue -> ext_stat
   | stat_do_while_2 : label_set -> stat ->  expr -> resvalue -> out -> ext_stat
-  | stat_do_while_3 : label_set -> stat ->  expr -> resvalue -> res -> ext_stat 
+  | stat_do_while_3 : label_set -> stat ->  expr -> resvalue -> res -> ext_stat
   | stat_do_while_4 : label_set -> stat ->  expr -> resvalue -> ext_stat
   | stat_do_while_5 : label_set -> stat ->  expr -> resvalue -> value -> ext_stat
 
@@ -571,18 +571,18 @@ with ext_stat :=
   | stat_try_3 : out -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
   | stat_try_4 : res -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
   | stat_try_5 : res -> out -> ext_stat (* The finally has been executed. *)
-  
+
   (* Auxiliary forms for performing [red_expr] then [ref_get_value] and a conversion *)
 
   | spec_expr_get_value_conv_stat : expr -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
   | spec_expr_get_value_conv_stat_1 : out -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
   | spec_expr_get_value_conv_stat_2 : out -> (value -> ext_stat) -> ext_stat
- 
+
 
 (** Grammar of extended programs *)
 
 with ext_prog :=
- 
+
   | prog_basic : prog -> ext_prog
   | prog_1 : resvalue -> elements -> ext_prog
   | prog_2 : resvalue -> out -> elements -> ext_prog
@@ -614,42 +614,42 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   match e with
   | expr_basic _ => None
 
-  | expr_list_then _ _ => None 
-  | expr_list_then_1 _ _ _ => None 
+  | expr_list_then _ _ => None
+  | expr_list_then_1 _ _ _ => None
   | expr_list_then_2 _ _ o _ => Some o
 
   | expr_object_0 o _ => Some o
   | expr_object_1 _ _ => None
-  | expr_object_2 _ _ _ _ => None 
+  | expr_object_2 _ _ _ _ => None
   | expr_object_3 _ _ o _ => Some o
   | expr_object_3_val _ _ o _ => Some o
   | expr_object_3_get _ _ o _ => Some o
   | expr_object_3_set _ _ o _ => Some o
   | expr_object_4 _ _ _ _ => None
   | expr_object_5 _ _ o => Some o
-  
+
   | expr_function_1 _ _ _ _ _ o => Some o
   | expr_function_2 _ _ o => Some o
   | expr_function_3 _ o => Some o
-  
+
   | expr_access_1 o _ => Some o
   | expr_access_2 _ o => Some o
   | expr_access_3 _ o _ => Some o
   | expr_access_4 _ o => Some o
 
   | expr_new_1 o _ => Some o
-  | expr_new_2 _ _ => None 
+  | expr_new_2 _ _ => None
 
   | expr_call_1 o _ _ => Some o
   | expr_call_2 _ _ _ o => Some o
-  | expr_call_3 _ _ _ _ => None 
+  | expr_call_3 _ _ _ _ => None
   | expr_call_4 _ _ _ _ => None
   | expr_call_5 _ _ _ o => Some o
-  
-  | spec_eval _ _ _ => None 
+
+  | spec_eval _ _ _ => None
 
   | expr_unary_op_1 _ o => Some o
-  | expr_unary_op_2 _ _ => None 
+  | expr_unary_op_2 _ _ => None
   | expr_delete_1 o => Some o
   | expr_delete_2 _ o => Some o
   | expr_typeof_1 o => Some o
@@ -769,22 +769,22 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_object_define_own_prop_5 _ _ _ _ _ => None
   | spec_object_define_own_prop_6a _ _ _ _ _ => None
   | spec_object_define_own_prop_6b _ _ _ _ _ => None
-  | spec_object_define_own_prop_6c _ _ _ _ _ => None  
+  | spec_object_define_own_prop_6c _ _ _ _ _ => None
   | spec_object_define_own_prop_reject _ => None
   | spec_object_define_own_prop_write _ _ _ _ _ => None
 
   | spec_prim_value_get _ _ => None
   | spec_prim_value_get_1 _ _ o => Some o
-  
+
   | spec_prim_value_put _ _ _ _ => None
   | spec_prim_value_put_1 _ _ _ _ o => Some o
 
   | spec_get_value _ => None
   | spec_put_value _ _ => None
 
-  | spec_expr_get_value _ => None 
+  | spec_expr_get_value _ => None
   | spec_expr_get_value_1 o => Some o
-  | spec_expr_get_value_conv _ _ => None 
+  | spec_expr_get_value_conv _ _ => None
   | spec_expr_get_value_conv_1 _ o => Some o
 
   | spec_env_record_has_binding _ _ => None
@@ -825,37 +825,37 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_prop_descriptor_from_prop_descriptor_7 o _ _ => Some o
   | spec_prop_descriptor_from_prop_descriptor_8 o _ => Some o
 
-  | spec_prop_descriptor_to_prop_descriptor _ => None
-  | spec_prop_descriptor_to_prop_descriptor_1 _ _ => None                                          
-  | spec_prop_descriptor_to_prop_descriptor_2 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_3 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_4 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_5 _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_6 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_7 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_8 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_9 _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_10 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_11 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_12  _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_13 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_14 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_15 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_16  _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_17 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_18 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_19 _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_20 _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_21 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_22 o _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_23 _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_24 _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_25 _ _ => None
-  
+  | spec_prop_descriptor_to_prop_descriptor _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_1 _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_2 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_3 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_4 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_5 _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_6 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_7 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_8 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_9 _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_10 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_11 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_12  _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_13 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_14 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_15 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_16  _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_17 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_18 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_19 _ _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_20 _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_21 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_22 o _ _ _ => Some o
+  | spec_prop_descriptor_to_prop_descriptor_23 _ _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_24 _ _ _ => None
+  | spec_prop_descriptor_to_prop_descriptor_25 _ _ _ => None
+
   | spec_entering_eval_code _ _ _ => None
   | spec_entering_eval_code_1 _ _ => None
   | spec_entering_eval_code_2 o _ => Some o
-  
+
   | spec_call_global_eval _ _ => None
   | spec_call_global_eval_1 _ _ => None
   | spec_call_global_eval_2 _ => None
@@ -866,7 +866,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_entering_func_code_2 _ _ _ o _ => Some o
   | spec_entering_func_code_3 _ _ _ _ _ _ => None
   | spec_entering_func_code_4 o _ => Some o
-  
+
   | spec_binding_inst_formal_params _ _ _ _ => None
   | spec_binding_inst_formal_params_1 _ _ _ _ _ _ o => Some o
   | spec_binding_inst_formal_params_2 _ _ _ _ _ _ o => Some o
@@ -886,7 +886,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_binding_inst_var_decls_1 _ _ _ _ _ o => Some o
   | spec_binding_inst_var_decls_2 _ _ _ _ o => Some o
   | spec_binding_inst _ _ _ _ => None
-  | spec_binding_inst_1 _ _ _ _ _ => None 
+  | spec_binding_inst_1 _ _ _ _ _ => None
   | spec_binding_inst_2 _ _ _ _ _ _ o => Some o
   | spec_binding_inst_3 _ _ _ _ _ _ => None
   | spec_binding_inst_4 _ _ _ _ _ _ _ o => Some o
@@ -894,9 +894,9 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_binding_inst_6 _ _ _ _ _ _ _ o => Some o
   | spec_binding_inst_7 _ _ _ o => Some o
   | spec_binding_inst_8 _ _ _ => None
-  
+
   | spec_create_arguments_object _ _ _ _ _ => None
-  
+
   | spec_object_has_instance _ _ => None
   | spec_object_has_instance_1 _ _ _ => None
   | spec_function_has_instance_1 _ o => Some o
@@ -905,16 +905,16 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_function_get_1 _ _ o => Some o
 
-  | spec_error _ => None 
-  | spec_error_or_cst _ _ _ => None 
-  | spec_error_or_void _ _ => None 
-  
+  | spec_error _ => None
+  | spec_error_or_cst _ _ _ => None
+  | spec_error_or_void _ _ => None
+
   | spec_init_throw_type_error => None
   | spec_init_throw_type_error_1 o => Some o
 
   | spec_new_object _ => None
   | spec_new_object_1 o _ => Some o
-  
+
   | spec_prim_new_object _ => None
 
   | spec_creating_function_object_proto _ => None
@@ -929,28 +929,28 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_create_new_function_in  execution_ctx _ _ => None
 
-  | spec_call _ _ _ => None 
+  | spec_call _ _ _ => None
   | spec_call_1 _ _ _ _ => None
-  
+
   | spec_call_prealloc _ _ => None
-  
+
   | spec_call_default _ _ _ => None
   | spec_call_default_1 _ => None
   | spec_call_default_2 _ => None
   | spec_call_default_3 o => Some o
-  
+
   | spec_construct _ _ => None
   | spec_construct_1 _ _ _ => None
-  
-  | spec_construct_prealloc _ _ => None 
-  
+
+  | spec_construct_prealloc _ _ => None
+
   | spec_construct_default _ _ => None
   | spec_construct_default_1 _ _ o => Some o
   | spec_construct_default_2 _ o => Some o
-  
+
   | spec_call_global_is_nan_1 o => Some o
   | spec_call_global_is_finite_1 o => Some o
- 
+
   | spec_call_object_call_1 _ => None
   | spec_call_object_new_1 _ => None
   | spec_call_object_get_proto_of_1 _ => None
@@ -964,7 +964,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_is_sealed_1 _ => None
   | spec_call_object_is_sealed_2 _ _ => None
   | spec_call_object_is_sealed_3 _ _ _ => None
-  
+
   | spec_call_object_freeze_1 _ => None
   | spec_call_object_freeze_2 _ _ => None
   | spec_call_object_freeze_3 _ _ _ _ => None
@@ -980,23 +980,28 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_call_object_prevent_extensions_1 _ => None
 
+  | spec_call_object_define_prop_1 _ _ _ => None
+  | spec_call_object_define_prop_2 _ o _ => Some o
+  | spec_call_object_define_prop_3 _ _ _ => None
+  | spec_call_object_define_prop_4 _ o => Some o
+
   | spec_call_object_proto_to_string_1 _ => None
   | spec_call_object_proto_to_string_2 o => Some o
   | spec_call_object_proto_is_prototype_of_2_1 _ => None
   | spec_call_object_proto_is_prototype_of_2_2 o _ => Some o
-  | spec_call_object_proto_is_prototype_of_2_3 _ _ => None 
-  | spec_call_object_proto_is_prototype_of_2_4 _ _ => None 
- 
+  | spec_call_object_proto_is_prototype_of_2_3 _ _ => None
+  | spec_call_object_proto_is_prototype_of_2_4 _ _ => None
+
   | spec_call_object_proto_prop_is_enumerable_1 _ => None
   | spec_call_object_proto_prop_is_enumerable_2 o => Some o
   | spec_call_object_proto_prop_is_enumerable_3 o _ => Some o
   | spec_call_object_proto_prop_is_enumerable_4 _ => None
-      
+  
   | spec_call_bool_new_1 o => Some o
   | spec_call_bool_proto_to_string_1 o => Some o
   | spec_call_bool_proto_value_of_1 _ => None
   | spec_call_bool_proto_value_of_2 _ => None
- 
+
   | spec_call_number_proto_to_string_1 _ _ => None
   | spec_call_number_proto_to_string_2 _ o => Some o
   | spec_call_number_new_1 o => Some o
@@ -1027,7 +1032,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_while_2 _ _ _ _ _ => None
   | stat_while_3 _ _ _ _ o => Some o
   | stat_while_4 _ _ _ _ _ => None
-  
+
   | stat_do_while_1 _ _  expr _ => None
   | stat_do_while_2 _ _  expr _ o => Some o
   | stat_do_while_3 _ _  expr _ _ => None
@@ -1065,7 +1070,7 @@ Definition out_of_ext_prog (p : ext_prog) : option out :=
 
 (** Definition of a result of type normal *)
 
-Definition res_is_normal R := 
+Definition res_is_normal R :=
   res_type R = restype_normal.
 
 (** Definition of aborting outcomes: diverging outcomes,
@@ -1096,11 +1101,11 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
   | abort_intercepted_do_while_2 : forall labs e1 t2 rv S R,
       res_label_in R labs ->
       (res_type R = restype_continue \/ res_type R = restype_break) ->
-      abort_intercepted_stat (stat_do_while_2 labs t2 e1 rv (out_ter S R)) 
+      abort_intercepted_stat (stat_do_while_2 labs t2 e1 rv (out_ter S R))
   | abort_intercepted_while_3 : forall labs e1 t2 rv S R,
       res_label_in R labs ->
       (res_type R = restype_continue \/ res_type R = restype_break) ->
-      abort_intercepted_stat (stat_while_3 labs e1 t2 rv (out_ter S R)) 
+      abort_intercepted_stat (stat_while_3 labs e1 t2 rv (out_ter S R))
   | abort_intercepted_stat_try_1 : forall S R cb fo,
       res_type R = restype_throw ->
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
