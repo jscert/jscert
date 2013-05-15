@@ -187,12 +187,15 @@ Ltac if_unmonad k :=
       sets_eq <- rt: (res_type r);
       destruct rt;
       [|k I|k I|k I|]
+
     end
 
   end.
 
 Ltac unmonad_with IHe IHs IHp IHel IHc IHcf :=
-  repeat if_unmonad ltac:(fun I => try inverts I);
+  repeat (
+    if_unmonad ltac:(fun I => try inverts I)
+    || fail (* TODO:  unfolds every constructions such as [run_expr_access] *));
   repeat match goal with
   | I : run_expr ?num ?S ?C ?e = ?o |- _ =>
     let RC := fresh "RC" in
@@ -258,7 +261,33 @@ Proof.
    constructors.
 
    (* run_expr *)
-   skip.
+   intros S C e S' res R. destruct e; simpl in R; unmonad.
+    (* this *)
+    apply~ red_expr_this.
+    (* identifier *)
+    skip. (* apply~ red_expr_identifier. *)
+    (* literal *)
+    skip. (* apply~ red_expr_literal. *)
+    (* object *)
+    skip.
+    (* function *)
+    skip.
+    (* access *)
+    skip.
+    (* member *)
+    skip.
+    (* new *)
+    skip.
+    (* call *)
+    skip.
+    (* unary_op *)
+    skip.
+    (* binary_op *)
+    skip.
+    (* conditionnal *)
+    skip.
+    (* assign *)
+    skip.
 
    (* run_stat *)
    skip.
@@ -271,13 +300,17 @@ Proof.
    intros rv S C es S' res R. destruct es; simpls.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
+     (* stat *)
      unmonad.
+      (* normal *)
       applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_2. rewrite~ EQrt. discriminate.
        skip. (*apply~ red_prog_3...*)
+      (* throw *)
       applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_abort. constructors~. absurd_neg.
        absurd_neg.
+     (* func_decl *)
      forwards RC: IHel R. apply~ red_prog_1_cons_funcdecl.
 
    (* run_call *)
@@ -285,7 +318,6 @@ Proof.
 
    (* run_call_full *)
    intros l vs S C v S' res R. simpls.
-
    skip.
 
 Qed.

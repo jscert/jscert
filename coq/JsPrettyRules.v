@@ -473,12 +473,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Identifier (11.1.2) *)
 
   | red_expr_identifier : forall S C x o,
-      red_expr S C (spec_identifier_resolution C x) o ->
+      red_expr S C (spec_identifier_resolution C x) o -> (* No rule for [spec_identifier_resolution] -- Martin *)
       red_expr S C (expr_identifier x) o
 
   (** Literal (11.1.3) *)
 
-  | red_expr_literal : forall S C s i v,
+  | red_expr_literal : forall S C s i v, (* This [s] should be removed. *)
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
 
