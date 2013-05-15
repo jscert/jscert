@@ -51,6 +51,20 @@ Implicit Type t : stat.
 
 
 (**************************************************************)
+(** Useful Tactics *)
+
+Ltac absurd_neg :=
+  let H := fresh in
+  solve [introv H; inverts H; false].
+
+Ltac findHyp t :=
+  match goal with
+  | H : appcontext [ t ] |- _ => H
+  | _ => fail "Unable to find an hypothesis for " t
+  end.
+
+
+(**************************************************************)
 (** Generic constructions *)
 
 Lemma get_arg_correct : forall args vs,
@@ -117,7 +131,7 @@ Record runs_type_correct runs run_elements :=
 Ltac if_unmonad k :=
   match goal with
 
-  | I: out_ter ?S1 ?R1 = out_ter ?S0 ?R0 |- ?g =>
+  | I: result_normal (out_ter ?S1 ?R1) = result_normal (out_ter ?S0 ?R0) |- ?g =>
     inverts~ I
 
   | I : if_ter ?o ?K = ?o0 |- ?g =>
@@ -148,16 +162,66 @@ Ltac if_unmonad k :=
       let T1 := fresh "T" in
       tests_basic T1: (rt = restype_normal);
         [ rewrite T1 in * |- *; clear T1
-        | (*let T2 := fresh "T" in
-          tests T2: (res_type r = restype_throw);
+        | let T2 := fresh "T" in
+          tests_basic T2: (rt = restype_throw);
             [ rewrite T2 in I
-            | (*let I'' := fresh "R" in
+            | let I'' := fresh "R" in
               asserts I'': (C2 = o0);
-                [ destruct (res_type r); tryfalse; auto*
-                | clear I; rename I'' into I]*)]*)]
+                [ destruct rt; tryfalse; auto*
+                | clear I; rename I'' into I]]]
+    end
+
+  | I : if_success_state_force_throw ?rv ?o ?K = ?o0 |- ?g =>
+    unfold if_success_state_force_throw in I;
+    if_unmonad k;
+    match goal with
+    | I : match res_type ?r with
+          | restype_normal => ?C1
+          | restype_break => ?C2
+          | restype_continue => ?C3
+          | restype_return => ?C4
+          | restype_throw => ?C5
+          end = ?o0,
+      I' : _ = result_normal (out_ter ?s ?r) |- _ =>
+      let rt := fresh "rt" in
+      sets_eq <- rt: (res_type r);
+      destruct rt;
+      [|k I|k I|k I|]
     end
 
   end.
+
+Ltac unmonad_with IHe IHs IHp IHel IHc IHcf :=
+  repeat if_unmonad ltac:(fun I => try inverts I);
+  repeat match goal with
+  | I : run_expr ?num ?S ?C ?e = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHe (rm I)
+  | I : run_stat ?num ?S ?C ?s = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHs (rm I)
+  | I : run_prog ?num ?S ?C ?p = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHp (rm I)
+  | I : run_elements ?num ?S ?C ?rv ?els = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHel (rm I)
+  | I : run_call ?num ?S ?C ?B ?vs = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHc (rm I)
+  | I : run_call_full ?num ?S ?C ?l ?v ?vs = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHcf (rm I)
+  end.
+
+Ltac unmonad :=
+  let IHe := findHyp follow_expr in
+  let IHs := findHyp follow_stat in
+  let IHp := findHyp follow_prog in
+  let IHel := findHyp follow_elements in
+  let IHc := findHyp follow_call in
+  let IHcf := findHyp follow_call_full in
+  unmonad_with IHe IHs IHp IHel IHc IHcf.
 
 
 (**************************************************************)
@@ -207,21 +271,13 @@ Proof.
    intros rv S C es S' res R. destruct es; simpls.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
-     if_unmonad ltac:(fun I => try inverts I).
-      inverts R. forwards RC: IHs Eqo.
-       applys~ red_prog_1_cons_stat RC.
+     unmonad.
+      applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_2. rewrite~ EQrt. discriminate.
-       forwards RCE: IHel H0. skip. (*apply~ red_prog_3.*)
-       apply~ red_prog_abort. intro AB. inverts AB; tryfalse.
-
-      asserts I: (out_ter s0 (res_overwrite_value_if_empty rv r)
-          = out_ter S' res).
-      sets_eq : (res_type r).
-      destruct X; tryfalse. inverts A. auto. inverts* R.
-
-       apply~ red_prog_2. skip.
-       apply red_prog_abort. reflexivity.
-       skip.
+       skip. (*apply~ red_prog_3...*)
+      applys~ red_prog_1_cons_stat RC.
+       apply~ red_prog_abort. constructors~. absurd_neg.
+       absurd_neg.
      forwards RC: IHel R. apply~ red_prog_1_cons_funcdecl.
 
    (* run_call *)
