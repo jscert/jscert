@@ -107,7 +107,7 @@ Ltac findHyp t :=
 
 (* Unfolds one monadic contructor in the environnement, calling the
   continuation when getting an unsolved non-terminating reduction. *)
-Ltac if_unmonad k :=
+Ltac if_unmonad_basic k :=
   match goal with
 
   | I : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
@@ -121,12 +121,12 @@ Ltac if_unmonad k :=
     sets_eq <- o' Eqo': o;
     destruct o' as [o''| |]; cbv beta in I;
       [destruct o'';
-        [k I|]
-      | k I | k I]
+        [ k I |]
+      | k I | k I ]
 
   | I : if_success_state ?rv ?o ?K = ?o0 |- _ =>
     unfold if_success_state in I;
-    if_unmonad k; (* Deal with the [if_ter]. *)
+    if_unmonad_basic k; (* Deal with the [if_ter]. *)
     match goal with
       I : match res_type ?r with
           | restype_normal => ?C1
@@ -147,15 +147,16 @@ Ltac if_unmonad k :=
             | let I'' := fresh "R" in
               asserts I'': (C2 = o0);
                 [ destruct rt; tryfalse; auto*
-                | clear I; rename I'' into I]]]
+                | clear I; rename I'' into I ]]]
     end
 
   | I : if_success ?o ?K = ?o0 |- _ =>
-    unfold if_success in I
+    unfold if_success in I;
+    if_unmonad_basic k
 
   | I : if_not_throw ?rv ?o ?K = ?o0 |- _ =>
     unfold if_not_throw in I;
-    if_unmonad k; (* Deal with the [if_ter]. *)
+    if_unmonad_basic k; (* Deal with the [if_ter]. *)
     match goal with
       I : match res_type ?r with
           | restype_normal => ?C1
@@ -173,12 +174,44 @@ Ltac if_unmonad k :=
       | let I'' := fresh "R" in
         asserts I'': (C1 = o0);
         [ destruct rt; tryfalse; auto*
-        | clear I; rename I'' into I]]
+        | clear I; rename I'' into I ]]
     end
+
+  | I : if_some ?op ?K = ?o0 |- _ =>
+    unfold if_some in I;
+    unfold morph_option in I;
+    let o := fresh "op" in
+    sets_eq <- o : op;
+    destruct o;
+    [| k I ]
+
+  end.
+
+Lemma match_resvalue_value : forall K rv (o o1 o2 : result),
+   match rv with
+   | resvalue_empty => o1
+   | resvalue_value v => K v
+   | resvalue_ref _ => o2
+   end = o ->
+   (exists v, rv = resvalue_value v)
+   \/ o1 = o \/ o2 = o.
+Proof. introv. destruct* rv. Qed.
+
+Ltac if_unmonad_value k :=
+  match goal with
+
+  | I : if_value ?o ?K = ?o0 |- _ =>
+    unfold if_value in I;
+    if_unmonad_basic k; (* Deal with the [if_success]. *)
+    let TMP := fresh "TEMP" in
+    lets TMP: (match_resvalue_value _ _ _ _ I);
+    let v := fresh "v" in
+    let E := fresh "Eq" in
+    destruct TMP as [[v E]|[E|E]]
 
   | I : if_object ?o ?K = ?o0 |- _ =>
     unfold if_object in I;
-    if_unmonad k; (* Deal with the [if_value]. *)
+    if_unmonad_value k; (* Deal with the [if_value]. *)
     match goal with
       I : match ?v with (* Does not work *)
           | value_prim _ => ?C1
@@ -190,15 +223,24 @@ Ltac if_unmonad k :=
       [k I|]
     end
 
-  | I : if_some ?op ?K = ?o0 |- _ =>
-    unfold if_some in I;
-    unfold morph_option in I;
-    let o := fresh "op" in
-    sets_eq <- o : op;
-    destruct o;
-    [|k I]
-
   end.
+
+Goal forall K (o : result) S rv (H : Prop), if_value o K = out_ter S rv -> H.
+introv I.
+  (*unfold if_value in I.
+  if_unmonad_basic ltac:(fun I => tryfalse; try inverts I).
+    let TMP := fresh "TEMP" in
+    lets TMP: (match_resvalue_value _ _ _ _ I).
+    let v := fresh "v" in
+    let E := fresh "Eq" in
+    destruct TEMP as [[v E]|[E|E]].*)
+  (*if_unmonad_value ltac:(fun I => tryfalse; try inverts I).*)
+Abort. (* I don't understand this. *)
+
+Ltac if_unmonad k :=
+  first
+    [ if_unmonad_basic k
+    | if_unmonad_value k ].
 
 Ltac unfold_func vs0 :=
   match vs0 with (@boxer ?T ?t) :: ?vs =>
@@ -209,9 +251,16 @@ Ltac unfold_func vs0 :=
         end | unfold_func vs ]
   end.
 
+Ltac rm_variables :=
+  repeat match goal with
+  | I : ?x = ?y |- _ =>
+    subst x || subst y
+  end.
+
 Ltac unmonad_with IHe IHs IHp IHel IHc IHcf :=
   repeat first
-    [ if_unmonad ltac:(fun I => try inverts I)
+    [ progress rm_variables
+    | if_unmonad ltac:(fun I => tryfalse; try inverts I)
     | unfold_func (>> run_expr_access run_expr_function run_expr_new run_expr_call run_unary_op run_binary_op run_expr_conditionnal run_expr_assign)
     | unfold_func (>> entering_func_code)
     | idtac ];
@@ -345,7 +394,7 @@ Proof.
     (* assign *)
     skip.
     applys~ red_expr_assign RC.
-     apply~ red_expr_abort. constructors~. absurd_neg. absurd_neg.
+     apply~ red_expr_abort. constructors~. absurd_neg.
     skip.
 
    (* run_stat *)
