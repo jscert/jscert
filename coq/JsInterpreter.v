@@ -179,14 +179,12 @@ Definition if_void (o : result_void) (K : state -> result) : result :=
     | _ => result_stuck
     end).
 
-Definition if_success_state_force_throw rv (o : result) (K : state -> resvalue -> result) : result :=
+Definition if_not_throw rv (o : result) (K : state -> res -> result) : result :=
   if_ter o (fun S0 R =>
     match res_type R with
-    | restype_normal =>
-        let rv' := res_value R in
-        K S0 (ifb rv' = resvalue_empty then rv else rv')
     | restype_throw => o
-    | _ => result_stuck
+    | _ =>
+        K S0 (res_overwrite_value_if_empty rv R)
     end).
 
 Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> value -> result) : result :=
@@ -1894,8 +1892,9 @@ with run_elements (max_step : nat) S C rv (els : list element) : result :=
     | nil => out_ter S rv
 
     | element_stat t :: els' =>
-      if_success_state_force_throw rv (run_stat' S C t) (fun S1 rv1 =>
-        run_elements' S1 C rv1 els')
+      if_not_throw rv (run_stat' S C t) (fun S1 R1 =>
+        if_success (out_ter S1 R1) (fun S2 rv2 =>
+          run_elements' S2 C rv2 els'))
 
     | element_func_decl name args bd :: els' =>
       run_elements' S C rv els'

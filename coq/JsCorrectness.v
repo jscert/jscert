@@ -51,40 +51,6 @@ Implicit Type t : stat.
 
 
 (**************************************************************)
-(** Useful Tactics *)
-
-Ltac absurd_neg :=
-  let H := fresh in
-  solve [introv H; inverts H; false].
-
-Ltac findHyp t :=
-  match goal with
-  | H : appcontext [ t ] |- _ => H
-  | _ => fail "Unable to find an hypothesis for " t
-  end.
-
-
-(**************************************************************)
-(** Generic constructions *)
-
-Lemma get_arg_correct : forall args vs,
-  arguments_from args vs ->
-  forall num,
-    num < length vs ->
-    get_arg num args = LibList.nth num vs.
-Proof.
-  introv A. induction~ A.
-   introv I. false I. lets (I'&_): (rm I). inverts~ I'.
-   introv I. destruct* num. simpl. rewrite <- IHA.
-    unfolds. repeat rewrite~ get_nth_nil.
-    rewrite length_cons in I. nat_math.
-   introv I. destruct* num. simpl. rewrite <- IHA.
-    unfolds. repeat rewrite~ get_nth_cons.
-    rewrite length_cons in I. nat_math.
-Qed.
-
-
-(**************************************************************)
 (** Correctness Properties *)
 
 Definition follow_spec {T Te : Type}
@@ -122,6 +88,19 @@ Record runs_type_correct runs run_elements :=
   }.
 
 
+(**************************************************************)
+(** Useful Tactics *)
+
+Ltac absurd_neg :=
+  let H := fresh in
+  introv H; inverts H; tryfalse.
+
+Ltac findHyp t :=
+  match goal with
+  | H : appcontext [ t ] |- _ => H
+  | _ => fail "Unable to find an hypothesis for " t
+  end.
+
 
 (**************************************************************)
 (** Monadic constructors *)
@@ -147,7 +126,7 @@ Ltac if_unmonad k :=
 
   | I : if_success_state ?rv ?o ?K = ?o0 |- ?g =>
     unfold if_success_state in I;
-    if_unmonad k;
+    if_unmonad k; (* Deal with the [if_ter]. *)
     match goal with
     | I : match res_type ?r with
           | restype_normal => ?C1
@@ -171,9 +150,9 @@ Ltac if_unmonad k :=
                 | clear I; rename I'' into I]]]
     end
 
-  | I : if_success_state_force_throw ?rv ?o ?K = ?o0 |- ?g =>
-    unfold if_success_state_force_throw in I;
-    if_unmonad k;
+  | I : if_not_throw ?rv ?o ?K = ?o0 |- ?g =>
+    unfold if_not_throw in I;
+    if_unmonad k; (* Deal with the [if_ter]. *)
     match goal with
     | I : match res_type ?r with
           | restype_normal => ?C1
@@ -185,9 +164,27 @@ Ltac if_unmonad k :=
       I' : _ = result_normal (out_ter ?s ?r) |- _ =>
       let rt := fresh "rt" in
       sets_eq <- rt: (res_type r);
-      destruct rt;
-      [|k I|k I|k I|]
+      let T := fresh "T" in
+      tests_basic T: (rt = restype_throw);
+      [ rewrite T in * |- *; clear T
+      | let I'' := fresh "R" in
+        asserts I'': (C1 = o0);
+        [ destruct rt; tryfalse; auto*
+        | clear I; rename I'' into I]]
+    end
 
+  | I : if_object ?o ?K = ?o0 |- ?g =>
+    unfold if_object in I;
+    if_unmonad k; (* Deal with the [if_value]. *)
+    match goal with
+    | I : match ?v with (* Does not work *)
+          | value_prim _ => ?C1
+          | value_object l => ?C2
+          end = ?o0 |- _ =>
+      let v' := fresh "v" in
+      sets_eq <- v': v;
+      destruct v';
+      [k I|]
     end
 
   end.
@@ -225,6 +222,33 @@ Ltac unmonad :=
   let IHc := findHyp follow_call in
   let IHcf := findHyp follow_call_full in
   unmonad_with IHe IHs IHp IHel IHc IHcf.
+
+
+(**************************************************************)
+(** Generic constructions *)
+
+Lemma get_arg_correct : forall args vs,
+  arguments_from args vs ->
+  forall num,
+    num < length vs ->
+    get_arg num args = LibList.nth num vs.
+Proof.
+  introv A. induction~ A.
+   introv I. false I. lets (I'&_): (rm I). inverts~ I'.
+   introv I. destruct* num. simpl. rewrite <- IHA.
+    unfolds. repeat rewrite~ get_nth_nil.
+    rewrite length_cons in I. nat_math.
+   introv I. destruct* num. simpl. rewrite <- IHA.
+    unfolds. repeat rewrite~ get_nth_cons.
+    rewrite length_cons in I. nat_math.
+Qed.
+
+Lemma res_type_res_overwrite_value_if_empty : forall rv R,
+  res_type R = res_type (res_overwrite_value_if_empty rv R).
+Proof.
+  introv. destruct R. unfold res_overwrite_value_if_empty. simpl.
+  cases_if; reflexivity.
+Qed.
 
 
 (**************************************************************)
@@ -297,19 +321,22 @@ Proof.
    forwards RC: IHel R. apply~ red_prog_prog.
 
    (* run_elements *)
-   intros rv S C es S' res R. destruct es; simpls.
+   intros rv S C es S' res R. destruct es.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
      (* stat *)
+     simpl in R.
+     if_unmonad ltac:(fun I => inverts I).
      unmonad.
-      (* normal *)
-      applys~ red_prog_1_cons_stat RC.
-       apply~ red_prog_2. rewrite~ EQrt. discriminate.
-       skip. (*apply~ red_prog_3...*)
       (* throw *)
       applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_abort. constructors~. absurd_neg.
        absurd_neg.
+      (* normal *)
+      applys~ red_prog_1_cons_stat RC.
+       apply~ red_prog_2. rewrite~ EQrt. discriminate.
+       skip. (* destruct r. simpls. substs. cases_if.
+        substs. unfold res_overwrite_value_if_empty. cases_if. simpls. apply~ red_prog_3. *)
      (* func_decl *)
      forwards RC: IHel R. apply~ red_prog_1_cons_funcdecl.
 
