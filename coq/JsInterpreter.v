@@ -163,8 +163,7 @@ Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : 
   if_ter o (fun S0 R =>
     match res_type R with
     | restype_normal =>
-        let rv' := res_value R in
-        K S0 (ifb rv' = resvalue_empty then rv else rv')
+        K S0 (res_value (res_overwrite_value_if_empty rv R))
     | restype_throw => o
     | _ =>
         out_ter S0 (res_overwrite_value_if_empty rv R)

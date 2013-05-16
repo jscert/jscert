@@ -110,10 +110,10 @@ Ltac findHyp t :=
 Ltac if_unmonad k :=
   match goal with
 
-  | I : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- ?g =>
+  | I : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
     inverts~ I
 
-  | I : if_ter ?o ?K = ?o0 |- ?g =>
+  | I : if_ter ?o ?K = ?o0 |- _ =>
     unfold if_ter in I;
     let o' := fresh "o" in
     let o'' := fresh "o" in
@@ -124,7 +124,7 @@ Ltac if_unmonad k :=
         [k I|]
       | k I | k I]
 
-  | I : if_success_state ?rv ?o ?K = ?o0 |- ?g =>
+  | I : if_success_state ?rv ?o ?K = ?o0 |- _ =>
     unfold if_success_state in I;
     if_unmonad k; (* Deal with the [if_ter]. *)
     match goal with
@@ -150,10 +150,10 @@ Ltac if_unmonad k :=
                 | clear I; rename I'' into I]]]
     end
 
-  | I : if_success ?o ?K = ?o0 |- ?g =>
+  | I : if_success ?o ?K = ?o0 |- _ =>
     unfold if_success in I
 
-  | I : if_not_throw ?rv ?o ?K = ?o0 |- ?g =>
+  | I : if_not_throw ?rv ?o ?K = ?o0 |- _ =>
     unfold if_not_throw in I;
     if_unmonad k; (* Deal with the [if_ter]. *)
     match goal with
@@ -176,7 +176,7 @@ Ltac if_unmonad k :=
         | clear I; rename I'' into I]]
     end
 
-  | I : if_object ?o ?K = ?o0 |- ?g =>
+  | I : if_object ?o ?K = ?o0 |- _ =>
     unfold if_object in I;
     if_unmonad k; (* Deal with the [if_value]. *)
     match goal with
@@ -189,6 +189,14 @@ Ltac if_unmonad k :=
       destruct v';
       [k I|]
     end
+
+  | I : if_some ?op ?K = ?o0 |- _ =>
+    unfold if_some in I;
+    unfold morph_option in I;
+    let o := fresh "op" in
+    sets_eq <- o : op;
+    destruct o;
+    [|k I]
 
   end.
 
@@ -204,7 +212,9 @@ Ltac unfold_func vs0 :=
 Ltac unmonad_with IHe IHs IHp IHel IHc IHcf :=
   repeat first
     [ if_unmonad ltac:(fun I => try inverts I)
-    | try unfold_func (>> run_expr_access run_expr_function run_expr_new run_expr_call run_unary_op run_binary_op run_expr_conditionnal run_expr_assign) ];
+    | unfold_func (>> run_expr_access run_expr_function run_expr_new run_expr_call run_unary_op run_binary_op run_expr_conditionnal run_expr_assign)
+    | unfold_func (>> entering_func_code)
+    | idtac ];
   repeat match goal with
   | I : runs_type_expr ?runs ?S ?C ?e = ?o |- _ =>
     unfold runs_type_expr in I
@@ -333,7 +343,10 @@ Proof.
     (* conditionnal *)
     skip.
     (* assign *)
-    skip. skip.
+    skip.
+    applys~ red_expr_assign RC.
+     apply~ red_expr_abort. constructors~. absurd_neg. absurd_neg.
+    skip.
 
    (* run_stat *)
    skip.
@@ -348,6 +361,7 @@ Proof.
     destruct e.
      (* stat *)
      unmonad.
+      skip. (*
       (* throw *)
       applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_abort. constructors~. absurd_neg.
@@ -356,7 +370,7 @@ Proof.
       applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_2. rewrite~ EQrt. discriminate.
        skip. (* destruct r. simpls. substs. cases_if.
-        substs. unfold res_overwrite_value_if_empty. cases_if. simpls. apply~ red_prog_3. *)
+        substs. unfold res_overwrite_value_if_empty. cases_if. simpls. apply~ red_prog_3. *) *)
      (* func_decl *)
      forwards RC: IHel R. apply~ red_prog_1_cons_funcdecl.
 
@@ -364,8 +378,12 @@ Proof.
    skip.
 
    (* run_call_full *)
-   intros l vs S C v S' res R. simpls.
-   skip.
+   intros l vs S C v S' res R. simpls. unmonad. destruct c; tryfalse.
+    skip.
+    unmonad.
+     apply~ red_spec_call.
+      skip. (* TODO:  Deal with object_method *)
+     applys~ red_spec_call_1_prealloc RC.
 
 Qed.
 
