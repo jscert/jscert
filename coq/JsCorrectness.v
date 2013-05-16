@@ -110,7 +110,7 @@ Ltac findHyp t :=
 Ltac if_unmonad k :=
   match goal with
 
-  | I: result_normal (out_ter ?S1 ?R1) = result_normal (out_ter ?S0 ?R0) |- ?g =>
+  | I : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- ?g =>
     inverts~ I
 
   | I : if_ter ?o ?K = ?o0 |- ?g =>
@@ -128,14 +128,14 @@ Ltac if_unmonad k :=
     unfold if_success_state in I;
     if_unmonad k; (* Deal with the [if_ter]. *)
     match goal with
-    | I : match res_type ?r with
+      I : match res_type ?r with
           | restype_normal => ?C1
           | restype_break => ?C2
           | restype_continue => ?C3
           | restype_return => ?C4
           | restype_throw => ?C5
           end = ?o0,
-      I' : _ = result_normal (out_ter ?s ?r) |- _ =>
+      I' : _ = result_out (out_ter ?s ?r) |- _ =>
       let rt := fresh "rt" in
       sets_eq <- rt: (res_type r);
       let T1 := fresh "T" in
@@ -150,18 +150,21 @@ Ltac if_unmonad k :=
                 | clear I; rename I'' into I]]]
     end
 
+  | I : if_success ?o ?K = ?o0 |- ?g =>
+    unfold if_success in I
+
   | I : if_not_throw ?rv ?o ?K = ?o0 |- ?g =>
     unfold if_not_throw in I;
     if_unmonad k; (* Deal with the [if_ter]. *)
     match goal with
-    | I : match res_type ?r with
+      I : match res_type ?r with
           | restype_normal => ?C1
           | restype_break => ?C2
           | restype_continue => ?C3
           | restype_return => ?C4
           | restype_throw => ?C5
           end = ?o0,
-      I' : _ = result_normal (out_ter ?s ?r) |- _ =>
+      I' : _ = result_out (out_ter ?s ?r) |- _ =>
       let rt := fresh "rt" in
       sets_eq <- rt: (res_type r);
       let T := fresh "T" in
@@ -177,7 +180,7 @@ Ltac if_unmonad k :=
     unfold if_object in I;
     if_unmonad k; (* Deal with the [if_value]. *)
     match goal with
-    | I : match ?v with (* Does not work *)
+      I : match ?v with (* Does not work *)
           | value_prim _ => ?C1
           | value_object l => ?C2
           end = ?o0 |- _ =>
@@ -189,26 +192,45 @@ Ltac if_unmonad k :=
 
   end.
 
+Ltac unfold_func vs0 :=
+  match vs0 with (@boxer ?T ?t) :: ?vs =>
+    let t := constr:(t : T) in
+    first
+      [ match goal with
+        | I : context [ t ] |- _ => unfolds in I
+        end | unfold_func vs ]
+  end.
+
 Ltac unmonad_with IHe IHs IHp IHel IHc IHcf :=
-  repeat (
-    if_unmonad ltac:(fun I => try inverts I)
-    || fail (* TODO:  unfolds every constructions such as [run_expr_access] *));
+  repeat first
+    [ if_unmonad ltac:(fun I => try inverts I)
+    | try unfold_func (>> run_expr_access run_expr_function run_expr_new run_expr_call run_unary_op run_binary_op run_expr_conditionnal run_expr_assign) ];
   repeat match goal with
+  | I : runs_type_expr ?runs ?S ?C ?e = ?o |- _ =>
+    unfold runs_type_expr in I
   | I : run_expr ?num ?S ?C ?e = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHe (rm I)
-  | I : run_stat ?num ?S ?C ?s = ?o |- _ =>
+  | I : runs_type_stat ?runs ?S ?C ?t = ?o |- _ =>
+    unfold runs_type_stat in I
+  | I : run_stat ?num ?S ?C ?t = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHs (rm I)
+  | I : runs_type_prog ?runs ?S ?C ?p = ?o |- _ =>
+    unfold runs_type_prog in I
   | I : run_prog ?num ?S ?C ?p = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHp (rm I)
   | I : run_elements ?num ?S ?C ?rv ?els = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHel (rm I)
+  | I : runs_type_call ?runs ?S ?C ?B ?vs = ?o |- _ =>
+    unfold runs_type_call in I
   | I : run_call ?num ?S ?C ?B ?vs = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHc (rm I)
+  | I : runs_type_call_full ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
+    unfold runs_type_call_full in I
   | I : run_call_full ?num ?S ?C ?l ?v ?vs = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHcf (rm I)
@@ -299,11 +321,11 @@ Proof.
     (* access *)
     skip.
     (* member *)
-    skip.
+    apply~ red_expr_member.
     (* new *)
     skip.
     (* call *)
-    skip.
+    skip. skip. skip.
     (* unary_op *)
     skip.
     (* binary_op *)
@@ -311,7 +333,7 @@ Proof.
     (* conditionnal *)
     skip.
     (* assign *)
-    skip.
+    skip. skip.
 
    (* run_stat *)
    skip.
@@ -321,18 +343,16 @@ Proof.
    forwards RC: IHel R. apply~ red_prog_prog.
 
    (* run_elements *)
-   intros rv S C es S' res R. destruct es.
+   intros rv S C es S' res R. destruct es; simpls.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
      (* stat *)
-     simpl in R.
-     if_unmonad ltac:(fun I => inverts I).
      unmonad.
       (* throw *)
       applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_abort. constructors~. absurd_neg.
        absurd_neg.
-      (* normal *)
+      (* otherwise *)
       applys~ red_prog_1_cons_stat RC.
        apply~ red_prog_2. rewrite~ EQrt. discriminate.
        skip. (* destruct r. simpls. substs. cases_if.

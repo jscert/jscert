@@ -72,7 +72,7 @@ Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 (** ** Some types used by the interpreter *)
 
 Inductive result :=
-  | result_normal : out -> result
+  | result_out : out -> result
   | result_stuck
   | result_bottom.
 
@@ -85,7 +85,7 @@ Definition result_void := result.
 
 (* Coercion *)
 
-Coercion result_normal : out >-> result.
+Coercion result_out : out >-> result.
 
 (* Inhabited *)
 
@@ -179,12 +179,12 @@ Definition if_void (o : result_void) (K : state -> result) : result :=
     | _ => result_stuck
     end).
 
-Definition if_not_throw rv (o : result) (K : state -> res -> result) : result :=
+Definition if_not_throw (o : result) (K : state -> res -> result) : result :=
   if_ter o (fun S0 R =>
     match res_type R with
     | restype_throw => o
     | _ =>
-        K S0 (res_overwrite_value_if_empty rv R)
+        K S0 R
     end).
 
 Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> value -> result) : result :=
@@ -209,7 +209,8 @@ Definition if_success_or_return (o : result) (K1 : state -> result) (K2 : state 
 Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
   (K1 : state -> res -> result) (K2 : state -> res -> result) : result :=
   if_ter o (fun S R =>
-    let K := match res_type R with
+    let K :=
+      match res_type R with
       | restype_break =>
           if search_label R then K2 else out_ter
       | restype_continue =>
@@ -1892,8 +1893,9 @@ with run_elements (max_step : nat) S C rv (els : list element) : result :=
     | nil => out_ter S rv
 
     | element_stat t :: els' =>
-      if_not_throw rv (run_stat' S C t) (fun S1 R1 =>
-        if_success (out_ter S1 R1) (fun S2 rv2 =>
+      if_not_throw (run_stat' S C t) (fun S1 R1 =>
+        let R2 := res_overwrite_value_if_empty rv R1 in
+        if_success (out_ter S1 R2) (fun S2 rv2 => (* TODO:  wait for the specificatation to be updated. *)
           run_elements' S2 C rv2 els'))
 
     | element_func_decl name args bd :: els' =>
