@@ -187,6 +187,9 @@ Ltac if_unmonad_basic k :=
 
   end.
 
+Lemma or_idempotent : forall A : Prop, A \/ A -> A.
+Proof. introv [?|?]; auto. Qed.
+
 Lemma match_resvalue_value : forall K rv (o o1 o2 : result),
    match rv with
    | resvalue_empty => o1
@@ -197,45 +200,44 @@ Lemma match_resvalue_value : forall K rv (o o1 o2 : result),
    \/ o1 = o \/ o2 = o.
 Proof. introv. destruct* rv. Qed.
 
+Lemma match_value_object : forall K v (o o1 : result),
+   match v with
+   | value_prim _ => o1
+   | value_object l => K l
+   end = o ->
+   (exists l, v = value_object l)
+   \/ o1 = o.
+Proof. introv. destruct* v. Qed.
+
 Ltac if_unmonad_value k :=
   match goal with
 
   | I : if_value ?o ?K = ?o0 |- _ =>
     unfold if_value in I;
     if_unmonad_basic k; (* Deal with the [if_success]. *)
-    let TMP := fresh "TEMP" in
-    lets TMP: (match_resvalue_value _ _ _ _ I);
-    let v := fresh "v" in
-    let E := fresh "Eq" in
-    destruct TMP as [[v E]|[E|E]]
+    try ( (* The `failed' cases may not be resolved at this point. *)
+      let TMP := fresh "TEMP" in
+      lets TMP: (match_resvalue_value _ _ _ _ I);
+      let v := fresh "v" in
+      let E := fresh "Eq" in
+      destruct TMP as [[v E]|E];
+      [ rewrite E in I
+      | clear I; (apply or_idempotent in E || destruct E as [E|E]);
+        rename E into I; k I ])
 
   | I : if_object ?o ?K = ?o0 |- _ =>
     unfold if_object in I;
     if_unmonad_value k; (* Deal with the [if_value]. *)
-    match goal with
-      I : match ?v with (* Does not work *)
-          | value_prim _ => ?C1
-          | value_object l => ?C2
-          end = ?o0 |- _ =>
-      let v' := fresh "v" in
-      sets_eq <- v': v;
-      destruct v';
-      [k I|]
-    end
+    try ( (* The `failed' cases may not be resolved at this point. *)
+      let TMP := fresh "TEMP" in
+      lets TMP: (match_value_object _ _ _ I);
+      let l := fresh "l" in
+      let E := fresh "Eq" in
+      destruct TMP as [[l E]|E];
+      [ rewrite E in I
+      | clear I; rename E into I; k E ])
 
   end.
-
-Goal forall K (o : result) S rv (H : Prop), if_value o K = out_ter S rv -> H.
-introv I.
-  (*unfold if_value in I.
-  if_unmonad_basic ltac:(fun I => tryfalse; try inverts I).
-    let TMP := fresh "TEMP" in
-    lets TMP: (match_resvalue_value _ _ _ _ I).
-    let v := fresh "v" in
-    let E := fresh "Eq" in
-    destruct TEMP as [[v E]|[E|E]].*)
-  (*if_unmonad_value ltac:(fun I => tryfalse; try inverts I).*)
-Abort. (* I don't understand this. *)
 
 Ltac if_unmonad k :=
   first
@@ -374,7 +376,8 @@ Proof.
     (* literal *)
     skip. (* apply~ red_expr_literal. *)
     (* object *)
-    skip.
+    skip. (* Needs an intermediate lemma *)
+    skip. skip. (* Abort cases. *)
     (* function *)
     skip.
     (* access *)
@@ -384,7 +387,8 @@ Proof.
     (* new *)
     skip.
     (* call *)
-    skip. skip. skip.
+    skip.
+    skip. skip. (* Abort cases. *)
     (* unary_op *)
     skip.
     (* binary_op *)
