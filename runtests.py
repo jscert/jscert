@@ -90,7 +90,7 @@ class TestResult:
         # If so, we will need to invert the return value later on.
         with open(filename) as f:
             # Report the result of this test
-            negative = "@negative" in f.read()
+            self.negative = "@negative" in f.read()
 
     def passed(self):
         if(self.negative):
