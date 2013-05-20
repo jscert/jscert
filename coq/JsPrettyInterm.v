@@ -376,8 +376,23 @@ Inductive ext_expr :=
   | spec_binding_inst_6 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_7 : prog -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_8 : prog -> bool -> env_loc -> ext_expr
+  
+  | spec_make_arg_getter : object_loc -> string -> env_loc -> ext_expr
+  | spec_make_arg_setter : object_loc -> string -> env_loc -> ext_expr
+  
+  | spec_arguments_object_map : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
+  | spec_arguments_object_map_1 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> out -> ext_expr
+  | spec_arguments_object_map_2 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> ext_expr
+  | spec_arguments_object_map_3 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> out -> ext_expr
+  | spec_arguments_object_map_4 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> string -> ext_expr
+  | spec_arguments_object_map_5 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> string -> out-> ext_expr
+  | spec_arguments_object_map_6 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> object_loc -> out-> ext_expr
+  | spec_arguments_object_map_7 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> out-> ext_expr  
+  | spec_arguments_object_map_8 : object_loc -> object_loc -> list string -> ext_expr
 
   | spec_create_arguments_object : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
+  | spec_create_arguments_object_1 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> out -> ext_expr
+  | spec_create_arguments_object_2 : object_loc -> strictness_flag -> object_loc -> out -> ext_expr
 
   (* Functions *)
 
@@ -898,8 +913,24 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_binding_inst_6 _ _ _ _ _ _ _ o => Some o
   | spec_binding_inst_7 _ _ _ o => Some o
   | spec_binding_inst_8 _ _ _ => None
+  
+  | spec_make_arg_getter _ _ _ => None
+  | spec_make_arg_setter _ _ _ => None
+  
+  | spec_arguments_object_map _ _ _ _ _ => None
+  | spec_arguments_object_map_1 _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_2 _ _ _ _ _ _ _ => None
+  | spec_arguments_object_map_3 _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_4 _ _ _ _ _ _ _ _ => None
+  | spec_arguments_object_map_5 _ _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_6 _ _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_7 _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_8 _ _ _  => None
+
 
   | spec_create_arguments_object _ _ _ _ _ => None
+  | spec_create_arguments_object_1 _ _ _ _ _ _ o => Some o
+  | spec_create_arguments_object_2 _ _ _ o => Some o
 
   | spec_object_has_instance _ _ => None
   | spec_object_has_instance_1 _ _ _ => None

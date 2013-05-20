@@ -359,6 +359,8 @@ Definition run_object_get_own_prop S l x : option full_descriptor :=
     morph_option (Some full_descriptor_undef)
       (fun A => Some (A : full_descriptor))
       (Heap.read_option P x)
+  | builtin_get_own_prop_args_obj => 
+    arbitrary (* TODO:  Waiting for the specification *)
   end.
 
 Definition object_get_prop_body run_object_get_prop S v x : option full_descriptor :=
@@ -461,6 +463,8 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
           end
       end)
   | builtin_get_function =>
+    result_stuck (* TODO:  Waiting for the specification *)
+  | builtin_get_args_obj => 
     result_stuck (* TODO:  Waiting for the specification *)
   end.
 
@@ -601,6 +605,8 @@ Definition object_define_own_prop S l x Desc str : result :=
             else object_define_own_prop_write S A
           end
       end)
+    | builtin_define_own_prop_args_obj =>
+      result_stuck (* TODO:  Waiting for the specification *)
   end.
 
 

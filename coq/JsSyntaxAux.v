@@ -104,6 +104,14 @@ Definition object_with_details O scope params code target boundthis boundargs pa
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
     object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 scope params code target boundthis boundargs paramsmap
   end.
+  
+(** Modifies the parameters for the Arguments Object *)
+
+Definition object_for_args_object O paramsmap get getownproperty defineownproperty delete :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 x3 x4 x5 get getownproperty x8 x9 x10 x11 delete x13 defineownproperty x15 x16 x17 x18 x19 x20 x21 x22 x23 (Some paramsmap)
+  end.
 
 (**************************************************************)
 (** ** Type [builtin] *)

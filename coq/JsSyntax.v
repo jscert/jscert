@@ -301,13 +301,15 @@ Inductive builtin_has_instance :=
 
 Inductive builtin_get :=
   | builtin_get_default (* 8.12.3 *)
-  | builtin_get_function. (* 15.3.5.4 *)
+  | builtin_get_function (* 15.3.5.4 *)
+  | builtin_get_args_obj. (* 10.6 *)
   (* LATER: string and array *)
 
 (** Identifiers for "GetOwnProperty" methods *)
 
 Inductive builtin_get_own_prop :=
-  | builtin_get_own_prop_default.
+  | builtin_get_own_prop_default
+  | builtin_get_own_prop_args_obj.
 
 (** Identifiers for "GetProperty" methods *)
 
@@ -335,7 +337,8 @@ Inductive builtin_has_prop :=
 (** Identifiers for "Delete" methods *)
 
 Inductive builtin_delete :=
-  | builtin_delete_default.
+  | builtin_delete_default
+  | builtin_delete_args_obj.
   (* LATER: string and array *)
 
 (** Identifiers for "DefaultValue" methods *)
@@ -347,7 +350,8 @@ Inductive builtin_default_value :=
 (** Identifiers for "DefineOwnProp" methods *)
 
 Inductive builtin_define_own_prop :=
-  | builtin_define_own_prop_default.
+  | builtin_define_own_prop_default
+  | builtin_define_own_prop_args_obj.
   (* LATER: string and array *)
 
 
