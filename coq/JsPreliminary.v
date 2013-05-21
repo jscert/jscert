@@ -1121,7 +1121,7 @@ Definition inequality_test_number n1 n2 : prim :=
   else ifb n1 = JsNumber.neg_infinity then true
   else JsNumber.lt_bool n1 n2.
 
-(** Inequality comparison for strings e*)
+(** Inequality comparison for strings *)
 
 Fixpoint inequality_test_string s1 s2 : bool :=
   match s1, s2 with

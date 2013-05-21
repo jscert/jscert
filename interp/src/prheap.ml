@@ -67,11 +67,19 @@ let prprealloc = function
   | Coq_prealloc_math -> "Coq_prealloc_math"
   | Coq_prealloc_mathop -> "Coq_prealloc_mathop"
   | Coq_prealloc_error -> "Coq_prealloc_error"
-  | Coq_prealloc_range_error -> "Coq_prealloc_range_error"
-  | Coq_prealloc_ref_error -> "Coq_prealloc_ref_error"
-  | Coq_prealloc_syntax_error -> "Coq_prealloc_syntax_error"
-  | Coq_prealloc_type_error -> "Coq_prealloc_type_error"
+  | Coq_prealloc_native_error Coq_native_error_eval -> "Coq_prealloc_range_eval"
+  | Coq_prealloc_native_error Coq_native_error_range -> "Coq_prealloc_range_error"
+  | Coq_prealloc_native_error Coq_native_error_ref -> "Coq_prealloc_ref_error"
+  | Coq_prealloc_native_error Coq_native_error_syntax -> "Coq_prealloc_syntax_error"
+  | Coq_prealloc_native_error Coq_native_error_type -> "Coq_prealloc_type_error"
+  | Coq_prealloc_native_error_proto Coq_native_error_eval -> "Coq_prealloc_range_eval_proto"
+  | Coq_prealloc_native_error_proto Coq_native_error_range -> "Coq_prealloc_range_error_proto"
+  | Coq_prealloc_native_error_proto Coq_native_error_ref -> "Coq_prealloc_ref_error_proto"
+  | Coq_prealloc_native_error_proto Coq_native_error_syntax -> "Coq_prealloc_syntax_error_proto"
+  | Coq_prealloc_native_error_proto Coq_native_error_type -> "Coq_prealloc_type_error_proto"
   | Coq_prealloc_throw_type_error -> "Coq_prealloc_throw_type_error"
+  | Coq_prealloc_error_proto -> "Coq_prealloc_error_proto"
+  | Coq_prealloc_error_proto_to_string -> "Coq_prealloc_error_proto_to_string"
 
 
 let prloc = function
