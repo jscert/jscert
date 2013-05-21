@@ -292,44 +292,36 @@ Inductive ext_expr :=
   | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_expr
 
   (** Extended expressions for operations on property descriptors (8.10) *)
-  | spec_prop_descriptor_from_prop_descriptor : full_descriptor -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_1 : out -> attributes -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_2 : object_loc -> attributes -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_3 : out -> object_loc -> attributes -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_4 : object_loc -> attributes -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_5 : out -> object_loc -> attributes -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_6 : out -> object_loc -> attributes -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_7 : out -> object_loc -> attributes -> ext_expr
-  | spec_prop_descriptor_from_prop_descriptor_8 : out -> object_loc -> ext_expr
 
-  | spec_prop_descriptor_to_prop_descriptor : value -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_1 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
-  | spec_prop_descriptor_to_prop_descriptor_2 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_3 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_4 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_5 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_6 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_7 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_8 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_9 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_10 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_11 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_12  : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_13 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_14 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_15 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_16  : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_17 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_18 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_19 : value -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_20 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_21 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_22 : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_23 : value -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_24 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_prop_descriptor_to_prop_descriptor_25 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_from_descriptor : full_descriptor -> ext_expr
+  | spec_from_descriptor_1 : attributes -> out -> ext_expr
+  | spec_from_descriptor_2 : object_loc -> attributes_data -> out -> ext_expr
+  | spec_from_descriptor_3 : object_loc -> attributes_accessor -> out -> ext_expr
+  | spec_from_descriptor_4 : object_loc -> attributes -> out -> ext_expr
+  | spec_from_descriptor_5 : object_loc -> attributes -> out -> ext_expr
+  | spec_from_descriptor_6 : object_loc -> out -> ext_expr
 
-                                 
+  | spec_to_descriptor : value -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_1a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+  | spec_to_descriptor_1b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_1c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_2a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+  | spec_to_descriptor_2b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_2c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_3a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+  | spec_to_descriptor_3b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_3c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_4a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+  | spec_to_descriptor_4b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_4c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_5a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+  | spec_to_descriptor_5b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_5c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_6a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+  | spec_to_descriptor_6b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_6c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
+  | spec_to_descriptor_7 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+                  
   (** Extented expressions for eval *)
 
   | spec_entering_eval_code : bool -> funcbody -> ext_expr -> ext_expr
@@ -834,42 +826,34 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_lexical_env_get_identifier_ref_1 _ _ _ _ => None
   | spec_lexical_env_get_identifier_ref_2 _ _ _ _ o => Some o
 
-  | spec_prop_descriptor_from_prop_descriptor _ => None
-  | spec_prop_descriptor_from_prop_descriptor_1 o _ => Some o
-  | spec_prop_descriptor_from_prop_descriptor_2 _ _ => None
-  | spec_prop_descriptor_from_prop_descriptor_3 o _ _ => Some o
-  | spec_prop_descriptor_from_prop_descriptor_4 _ _ => None
-  | spec_prop_descriptor_from_prop_descriptor_5 o _ _ => Some o
-  | spec_prop_descriptor_from_prop_descriptor_6 o _ _ => Some o
-  | spec_prop_descriptor_from_prop_descriptor_7 o _ _ => Some o
-  | spec_prop_descriptor_from_prop_descriptor_8 o _ => Some o
+  | spec_from_descriptor _ => None
+  | spec_from_descriptor_1 _ o => Some o
+  | spec_from_descriptor_2 _ _ o => None
+  | spec_from_descriptor_3 _ _ o => Some o
+  | spec_from_descriptor_4 _ _ o => None
+  | spec_from_descriptor_5 _ _ o => Some o
+  | spec_from_descriptor_6 _ o => Some o
 
-  | spec_prop_descriptor_to_prop_descriptor _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_1 _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_2 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_3 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_4 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_5 _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_6 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_7 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_8 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_9 _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_10 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_11 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_12  _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_13 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_14 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_15 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_16  _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_17 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_18 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_19 _ _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_20 _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_21 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_22 o _ _ _ => Some o
-  | spec_prop_descriptor_to_prop_descriptor_23 _ _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_24 _ _ _ => None
-  | spec_prop_descriptor_to_prop_descriptor_25 _ _ _ => None
+  | spec_to_descriptor _ _ => None
+  | spec_to_descriptor_1a _ _ _ => None
+  | spec_to_descriptor_1b o _ _ _ => Some o
+  | spec_to_descriptor_1c o _ _ _ => Some o
+  | spec_to_descriptor_2a _ _ _ => None
+  | spec_to_descriptor_2b o _ _ _ => Some o
+  | spec_to_descriptor_2c o _ _ _ => Some o
+  | spec_to_descriptor_3a _ _ _ => None
+  | spec_to_descriptor_3b o _ _ _ => Some o
+  | spec_to_descriptor_3c o _ _ _ => Some o
+  | spec_to_descriptor_4a _ _ _ => None
+  | spec_to_descriptor_4b o _ _ _ => Some o
+  | spec_to_descriptor_4c o _ _ _ => Some o
+  | spec_to_descriptor_5a _ _ _ => None
+  | spec_to_descriptor_5b o _ _ _ => Some o
+  | spec_to_descriptor_5c o _ _ _ => Some o
+  | spec_to_descriptor_6a _ _ _ => None
+  | spec_to_descriptor_6b o _ _ _ => Some o
+  | spec_to_descriptor_6c o _ _ _ => Some o
+  | spec_to_descriptor_7 _ _ _ => None
 
   | spec_entering_eval_code _ _ _ => None
   | spec_entering_eval_code_1 _ _ => None

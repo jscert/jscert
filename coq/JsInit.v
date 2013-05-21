@@ -334,9 +334,23 @@ Definition bool_proto_value_of_function_object :=
 (* TODO *)
 
 (**************************************************************)
+(** The [[ThrowTypeError]] Function Object  (13.2.3) *)
+
+Definition throw_type_error_object :=  (* TODO: check this *)
+  let o := object_create_prealloc_call prealloc_throw_type_error 0 Heap.empty in
+  let o := object_with_scope o (Some lexical_env_initial) in
+  let o := object_with_formal_params o (Some nil) in
+  let o := object_set_extensible o false in
+  o.
+
+
+(**************************************************************)
 (** Initial object heap *)
 
 Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
+  (* ThrowTypeError Function object *)
+  let h := Heap.write h prealloc_throw_type_error throw_type_error_object in
+
   (* Function objects of Global object *)
   let h := Heap.write h prealloc_global_eval global_eval_function_object in
   let h := Heap.write h prealloc_global_is_nan global_is_nan_function_object in

@@ -324,7 +324,7 @@ Qed.
 
 Definition run_object_heap_set_extensible b S l : state :=
   let O := pick (object_binds S l) in
-  object_write S l (object_set_extensible b O).
+  object_write S l (object_set_extensible O b).
 
 
 (**************************************************************)

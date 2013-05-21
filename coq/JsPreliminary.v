@@ -314,7 +314,7 @@ Definition object_heap_map_properties S l F S' :=
 
 Definition object_heap_set_extensible b S l S' :=
   exists O, object_binds S l O
-         /\ S' = object_write S l (object_set_extensible b O).
+         /\ S' = object_write S l (object_set_extensible O b).
 
 (** [object_has_property S l x] asserts that the object stored
     at address [l] in [S] has a properties field that binds the
@@ -434,7 +434,7 @@ Definition descriptor_intro_accessor vg vs be bc :=
      descriptor_enumerable := Some be;
      descriptor_configurable := Some bc |}.
 
-(** Builds an empty property descriptor. We use it it 'ToPropertyDescriptor' (8.10.5) *)
+(** Builds an empty property descriptor --used by ToPropertyDescriptor (8.10.5) *)
 
 Definition descriptor_intro_empty := 
   {| descriptor_value := None;
@@ -443,6 +443,12 @@ Definition descriptor_intro_empty :=
      descriptor_set := None;
      descriptor_enumerable := None;
      descriptor_configurable := None |}.
+
+(** Tests whether a descriptor has incompatible fields --used by ToPropertyDescriptor (8.10.5) *)
+
+Definition descriptor_inconsistent Desc :=
+     (descriptor_get Desc <> None \/ descriptor_set Desc <> None)
+  /\ (descriptor_value Desc <> None \/ descriptor_writable Desc <> None).
 
 
 (**************************************************************)

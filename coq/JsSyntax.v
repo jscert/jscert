@@ -256,7 +256,7 @@ Inductive prealloc :=
   | prealloc_ref_error
   | prealloc_syntax_error
   | prealloc_type_error
-  | prealloc_throw_type_error (* 13.2.3 *) (* LATER: support *)
+  | prealloc_throw_type_error (* 13.2.3 *) 
   .
 
 (* Identifiers for "Callable" methods *)
