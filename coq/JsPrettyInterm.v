@@ -398,12 +398,18 @@ Inductive ext_expr :=
 
   (* Throwing of errors *)
 
-  | spec_error : prealloc -> ext_expr (* todo: reduction rules *)
-  | spec_error_or_cst : bool -> prealloc -> value -> ext_expr (* todo: reduction rules *)
-  | spec_error_or_void : bool -> prealloc -> ext_expr (* todo: reduction rules *)
+  | spec_error : native_error -> ext_expr 
+  | spec_error_1 : out -> ext_expr
+  | spec_error_or_cst : bool -> native_error -> value -> ext_expr
+  | spec_error_or_void : bool -> native_error -> ext_expr
 
+  (* TODO: these are currently unused *)
   | spec_init_throw_type_error : ext_expr
   | spec_init_throw_type_error_1 : out -> ext_expr
+
+  | spec_build_error : value -> value -> ext_expr
+  | spec_build_error_1 : object_loc -> value -> ext_expr
+  | spec_build_error_2 : object_loc -> out -> ext_expr
 
   (* Object creation and calling continuation with object address *)
 
@@ -489,7 +495,6 @@ Inductive ext_expr :=
 
   | spec_call_object_get_own_prop_descriptor_1: value -> value -> ext_expr
   | spec_call_object_get_own_prop_descriptor_2: object_loc -> out -> ext_expr
-  | spec_call_object_get_own_prop_descriptor_3: full_descriptor -> ext_expr
 
 
   | spec_call_object_proto_to_string_1 : value -> ext_expr
@@ -504,20 +509,21 @@ Inductive ext_expr :=
   | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_4 : full_descriptor -> ext_expr
   
-  | spec_call_bool_new_1 : out -> ext_expr
+  | spec_construct_bool_1 : out -> ext_expr
   | spec_call_bool_proto_to_string_1 : out -> ext_expr
   | spec_call_bool_proto_value_of_1 : value -> ext_expr
   | spec_call_bool_proto_value_of_2 : value -> ext_expr
 
   | spec_call_number_proto_to_string_1 : value -> list value -> ext_expr
   | spec_call_number_proto_to_string_2 : value -> out -> ext_expr
-  | spec_call_number_new_1 : out -> ext_expr
+  | spec_construct_number_1 : out -> ext_expr
   | spec_call_number_proto_value_of_1 : value -> ext_expr
 
-
-
-
-
+  | spec_call_error_proto_to_string_1 : value -> ext_expr
+  | spec_call_error_proto_to_string_2 : object_loc -> out -> ext_expr
+  | spec_call_error_proto_to_string_3 : object_loc -> out -> ext_expr
+  | spec_call_error_proto_to_string_4 : object_loc -> string -> out -> ext_expr
+  | spec_call_error_proto_to_string_5 : object_loc -> string -> out -> ext_expr
 
 
   (** Special state for returning an outcome *)
@@ -925,11 +931,16 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_function_get_1 _ _ o => Some o
 
   | spec_error _ => None
+  | spec_error_1 o => Some o 
   | spec_error_or_cst _ _ _ => None
   | spec_error_or_void _ _ => None
 
   | spec_init_throw_type_error => None
   | spec_init_throw_type_error_1 o => Some o
+
+  | spec_build_error _ _ => None
+  | spec_build_error_1 _ _ => None
+  | spec_build_error_2 _ o => Some o
 
   | spec_new_object _ => None
   | spec_new_object_1 o _ => Some o
@@ -966,6 +977,10 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_construct_default _ _ => None
   | spec_construct_default_1 _ _ o => Some o
   | spec_construct_default_2 _ o => Some o
+
+  | spec_construct_bool_1 o => Some o
+
+  | spec_construct_number_1 o => Some o
 
   | spec_call_global_is_nan_1 o => Some o
   | spec_call_global_is_finite_1 o => Some o
@@ -1006,7 +1021,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_call_object_get_own_prop_descriptor_1 _ _ => None
   | spec_call_object_get_own_prop_descriptor_2 _ o => Some o
-  | spec_call_object_get_own_prop_descriptor_3 _ => None
 
   | spec_call_object_proto_to_string_1 _ => None
   | spec_call_object_proto_to_string_2 o => Some o
@@ -1020,15 +1034,19 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_proto_prop_is_enumerable_3 o _ => Some o
   | spec_call_object_proto_prop_is_enumerable_4 _ => None
   
-  | spec_call_bool_new_1 o => Some o
   | spec_call_bool_proto_to_string_1 o => Some o
   | spec_call_bool_proto_value_of_1 _ => None
   | spec_call_bool_proto_value_of_2 _ => None
 
   | spec_call_number_proto_to_string_1 _ _ => None
   | spec_call_number_proto_to_string_2 _ o => Some o
-  | spec_call_number_new_1 o => Some o
   | spec_call_number_proto_value_of_1 _ => None
+
+  | spec_call_error_proto_to_string_1 _ => None
+  | spec_call_error_proto_to_string_2 _ o => Some o
+  | spec_call_error_proto_to_string_3 _ o => Some o
+  | spec_call_error_proto_to_string_4 _ _ o => Some o
+  | spec_call_error_proto_to_string_5 _ _ o => Some o
 
   | spec_returns o => Some o
   end.

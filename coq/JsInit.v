@@ -54,7 +54,7 @@ Implicit Type t : stat.
 (** Common shorthands *)
 
 (** Shorthand notation for building a property attributes
-    that is non writable, non configurable and non enumerable. *)
+    that is writable, non enumerable and configurable . *)
 
 Definition prop_attributes_for_global_object v :=
    attributes_data_intro v true false true.
@@ -103,8 +103,8 @@ Definition object_create_prealloc_constructor fprealloc length P :=
 
 (** Shorthand to extend a heap with a native method *)
 
-Definition write_native P name builtin :=
-  Heap.write P name (attrib_native (value_object builtin)).
+Definition write_native P name v :=
+  Heap.write P name (attrib_native v).
 
 (** Shorthand to extend a heap with a constant *)
 
@@ -140,11 +140,13 @@ Definition object_prealloc_global_properties :=
   let P := write_native P "Number" prealloc_number in *)
   let P := write_native P "Math" prealloc_math in
   let P := write_native P "Error" prealloc_error in
-  let P := write_native P "RangeError" prealloc_range_error in
-  let P := write_native P "ReferenceError" prealloc_ref_error in
-  let P := write_native P "SyntaxError" prealloc_syntax_error in
-  let P := write_native P "TypeError" prealloc_type_error in
+  let P := write_native P "EvalError" native_error_eval in
+  let P := write_native P "RangeError" native_error_range in
+  let P := write_native P "ReferenceError" native_error_ref in
+  let P := write_native P "SyntaxError" native_error_syntax in
+  let P := write_native P "TypeError" native_error_type in
   P.
+
 
 (** Definition of the global object *)
 
@@ -220,7 +222,7 @@ Definition object_prealloc_function :=
 Definition object_prealloc_function_proto :=
   let P := Heap.empty in
   let P := write_native P "constructor" prealloc_function in
-  let P := Heap.write P "length" (attrib_constant 0) in
+  let P := Heap.write P "length" (attrib_constant 0) in (* todo: can we use write_constant? *)
   (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* TODO *)
   (* LATER: complete list *)
   let O := object_create_builtin prealloc_object_proto "Function" P in
@@ -289,10 +291,7 @@ Definition number_proto_value_of_function_object :=
 
 Definition object_prealloc_bool :=
   let P := Heap.empty in
-  (* Daiva: I've changed to write_native instead of write_constant since the spec does not say anything special
-            about this field -- so default attributes for built-in things apply. *)
-  let P := write_native P "prototype" prealloc_function_proto in
-  let P := write_constant P "prototype" prealloc_bool_proto in
+  let P := write_native P "prototype" prealloc_bool_proto in
   (* TODO: complete list *)
   object_create_prealloc_constructor prealloc_bool 1 P.
 
@@ -307,7 +306,7 @@ Definition object_prealloc_bool_proto :=
   let P := write_native P "valueOf" prealloc_bool_proto_value_of in
   (* TODO: complete list *)
   let O := object_create_builtin prealloc_object_proto "Boolean" P in
-  (* The spec does not say explicitly that [[PrimitiveValue]] is false. It says that object's value is false (15.6.4). *)
+  (* The spec does not say explicitly that [[PrimitiveValue]] is false. It says that object's value is false (15.6.4). TODO: do we need to change anything?*)
   object_with_primitive_value O false.
   
 Definition bool_proto_to_string_function_object :=
@@ -324,14 +323,51 @@ Definition bool_proto_value_of_function_object :=
 
 
 (**************************************************************)
-(** Error object *)
-
-(* TODO *)
-
-(**************************************************************)
 (** Error prototype object *)
 
-(* TODO *)
+(* TODO: the way we handle the property "constructor" everywhere in the file is boggous *)
+
+Definition object_prealloc_error_proto :=
+  let P := Heap.empty in
+  let P := write_native P "constructor" prealloc_error in
+  let P := write_native P "name" (prim_string "Error") in   
+  let P := write_native P "message" (prim_string "") in   
+  let P := write_native P "toString" prealloc_error_proto_to_string in   
+  (* TODO: the spec does not talk about valueOf, is it intended? *)
+  object_create_builtin prealloc_object_proto "Error" P.
+
+Definition error_proto_to_string_function_object :=
+  object_create_prealloc_call prealloc_error_proto_to_string 0 Heap.empty. 
+
+
+(**************************************************************)
+(** Error object *)
+
+Definition object_prealloc_error :=
+  let P := Heap.empty in
+  let P := write_native P "prototype" prealloc_error_proto in
+  object_create_prealloc_constructor prealloc_error 1 P.
+
+
+(**************************************************************)
+(** Native error prototype object *)
+
+Definition object_prealloc_native_error_proto ne :=
+  let P := Heap.empty in
+  let P := write_native P "constructor" (prealloc_native_error ne) in
+  let P := write_native P "name" (string_of_native_error ne) in   
+  let P := write_native P "message" (prim_string "") in   
+  object_create_builtin prealloc_error_proto "Error" P. 
+
+
+(**************************************************************)
+(** Native error object *)
+
+Definition object_prealloc_native_error ne :=
+  let P := Heap.empty in
+  let P := write_native P "prototype" (prealloc_native_error_proto ne) in
+  object_create_prealloc_constructor (prealloc_native_error_proto ne) 1 P.
+
 
 (**************************************************************)
 (** The [[ThrowTypeError]] Function Object  (13.2.3) *)
@@ -371,6 +407,10 @@ Definition object_heap_initial_function_objects (h : Heap.heap object_loc object
   (* Function objects of Number.prototype *)
   let h := Heap.write h prealloc_number_proto_to_string number_proto_to_string_function_object in
   let h := Heap.write h prealloc_number_proto_value_of number_proto_value_of_function_object in 
+
+  (* Function objects of Error.prototype *)
+  let h := Heap.write h prealloc_error_proto_to_string error_proto_to_string_function_object in
+
   h.
 
 Definition object_heap_initial :=
@@ -388,11 +428,19 @@ Definition object_heap_initial :=
   let h := Heap.write h prealloc_array_proto object_prealloc_array_proto in
   let h := Heap.write h prealloc_string_proto object_prealloc_string_proto in
   let h := Heap.write h prealloc_eval_proto object_prealloc_eval_proto in
-  let h := Heap.write h prealloc_range_error object_prealloc_range_error in
-  let h := Heap.write h prealloc_ref_error object_prealloc_ref_error in
-  let h := Heap.write h prealloc_syntax_error object_prealloc_syntax_error in
-  let h := Heap.write h prealloc_type_error object_prealloc_type_error in
   *)
+  let h := Heap.write h prealloc_error_proto object_prealloc_error_proto in
+  let h := Heap.write h (prealloc_native_error_proto native_error_eval) (object_prealloc_native_error_proto native_error_eval) in
+  let h := Heap.write h (prealloc_native_error_proto native_error_range) (object_prealloc_native_error_proto native_error_range) in
+  let h := Heap.write h (prealloc_native_error_proto native_error_ref) (object_prealloc_native_error_proto native_error_ref) in
+  let h := Heap.write h (prealloc_native_error_proto native_error_syntax) (object_prealloc_native_error_proto native_error_syntax) in
+  let h := Heap.write h (prealloc_native_error_proto native_error_type) (object_prealloc_native_error_proto native_error_type) in
+  let h := Heap.write h prealloc_error object_prealloc_error in
+  let h := Heap.write h native_error_eval (object_prealloc_native_error native_error_eval) in
+  let h := Heap.write h native_error_range (object_prealloc_native_error native_error_range) in
+  let h := Heap.write h native_error_ref (object_prealloc_native_error native_error_ref) in
+  let h := Heap.write h native_error_syntax (object_prealloc_native_error native_error_syntax) in
+  let h := Heap.write h native_error_type (object_prealloc_native_error native_error_type) in
   object_heap_initial_function_objects h.
 
 

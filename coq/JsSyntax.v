@@ -193,6 +193,15 @@ Inductive mathop :=
   (* LATER: many others *)
   .
 
+(** Identifiers for native error objects  (* 15.11.6 *) *)
+
+Inductive native_error :=
+  | native_error_eval
+  | native_error_range
+  | native_error_ref
+  | native_error_syntax
+  | native_error_type.
+
 (** Identifiers for objects pre-allocated in the initial heap *)
 
 Inductive prealloc :=
@@ -251,11 +260,11 @@ Inductive prealloc :=
   | prealloc_string_proto_char_code_at (* LATER: support *)
   | prealloc_math (* not callable *)
   | prealloc_mathop : mathop -> prealloc
-  | prealloc_error
-  | prealloc_range_error
-  | prealloc_ref_error
-  | prealloc_syntax_error
-  | prealloc_type_error
+  | prealloc_error (* 15.11 *)
+  | prealloc_error_proto (* 15.11.3.1 *)
+  | prealloc_native_error : native_error -> prealloc (* 15.11.6 *)
+  | prealloc_native_error_proto : native_error -> prealloc (* 15.11.7.7 *)
+  | prealloc_error_proto_to_string
   | prealloc_throw_type_error (* 13.2.3 *) 
   .
 
@@ -267,6 +276,7 @@ Inductive call := (* Note: could be named [builtin_call] *)
   | call_prealloc : prealloc -> call. (* all are functions except those tagged not callable *)
 
 Coercion call_prealloc : prealloc >-> call.
+Coercion prealloc_native_error : native_error >-> prealloc.
 
 (** Identifiers for "Construct" methods *)
 

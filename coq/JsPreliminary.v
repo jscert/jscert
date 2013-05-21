@@ -1329,6 +1329,17 @@ Definition string_of_propname (pn : propname) : prop_name :=
   | propname_number n => JsNumber.to_string n
   end.
 
+(** Interpretation of a native error code as a string (15.11.7.9) *)
+
+Definition string_of_native_error (ne : native_error) :=
+  match ne with
+  | native_error_eval => "EvalError"
+  | native_error_range => "RangeError"
+  | native_error_ref => "ReferenceError"
+  | native_error_syntax => "SyntaxError"
+  | native_error_type => "TypeError"
+  end.
+
 
 (**************************************************************)
 (** ** Auxiliary definition used in the reduction of [eval] *)
