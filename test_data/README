@@ -1,0 +1,48 @@
+This file will shortly contain useful instructions for how to use our
+results databases to answer interseting questions about the behaviour
+various JS implementations.
+
+For now, it just contains notes about what tools gds is using to
+build those databases.
+
+I'm using ghc 7.6.2 and cabal.
+
+I depend on HDBC, and when I did cabal install HDBC, I got HDBC-2.3.1.2
+
+sudo aptitude install libsqlite3-dev
+
+cabal install haskelldb-hdbc-sqlite3
+
+
+
+#+begin_src sql
+  CREATE TABLE single_test_runs (
+  id integer primary key autoincrement
+  , test_id integer references test_cases(filepath)
+  , batch_id integer references test_batch_runs(id)
+  , status text
+  , stdout text
+  , stderr text
+  );
+  CREATE TABLE test_batch_runs (
+  id integer primary key autoincrement
+  , time integer
+  , implementation text
+  , impl_path text
+  , impl_version text
+  , title text
+  , notes text
+  , timestamp integer
+  );
+  CREATE TABLE test_cases (
+  filepath text primary key
+  , negative integer
+  );
+  CREATE TABLE test_group_memberships (
+  group_id integer references test_groups(id)
+  , test_id integer references test_cases(filepath)
+  );
+  CREATE TABLE test_groups (
+  id integer primary key autoincrement
+  );
+#+end_src
