@@ -37,6 +37,9 @@ engines_grp.add_argument("--nodejs", action="store_true",
 argp.add_argument("--interp_path", action="store", metavar="path",
                   default=os.path.join("interp","run_js"), help="Where to find the interpreter.")
 
+argp.add_argument("--interp_version", action="store", metavar="version", default="",
+    help="The version of the interpreter you're running. Default is the git hash of the current directory.")
+
 argp.add_argument("--webreport",action="store_true",
     help="Produce a web-page of your results in the default web directory. Requires pystache.")
 
@@ -143,13 +146,18 @@ class DBManager:
         return re.sub("^"+self.curdir+"/","",path)
 
     def report_results(self,results):
+        test_pipe = subprocess.Popen(["git","rev-parse","HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        githash,errors = test_pipe.communicate()
+        version = re.sub(r'\n','',githash)
+        if args.interp_version:
+            version = args.interp_version
         with self.con:
             cur = self.con.cursor()
             cur.execute("insert into test_batch_runs(time, implementation, impl_path, impl_version, title, notes, timestamp, system, osnodename, osrelease, osversion, hardware) values (?,?,?,?,?,?,?,?,?,?,?,?)",
                         (results["timetaken"],
                          results["implementation"],
                          args.interp_path,
-                         "BC",
+                         version,
                          results["testtitle"],
                          results["testnote"],
                          calendar.timegm(time.gmtime()),
