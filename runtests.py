@@ -9,6 +9,11 @@ import argparse
 import signal
 import subprocess
 import os
+import getpass
+import calendar
+import sqlite3 as db
+import time
+import re
 
 
 # Our command-line interface
@@ -51,6 +56,13 @@ argp.add_argument("--note",action="store",metavar="string", default="",
 
 argp.add_argument("--noindex",action="store_true",
     help="Don't attempt to build an index.html for the reportdir")
+
+argp.add_argument("--dbsave",action="store_true",
+    help="Save the results of this testrun to the database")
+
+argp.add_argument("--dbpath",action="store",metavar="path",
+    default="test_data/"+getpass.getuser()+".db",
+    help="Path to the database to save results in. The default should usually be fine. Please don't mess with this unless you know what you're doing.")
 
 args = argp.parse_args()
 
@@ -111,6 +123,63 @@ class TestResult:
                 "stdout":self.stdout,
                 "stderr":self.stderr}
 
+class DBManager:
+    PASS = "PASS"
+    FAIL = "FAIL"
+    ABORT = "ABORT"
+
+    con = None
+    curdir = os.getcwd()
+
+    def __init__(self):
+        if not os.path.isfile(args.dbpath):
+            print args.dbpath
+            print """ You need to set up your personal results database before saving data to it.
+            See the README for details. """
+            exit(1)
+        self.con = db.connect(args.dbpath)
+
+    def makerelative(self,path):
+        return re.sub("^"+self.curdir+"/","",path)
+
+    def report_results(self,results):
+        with self.con:
+            cur = self.con.cursor()
+            cur.execute("insert into test_batch_runs(time, implementation, impl_path, impl_version, title, notes, timestamp, system, osnodename, osrelease, osversion, hardware) values (?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (results["timetaken"],
+                         results["implementation"],
+                         args.interp_path,
+                         "BC",
+                         results["testtitle"],
+                         results["testnote"],
+                         calendar.timegm(time.gmtime()),
+                         results["system"],
+                         results["osnodename"],
+                         results["osrelease"],
+                         results["osversion"],
+                         results["hardware"]))
+            cur.execute("SELECT id FROM test_batch_runs ORDER BY id DESC LIMIT 1")
+            batchid = cur.fetchone()[0]
+            insert_single_stmt = "insert into single_test_runs(test_id, batch_id, status, stdout, stderr) values (?,?,?,?,?)"
+            def insert_single(status,case):
+                cur.execute(insert_single_stmt,
+                            (self.makerelative(case["filename"]),
+                             batchid,
+                             status,
+                             case["stdout"],
+                             case["stderr"]))
+            for case in results["aborts"]:
+                # Insert abort cases
+                insert_single(self.ABORT,case)
+            for case in results["failures"]:
+                # Insert fail cases
+                insert_single(self.FAIL,case)
+            for case in results["passes"]:
+                # Insert pass cases
+                insert_single(self.PASS,case)
+            self.con.commit()
+
+
 class ResultPrinter:
 
     """
@@ -129,6 +198,16 @@ class ResultPrinter:
     passed_tests = []
     failed_tests = []
     aborted_tests = []
+
+    # How long did it take? In seconds. Set by whoever actually does the running.
+    time_taken = 0
+
+    # Possibly a database to save our results to
+    dbmanager = None
+
+    def __init__(self):
+        if(args.dbsave):
+            self.dbmanager = DBManager()
 
     def print_heading(self,s):
         print self.HEADING+s+self.NORMAL
@@ -157,39 +236,46 @@ class ResultPrinter:
         self.print_heading(filename)
         return lambda code,stdout,stderr: self.__record_results__(TestResult(filename,code,stdout,stderr))
 
-    def produce_web_page(self):
-        import pystache
-        import time
-        import getpass
-
-        impl_name = "JSRef"
-        if args.spidermonkey: impl_name = "SpiderMonkey"
-        if args.nodejs: impl_name = "node.js"
-        if args.lambdaS5: impl_name = "LambdaS5"
-
+    def make_report(self):
         (sysname, nodename, release, version, machine) = os.uname()
 
-        report = {"testtitle":args.title,
-                  "testnote":args.note,
-                  "implementation":impl_name,
-                  "system":sysname,
-                  "osnodename":nodename,
-                  "osrelease":release,
-                  "osversion":version,
-                  "hardware":machine,
-                  "time":time.asctime(time.gmtime()),
-                  "user":getpass.getuser(),
-                  "numpasses":len(self.passed_tests),
-                  "numfails":len(self.failed_tests),
-                  "numaborts":len(self.aborted_tests),
-                  "aborts":map(lambda x:x.report_dict() , self.aborted_tests),
-                  "failures":map(lambda x:x.report_dict() , self.failed_tests),
-                  "passes":map(lambda x:x.report_dict() , self.passed_tests)}
+        return {"testtitle":args.title,
+                "testnote":args.note,
+                "implementation":self.impl_name(),
+                "system":sysname,
+                "timetaken":self.time_taken,
+                "osnodename":nodename,
+                "osrelease":release,
+                "osversion":version,
+                "hardware":machine,
+                "time":time.asctime(time.gmtime()),
+                "user":getpass.getuser(),
+                "numpasses":len(self.passed_tests),
+                "numfails":len(self.failed_tests),
+                "numaborts":len(self.aborted_tests),
+                "aborts":map(lambda x:x.report_dict() , self.aborted_tests),
+                "failures":map(lambda x:x.report_dict() , self.failed_tests),
+                "passes":map(lambda x:x.report_dict() , self.passed_tests)}
+
+    def update_database(self):
+        self.dbmanager.report_results(self.make_report())
+
+    def impl_name(self):
+        if args.spidermonkey: return "SpiderMonkey"
+        if args.nodejs: return "node.js"
+        if args.lambdaS5: return "LambdaS5"
+        return "JSRef"
+
+
+    def produce_web_page(self):
+        import pystache
+
+        report = self.make_report()
 
         simplerenderer = pystache.Renderer(escape = lambda u: u)
         with open(os.path.join(args.templatedir,"template.tmpl"),"r") as outer:
             with open(os.path.join(args.templatedir,"test_results.tmpl"),"r") as template:
-                outfilenamebits = ["report",getpass.getuser(),impl_name]
+                outfilenamebits = ["report",getpass.getuser(),self.impl_name()]
                 if args.title : outfilenamebits.append(args.title)
                 outfilenamebits.extend([time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime())])
                 outfilename = "-".join(outfilenamebits)+".html"
@@ -224,6 +310,8 @@ class ResultPrinter:
         print "There were "+str(len(self.passed_tests))+" passes, "+str(len(self.failed_tests))+"  fails, and "+str(len(self.aborted_tests))+" abandoned."
         if args.webreport:
             self.produce_web_page()
+        if args.dbsave:
+            self.update_database()
 
     def interrupt_handler(self,signal,frame):
         print "Interrupted..."
@@ -268,6 +356,7 @@ else:
                                      "-file",filename]
 
 # Now let's get down to the business of running the tests
+starttime = calendar.timegm(time.gmtime())
 for filename in args.filenames:
     filename = os.path.abspath(filename)
     current_test = printer.start_test(filename)
@@ -283,4 +372,5 @@ for filename in args.filenames:
 
     current_test(ret,output,errors)
 
+printer.time_taken = calendar.timegm(time.gmtime()) - starttime
 printer.end_message()

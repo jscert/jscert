@@ -18,7 +18,7 @@ cabal install haskelldb-hdbc-sqlite3
 #+begin_src sql
   CREATE TABLE single_test_runs (
   id integer primary key autoincrement
-  , test_id integer references test_cases(filepath)
+  , test_id text references test_cases(filepath)
   , batch_id integer references test_batch_runs(id)
   , status text
   , stdout text
@@ -33,6 +33,11 @@ cabal install haskelldb-hdbc-sqlite3
   , title text
   , notes text
   , timestamp integer
+  , system text
+  , osnodename text
+  , osrelease text
+  , osversion text
+  , hardware text
   );
   CREATE TABLE test_cases (
   filepath text primary key
