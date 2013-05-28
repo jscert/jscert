@@ -77,11 +77,14 @@ Extract Constant JsNumber.from_string =>
       behavior than JavaScript.  For instance it will read ""022"" as 22 instead of
       18, which should be the JavaScript result for it. *)".
 Extract Constant JsNumber.to_string =>
-  "(fun f -> let ret = ref [] in (* Ugly, but the API for OCaml string is not very functionnal... *)
-    String.iter (fun c -> ret := c :: !ret) (string_of_float f);
+  "(fun f -> 
+    let string_of_number n =
+      let inum = int_of_float n in
+      if (float_of_int inum = n) then string_of_int inum else string_of_float n in
+    let ret = ref [] in (* Ugly, but the API for OCaml string is not very functionnal... *)
+    String.iter (fun c -> ret := c :: !ret) (string_of_number f);
     List.rev !ret)
-   (* Note that we're using `string_of_float' there, which is no exactly the same as the JavaScript
-      output.  For instance it will return ""1."" instead of ""1"". *)".
+   (* Note that this is ugly, we should use the spec of JsNumber.to_string here. *)".
 Extract Constant JsNumber.add => "(+.)".
 Extract Constant JsNumber.sub => "(-.)".
 Extract Constant JsNumber.mult => "( *. )".
