@@ -68,7 +68,7 @@ argp.add_argument("--dbpath",action="store",metavar="path",
     help="Path to the database to save results in. The default should usually be fine. Please don't mess with this unless you know what you're doing.")
 
 argp.add_argument("--verbose",action="store_true",
-    help="Print the output of the tests.")
+    help="Print the output of the tests as they happen.")
 
 args = argp.parse_args()
 
