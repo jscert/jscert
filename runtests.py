@@ -67,6 +67,9 @@ argp.add_argument("--dbpath",action="store",metavar="path",
     default="test_data/"+getpass.getuser()+".db",
     help="Path to the database to save results in. The default should usually be fine. Please don't mess with this unless you know what you're doing.")
 
+argp.add_argument("--verbose",action="store_true",
+    help="Print the output of the tests.")
+
 args = argp.parse_args()
 
 # Some handy data structures
@@ -239,6 +242,8 @@ class ResultPrinter:
         else:
               print "Something really weird happened"
               exit(1)
+        if args.verbose:
+            print result.stdout
 
     def start_test(self,filename):
         self.print_heading(filename)
