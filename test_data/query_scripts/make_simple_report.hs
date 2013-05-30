@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Main where
 
@@ -21,6 +21,7 @@ import Control.Monad.IO.Class
 data Options = Options
                { reportName :: String
                , reportComment :: String
+               , queryType :: String
                , query :: String
                } deriving (Data,Typeable,Show)
 
@@ -28,31 +29,32 @@ progOpts :: Options
 progOpts = Options
            { reportName  = "query" &= help "The name of this report"
            , reportComment = "" &= help "additional comments"
+           , queryType = "stdErrLike" &= help "Which sort of query should we do? Default=stdErrLike"
            , query = "%Not implemented code in file%" &= help "The query to perform over stderr"}
 
 data Batch = Batch
-             { b_id :: Int
-             , b_time :: Int
-             , b_implementation :: String
-             , b_impl_path :: String
-             , b_impl_version :: String
-             , b_title :: String
-             , b_notes :: String
-             , b_timestamp :: Int
-             , b_system :: String
-             , b_osnodename :: String
-             , b_osrelease :: String
-             , b_osversion :: String
-             , b_hardware :: String
+             { bId :: Int
+             , bTime :: Int
+             , bImplementation :: String
+             , bImplPath :: String
+             , bImplVersion :: String
+             , bTitle :: String
+             , bNotes :: String
+             , bTimestamp :: Int
+             , bSystem :: String
+             , bOsnodename :: String
+             , bOsrelease :: String
+             , bOsversion :: String
+             , bHardware :: String
              } deriving Show
 
 data SingleTestRun = SingleTestRun
-                     { str_id :: Int
-                     , str_test_id :: String
-                     , str_batch_id :: Int
-                     , str_status :: String
-                     , str_stdout :: String
-                     , str_stderr :: String
+                     { strId :: Int
+                     , strTestId :: String
+                     , strBatchId :: Int
+                     , strStatus :: String
+                     , strStdout :: String
+                     , strStderr :: String
                      } deriving Show
 
 strPASS :: String
@@ -62,65 +64,61 @@ strFAIL = "FAIL"
 strABORT :: String
 strABORT = "ABORT"
 
-stmtGetTestRunByID :: String
-stmtGetTestRunByID = "SELECT * from test_batch_runs where id=?"
+stmts :: [(String,String)]
+stmts = [
+  ("stmtGetTestRunByID", "SELECT * from test_batch_runs where id=?"),
 
-stmtGetBatchIDs :: String
-stmtGetBatchIDs = "SELECT id from test_batch_runs ORDER BY id DESC"
+  ("stmtGetBatchIDs" , "SELECT id from test_batch_runs ORDER BY id DESC"),
 
-stmtGetLatestBatch :: String
-stmtGetLatestBatch = "select id,"++
-                     "time,"++
-                     "implementation,"++
-                     "impl_path,"++
-                     "impl_version,"++
-                     "title,"++
-                     "notes,"++
-                     "timestamp,"++
-                     "system,"++
-                     "osnodename,"++
-                     "osrelease,"++
-                     "osversion,"++
-                     "hardware from test_batch_runs where id=("++
-                     "select max(id) from ("++
-                     "(select * from test_batch_runs where "++
-                     "implementation='JSRef')))"
+  ("getLatestBatch" , "select id,"++
+                      "time,"++
+                      "implementation,"++
+                      "impl_path,"++
+                      "impl_version,"++
+                      "title,"++
+                      "notes,"++
+                      "timestamp,"++
+                      "system,"++
+                      "osnodename,"++
+                      "osrelease,"++
+                      "osversion,"++
+                      "hardware from test_batch_runs where id=("++
+                      "select max(id) from ("++
+                      "(select * from test_batch_runs where "++
+                      "implementation='JSRef')))"),
+
+  ("stmtGetSTRsByBatch" , "SELECT * from single_test_runs where batch_id=?"),
+
+  ("stmtGetSTRsByBatchStdOut" , "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"),
+
+  ("stdErrLike" , "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;")
+  ]
 
 dbToBatch :: [Maybe String] -> Batch
 dbToBatch res = Batch
-                     { b_id = read.fromJust $ res!!0
-                     , b_time = read.fromJust $ res!!1
-                     , b_implementation = fromJust $ res!!2
-                     , b_impl_path = fromJust $ res!!3
-                     , b_impl_version = fromJust $ res!!4
-                     , b_title = fromJust $ res!!5
-                     , b_notes = fromJust $ res!!6
-                     , b_timestamp = read.fromJust $ res!!7
-                     , b_system = fromJust $ res!!8
-                     , b_osnodename = fromJust $ res!!9
-                     , b_osrelease = fromJust $ res!!10
-                     , b_osversion = fromJust $ res!!11
-                     , b_hardware = fromJust $ res!!12}
+                     { bId = read.fromJust $ head res
+                     , bTime = read.fromJust $ res!!1
+                     , bImplementation = fromJust $ res!!2
+                     , bImplPath = fromJust $ res!!3
+                     , bImplVersion = fromJust $ res!!4
+                     , bTitle = fromJust $ res!!5
+                     , bNotes = fromJust $ res!!6
+                     , bTimestamp = read.fromJust $ res!!7
+                     , bSystem = fromJust $ res!!8
+                     , bOsnodename = fromJust $ res!!9
+                     , bOsrelease = fromJust $ res!!10
+                     , bOsversion = fromJust $ res!!11
+                     , bHardware = fromJust $ res!!12}
 
-stmtGetSTRsByBatch :: String
-stmtGetSTRsByBatch = "SELECT * from single_test_runs where batch_id=?"
-
-stmtGetSTRsByBatchStdOut :: String
-stmtGetSTRsByBatchStdOut = "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"
-
--- This one is particularly useful with LIKE "%Not implemented code in file%"
--- which gets us all tests that fail for not-implemented-yet reasons.
-stmtGetSTRsByBatchStdErr :: String
-stmtGetSTRsByBatchStdErr = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
 
 dbToSTR :: [Maybe String] -> SingleTestRun
 dbToSTR res = SingleTestRun
-                     { str_id = read.fromJust $ res!!0
-                     , str_test_id = fromJust $ res!!1
-                     , str_batch_id = read.fromJust $ res!!2
-                     , str_status = fromJust $ res!!3
-                     , str_stdout = fromJust $ res!!4
-                     , str_stderr = fromJust $ res!!5
+                     { strId = read.fromJust $ head res
+                     , strTestId = fromJust $ res!!1
+                     , strBatchId = read.fromJust $ res!!2
+                     , strStatus = fromJust $ res!!3
+                     , strStdout = fromJust $ res!!4
+                     , strStderr = fromJust $ res!!5
                      }
 
 reportDir :: IO FilePath
@@ -144,24 +142,24 @@ outputFileName username time tname = do
   dir <- reportDir
   return $
     dir </> ("query_"++username++"_"++tname++"_"++
-             (formatTime defaultTimeLocale "%_y-%m-%dT%H:%M:%S" time)) <.> "html"
+             formatTime defaultTimeLocale "%_y-%m-%dT%H:%M:%S" time) <.> "html"
 
 reportContext :: Monad m => String -> String -> String -> UTCTime -> Batch -> [SingleTestRun] -> MuContext m
 reportContext qname comment user time batch results = mkStrContext context
   where
-    passes = filter ((strPASS==). str_status ) results
-    fails = filter ((strFAIL==). str_status ) results
-    aborts = filter ((strABORT==). str_status ) results
-    context "implementation" = MuVariable $ b_implementation batch
-    context "testtitle" = MuVariable $ qname
-    context "testnote" = MuVariable $ comment ++ " -- " ++ b_title batch ++ ": " ++ b_notes batch
-    context "time" = MuVariable $ (formatTime defaultTimeLocale "%_y-%m-%dT%H:%M:%S" time)
+    passes = filter ((strPASS==). strStatus ) results
+    fails = filter ((strFAIL==). strStatus ) results
+    aborts = filter ((strABORT==). strStatus ) results
+    context "implementation" = MuVariable $ bImplementation batch
+    context "testtitle" = MuVariable qname
+    context "testnote" = MuVariable $ comment ++ " -- " ++ bTitle batch ++ ": " ++ bNotes batch
+    context "time" = MuVariable $ formatTime defaultTimeLocale "%_y-%m-%dT%H:%M:%S" time
     context "user" = MuVariable user
-    context "system" = MuVariable $ b_system batch
-    context "osnodename" = MuVariable $ b_osnodename batch
-    context "osrelease" = MuVariable $ b_osrelease batch
-    context "osversion" = MuVariable $ b_osversion batch
-    context "hardware" = MuVariable $ b_hardware batch
+    context "system" = MuVariable $ bSystem batch
+    context "osnodename" = MuVariable $ bOsnodename batch
+    context "osrelease" = MuVariable $ bOsrelease batch
+    context "osversion" = MuVariable $ bOsversion batch
+    context "hardware" = MuVariable $ bHardware batch
     context "numpasses" = MuVariable $ length passes
     context "numfails" = MuVariable $ length fails
     context "numaborts" = MuVariable $ length aborts
@@ -169,23 +167,23 @@ reportContext qname comment user time batch results = mkStrContext context
     context "failures" = MuList $ map (mkStrContext . resContext) fails
     context "passes" = MuList $ map (mkStrContext . resContext) passes
     context _ = error "I forgot a case from my template"
-    resContext res "testname" = MuVariable . takeFileName $ str_test_id res
-    resContext res "filename" = MuVariable $ str_test_id res
-    resContext res "stdout" = MuVariable $ str_stdout res
-    resContext res "stderr" = MuVariable $ str_stderr res
+    resContext res "testname" = MuVariable . takeFileName $ strTestId res
+    resContext res "filename" = MuVariable $ strTestId res
+    resContext res "stdout" = MuVariable $ strStdout res
+    resContext res "stderr" = MuVariable $ strStderr res
     resContext _ _ = error "I forgot an inner case from my template"
 
 getLatestBatch :: Connection -> IO Batch
 getLatestBatch con = do
-  stmt <- prepare con stmtGetLatestBatch
+  stmt <- prepare con (fromJust (lookup "getLatestBatch" stmts))
   execute stmt []
   dat <- fmap head $ sFetchAllRows stmt
   return $ dbToBatch dat
 
-getTestsByErrQuery :: Int -> String -> Connection -> IO [SingleTestRun]
-getTestsByErrQuery batch query con = do
-  stmt <- prepare con stmtGetSTRsByBatchStdErr
-  execute stmt [toSql query, toSql batch]
+getTestsByErrQuery :: Int -> String -> String -> Connection -> IO [SingleTestRun]
+getTestsByErrQuery batch querytype querystr con = do
+  stmt <- prepare con (fromJust (lookup querytype stmts))
+  execute stmt [toSql querystr, toSql batch]
   dat <- sFetchAllRows stmt
   return $ map dbToSTR dat
 
@@ -198,11 +196,12 @@ main = do
   opts <- cmdArgs progOpts
   con <- getConnection
   latestBatch <- withTransaction con getLatestBatch
-  strs <- withTransaction con $ getTestsByErrQuery (b_id latestBatch) (query opts)
+  strs <- withTransaction con $
+          getTestsByErrQuery (bId latestBatch) (queryType opts) (query opts)
   outertemp <- outerTemplate
   template <- reportTemplate
   username <- getEnv "USER"
   time <- getCurrentTime
   report <- hastacheFile defaultConfig template (reportContext (reportName opts) (reportComment opts) username time latestBatch strs)
   outfile <- outputFileName username time (reportName opts)
-  L.writeFile outfile =<< hastacheFile escapelessConfig outertemp (mkStrContext (\_ -> MuVariable $ report))
+  L.writeFile outfile =<< hastacheFile escapelessConfig outertemp (mkStrContext (\_ -> MuVariable report))
