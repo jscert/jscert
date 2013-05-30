@@ -15,6 +15,7 @@ cabal install haskelldb-hdbc-sqlite3
 
 cabal install hastache
 
+cabal install cmdargs
 
 #+begin_src sql
 CREATE TABLE single_test_runs (
