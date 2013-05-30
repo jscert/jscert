@@ -30,7 +30,7 @@ progOpts = Options
            { reportName  = "query" &= help "The name of this report"
            , reportComment = "" &= help "additional comments"
            , queryType = "stdErrLike" &= help "Which sort of query should we do? Default=stdErrLike"
-           , query = "%Not implemented code in file%" &= help "The query to perform over stderr"}
+           , query = "%Not implemented code%" &= help "The query to perform over stderr"}
 
 data Batch = Batch
              { bId :: Int
@@ -91,7 +91,9 @@ stmts = [
 
   ("stmtGetSTRsByBatchStdOut" , "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"),
 
-  ("stdErrLike" , "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;")
+  ("stdErrLike" , "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"),
+
+  ("stdErrNotLike" , "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)")
   ]
 
 dbToBatch :: [Maybe String] -> Batch
