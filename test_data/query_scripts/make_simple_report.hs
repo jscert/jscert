@@ -18,10 +18,15 @@ import Data.Time.Format(formatTime)
 import Data.Maybe
 import Control.Monad.IO.Class
 
+data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
+               | StmtGetSTRsByBatch | StmtGetSTRsByBatchStdOut
+               | StdErrLike | StdErrNotLike
+                              deriving (Data,Typeable,Enum,Eq,Show)
+
 data Options = Options
                { reportName :: String
                , reportComment :: String
-               , queryType :: String
+               , queryType :: QueryType
                , query :: String
                } deriving (Data,Typeable,Show)
 
@@ -29,7 +34,7 @@ progOpts :: Options
 progOpts = Options
            { reportName  = "query" &= help "The name of this report"
            , reportComment = "" &= help "additional comments"
-           , queryType = "stdErrLike" &= help "Which sort of query should we do? Default=stdErrLike"
+           , queryType = StdErrLike &= help "Which sort of query should we do? Default=StdErrLike"
            , query = "%Not implemented code%" &= help "The query to perform over stderr"}
 
 data Batch = Batch
@@ -64,37 +69,29 @@ strFAIL = "FAIL"
 strABORT :: String
 strABORT = "ABORT"
 
-stmts :: [(String,String)]
-stmts = [
-  ("stmtGetTestRunByID", "SELECT * from test_batch_runs where id=?"),
-
-  ("stmtGetBatchIDs" , "SELECT id from test_batch_runs ORDER BY id DESC"),
-
-  ("getLatestBatch" , "select id,"++
-                      "time,"++
-                      "implementation,"++
-                      "impl_path,"++
-                      "impl_version,"++
-                      "title,"++
-                      "notes,"++
-                      "timestamp,"++
-                      "system,"++
-                      "osnodename,"++
-                      "osrelease,"++
-                      "osversion,"++
-                      "hardware from test_batch_runs where id=("++
-                      "select max(id) from ("++
-                      "(select * from test_batch_runs where "++
-                      "implementation='JSRef')))"),
-
-  ("stmtGetSTRsByBatch" , "SELECT * from single_test_runs where batch_id=?"),
-
-  ("stmtGetSTRsByBatchStdOut" , "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"),
-
-  ("stdErrLike" , "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"),
-
-  ("stdErrNotLike" , "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)")
-  ]
+stmts :: QueryType -> String
+stmts StmtGetTestRunByID       = "SELECT * from test_batch_runs where id=?"
+stmts StmtGetBatchIDs          = "SELECT id from test_batch_runs ORDER BY id DESC"
+stmts GetLatestBatch           = "select id,"++
+                                 "time,"++
+                                 "implementation,"++
+                                 "impl_path,"++
+                                 "impl_version,"++
+                                 "title,"++
+                                 "notes,"++
+                                 "timestamp,"++
+                                 "system,"++
+                                 "osnodename,"++
+                                 "osrelease,"++
+                                 "osversion,"++
+                                 "hardware from test_batch_runs where id=("++
+                                 "select max(id) from ("++
+                                 "(select * from test_batch_runs where "++
+                                 "implementation='JSRef')))"
+stmts StmtGetSTRsByBatchStdOut = "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"
+stmts StmtGetSTRsByBatch       = "SELECT * from single_test_runs where batch_id=?"
+stmts StdErrLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
+stmts StdErrNotLike            = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where batch_id = ? AND id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
 
 dbToBatch :: [Maybe String] -> Batch
 dbToBatch res = Batch
@@ -177,14 +174,14 @@ reportContext qname comment user time batch results = mkStrContext context
 
 getLatestBatch :: Connection -> IO Batch
 getLatestBatch con = do
-  stmt <- prepare con (fromJust (lookup "getLatestBatch" stmts))
+  stmt <- prepare con (stmts GetLatestBatch)
   execute stmt []
   dat <- fmap head $ sFetchAllRows stmt
   return $ dbToBatch dat
 
-getTestsByErrQuery :: Int -> String -> String -> Connection -> IO [SingleTestRun]
+getTestsByErrQuery :: Int -> QueryType -> String -> Connection -> IO [SingleTestRun]
 getTestsByErrQuery batch querytype querystr con = do
-  stmt <- prepare con (fromJust (lookup querytype stmts))
+  stmt <- prepare con (stmts querytype )
   execute stmt [toSql querystr, toSql batch]
   dat <- sFetchAllRows stmt
   return $ map dbToSTR dat
