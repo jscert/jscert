@@ -20,7 +20,7 @@ import Control.Monad.IO.Class
 
 data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
                | StmtGetSTRsByBatch | StmtGetSTRsByBatchStdOut
-               | StdErrLike | StdErrNotLike
+               | StdOutLike | StdOutNotLike | StdOutNotLikeEither
                               deriving (Data,Typeable,Enum,Eq,Show)
 
 data Options = Options
@@ -28,14 +28,17 @@ data Options = Options
                , reportComment :: String
                , queryType :: QueryType
                , query :: String
+               , query2 :: String
                } deriving (Data,Typeable,Show)
 
 progOpts :: Options
 progOpts = Options
            { reportName  = "query" &= help "The name of this report"
            , reportComment = "" &= help "additional comments"
-           , queryType = StdErrLike &= help "Which sort of query should we do? Default=StdErrLike"
-           , query = "%Not implemented code%" &= help "The query to perform over stderr"}
+           , queryType = StdOutLike &= help "Which sort of query should we do? Default=StdOutLike"
+           , query = "%Not implemented code%" &= help "The query to perform over stderr"
+           , query2 = "%Translation of Javascript syntax does not support%" &= help "Sometimes we want more than one argument in a query"
+           }
 
 data Batch = Batch
              { bId :: Int
@@ -90,8 +93,14 @@ stmts GetLatestBatch           = "select id,"++
                                  "implementation='JSRef')))"
 stmts StmtGetSTRsByBatchStdOut = "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"
 stmts StmtGetSTRsByBatch       = "SELECT * from single_test_runs where batch_id=?"
-stmts StdErrLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
-stmts StdErrNotLike            = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where batch_id = ? AND id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
+stmts StdOutLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
+stmts StdOutNotLike            = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "++
+                                 "batch_id = ? AND "++
+                                 "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
+stmts StdOutNotLikeEither      = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "++
+                                 "batch_id = ? AND "++
+                                 "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?) AND "++
+                                 "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
 
 dbToBatch :: [Maybe String] -> Batch
 dbToBatch res = Batch
@@ -179,19 +188,20 @@ getLatestBatch con = do
   dat <- fmap head $ sFetchAllRows stmt
   return $ dbToBatch dat
 
-makeQueryArgs :: QueryType -> Int -> String -> [SqlValue]
-makeQueryArgs StdErrLike batch querystr = [toSql querystr, toSql batch]
-makeQueryArgs StdErrNotLike batch querystr = [toSql batch, toSql querystr, toSql batch]
-makeQueryArgs StmtGetTestRunByID rId _ = [toSql rId]
-makeQueryArgs StmtGetBatchIDs _ _ = []
-makeQueryArgs GetLatestBatch _ _ = []
-makeQueryArgs StmtGetSTRsByBatchStdOut batchId stdout = [toSql stdout, toSql batchId]
-makeQueryArgs StmtGetSTRsByBatch batchId _ = [toSql batchId]
+makeQueryArgs :: QueryType -> Int -> String -> String -> [SqlValue]
+makeQueryArgs StdOutLike batch querystr1 _ = [toSql querystr1, toSql batch]
+makeQueryArgs StdOutNotLike batch querystr1 _ = [toSql batch, toSql querystr1, toSql batch]
+makeQueryArgs StdOutNotLikeEither batch querystr1 querystr2 = [toSql batch, toSql querystr1, toSql batch, toSql querystr2, toSql batch]
+makeQueryArgs StmtGetTestRunByID rId _ _ = [toSql rId]
+makeQueryArgs StmtGetBatchIDs _ _ _ = []
+makeQueryArgs GetLatestBatch _ _ _ = []
+makeQueryArgs StmtGetSTRsByBatchStdOut batchId stdout _ = [toSql stdout, toSql batchId]
+makeQueryArgs StmtGetSTRsByBatch batchId _ _ = [toSql batchId]
 
-getTestsBySomeQuery :: QueryType -> Int -> String -> Connection -> IO [SingleTestRun]
-getTestsBySomeQuery querytype batch querystr con = do
+getTestsBySomeQuery :: QueryType -> Int -> String -> String  -> Connection -> IO [SingleTestRun]
+getTestsBySomeQuery querytype batch querystr1 querystr2 con = do
   stmt <- prepare con (stmts querytype )
-  execute stmt $ makeQueryArgs querytype batch querystr
+  execute stmt $ makeQueryArgs querytype batch querystr1 querystr2
   dat <- sFetchAllRows stmt
   return $ map dbToSTR dat
 
@@ -205,7 +215,7 @@ main = do
   con <- getConnection
   latestBatch <- withTransaction con getLatestBatch
   strs <- withTransaction con $
-          getTestsBySomeQuery (queryType opts) (bId latestBatch) (query opts)
+          getTestsBySomeQuery (queryType opts) (bId latestBatch) (query opts) (query2 opts)
   outertemp <- outerTemplate
   template <- reportTemplate
   username <- getEnv "USER"
