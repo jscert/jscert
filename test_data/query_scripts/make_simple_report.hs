@@ -3,7 +3,7 @@
 module Main where
 
 import ResultsDB(getConnection)
-import Database.HDBC(toSql,withTransaction,prepare,execute,sFetchAllRows)
+import Database.HDBC(toSql,withTransaction,prepare,execute,sFetchAllRows,SqlValue)
 import Database.HDBC.Sqlite3(Connection)
 import Text.Hastache
 import Text.Hastache.Context(mkStrContext)
@@ -179,10 +179,19 @@ getLatestBatch con = do
   dat <- fmap head $ sFetchAllRows stmt
   return $ dbToBatch dat
 
-getTestsByErrQuery :: Int -> QueryType -> String -> Connection -> IO [SingleTestRun]
-getTestsByErrQuery batch querytype querystr con = do
+makeQueryArgs :: QueryType -> Int -> String -> [SqlValue]
+makeQueryArgs StdErrLike batch querystr = [toSql querystr, toSql batch]
+makeQueryArgs StdErrNotLike batch querystr = [toSql batch, toSql querystr, toSql batch]
+makeQueryArgs StmtGetTestRunByID rId _ = [toSql rId]
+makeQueryArgs StmtGetBatchIDs _ _ = []
+makeQueryArgs GetLatestBatch _ _ = []
+makeQueryArgs StmtGetSTRsByBatchStdOut batchId stdout = [toSql stdout, toSql batchId]
+makeQueryArgs StmtGetSTRsByBatch batchId _ = [toSql batchId]
+
+getTestsBySomeQuery :: QueryType -> Int -> String -> Connection -> IO [SingleTestRun]
+getTestsBySomeQuery querytype batch querystr con = do
   stmt <- prepare con (stmts querytype )
-  execute stmt [toSql querystr, toSql batch]
+  execute stmt $ makeQueryArgs querytype batch querystr
   dat <- sFetchAllRows stmt
   return $ map dbToSTR dat
 
@@ -196,7 +205,7 @@ main = do
   con <- getConnection
   latestBatch <- withTransaction con getLatestBatch
   strs <- withTransaction con $
-          getTestsByErrQuery (bId latestBatch) (queryType opts) (query opts)
+          getTestsBySomeQuery (queryType opts) (bId latestBatch) (query opts)
   outertemp <- outerTemplate
   template <- reportTemplate
   username <- getEnv "USER"
