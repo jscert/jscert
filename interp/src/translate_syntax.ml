@@ -37,7 +37,7 @@ let arith_op_to_coq op : JsSyntax.binary_op =
     | Minus -> JsSyntax.Coq_binary_op_sub
     | Times -> JsSyntax.Coq_binary_op_mult
     | Div -> JsSyntax.Coq_binary_op_div
-    | Mod -> JsSyntax.Coq_binary_op_mult
+    | Mod -> JsSyntax.Coq_binary_op_mod
     | Bitand -> JsSyntax.Coq_binary_op_bitwise_and
     | Bitor -> JsSyntax.Coq_binary_op_bitwise_or
     | Bitxor -> JsSyntax.Coq_binary_op_bitwise_xor

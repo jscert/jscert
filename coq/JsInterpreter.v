@@ -304,7 +304,7 @@ Definition out_error_or_void S str B :=
 Definition build_error S vproto vmsg : result :=
   let O := object_new vproto "Error" in
   let (l, S') := object_alloc S O in
-  ifb vmsg = undef then out_ter S l
+  ifb vmsg = undef then out_ter S' l
   else arbitrary (* TODO:  Need [to_string] *).
 
 Definition run_error S ne : result :=
@@ -819,19 +819,19 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
     let sub S' x K :=
       if_object (object_get runs S' C l x) (fun S1 lfo =>
         let lf := value_object lfo in
-        match run_callable S lf with
+        match run_callable S1 lf with
         | Some B =>
           if_success_value runs C
-            (runs_type_call_full runs S C lfo l nil) (fun S2 v =>
+            (runs_type_call_full runs S1 C lfo l nil) (fun S2 v =>
             match v with
-            | value_prim w => out_ter S w
+            | value_prim w => out_ter S2 w
             | value_object l => K S2
             end)
         | None => K S1
         end) in
     sub S gmeth (fun S' =>
       let lmeth := method_of_preftype lpref in
-      sub S' lmeth (fun _ => run_error S native_error_type))
+      sub S' lmeth (fun S'' => run_error S'' native_error_type))
 
   end.
 
@@ -848,14 +848,14 @@ Definition to_number runs S C v : result :=
     out_ter S (convert_prim_to_number w)
   | value_object l =>
     if_success_primitive (to_primitive runs S C l (Some preftype_number)) (fun S1 w =>
-      out_ter S (convert_prim_to_number w))
+      out_ter S1 (convert_prim_to_number w))
   end.
 
 Definition to_integer runs S C v : result :=
   if_success (to_number runs S C v) (fun S1 rv1 =>
     match rv1 with
     | prim_number n =>
-      out_ter S (convert_number_to_integer n)
+      out_ter S1 (convert_number_to_integer n)
     | _ => result_stuck
     end).
 
@@ -873,7 +873,7 @@ Definition to_string runs S C v : result :=
     out_ter S (convert_prim_to_string w)
   | value_object l =>
     if_success_primitive (to_primitive runs S C l (Some preftype_string)) (fun S1 w =>
-      out_ter S (convert_prim_to_string w))
+      out_ter S1 (convert_prim_to_string w))
   end.
 
 
@@ -884,11 +884,11 @@ Definition call_object_new S v : result :=
   match type_of v return result with
   | type_object => out_ter S v
   | type_string | type_bool | type_number =>
-      to_object S v
+    to_object S v
   | type_null | type_undef =>
-      let O := object_new prealloc_object_proto "Object" in
-      let (l, S') := object_alloc S O in
-      out_ter S' l
+    let O := object_new prealloc_object_proto "Object" in
+    let (l, S') := object_alloc S O in
+    out_ter S' l
   end.
 
 Definition bool_proto_value_of_call S C : result :=
@@ -1259,7 +1259,8 @@ Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state
       if_value (F S v2) (fun S0 v2' =>
         match max_depth with
         | O => result_bottom
-        | S max_depth' => run_equal_partial max_depth' conv_number conv_primitive S0 v1 v2'
+        | S max_depth' =>
+          run_equal_partial max_depth' conv_number conv_primitive S0 v1 v2'
         end) in
     let so b :=
       out_ter S b in
@@ -1551,7 +1552,7 @@ Definition run_expr_binary_op run_binary_op' runs S C op e1 e2 : result :=
 
 Definition run_expr_access runs S C e1 e2 : result :=
   if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
-    if_success_value runs C (runs_type_expr runs S C e2) (fun S2 v2 =>
+    if_success_value runs C (runs_type_expr runs S1 C e2) (fun S2 v2 =>
       ifb v1 = prim_undef \/ v1 = prim_null then
         run_error S2 native_error_ref
       else
