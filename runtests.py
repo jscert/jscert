@@ -245,7 +245,7 @@ class ResultPrinter:
         else:
               print "Something really weird happened"
               exit(1)
-        if args.verbose:
+        if args.verbose or args.debug:
             print result.stdout
 
     def start_test(self,filename):
