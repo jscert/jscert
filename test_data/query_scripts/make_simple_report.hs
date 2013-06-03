@@ -3,7 +3,7 @@
 module Main where
 
 import ResultsDB(getConnection)
-import Database.HDBC(toSql,withTransaction,prepare,execute,sFetchAllRows,SqlValue)
+import Database.HDBC(toSql,withTransaction,prepare,execute,fetchAllRows,SqlValue,fromSql)
 import Database.HDBC.Sqlite3(Connection)
 import Text.Hastache
 import Text.Hastache.Context(mkStrContext)
@@ -15,7 +15,6 @@ import System.Environment
 import Data.Time.Clock(getCurrentTime,UTCTime)
 import System.Locale(defaultTimeLocale)
 import Data.Time.Format(formatTime)
-import Data.Maybe
 import Control.Monad.IO.Class
 
 data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
@@ -102,31 +101,31 @@ stmts StdOutNotLikeEither      = "SELECT id,test_id,batch_id,status,stdout,stder
                                  "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?) AND "++
                                  "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
 
-dbToBatch :: [Maybe String] -> Batch
+dbToBatch :: [SqlValue] -> Batch
 dbToBatch res = Batch
-                     { bId = read.fromJust $ head res
-                     , bTime = read.fromJust $ res!!1
-                     , bImplementation = fromJust $ res!!2
-                     , bImplPath = fromJust $ res!!3
-                     , bImplVersion = fromJust $ res!!4
-                     , bTitle = fromJust $ res!!5
-                     , bNotes = fromJust $ res!!6
-                     , bTimestamp = read.fromJust $ res!!7
-                     , bSystem = fromJust $ res!!8
-                     , bOsnodename = fromJust $ res!!9
-                     , bOsrelease = fromJust $ res!!10
-                     , bOsversion = fromJust $ res!!11
-                     , bHardware = fromJust $ res!!12}
+                     { bId = fromSql $ head res
+                     , bTime = fromSql $ res!!1
+                     , bImplementation = fromSql $ res!!2
+                     , bImplPath = fromSql $ res!!3
+                     , bImplVersion = fromSql $ res!!4
+                     , bTitle = fromSql $ res!!5
+                     , bNotes = fromSql $ res!!6
+                     , bTimestamp = fromSql $ res!!7
+                     , bSystem = fromSql $ res!!8
+                     , bOsnodename = fromSql $ res!!9
+                     , bOsrelease = fromSql $ res!!10
+                     , bOsversion = fromSql $ res!!11
+                     , bHardware = fromSql $ res!!12}
 
 
-dbToSTR :: [Maybe String] -> SingleTestRun
+dbToSTR :: [SqlValue] -> SingleTestRun
 dbToSTR res = SingleTestRun
-                     { strId = read.fromJust $ head res
-                     , strTestId = fromJust $ res!!1
-                     , strBatchId = read.fromJust $ res!!2
-                     , strStatus = fromJust $ res!!3
-                     , strStdout = fromJust $ res!!4
-                     , strStderr = fromJust $ res!!5
+                     { strId = fromSql $ head res
+                     , strTestId = fromSql $ res!!1
+                     , strBatchId = fromSql $ res!!2
+                     , strStatus = fromSql $ res!!3
+                     , strStdout = fromSql $ res!!4
+                     , strStderr = fromSql $ res!!5
                      }
 
 reportDir :: IO FilePath
@@ -185,7 +184,7 @@ getLatestBatch :: Connection -> IO Batch
 getLatestBatch con = do
   stmt <- prepare con (stmts GetLatestBatch)
   execute stmt []
-  dat <- fmap head $ sFetchAllRows stmt
+  dat <- fmap head $ fetchAllRows stmt
   return $ dbToBatch dat
 
 makeQueryArgs :: QueryType -> Int -> String -> String -> [SqlValue]
@@ -202,7 +201,7 @@ getTestsBySomeQuery :: QueryType -> Int -> String -> String  -> Connection -> IO
 getTestsBySomeQuery querytype batch querystr1 querystr2 con = do
   stmt <- prepare con (stmts querytype )
   execute stmt $ makeQueryArgs querytype batch querystr1 querystr2
-  dat <- sFetchAllRows stmt
+  dat <- fetchAllRows stmt
   return $ map dbToSTR dat
 
 escapelessConfig :: MonadIO m => MuConfig m
