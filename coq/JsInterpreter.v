@@ -80,8 +80,11 @@ Inductive result :=
   carry a result, only an [out_void] of something (or an error).  The
   following type is there to differentiate those functions from the
   others. *)
-
 Definition result_void := result.
+
+(* It can be useful to get details on why a stuck is obtained. *)
+Definition stuck_because (s : string) := result_stuck.
+
 
 (* Coercion *)
 
@@ -90,7 +93,7 @@ Coercion result_out : out >-> result.
 (* Inhabited *)
 
 Global Instance result_inhab : Inhab result.
-Proof. applys prove_Inhab result_stuck. Qed.
+Proof. applys prove_Inhab stuck_because. exact "Result is inhabited". Qed.
 
 
 (**************************************************************)
@@ -118,11 +121,16 @@ Definition if_bool_option (A : Type) (d : A) (bo : option bool) (K1 : unit -> A)
     if b then K1 tt else K2 tt) bo.
   (* todo: use an explicit "match" here, it will be easier for people to make sense of the definition *)
 
-Definition if_bool_option_result := if_bool_option result_stuck.
+Definition if_bool_option_result bo K1 K2 :=
+  if_bool_option
+    (fun _ : unit => stuck_because "[if_bool_option_result] called with [None].")
+    bo (fun _ : unit => K1) (fun _ : unit => K2) tt.
 
 Definition if_some {A : Type} (op : option A) (K : A -> result) : result :=
-  morph_option result_stuck K op.
-  (* todo: use an explicit "match" here, it will be easier for people to make sense of the definition *)
+  match op with
+  | None => stuck_because "[if_some] called with [None]."
+  | Some a => K a
+  end.
 
 Definition if_ter (o : result) (K : state -> res -> result) : result :=
   match o with
@@ -147,7 +155,7 @@ Definition if_void (o : result_void) (K : state -> result) : result :=
   if_success o (fun S rv =>
     match rv with
     | resvalue_empty => K S
-    | _ => result_stuck
+    | _ => stuck_because "[if_void called] with non-void result value."
     end).
 
 Definition if_not_throw (o : result) (K : state -> res -> result) : result :=
@@ -164,7 +172,7 @@ Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> v
     | restype_throw =>
       match res_value R with
       | resvalue_value v => K2 S v
-      | _ => result_stuck
+      | _ => stuck_because "[if_any_or_throw] called with a non-value result."
       end
     | _ => K1 o
     end).
@@ -203,14 +211,14 @@ Definition if_value (o : result) (K : state -> value -> result) : result :=
   if_success o (fun S rv =>
     match rv with
     | resvalue_value v => K S v
-    | _ => result_stuck
+    | _ => stuck_because "[if_value] called with non-value."
     end).
 
 Definition if_bool (o : result) (K : state -> bool -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_bool b => K S b
-    | _ => result_stuck
+    | _ => stuck_because "[if_bool] called with non-boolean value."
     end).
 
 Definition if_success_bool (o : result) (K1 K2 : state -> result) : result :=
@@ -222,12 +230,12 @@ Definition if_success_primitive (o : result) (K : state -> prim -> result) : res
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | value_object _ => result_stuck
+    | value_object _ => stuck_because "[if_success_primitive] didn't get a primitive."
     end).
 
 Definition if_defined {B : Type} (op : option B) (K : B -> result) : result :=
   match op with
-  | None => result_stuck
+  | None => stuck_because "Undefined value in [if_defined]."
   | Some a => K a
   end.
 
@@ -241,28 +249,28 @@ Definition if_object (o : result) (K : state -> object_loc -> result) : result :
   if_value o (fun S v =>
     match v with
     | value_object l => K S l
-    | value_prim _ => result_stuck
+    | value_prim _ => stuck_because "[if_object] called on a primitive."
     end).
 
 Definition if_string (o : result) (K : state -> string -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_string s => K S s
-    | _ => result_stuck
+    | _ => stuck_because "[if_string] called on a non-string value."
     end).
 
 Definition if_number (o : result) (K : state -> number -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_number n => K S n
-    | _ => result_stuck
+    | _ => stuck_because "[if_number] called with non-number value."
     end).
 
 Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | value_object _ => result_stuck
+    | value_object _ => stuck_because "[if_primitive] called on an object."
     end).
 
 Definition if_def_full_descriptor {A : Type} (o : option full_descriptor) (d : A) (K : full_descriptor -> A) : A :=
@@ -366,7 +374,7 @@ Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S 
       ifb l' = l0
         then out_ter S true
         else run_object_proto_is_prototype_of S l0 l'
-  | value_prim _ => result_stuck
+  | value_prim _ => stuck_because "[run_object_method] returned a primitive in [object_proto_is_prototype_of_body]."
   end.
 
 Definition run_object_proto_is_prototype_of :=
@@ -395,22 +403,24 @@ Fixpoint lexical_env_get_identifier_ref S X x str : option ref :=
   end.
 
 Definition env_record_delete_binding S L x : result :=
-  env_record_lookup (fun _ : unit => result_stuck) S L (fun E _ =>
-    match E return result with
-    | env_record_decl Ed =>
-      match Heap.read_option Ed x with
-      | None =>
-          out_ter S true
-      | Some (mutability_nondeletable, v) =>
-          out_ter S false
-      | Some (mu, v) =>
-          out_ter (state_with_env_record_heap S
-            (Heap.write (state_env_record_heap S) L
-              (env_record_decl (Heap.rem Ed x)))) true
-      end
-    | env_record_object l pt =>
-        result_stuck
-    end) tt.
+  env_record_lookup (fun _ : unit =>
+    stuck_because "[env_record_lookup] failed in [env_record_delete_binding].")
+    S L (fun E _ =>
+      match E return result with
+      | env_record_decl Ed =>
+        match Heap.read_option Ed x with
+        | None =>
+            out_ter S true
+        | Some (mutability_nondeletable, v) =>
+            out_ter S false
+        | Some (mu, v) =>
+            out_ter (state_with_env_record_heap S
+              (Heap.write (state_env_record_heap S) L
+                (env_record_decl (Heap.rem Ed x)))) true
+        end
+      | env_record_object l pt =>
+          stuck_because "[env_record_lookup] returned an [env_record_object] in [env_record_delete_binding]."
+      end) tt.
 
 Definition identifier_res S C x :=
   let X := execution_ctx_lexical_env C in

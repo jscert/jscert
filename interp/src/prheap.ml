@@ -164,6 +164,18 @@ let prdescriptor desc =
 	  (proption prbool desc.descriptor_enumerable)
 	  (proption prbool desc.descriptor_configurable)
 
+let remove_siblings l =
+    let l' = List.stable_sort (fun (k1, _) (k2, _) -> compare k1 k2) l in
+    let rec aux = function
+    | [] -> []
+    | (k1, v) :: (k2, _) :: l when k1 = k2 ->
+        aux ((k1, v) :: l)
+    | a :: l -> a :: aux l
+    in aux l'
+
+let heap_to_list h =
+    remove_siblings (Heap.to_list h)
+
 let probject_properties_aux skip_init old str p =
 	String.concat "" (List.fold_left
 		(fun acc (x, a) ->
@@ -176,7 +188,7 @@ let probject_properties_aux skip_init old str p =
 				  (string_of_char_list x)
 				  (prattributes a)
 				    :: acc) []
-		(Heap.to_list p))
+		(heap_to_list p))
 
 let probject_properties = probject_properties_aux false None ""
 
@@ -185,7 +197,7 @@ let prfieldmap (old : (prop_name * attributes) list option) skip_init loc obj =
 
 
 let prheap =
-  let list_heap_init = Heap.to_list object_heap_initial in
+  let list_heap_init = heap_to_list object_heap_initial in
   fun skip_init heap ->
   "digraph g{\n" ^
   "node [shape=record];\n" ^
@@ -193,11 +205,11 @@ let prheap =
   (String.concat ""
   	  (List.rev (List.map (fun (key, v) ->
   			prfieldmap (try
-  					Some (Heap.to_list
+  					Some (heap_to_list
   						(object_properties_
   							(List.assoc key list_heap_init)))
   				with Not_found -> None) skip_init
-  			  key v) (Heap.to_list heap)
+  			  key v) (heap_to_list heap)
   	))) ^
   "}"
 
@@ -210,10 +222,10 @@ let prenv_record r =
 				String.concat "\n" (List.rev (List.map (fun (x, (mu, v)) ->
 					"\t\"" ^ string_of_char_list x ^ "\" -> " ^
 					prmutability mu ^ ", " ^ prvalue v
-				) (Heap.to_list der)))
+				) (heap_to_list der)))
 		  | Coq_env_record_object (o, this) ->
 				prloc o ^ " with provide this = " ^ prbool this
-	    ) (Heap.to_list r)
+	    ) (heap_to_list r)
   	))
 
 let prstate skip s =

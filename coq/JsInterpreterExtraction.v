@@ -153,6 +153,12 @@ Extract Constant parse_pickable => "(fun s ->
   )".
 
 
+(* Debugging *)
+Extract Constant stuck_because => "(fun s ->
+  print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
+  Coq_result_stuck)".
+
+
 (* Final Extraction *)
 Extraction Blacklist string list bool.
 Separate Extraction run_javascript.
