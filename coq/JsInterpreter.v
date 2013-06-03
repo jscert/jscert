@@ -285,6 +285,34 @@ Section LexicalEnvironments.
 
 
 (**************************************************************)
+(** Error Handling *)
+
+(** [out_error_or_cst S str B R] throws the builtin B if
+    [str] is true, the value [R] otherwise. *)
+
+Definition out_error_or_cst S str B R :=
+  if str then out_ter S (res_throw B)
+  else out_ter S R.
+
+(** [out_error_or_cst S str B R] throws the builtin B if
+    [str] is true, empty otherwise. *)
+
+Definition out_error_or_void S str B :=
+  if str then out_ter S (res_throw B)
+  else out_void S.
+
+Definition build_error S vproto vmsg : result :=
+  let O := object_new vproto "Error" in
+  let (l, S') := object_alloc S O in
+  ifb vmsg = undef then out_ter S l
+  else arbitrary (* TODO:  Need [to_string] *).
+
+Definition run_error S ne : result :=
+  if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
+    out_ter S' (res_throw l)).
+
+
+(**************************************************************)
 (** Operations on objects *)
 
 Definition run_object_method Z (Proj : object -> Z) S l : Z :=
@@ -402,25 +430,41 @@ Fixpoint lexical_env_get_identifier_ref S X x str : option ref :=
         lexical_env_get_identifier_ref S X' x str)
   end.
 
+Definition object_delete S l x str : result :=
+  let B := run_object_method object_delete_ S l in
+  if_some (run_object_get_own_prop S l x) (fun D =>
+    match D with
+    | full_descriptor_undef => out_ter S true
+    | full_descriptor_some A =>
+      if attributes_configurable A then
+        out_ter (pick (object_rem_property S l x)) true
+      else
+        out_error_or_cst S str native_error_type false
+    end).
+
 Definition env_record_delete_binding S L x : result :=
-  env_record_lookup (fun _ : unit =>
-    stuck_because "[env_record_lookup] failed in [env_record_delete_binding].")
-    S L (fun E _ =>
-      match E return result with
-      | env_record_decl Ed =>
-        match Heap.read_option Ed x with
-        | None =>
-            out_ter S true
-        | Some (mutability_nondeletable, v) =>
-            out_ter S false
-        | Some (mu, v) =>
-            out_ter (state_with_env_record_heap S
-              (Heap.write (state_env_record_heap S) L
-                (env_record_decl (Heap.rem Ed x)))) true
-        end
-      | env_record_object l pt =>
-          stuck_because "[env_record_lookup] returned an [env_record_object] in [env_record_delete_binding]."
-      end) tt.
+  let E := pick (env_record_binds S L) in
+  match E with
+  | env_record_decl Ed =>
+    match Heap.read_option Ed x with
+    | None =>
+        out_ter S true
+    | Some (mutability_deletable, v) =>
+      let S' := env_record_write S L (decl_env_record_rem Ed x) in
+      out_ter S' true
+    | Some (mu, v) =>
+      out_ter S false
+    end
+  | env_record_object l pt =>
+    object_delete S l x throw_false
+  end.
+
+Definition env_record_implicit_this_value S L : value :=
+  match pick (env_record_binds S L) with
+  | env_record_decl Ed => undef
+  | env_record_object l provide_this =>
+    if provide_this then l else undef
+  end.
 
 Definition identifier_res S C x :=
   let X := execution_ctx_lexical_env C in
@@ -463,34 +507,6 @@ Definition object_get runs S C v x : result := (* This [v] should be a location.
       object_get_builtin runs B S C l l x
   | value_prim _ => result_stuck
   end.
-
-
-(**************************************************************)
-(** Error Handling *)
-
-(** [out_error_or_cst S str B R] throws the builtin B if
-    [str] is true, the value [R] otherwise. *)
-
-Definition out_error_or_cst S str B R :=
-  if str then out_ter S (res_throw B)
-  else out_ter S R.
-
-(** [out_error_or_cst S str B R] throws the builtin B if
-    [str] is true, empty otherwise. *)
-
-Definition out_error_or_void S str B :=
-  if str then out_ter S (res_throw B)
-  else out_void S.
-
-Definition build_error S vproto vmsg : result :=
-  let O := object_new vproto "Error" in
-  let (l, S') := object_alloc S O in
-  ifb vmsg = undef then out_ter S l
-  else arbitrary (* TODO:  Need [to_string] *).
-
-Definition run_error S ne : result :=
-  if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
-    out_ter S' (res_throw l)).
 
 
 (**************************************************************)
@@ -858,15 +874,6 @@ Definition to_string runs S C v : result :=
   | value_object l =>
     if_success_primitive (to_primitive runs S C l (Some preftype_string)) (fun S1 w =>
       out_ter S (convert_prim_to_string w))
-  end.
-
-Definition env_record_implicit_this_value S L : value :=
-  match pick (env_record_binds S L) with
-  | env_record_decl Ed => undef
-  | env_record_object l provide_this =>
-    if provide_this
-      then l : value
-      else undef
   end.
 
 
@@ -1381,18 +1388,6 @@ Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
   | unary_op_post_decr => (sub_one, false)
   | _ => arbitrary
   end.
-
-Definition object_delete S l x str : result :=
-  let B := run_object_method object_delete_ S l in
-  if_some (run_object_get_own_prop S l x) (fun D =>
-    match D with
-    | full_descriptor_undef => out_ter S true
-    | full_descriptor_some A =>
-      if attributes_configurable A then
-        out_ter (pick (object_rem_property S l x)) true
-      else
-        out_error_or_cst S str native_error_type false
-    end).
 
 Definition run_typeof_value S v :=
   match v with
