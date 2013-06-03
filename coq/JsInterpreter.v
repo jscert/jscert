@@ -265,6 +265,12 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
     | value_object _ => result_stuck
     end).
 
+Definition if_def_full_descriptor {A : Type} (o : option full_descriptor) (d : A) (K : full_descriptor -> A) : A :=
+  morph_option d K o.
+
+Definition convert_option_attributes : option attributes -> option full_descriptor :=
+  option_map (fun A => A : full_descriptor).
+
 End InterpreterEliminations.
 
 Section LexicalEnvironments.
@@ -326,11 +332,9 @@ Definition run_object_get_own_prop S l x : option full_descriptor :=
   match run_object_method object_get_own_prop_ S l with
   | builtin_get_own_prop_default =>
     let P := run_object_method object_properties_ S l in
-    (* todo: serait-il judicieux de définir un if_def_full_descriptor pour matcher les full-descriptors?
-       même si c'est juste un alias pour morph_option, ça serait plus lisible. *)
-    morph_option (Some full_descriptor_undef)
-      (fun A => Some (A : full_descriptor))
-      (Heap.read_option P x)
+    if_def_full_descriptor (convert_option_attributes (Heap.read_option P x))
+      (Some full_descriptor_undef)
+      (fun D => Some D)
   | builtin_get_own_prop_args_obj =>
     arbitrary (* TODO:  Waiting for the specification *)
   end.
@@ -338,14 +342,14 @@ Definition run_object_get_own_prop S l x : option full_descriptor :=
 Definition object_get_prop_body run_object_get_prop S v x : option full_descriptor :=
   match v with
   | value_prim w =>
-      ifb v = null then Some full_descriptor_undef else None
+    ifb v = null then Some full_descriptor_undef else None
   | value_object l =>
-    morph_option None (fun D =>
+    if_def_full_descriptor (run_object_get_own_prop S l x)
+      None (fun D =>
         ifb D = full_descriptor_undef then (
           let lproto := run_object_method object_proto_ S l in
           run_object_get_prop S lproto x
         ) else Some D)
-        (run_object_get_own_prop S l x)
   end.
 
 Definition run_object_get_prop := FixFun3 object_get_prop_body.
@@ -529,31 +533,32 @@ Definition object_can_put S l x : option bool :=
   match run_object_method object_can_put_ S l with
 
   | builtin_can_put_default =>
-    morph_option None (fun D =>
-      match D with
-      | attributes_accessor_of Aa =>
-        Some (decide (attributes_accessor_set Aa <> undef))
-      | attributes_data_of Ad =>
-        Some (attributes_data_writable Ad)
-      | full_descriptor_undef =>
-        match run_object_method object_proto_ S l with
-        | null =>
-          Some (run_object_method object_extensible_ S l)
-        | value_object lproto =>
-          option_map (fun D' =>
-            match D' with
-            | full_descriptor_undef =>
-              run_object_method object_extensible_ S l
-            | attributes_accessor_of Aa =>
-              decide (attributes_accessor_set Aa <> undef)
-            | attributes_data_of Ad =>
-              if run_object_method object_extensible_ S l then
-                attributes_data_writable Ad
-              else false
-          end) (run_object_get_prop S lproto x)
-        | value_prim _ => None
-        end
-      end) (run_object_get_own_prop S l x)
+    if_def_full_descriptor (run_object_get_own_prop S l x)
+      None (fun D =>
+        match D with
+        | attributes_accessor_of Aa =>
+          Some (decide (attributes_accessor_set Aa <> undef))
+        | attributes_data_of Ad =>
+          Some (attributes_data_writable Ad)
+        | full_descriptor_undef =>
+          match run_object_method object_proto_ S l with
+          | null =>
+            Some (run_object_method object_extensible_ S l)
+          | value_object lproto =>
+            option_map (fun D' =>
+              match D' with
+              | full_descriptor_undef =>
+                run_object_method object_extensible_ S l
+              | attributes_accessor_of Aa =>
+                decide (attributes_accessor_set Aa <> undef)
+              | attributes_data_of Ad =>
+                if run_object_method object_extensible_ S l then
+                  attributes_data_writable Ad
+                else false
+            end) (run_object_get_prop S lproto x)
+          | value_prim _ => None
+          end
+        end)
 
   end.
 
@@ -1751,7 +1756,7 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
 
 Definition run_stat_throw runs S C e : result :=
   if_success_value runs C (runs_type_expr runs S C e) (fun S1 v1 =>
-    out_ter S (res_throw v1)).
+    out_ter S1 (res_throw v1)).
 
 Definition run_stat_return runs S C eo : result :=
   match eo with
@@ -1759,7 +1764,7 @@ Definition run_stat_return runs S C eo : result :=
     out_ter S (res_return undef)
   | Some e =>
     if_success_value runs C (runs_type_expr runs S C e) (fun S1 v1 =>
-      out_ter S (res_return v1))
+      out_ter S1 (res_return v1))
   end.
 
 

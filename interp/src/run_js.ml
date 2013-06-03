@@ -39,7 +39,7 @@ let get_value_ref state r =
 	     { JsSyntax.res_type = JsSyntax.Coq_restype_normal ;
 		   JsSyntax.res_value =
 			 JsSyntax.Coq_resvalue_value v })) ->
-		Some v
+	   Some v
 	| _ -> None
 
 let get_global_value state name =
@@ -122,10 +122,11 @@ let _ =
                    (match v with
                    | JsSyntax.Coq_value_prim _ -> ()
                    | JsSyntax.Coq_value_object l ->
+                     print_newline () ;
                      let r = {
                        JsSyntax.ref_base = JsSyntax.Coq_ref_base_type_value v ;
                        JsSyntax.ref_name = Translate_syntax.string_to_coq "__$ERROR__" ;
-                       JsSyntax.ref_strict = true } in
+                       JsSyntax.ref_strict = false } in
                      match get_value_ref state r with
                      | Some v' ->
                        print_endline ("A `__$ERROR__' field has been defined, equals to " ^ Prheap.prvalue v')

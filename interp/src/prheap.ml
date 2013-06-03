@@ -129,7 +129,7 @@ let prprim = function
   | Coq_prim_null -> "null"
   | Coq_prim_bool b -> string_of_bool b
   | Coq_prim_number f -> string_of_float f
-  | Coq_prim_string cl -> string_of_char_list cl
+  | Coq_prim_string cl -> "\"" ^ string_of_char_list cl ^ "\""
 
 let prvalue = function
   | Coq_value_prim p -> prprim p
@@ -195,7 +195,7 @@ let prheap =
   "}"
 
 let prenv_record r =
-  String.concat ""
+  String.concat "\n"
   	  (List.rev (List.map (fun (loc, er) ->
 		  prenv_loc loc ^ " -> " ^
 		  match er with
