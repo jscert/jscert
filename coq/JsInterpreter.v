@@ -1708,7 +1708,7 @@ Definition run_stat_if runs S C e1 t2 to : result :=
       | Some t3 =>
         runs_type_stat runs S1 C t3
       | None =>
-        out_ter S resvalue_empty
+        out_ter S1 resvalue_empty
       end).
 
 Fixpoint run_stat_while (max_step : nat) runs rv S C ls e1 t2 : result :=
