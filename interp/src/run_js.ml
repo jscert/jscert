@@ -1,8 +1,20 @@
 let file = ref ""
-let test_prelude = ref ""
+let test_prelude = ref []
 let test = ref false
 let printHeap = ref false
 let skipInit = ref false
+
+let string_to_list str = (* Does it already exists somewhere? *)
+    let l = ref [] in
+    let current = ref "" in
+    String.iter (fun c ->
+      if c = ',' then (
+          l := !current :: !l ;
+          current := ""
+      ) else
+        current := !current ^ String.make 1 c
+    ) str ;
+    !current :: !l
 
 let arguments () =
   let usage_msg="Usage: -jsparser <path> -file <path>" in
@@ -17,8 +29,9 @@ let arguments () =
       Arg.Unit(fun () -> Parser_main.verbose := true),
       "print the parsed program";
       "-test_prelude",
-      Arg.String(fun f -> test_prelude := f; test := true),
-      "run the given test";
+      Arg.String(fun f ->
+         test_prelude := !test_prelude @ string_to_list f; test := true),
+      "include the given files before runnning the specified file.";
       "-print-heap",
       Arg.Unit(fun () -> printHeap := true),
       "print the final state of the heap";
@@ -68,10 +81,13 @@ let _ =
     let exp = Translate_syntax.coq_syntax_from_file !file in
     let exp' = if (!test) then
                 begin
-					let JsSyntax.Coq_prog_intro (_, el) = exp in
-					let JsSyntax.Coq_prog_intro (str, el0) =
-						Translate_syntax.coq_syntax_from_file !test_prelude in
-					JsSyntax.Coq_prog_intro (str, el0 @ el)
+					let JsSyntax.Coq_prog_intro (str, el) = exp in
+                    let els =
+                        List.concat (List.map (fun f ->
+					        let JsSyntax.Coq_prog_intro (_, el0) =
+						        Translate_syntax.coq_syntax_from_file f in
+                            el0) !test_prelude) in
+					JsSyntax.Coq_prog_intro (str, els @ el)
                   end
               else exp
     in match JsInterpreter.run_javascript
