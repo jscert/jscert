@@ -72,7 +72,10 @@ Extract Constant JsNumber.neg_infinity => "(-.infinity)".
 Extract Constant JsNumber.floor => "floor".
 Extract Constant JsNumber.absolute => "abs_float".
 Extract Constant JsNumber.from_string =>
-  "(fun s -> float_of_string (String.concat """" (List.map (String.make 1) s)))
+  "(fun s ->
+    try
+      float_of_string (String.concat """" (List.map (String.make 1) s))
+    with Failure ""float_of_string"" -> nan)
    (* Note that we're using `float_of_string' there, which does not have the same
       behavior than JavaScript.  For instance it will read ""022"" as 22 instead of
       18, which should be the JavaScript result for it. *)".
