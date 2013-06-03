@@ -1151,7 +1151,16 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       res_type R = restype_throw ->
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
   | abort_intercepted_stat_try_3 : forall S R fo,
-      abort_intercepted_stat (stat_try_3 (out_ter S R) fo).
+      abort_intercepted_stat (stat_try_3 (out_ter S R) fo)
+(* Daniele: uncomment when switch statement is done
+  | abort_intercepted_stat_switch_1 : forall lab rv S R,
+      R = res_intro restype_break rv lab ->
+      abort_intercepted_stat (stat_switch_2 (out_ter S R))
+  | abort_intercepted_stat_switch_nodefault_6 : forall lab rv S R,
+      R = res_intro restype_break rv lab ->
+      abort_intercepted_stat (stat_switch_nodefault_6 (out_ter rv) scs)
+*)
+.
 
 Inductive abort_intercepted_expr : ext_expr -> Prop :=
   | abort_intercepted_expr_call_default_2 : forall S R,

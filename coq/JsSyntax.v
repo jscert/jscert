@@ -149,9 +149,16 @@ with stat :=
   | stat_try : stat -> option (string * stat) -> option stat -> stat (* Note: try s1 [catch (x) s2] [finally s3] *)
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
-  | stat_debugger : stat  
-  (* LATER: add switch *)
+  | stat_debugger : stat
+(*  | stat_switch : expr -> switchbody -> stat 
 
+with switchbody := 
+  | switchbody_nodefault : list switchclause -> switchbody
+  | switchbody_withdefault : list switchclause -> list stat -> list switchclause -> switchbody
+
+with switchclause :=
+  | switchclause_intro : expr -> list stat -> switchclause
+*)
 (** Grammar of programs *)
 
 with prog :=
