@@ -431,6 +431,78 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (K v) o ->
       red_stat S0 C (spec_expr_get_value_conv_stat_2 (out_ter S v) K) o
 
+(** Switch statement (12.11) *)
+(*  TODO: 
+      -implicit types for switchbody ('sb'), switchclause ('sc')
+       and switchclauses ('scs')? 
+      - not sure about the return types
+*)
+(*
+| red_stat_switch : (* step 1 *)
+    red_expr S C (spec_expr_get_value e) o1 ->
+    red_expr S C (stat_switch_1 o1 sb) o ->
+    red_stat S C (stat_switch e sb) o
+
+| red_stat_switch_1_nodefault : (* step 2 *)
+    red_stat S C (stat_switch_nodefault_1 v resvalue_empty scs) o1 ->
+    red_expr S C (stat_switch_2 o1) o ->
+    red_stat S C (stat_switch_1 (out_ter S0 v) (switchbody_nodefault scs)) o
+
+  (* | red_stat_switch_default : LATER *)
+
+| red_stat_switch_2_break: : (* step 3 *)
+    R = res_intro restype_break rv lab ->
+    red_stat S0 C (stat_switch_2 (out_ter S R)) (out_ter S (res_normal rv))
+
+| red_stat_switch_2_normal : (* step 4 *)
+    red_stat S0 C (stat_switch_2 (out_ter S rv)) (out_ter S rv)
+
+(*---*)
+
+| red_stat_switch_nodefault_1_nil : 
+    red_stat S C (stat_switch_nodefault_5 rv nil) o ->
+    red_stat S C (stat_switch_nodefault_1 v rv nil) o
+
+  | red_stat_switch_nodefault_1_cons : 
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_expr S C (stat_switch_nodefault_2 o1 v rv ts scs) o ->
+      red_stat S C (stat_switch_nodefault_1 v rv ((switchclause_intro e ts)::scs)) o
+
+  | red_stat_switch_nodefault_2 : 
+      b = (strict_equality_test v1 v) ->
+      red_expr S C (stat_switch_nodefault_3 b v rv ts scs) o ->
+      red_stat S C (stat_switch_nodefault_2 (out_ter S0 v1) v rv ts scs) o
+
+  | red_stat_switch_nodefault_3_false : 
+      red_stat S C (stat_switch_nodefault_1 v rv scs) o ->
+      red_expr S C (stat_switch_nodefault_3 false v rv ts scs) o ->
+
+  | red_stat_switch_nodefault_3_true : 
+      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_switch_nodefault_4 o1 scs) o ->
+      red_expr S C (stat_switch_nodefault_3 true v rv ts scs) o ->
+
+  | red_stat_switch_nodefault_4 :
+      red_stat S C (stat_switch_nodefault_5 rv scs) o ->
+      red_stat S C (stat_switch_nodefault_4 (out_ter rv) scs) o
+
+  | red_stat_switch_nodefault_5_nil :
+      red_stat S C (stat_switch_nodefault_5 rv nil)  (out_ter S (res_normal v)) ->
+
+  | red_stat_switch_nodefault_5_cons :
+      red_stat S C (stat_block (t::ts)) o1 -> (* not sure *) 
+      red_stat S C (stat_switch_nodefault_6 o1 scs) o ->
+      red_stat S C (stat_switch_nodefault_5 rv ((switchclause_intro e (t::ts))::scs)) o
+
+  | red_stat_switch_nodefault_6_not_empty :
+      red_stat S C (stat_switch_nodefault_5 rv scs) o ->
+      red_stat S C (stat_switch_nodefault_6 (out_ter rv) scs) o
+
+  | red_stat_switch_nodefault_6_abrupt :
+      true = abrupt_res rv -> (* not sure *)
+      red_stat S C (stat_switch_nodefault_6 (out_ter rv) scs) (out_ter S (res_intro (res_type rv) v (res_label rv)))
+*)
+
 
 (**************************************************************)
 (** ** Reduction rules for expressions (11) *)
