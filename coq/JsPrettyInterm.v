@@ -385,6 +385,8 @@ Inductive ext_expr :=
   | spec_create_arguments_object : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
   | spec_create_arguments_object_1 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> out -> ext_expr
   | spec_create_arguments_object_2 : object_loc -> strictness_flag -> object_loc -> out -> ext_expr
+  | spec_create_arguments_object_3 : object_loc -> value -> attributes -> out -> ext_expr
+  | spec_create_arguments_object_4 : object_loc -> out -> ext_expr
 
   (* Functions *)
 
@@ -921,6 +923,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_create_arguments_object _ _ _ _ _ => None
   | spec_create_arguments_object_1 _ _ _ _ _ _ o => Some o
   | spec_create_arguments_object_2 _ _ _ o => Some o
+  | spec_create_arguments_object_3 _ _ _ o => Some o
+  | spec_create_arguments_object_4 _ o => Some o
 
   | spec_object_has_instance _ _ => None
   | spec_object_has_instance_1 _ _ _ => None

@@ -2353,9 +2353,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_create_arguments_object_2 lf str l o1) o ->
       red_expr S C (spec_create_arguments_object_1 lf xs args L str l (out_ter S' b)) o 
       
-  | red_spec_create_arguments_object_2 : forall S C lf str l S' o, (* Step 13 *)
-      (* TODO *)
-      red_expr S C (spec_create_arguments_object_2 lf str l (out_void S')) o 
+  | red_spec_create_arguments_object_2_non_strict : forall A o1 S C lf l S' o, (* Step 13 *)
+      A = attributes_data_intro (value_object lf) true false true ->
+      red_expr S' C (spec_object_define_own_prop l "callee" A false) o1 ->
+      red_expr S' C (spec_create_arguments_object_4 l o1) o ->
+      red_expr S C (spec_create_arguments_object_2 lf false l (out_void S')) o 
+      
+  | red_spec_create_arguments_object_2_strict : forall vthrower A o1 S C lf l S' o, (* Step 14 a-b *)
+      vthrower = value_object prealloc_throw_type_error ->
+      A = attributes_accessor_intro vthrower vthrower false false ->
+      red_expr S' C (spec_object_define_own_prop l "caller" A false) o1 ->
+      red_expr S' C (spec_create_arguments_object_3 l vthrower A o1) o ->
+      red_expr S C (spec_create_arguments_object_2 lf true l (out_void S')) o
+      
+   | red_spec_create_arguments_object_3 : forall o1 S C l vthrower A S' b o, (* Step 14 c *)
+      red_expr S' C (spec_object_define_own_prop l "callee" A false) o1 ->
+      red_expr S' C (spec_create_arguments_object_4 l o1) o ->
+      red_expr S C (spec_create_arguments_object_3 l vthrower A (out_ter S' b)) o
+      
+   | red_spec_create_arguments_object_4 : forall S C l S' b l, (* Step 15 *)
+      red_expr S C (spec_create_arguments_object_4 l (out_ter S' b)) (out_ter S' l)
 
 
   (*------------------------------------------------------------*)
