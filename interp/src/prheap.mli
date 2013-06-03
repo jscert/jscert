@@ -6,6 +6,7 @@ val char_list_of_string : string -> char list
 
 val prprealloc : JsSyntax.prealloc -> string
 val prloc : JsSyntax.object_loc -> string
+val prprop_name : char list -> string
 val prenv_loc : JsSyntax.env_loc -> string
 val prattributes : JsSyntax.attributes -> string
 
@@ -18,6 +19,8 @@ val prvalue : JsSyntax.value -> string
 
 val prdescriptor : JsSyntax.descriptor -> string
 val prfull_descriptor : JsSyntax.full_descriptor -> string
+
+val probject_properties : JsSyntax.object_properties_type -> string
 
 val prheap :
   bool (* Skip init *) ->

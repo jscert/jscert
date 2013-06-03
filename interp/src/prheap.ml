@@ -103,6 +103,8 @@ let string_of_char_list cl =
 		| c :: tl -> s.[n] <- c; set_str (n+1) tl
 	in set_str 0 cl; s
 
+let prprop_name = string_of_char_list
+
 let char_list_of_string s =
 	let rec acc_ch acc n =
 		if n < 0 then acc else acc_ch ((String.get s n)::acc) (n-1)
@@ -162,20 +164,25 @@ let prdescriptor desc =
 	  (proption prbool desc.descriptor_enumerable)
 	  (proption prbool desc.descriptor_configurable)
 
-
-let prfieldmap (old : (prop_name * attributes) list option) skip_init loc obj =
+let probject_properties_aux skip_init old str p =
 	String.concat "" (List.fold_left
 		(fun acc (x, a) ->
 			if skip_init
 			  && morph_option false (fun old0 ->
 				List.mem (x, a) old0) old
 			then acc
-			else Printf.sprintf "\t %s . %s =  %s;\n"
-				  (prloc loc)
+			else Printf.sprintf "\t %s %s =  %s;\n"
+                  str
 				  (string_of_char_list x)
 				  (prattributes a)
 				    :: acc) []
-		(Heap.to_list (obj.object_properties_)))
+		(Heap.to_list p))
+
+let probject_properties = probject_properties_aux false None ""
+
+let prfieldmap (old : (prop_name * attributes) list option) skip_init loc obj =
+    probject_properties_aux skip_init old (prloc loc ^ " .") (obj.object_properties_)
+
 
 let prheap =
   let list_heap_init = Heap.to_list object_heap_initial in

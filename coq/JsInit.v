@@ -158,7 +158,7 @@ Definition object_prealloc_global :=
     
 Definition global_eval_function_object :=
   object_create_prealloc_call prealloc_global_eval 1 Heap.empty.
-  
+
 Definition global_is_nan_function_object := 
   object_create_prealloc_call prealloc_global_is_nan 1 Heap.empty.
   
