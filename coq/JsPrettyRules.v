@@ -478,7 +478,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_expr S C (stat_switch_nodefault_3 false v rv ts scs) o ->
 
   | red_stat_switch_nodefault_3_true : 
-      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_block ts) o1 -> (* Daniele: not sure if I should use block here.. ? *)
       red_stat S C (stat_switch_nodefault_4 o1 scs) o ->
       red_expr S C (stat_switch_nodefault_3 true v rv ts scs) o ->
 
@@ -503,6 +503,104 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_nodefault_6 (out_ter rv) scs) (out_ter S (res_intro (res_type rv) v (res_label rv)))
 *)
 
+(*
+
+(* DEFAULT CASE, to be inserted above *)
+(***************************************************)
+
+| red_stat_switch_1_default :
+    red_stat S C (stat_switch_default_1 v resvalue_empty scs1 ts1 scs2) o1 ->
+    red_expr S C (stat_switch_2 o1) o ->
+    red_stat S C (stat_switch_1 (out_ter S0 v) (switchbody_with_default scs1 ts1 scs2)) o
+
+
+(* Search A *)
+| red_stat_switch_default_A_1_nil : 
+    red_stat S C (stat_switch_default_B_1 rv nil ts1 scs2) o ->
+    red_stat S C (stat_switch_default_A_1 v rv nil ts1 scs2) o
+
+  | red_stat_switch_default_A_1_cons : 
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_expr S C (stat_switch_default_A_2 o1 v rv ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_1 v rv ((switchclause_intro e ts)::scs) ts1 scs2) o
+
+  | red_stat_switch_default_A_2 : 
+      b = (strict_equality_test v1 v) ->
+      red_expr S C (stat_switch_default_A_3 b v rv ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_2 (out_ter S0 v1) v rv ts scs ts1 scs2) o
+
+  | red_stat_switch_default_A_3_false : 
+      red_stat S C (stat_switch_default_A_1 v rv scs ts1 scs2) o ->
+      red_expr S C (stat_switch_default_A_3 false v rv ts scs ts1 scs2) o ->
+
+  | red_stat_switch_default_A_3_true : 
+      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_switch_default_A_4 o1 scs ts1 scs2) o ->
+      red_expr S C (stat_switch_default_A_3 true v rv ts scs ts1 scs2) o ->
+
+  | red_stat_switch_default_A_4 :
+      red_stat S C (stat_switch_default_7 rv ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 (out_ter rv) scs ts1 scs2) o
+
+
+
+(* Search B *)
+  | red_stat_switch_default_B_1_nil : 
+    red_stat S C (stat_switch_default rv ts1 nil) o ->
+    red_stat S C (stat_switch_default_B_1 v rv ts1 nil) o
+
+  | red_stat_switch_default_B_1_cons : 
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_expr S C (stat_switch_default_B_2 o1 v rv ts ts1 scs) o ->
+      red_stat S C (stat_switch_default_B_1 v rv ts1 ((switchclause_intro e ts)::scs)) o
+
+  | red_stat_switch_default_B_2 : 
+      b = (strict_equality_test v1 v) ->
+      red_expr S C (stat_switch_default_B_3 b v rv ts ts1 scs) o ->
+      red_stat S C (stat_switch_default_B_2 (out_ter S0 v1) v rv ts ts1 scs) o
+
+  | red_stat_switch_default_B_3_false : 
+      red_stat S C (stat_switch_default_B_1 v rv ts1 scs) o ->
+      red_expr S C (stat_switch_default_B_3 false v rv ts ts1 scs) o ->
+
+  | red_stat_switch_nodefault_B_3_true : 
+      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_switch_default_B_4 o1 ts1 scs) o ->
+      red_expr S C (stat_switch_default_B_3 true v rv ts ts1 scs) o ->
+
+  | red_stat_switch_default_B_4 :
+      red_stat S C (stat_switch_default_7 rv ts1 scs) o ->
+      red_stat S C (stat_switch_default_B_4 (out_ter rv) ts1 scs) o
+
+(* Default *)
+
+ | red_stat_switch_default_5 : 
+      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_switch_default_6 o1 scs) o ->
+      red_expr S C (stat_switch_default_5 true v rv ts scs) o ->
+
+  | red_stat_switch_default_6 :
+      red_stat S C (stat_switch_default_7 rv scs) o ->
+      red_stat S C (stat_switch_default_6 (out_ter rv) scs) o
+   
+(* END *)
+
+ | red_stat_switch_default_7_nil :
+      red_stat S C (stat_switch_default_7 rv nil)  (out_ter S (res_normal v)) ->
+
+  | red_stat_switch_default_7_cons :
+      red_stat S C (stat_block (t::ts)) o1 -> (* not sure *) 
+      red_stat S C (stat_switch_default_8 o1 scs) o ->
+      red_stat S C (stat_switch_default_7 rv ((switchclause_intro e (t::ts))::scs)) o
+
+  | red_stat_switch_nodefault_8_not_empty :
+      red_stat S C (stat_switch_default_7 rv scs) o ->
+      red_stat S C (stat_switch_default_8 (out_ter rv) scs) o
+
+  | red_stat_switch_nodefault_8_abrupt :
+      true = abrupt_res rv -> (* not sure *)
+      red_stat S C (stat_switch_default_8 (out_ter rv) scs) (out_ter S (res_intro (res_type rv) v (res_label rv)))
+*)
 
 (**************************************************************)
 (** ** Reduction rules for expressions (11) *)
