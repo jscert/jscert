@@ -1743,11 +1743,11 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
     | None => finally (out_ter S1 (res_throw v))
     | Some (x, t2) =>
       let lex := execution_ctx_lexical_env C in
-      let (lex', S') := lexical_env_alloc_decl S lex in
+      let (lex', S') := lexical_env_alloc_decl S1 lex in
       match lex' with
       | L :: oldlex =>
         if_void (env_record_create_set_mutable_binding
-          runs S C L x None v throw_irrelevant) (fun S2 =>
+          runs S' C L x None v throw_irrelevant) (fun S2 =>
             let C' := execution_ctx_with_lex C lex' in
             finally (runs_type_stat runs S2 C' t2))
       | nil => result_stuck
