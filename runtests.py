@@ -70,6 +70,9 @@ argp.add_argument("--dbpath",action="store",metavar="path",
 argp.add_argument("--verbose",action="store_true",
     help="Print the output of the tests as they happen.")
 
+argp.add_argument("--debug",action="store_true",
+    help="Run the interpreter with debugging flags (-print-heap -verbose -skip-init)")
+
 args = argp.parse_args()
 
 # Some handy data structures
@@ -360,6 +363,16 @@ elif args.lambdaS5:
     teardown = lambda : os.chdir(current_dir)
     test_runner = lambda filename: [os.path.abspath(args.interp_path),
                                     filename]
+elif args.debug:
+    test_runner = lambda filename : [args.interp_path,
+                                     "-jsparser",
+                                     os.path.join("interp","parser","lib","js_parser.jar"),
+                                     "-print-heap",
+                                     "-verbose",
+                                     "-skip-init",
+                                     "-test_prelude",
+                                     os.path.join("interp","test_prelude.js"),
+                                     "-file",filename]
 else:
     test_runner = lambda filename : [args.interp_path,
                                      "-jsparser",
