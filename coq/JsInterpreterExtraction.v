@@ -10,24 +10,6 @@ Require Flocq.Appli.Fappli_IEEE Flocq.Appli.Fappli_IEEE_bits.
 
 
 
-(**************************************************************)
-(** ** Numerical values *)
-
-(* TODO: remove duplication with JsNumber *)
-
-Definition number_of_int : int -> number :=
-  Fappli_IEEE_bits.b64_of_bits.
-
-Definition number_add : number -> number -> number :=
-  Fappli_IEEE_bits.b64_plus Fappli_IEEE.mode_NE.
-
-Definition number_mult : number -> number -> number :=
-  Fappli_IEEE_bits.b64_mult Fappli_IEEE.mode_NE.
-
-Definition number_div : number -> number -> number :=
-  Fappli_IEEE_bits.b64_div Fappli_IEEE.mode_NE.
-
-
 (* Here stands some commands to extract relatively correctly the interpreter to Ocaml. *)
 Extraction Language Ocaml.
 
@@ -35,32 +17,25 @@ Require Import ExtrOcamlBasic.
 Require Import ExtrOcamlNatInt.
 Require Import ExtrOcamlString.
 
-(* number *)
-Require Import ExtrOcamlZInt.
-Extract Inductive Fappli_IEEE.binary_float => float [
-  "(fun s -> if s then (0.) else (-0.))"
-  "(fun s -> if s then infinity else neg_infinity)"
-  "nan"
-  "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
-].
-Extract Constant number_of_int => "float_of_int".
-
 (* Optimal fixpoint. *)
 Extraction Inline FixFun3 FixFun3Mod FixFun4 FixFun4Mod FixFunMod curry3 uncurry3 curry4 uncurry4.
 (* As classical logic statements are now unused, they should not be extracted
    (otherwise, useless errors will be launched). *)
 Extraction Inline epsilon epsilon_def classicT arbitrary indefinite_description Inhab_witness Fix isTrue.
 
+(**************************************************************)
+(** ** Numerical values *)
+
 (* number *)
 Require Import ExtrOcamlZInt.
 Extract Inductive Fappli_IEEE.binary_float => float [
   "(fun s -> if s then (0.) else (-0.))"
   "(fun s -> if s then infinity else neg_infinity)"
   "nan"
-  "(fun (s, m, e) -> let f = ldexp (float_of_int m) e in if s then f else -.f)"
+  "(fun (s, m, e) -> failwith ""FIXME: No extraction from binary float allowed yet."")"
 ].
 
-Extract Constant number_of_int => "float_of_int".
+Extract Constant JsNumber.of_int => "float_of_int".
 Extract Constant JsNumber_to_int => "int_of_float".
 
 Extract Constant JsNumber.nan => "nan".
