@@ -2016,7 +2016,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
     | prealloc_global_is_nan =>
       let v := get_arg 0 args in
       if_number (to_number runs' S C v) (fun S0 n =>
-        out_ter S0 (neg (decide (n = JsNumber.nan))))
+        out_ter S0 (decide (n = JsNumber.nan)))
 
     | prealloc_global_is_finite =>
       let v := get_arg 0 args in
