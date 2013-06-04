@@ -51,7 +51,7 @@ getRegressions :: [String] -> [String] -> [String]
 getRegressions oldPasses newPasses = filter (not . (`elem` newPasses)) oldPasses
 
 outputFileName :: FilePath
-outputFileName time =
+outputFileName =
     "passed_tests" <.> "txt"
 
 main :: IO ()

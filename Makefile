@@ -93,7 +93,7 @@ init:
 	svn checkout -r 214 svn://scm.gforge.inria.fr/svn/tlc/branches/v3.1 tlc
 	tar -xzf flocq-2.1.0.tar.gz
 	mv flocq-2.1.0 flocq
-	chmod +x interp/run.py
+	# chmod +x interp/run.py -- no longer necesarry
 	bash -c "mkdir interp/src/extract" || true
 
 # alternative: pull git from svn
@@ -227,4 +227,3 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
-
