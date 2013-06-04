@@ -369,21 +369,40 @@ Inductive ext_expr :=
   | spec_binding_inst_7 : prog -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_8 : prog -> bool -> env_loc -> ext_expr
   
-  | spec_make_arg_getter : object_loc -> string -> env_loc -> ext_expr
-  | spec_make_arg_setter : object_loc -> string -> env_loc -> ext_expr
+  | spec_make_arg_getter : object_loc -> string -> lexical_env -> ext_expr
+  | spec_make_arg_setter : object_loc -> string -> lexical_env -> ext_expr
   
-  | spec_arguments_object_map : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
-  | spec_arguments_object_map_1 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> out -> ext_expr
-  | spec_arguments_object_map_2 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> ext_expr
-  | spec_arguments_object_map_3 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> out -> ext_expr
-  | spec_arguments_object_map_4 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> string -> ext_expr
-  | spec_arguments_object_map_5 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> string -> out-> ext_expr
-  | spec_arguments_object_map_6 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> object_loc -> out-> ext_expr
-  | spec_arguments_object_map_7 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> list string -> out-> ext_expr  
+  | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> full_descriptor -> ext_expr
+  
+  | spec_args_obj_get_own_prop_1 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
+  | spec_args_obj_get_own_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> object_loc -> full_descriptor -> full_descriptor -> ext_expr
+  | spec_args_obj_get_own_prop_3 : (full_descriptor -> ext_expr) -> full_descriptor -> out -> ext_expr
+  | spec_args_obj_get_own_prop_4 : (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
+  
+  | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> full_descriptor -> ext_expr
+  | spec_args_obj_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> full_descriptor -> out -> ext_expr
+  | spec_args_obj_define_own_prop_3 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> out -> ext_expr
+  | spec_args_obj_define_own_prop_4 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> ext_expr
+  | spec_args_obj_define_own_prop_5 : out -> ext_expr
+  | spec_args_obj_define_own_prop_6 : ext_expr
+  
+  | spec_args_obj_delete_1 : object_loc -> prop_name -> bool -> object_loc -> full_descriptor -> ext_expr
+  | spec_args_obj_delete_2 : object_loc -> prop_name -> bool -> object_loc -> full_descriptor -> out -> ext_expr
+  | spec_args_obj_delete_3 : out -> ext_expr
+  | spec_args_obj_delete_4 : bool -> ext_expr
+  
+  | spec_arguments_object_map : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> ext_expr
+  | spec_arguments_object_map_1 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> out -> ext_expr
+  | spec_arguments_object_map_2 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> ext_expr
+  | spec_arguments_object_map_3 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> out -> ext_expr
+  | spec_arguments_object_map_4 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> string -> ext_expr
+  | spec_arguments_object_map_5 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> string -> out-> ext_expr
+  | spec_arguments_object_map_6 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> object_loc -> out-> ext_expr
+  | spec_arguments_object_map_7 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> out-> ext_expr  
   | spec_arguments_object_map_8 : object_loc -> object_loc -> list string -> ext_expr
 
-  | spec_create_arguments_object : object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
-  | spec_create_arguments_object_1 : object_loc -> list string -> list value -> env_loc -> strictness_flag -> object_loc -> out -> ext_expr
+  | spec_create_arguments_object : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> ext_expr
+  | spec_create_arguments_object_1 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> out -> ext_expr
   | spec_create_arguments_object_2 : object_loc -> strictness_flag -> object_loc -> out -> ext_expr
   | spec_create_arguments_object_3 : object_loc -> value -> attributes -> out -> ext_expr
   | spec_create_arguments_object_4 : object_loc -> out -> ext_expr
@@ -908,6 +927,25 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   
   | spec_make_arg_getter _ _ _ => None
   | spec_make_arg_setter _ _ _ => None
+  
+  | spec_args_obj_get_1 _ _ _ _ _ => None
+  
+  | spec_args_obj_get_own_prop_1 _ _ _ _ => None
+  | spec_args_obj_get_own_prop_2 _ _ _ _ _ _ => None
+  | spec_args_obj_get_own_prop_3 _ _ o => Some o
+  | spec_args_obj_get_own_prop_4 _ _ => None
+  
+  | spec_args_obj_define_own_prop_1 _ _ _ _ _ _ => None
+  | spec_args_obj_define_own_prop_2 _ _ _ _ _ _ o => Some o
+  | spec_args_obj_define_own_prop_3 _ _ _ _ _ o => Some o
+  | spec_args_obj_define_own_prop_4 _ _ _ _ _ => None
+  | spec_args_obj_define_own_prop_5 o => Some o
+  | spec_args_obj_define_own_prop_6 => None
+  
+  | spec_args_obj_delete_1 _ _ _ _ _ => None
+  | spec_args_obj_delete_2 _ _ _ _ _ o => Some o
+  | spec_args_obj_delete_3 o => Some o
+  | spec_args_obj_delete_4 _ => None
   
   | spec_arguments_object_map _ _ _ _ _ => None
   | spec_arguments_object_map_1 _ _ _ _ _ o => Some o

@@ -679,6 +679,12 @@ Definition attributes_data_with_writable Ad bw' :=
 Definition attributes_data_with_configurable Ad bc' :=
   match Ad with attributes_data_intro v bw be bc =>
                 attributes_data_intro v bw be bc' end.
+ 
+(** Modifies the value field of a data attribute *) 
+                
+Definition attributes_data_with_value Ad v' :=
+  match Ad with attributes_data_intro v bw be bc =>
+                attributes_data_intro v' bw be bc end.
 
 
 (**************************************************************)

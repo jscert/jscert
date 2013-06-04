@@ -264,6 +264,13 @@ Definition object_formal_parameters S l fp :=
 
 Definition object_code S l bd :=
   exists O, object_binds S l O /\ object_code_ O = bd.
+  
+(** [object_parameter_map S l lmap] asserts that the [[ParameterMap]]
+    field of the object stored at address [l] in [S] contains
+    an option [lmap] which may contain a location to a parameter map object. *)
+
+Definition object_parameter_map S l lmap :=
+  exists O, object_binds S l O /\ object_parameter_map_ O = lmap.
 
 (** [object_properties S l P] asserts that [P]
     is the content of the properties field of the object

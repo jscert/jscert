@@ -2320,7 +2320,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_binding_inst_arg_obj : forall str o1 L S C ct lf code xs args o, (* Step 7a *)
       str = prog_intro_strictness code ->
-      red_expr S C (spec_create_arguments_object lf xs args L str) o1 ->
+      (* We actually need the variable environment with its pointer to parent variable environment for arguments object since it creates function objects. 
+         But we forget the parents at the very first step of Declaration Binding Instantiation. We do not change execution context in Declaration Binding
+         Instatiation. So it is save to take the variable environment from execution context here. For the right way to do, should it be saved at the first 
+         step and then propagated until this point? *)
+      red_expr S C (spec_create_arguments_object lf xs args (execution_ctx_variable_env C) str) o1 ->
       red_expr S C (spec_binding_inst_arg_obj_1 code L str o1) o ->
       red_expr S C (spec_binding_inst_arg_obj lf code xs args L) o
  
@@ -2422,83 +2426,228 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Work in progress: 10.6 Arguments Object (returns location to an arguments object) *) 
   
   (* An auxiliary reduction for the MakeArgGetter abstract operation *)
-  | red_spec_make_arg_getter : forall S C l x L o,
-     (* TODO *)
-     red_expr S C (spec_make_arg_getter l x L) o
-
+  | red_spec_make_arg_getter : forall xbd bd S C l x X o,
+     xbd = "return " ++ x ++ ";" /\
+     (* Not sure about the strictness. Using 'true' because of strictness equal to true when creating function object. *)
+     bd = funcbody_intro (prog_intro true ((element_stat (stat_return (Some (expr_identifier x))))::nil)) xbd ->
+     red_expr S C (spec_creating_function_object nil bd X true) o ->
+     red_expr S C (spec_make_arg_getter l x X) o
+     
   (* An auxiliary reduction for the MakeArgSetter abstract operation *)
-  | red_spec_make_arg_setter : forall S C l x L o,
-     (* TODO *)
-     red_expr S C (spec_make_arg_setter l x L) o
+  | red_spec_make_arg_setter : forall xparam xbd bd S C l x X o,
+     xparam = x ++ "_arg;" /\
+     xbd = x ++ " = " ++ xparam /\
+     bd = funcbody_intro (prog_intro true ((element_stat (expr_assign (expr_identifier x) None (expr_identifier xparam)))::nil)) xbd ->
+     red_expr S C (spec_creating_function_object (xparam::nil) bd X true) o ->
+     red_expr S C (spec_make_arg_setter l x X) o
+     
+  (* Arguments Object: Get  (returns value) (10.6) *) 
+  | red_spec_object_get_args_obj : forall lmap S C vthis l x o, (* Steps 1 - 2 *)
+     object_parameter_map S l (Some lmap) ->
+     red_expr S C (spec_object_get_own_prop lmap x (spec_args_obj_get_1 vthis l x lmap)) o -> 
+     red_expr S C (spec_object_get_1 builtin_get_args_obj vthis l x) o
+     
+  | red_spec_object_get_args_obj_1 : forall o1 S C vthis l x lmap o, (* Step 3 *)
+     (* Steps 3 a - c are identical to the steps of 15.3.5.4. *)
+     red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o ->
+     red_expr S C (spec_args_obj_get_1 vthis l x lmap full_descriptor_undef) o
+     
+  | red_spec_object_get_args_obj_1_undef : forall o1 S C vthis l x lmap o, (* Step 3 *)
+     (* Steps 3 a - c are identical to the steps of 15.3.5.4. *)
+     red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o ->
+     red_expr S C (spec_args_obj_get_1 vthis l x lmap full_descriptor_undef) o
+     
+  | red_spec_object_get_args_obj_1_attrs : forall S C vthis l x lmap A o, (* Step 4 *)
+     red_expr S C (spec_object_get (value_object lmap) x) o ->
+     red_expr S C (spec_args_obj_get_1 vthis l x lmap (full_descriptor_some A)) o
+     
+  (* Arguments Object: GetOwnProperty (passes a fully-populated property descriptor to the continuation) (10.6) *) 
+  | red_spec_object_get_own_prop_args_obj : forall S C l x K o, (* Step 1 *)
+      red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x (spec_args_obj_get_own_prop_1 l x K)) o ->
+      red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_args_obj l x K) o   
+      
+  | red_spec_object_get_own_prop_args_obj_1_undef : forall S C l x K o, (* Step 2 *)
+      red_expr S C (K full_descriptor_undef) o ->
+      red_expr S C (spec_args_obj_get_own_prop_1 l x K full_descriptor_undef) o 
+      
+  | red_spec_object_get_own_prop_args_obj_1_attrs : forall lmap S C l x K A o, (* Steps 3 - 4 *)
+      object_parameter_map S l (Some lmap) ->
+      red_expr S C (spec_object_get_own_prop lmap x (spec_args_obj_get_own_prop_2 l x K lmap A)) o -> 
+      red_expr S C (spec_args_obj_get_own_prop_1 l x K (full_descriptor_some A)) o 
+      
+  | red_spec_object_get_own_prop_args_obj_2_attrs : forall o1 S C l x K lmap A Amap o, (* Step 5 *)
+      red_expr S C (spec_object_get (value_object lmap) x) o1 ->
+      red_expr S C (spec_args_obj_get_own_prop_3 K A o1) o -> 
+      red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A (full_descriptor_some Amap)) o
+      
+  | red_spec_object_get_own_prop_args_obj_3 : forall S C K Ad S' v o, (* Step 5 *)      
+      red_expr S' C (spec_args_obj_get_own_prop_4 K (attributes_data_with_value Ad v)) o -> 
+      red_expr S C (spec_args_obj_get_own_prop_3 K (attributes_data_of Ad) (out_ter S' v)) o
+      (* What happens if we have an accessor property descriptor? The spec assumes it is a data property descriptor. *)
+      
+  | red_spec_object_get_own_prop_args_obj_2_undef : forall o1 S C l x K lmap A o, (* Step 5 else *)
+      red_expr S C (spec_args_obj_get_own_prop_4 K A) o -> 
+      red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A full_descriptor_undef) o  
+      
+  | red_spec_object_get_own_prop_args_obj_4 : forall S C K A o, (* Step 6 *)
+      red_expr S C (K (full_descriptor_some A)) o ->
+      red_expr S C (spec_args_obj_get_own_prop_4 K A) o    
+      
+  (* Arguments Object: DefineOwnProperty (returns bool) (10.6) *)
+  | red_spec_object_define_own_prop_args_obj : forall lmap S C l x Desc throw o, (* Steps 1 - 2 *)
+      object_parameter_map S l (Some lmap) ->
+      red_expr S C (spec_object_get_own_prop lmap x (spec_args_obj_define_own_prop_1 l x Desc throw lmap)) o -> 
+      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_args_obj l x Desc throw) o
+      
+  | red_spec_object_define_own_prop_args_obj_1 : forall o1 S C l x Desc throw lmap Descmap o, (* Step 3 *)
+      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc false) o1 ->
+      red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap Descmap o1) o ->
+      red_expr S C (spec_args_obj_define_own_prop_1 l x Desc throw lmap Descmap) o
+      
+  | red_spec_object_define_own_prop_args_obj_2_false : forall S C l x Desc throw lmap Descmap S' o, (* Step 4 *)
+      red_expr S' C (spec_error_or_cst throw native_error_type false) o ->
+      red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap Descmap (out_ter S' false)) o
+      
+  | red_spec_object_define_own_prop_args_obj_2_true_acc : forall o1 S C l x Aa throw lmap A S' o, (* Step 5 a *)
+      red_expr S' C (spec_object_delete lmap x false) o1 ->
+      red_expr S' C (spec_args_obj_define_own_prop_5 o1) o ->
+      red_expr S C (spec_args_obj_define_own_prop_2 l x (attributes_accessor_of Aa) throw lmap (full_descriptor_some A) (out_ter S' true)) o
+      
+  | red_spec_object_define_own_prop_args_obj_2_true_not_acc_some : forall v o1 S C l x Desc throw lmap A S' o, (* Step 5 b i *)
+      ~ (descriptor_is_accessor Desc) ->
+      descriptor_value Desc = Some v ->
+      red_expr S' C (spec_object_put (value_object lmap) x v throw) o1 ->
+      red_expr S' C (spec_args_obj_define_own_prop_3 l x Desc throw lmap o1) o -> 
+      red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap (full_descriptor_some A) (out_ter S' true)) o
+      
+  | red_spec_object_define_own_prop_args_obj_3 : forall v o1 S C l x Desc throw lmap A S' o, (* Step 5 b i join *)
+      red_expr S' C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o -> 
+      red_expr S C (spec_args_obj_define_own_prop_3 l x Desc throw lmap (out_void S')) o
+      
+   | red_spec_object_define_own_prop_args_obj_2_true_not_acc_none : forall v o1 S C l x Desc throw lmap A S' o, (* Step 5 b i else join *)
+      ~ (descriptor_is_accessor Desc) ->
+      descriptor_value Desc = None ->
+      red_expr S' C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o -> 
+      red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap (full_descriptor_some A) (out_ter S' true)) o
+      
+  | red_spec_object_define_own_prop_args_obj_4_false : forall o1 S C l x Desc throw lmap o, (* Step 5 b ii *)
+      descriptor_writable Desc = Some false ->
+      red_expr S C (spec_object_delete lmap x false) o1 ->
+      red_expr S C (spec_args_obj_define_own_prop_5 o1) o -> 
+      red_expr S C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o
+      
+  | red_spec_object_define_own_prop_args_obj_5 : forall S C S' b o, (* Step 5 b ii join *)
+      red_expr S' C (spec_args_obj_define_own_prop_6) o -> 
+      red_expr S C (spec_args_obj_define_own_prop_5 (out_ter S' b)) o
+      
+   | red_spec_object_define_own_prop_args_obj_4_not_false : forall S C l x Desc throw lmap o, (* Step 5 b i else join *)
+      descriptor_writable Desc <> Some false ->
+      red_expr S C (spec_args_obj_define_own_prop_6) o -> 
+      red_expr S C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o
+      
+  | red_spec_object_define_own_prop_args_obj_2_true_undef : forall S C l x Desc throw lmap S' o, (* Step 5 else *)
+      red_expr S' C (spec_args_obj_define_own_prop_6) o -> 
+      red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap (full_descriptor_undef) (out_ter S' true)) o
+      
+  | red_spec_object_define_own_prop_args_obj_6 : forall S C, (* Step 6 *)
+    red_expr S C (spec_args_obj_define_own_prop_6) (out_ter S true)
+    
+  (** Arguments Object: Delete (10.6) *)
+
+  | red_spec_object_delete_args_obj : forall lmap S C l x throw o, (* Step 1 - 2 *)
+      object_parameter_map S l (Some lmap) ->
+      red_expr S C (spec_object_get_own_prop lmap x (spec_args_obj_delete_1 l x throw lmap)) o ->
+      red_expr S C (spec_object_delete_1 builtin_delete_args_obj l x throw) o  
+      
+  | red_spec_object_delete_args_obj_1 : forall o1 S C l x throw lmap D o, (* Step 3 *)
+      red_expr S C (spec_object_delete_1 builtin_delete_default l x throw) o1 ->
+      red_expr S C (spec_args_obj_delete_2 l x throw lmap D o1) o ->
+      red_expr S C (spec_args_obj_delete_1 l x throw lmap D) o
+      
+  | red_spec_object_delete_args_obj_2_if : forall o1 S C l x throw lmap A S' o, (* Step 4 a *)
+      red_expr S' C (spec_object_delete lmap x false) o1 ->
+      red_expr S' C (spec_args_obj_delete_3 o1) o ->
+      red_expr S C (spec_args_obj_delete_2 l x throw lmap (full_descriptor_some A) (out_ter S' true)) o
+      
+  | red_spec_object_delete_args_obj_3 : forall S C S' b o, (* Step 4 join *)
+      red_expr S' C (spec_args_obj_delete_4 true) o ->
+      red_expr S C (spec_args_obj_delete_3 (out_ter S' b)) o 
+      
+  | red_spec_object_delete_args_obj_2_else : forall S C l x throw lmap D S' b o, (* Step 4 else *)
+      b = false \/ D = full_descriptor_undef ->
+      red_expr S' C (spec_args_obj_delete_4 b) o ->
+      red_expr S C (spec_args_obj_delete_2 l x throw lmap D (out_ter S' b)) o
+      
+  | red_spec_object_delete_args_obj_4 : forall S C b o, (* Step 5 *)
+      red_expr S C (spec_args_obj_delete_4 b) (out_ter S b)     
   
   (* An auxiliary reduction 'spec_arguments_object_map' for steps 8-12 *)
   
-  | red_spec_arguments_object_map : forall o1 S C l xs args L str o, (* Step 8 *)
+  | red_spec_arguments_object_map : forall o1 S C l xs args X str o, (* Step 8 *)
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
-      red_expr S C (spec_arguments_object_map_1 l xs args L str o1) o ->
-      red_expr S C (spec_arguments_object_map l xs args L str) o
+      red_expr S C (spec_arguments_object_map_1 l xs args X str o1) o ->
+      red_expr S C (spec_arguments_object_map l xs args X str) o
       
-  | red_spec_arguments_object_map_1 : forall S' o1 S C l xs args L str lmap o, (* Step 9 *)
-      red_expr S' C (spec_arguments_object_map_2 l xs args L str lmap nil) o ->
-      red_expr S C (spec_arguments_object_map_1 l xs args L str (out_ter S' lmap)) o
+  | red_spec_arguments_object_map_1 : forall S' o1 S C l xs args X str lmap o, (* Step 9 *)
+      red_expr S' C (spec_arguments_object_map_2 l xs args X str lmap nil) o ->
+      red_expr S C (spec_arguments_object_map_1 l xs args X str (out_ter S' lmap)) o
       
-  | red_spec_arguments_object_map_2_nil : forall S C l xs L str lmap xsmap o, (* Step 11 *)  
+  | red_spec_arguments_object_map_2_nil : forall S C l xs X str lmap xsmap o, (* Step 11 *)  
       red_expr S C (spec_arguments_object_map_8 l lmap xsmap) o ->
-      red_expr S C (spec_arguments_object_map_2 l xs nil L str lmap xsmap) o
+      red_expr S C (spec_arguments_object_map_2 l xs nil X str lmap xsmap) o
 
-  | red_spec_arguments_object_map_2_cons : forall A o1 S C l xs args L str lmap xsmap o, (* Step 11 a-b *)
+  | red_spec_arguments_object_map_2_cons : forall A o1 S C l xs args X str lmap xsmap o, (* Step 11 a-b *)     
       args <> nil ->
       (* 'last' requires a default value in the empty list case *)
       A = attributes_data_intro_all_true (last args undef) ->
       red_expr S C (spec_object_define_own_prop l (convert_prim_to_string (length args - 1)) A false) o1 ->
-      red_expr S C (spec_arguments_object_map_3 l xs args L str lmap xsmap o1) o ->
-      red_expr S C (spec_arguments_object_map_2 l xs args L str lmap xsmap) o
+      red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap o1) o ->
+      red_expr S C (spec_arguments_object_map_2 l xs args X str lmap xsmap) o
 
-  | red_spec_arguments_object_map_3_skip : forall S C l xs args L str lmap xsmap S' b o,  (* Step 11 c skip *)
+  | red_spec_arguments_object_map_3_skip : forall S C l xs args X str lmap xsmap S' b o,  (* Step 11 c skip *)
       length args - 1 >= length xs ->     
-      red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) L str lmap xsmap) o ->
-      red_expr S C (spec_arguments_object_map_3 l xs args L str lmap xsmap (out_ter S' b)) o
+      red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) X str lmap xsmap) o ->
+      red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
 
-  | red_spec_arguments_object_map_3_cont_skip : forall x o1 S C l xs args L str lmap xsmap S' b o,   (* Step 11 c i, ii skip *)
+  | red_spec_arguments_object_map_3_cont_skip : forall x o1 S C l xs args X str lmap xsmap S' b o,   (* Step 11 c i, ii skip *)      
       length args - 1 < length xs ->  
       (* Default value is not used because of the contraint above *)   
       x = List.nth (length args - 1) xs "" ->
       str = true \/ In x xsmap ->
-      red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) L str lmap xsmap) o ->
-      red_expr S C (spec_arguments_object_map_3 l xs args L str lmap xsmap (out_ter S' b)) o
+      red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) X str lmap xsmap) o ->
+      red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
       
-  | red_spec_arguments_object_map_3_cont_cont : forall x o1 S C l xs args L str lmap xsmap S' b o,  (* Step 11 c i, ii continue *) 
+  | red_spec_arguments_object_map_3_cont_cont : forall x o1 S C l xs args X str lmap xsmap S' b o,  (* Step 11 c i, ii continue *) 
       length args - 1 < length xs ->  
       (* Default value is not used because of the contraint above *)   
       x = List.nth (length args - 1) xs "" ->
       str = false /\ not (In x xsmap) ->
-      red_expr S' C (spec_arguments_object_map_4 l xs args L str lmap xsmap x) o ->
-      red_expr S C (spec_arguments_object_map_3 l xs args L str lmap xsmap (out_ter S' b)) o
+      red_expr S' C (spec_arguments_object_map_4 l xs args X str lmap xsmap x) o ->
+      red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
 
-  | red_spec_arguments_object_map_4 : forall o1 S C l xs args L str lmap xsmap x o,  (* Step 11 c ii 1 - 2 *) 
-      red_expr S C (spec_make_arg_getter l x L) o1 ->
-      red_expr S C (spec_arguments_object_map_5 l xs args L str lmap (x::xsmap) x o1) o ->
-      red_expr S C (spec_arguments_object_map_4 l xs args L str lmap xsmap x) o
+  | red_spec_arguments_object_map_4 : forall o1 S C l xs args X str lmap xsmap x o,  (* Step 11 c ii 1 - 2 *) 
+      red_expr S C (spec_make_arg_getter l x X) o1 ->
+      red_expr S C (spec_arguments_object_map_5 l xs args X str lmap (x::xsmap) x o1) o ->
+      red_expr S C (spec_arguments_object_map_4 l xs args X str lmap xsmap x) o
       
-  | red_spec_arguments_object_map_5 : forall o1 S C l xs args L str lmap xsmap x S' lgetter o,  (* Step 11 c ii 3 *) 
-      red_expr S' C (spec_make_arg_setter l x L) o1 ->
-      red_expr S' C (spec_arguments_object_map_6 l xs args L str lmap xsmap lgetter o1) o ->
-      red_expr S C (spec_arguments_object_map_5 l xs args L str lmap xsmap x (out_ter S' lgetter)) o
+  | red_spec_arguments_object_map_5 : forall o1 S C l xs args X str lmap xsmap x S' lgetter o,  (* Step 11 c ii 3 *) 
+      red_expr S' C (spec_make_arg_setter l x X) o1 ->
+      red_expr S' C (spec_arguments_object_map_6 l xs args X str lmap xsmap lgetter o1) o ->
+      red_expr S C (spec_arguments_object_map_5 l xs args X str lmap xsmap x (out_ter S' lgetter)) o
       
-  | red_spec_arguments_object_map_6 : forall A o1 S C l xs args L str lmap xsmap lgetter S' lsetter o,  (* Step 11 c ii 4 *) 
+  | red_spec_arguments_object_map_6 : forall A o1 S C l xs args X str lmap xsmap lgetter S' lsetter o,  (* Step 11 c ii 4 *) 
       A = attributes_accessor_intro (value_object lgetter) (value_object lsetter) false true ->
       red_expr S' C (spec_object_define_own_prop lmap (convert_prim_to_string (length args - 1)) A false) o1 ->
-      red_expr S' C (spec_arguments_object_map_7 l xs args L str lmap xsmap o1) o ->
-      red_expr S C (spec_arguments_object_map_6 l xs args L str lmap xsmap lgetter (out_ter S' lsetter)) o
+      red_expr S' C (spec_arguments_object_map_7 l xs args X str lmap xsmap o1) o ->
+      red_expr S C (spec_arguments_object_map_6 l xs args X str lmap xsmap lgetter (out_ter S' lsetter)) o
 
-  | red_spec_arguments_object_map_7 : forall S C l xs args L str lmap xsmap S' b o,  (* Step 11 loop *) 
-      red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) L str lmap xsmap) o ->
-      red_expr S C (spec_arguments_object_map_7 l xs args L str lmap xsmap (out_ter S' b)) o
+  | red_spec_arguments_object_map_7 : forall S C l xs args X str lmap xsmap S' b o,  (* Step 11 loop *) 
+      red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) X str lmap xsmap) o ->
+      red_expr S C (spec_arguments_object_map_7 l xs args X str lmap xsmap (out_ter S' b)) o
 
   | red_spec_arguments_object_map_8_cons : forall O O' S C l lmap xsmap S',  (* Step 12 not empty *) 
       xsmap <> nil ->
       object_binds S l O ->
-      (* TODO: Implement the following builtins *)
       O' = object_for_args_object O lmap builtin_get_args_obj builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj builtin_delete_args_obj ->
       S' = object_write S l O' ->    
       red_expr S C (spec_arguments_object_map_8 l lmap xsmap) (out_void S') 
@@ -2508,20 +2657,20 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   (* Arguments Object: main reduction rules (10.6) *)
   
-  | red_spec_create_arguments_object : forall O l S' A o1 S C lf xs args L str o, (* Steps 2 - 4, 6, 7 *)
+  | red_spec_create_arguments_object : forall O l S' A o1 S C lf xs args X str o, (* Steps 2 - 4, 6, 7 *)
       (* The spec does not say anything about [[Extensible]] property that all objects must have.
          Since new properties are defined for this object, "true" is used for [[Extensible]]. *)
       O = object_new prealloc_object_proto "Arguments" -> 
       (l, S') = object_alloc S O ->
       A = attributes_data_intro (JsNumber.of_int (length args)) true false true ->
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
-      red_expr S' C (spec_create_arguments_object_1 lf xs args L str l o1) o ->
-      red_expr S C (spec_create_arguments_object lf xs args L str) o   
+      red_expr S' C (spec_create_arguments_object_1 lf xs args X str l o1) o ->
+      red_expr S C (spec_create_arguments_object lf xs args X str) o   
 
-  | red_spec_create_arguments_object_1 : forall O l A o1 S C lf xs args L str l S' b o, (* Steps 8 - 12 *)
-      red_expr S' C (spec_arguments_object_map l xs args L str) o1 ->
+  | red_spec_create_arguments_object_1 : forall O l A o1 S C lf xs args X str l S' b o, (* Steps 8 - 12 *)
+      red_expr S' C (spec_arguments_object_map l xs args X str) o1 ->
       red_expr S' C (spec_create_arguments_object_2 lf str l o1) o ->
-      red_expr S C (spec_create_arguments_object_1 lf xs args L str l (out_ter S' b)) o 
+      red_expr S C (spec_create_arguments_object_1 lf xs args X str l (out_ter S' b)) o 
 
   | red_spec_create_arguments_object_2_non_strict : forall A o1 S C lf l S' o, (* Step 13 *)
       A = attributes_data_intro (value_object lf) true false true ->
