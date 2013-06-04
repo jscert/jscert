@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import Shared.
-Require Import LibFix.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
+Require Import LibFix LibList.
 
 
 (**************************************************************)
@@ -331,7 +331,7 @@ Global Instance object_properties_keys_as_list_pickable : forall S l,
   Pickable (object_properties_keys_as_list S l).
 Proof.
   introv. applys pickable_make
-    (List.map fst (Heap.to_list (run_object_method object_properties_ S l))).
+    (map fst (Heap.to_list (run_object_method object_properties_ S l))).
   introv [xs Hxs]. lets (P&HP&C): (rm Hxs). exists P. splits~.
   skip. (* Needs properties about [heap_keys_as_list]. *)
 Qed.
@@ -980,7 +980,7 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
     (Some builtin_has_instance_function) in
   let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
   let (l, S1) := object_alloc S O2 in
-  let A1 := attributes_data_intro (JsNumber.of_int (List.length names)) false false false in
+  let A1 := attributes_data_intro (JsNumber.of_int (length names)) false false false in
   if_success (object_define_own_prop S1 l "length" A1 false) (fun S2 rv1 =>
     if_bool (creating_function_object_proto runs S2 C l) (fun S3 b =>
       if negb str then out_ter S3 l
@@ -1046,16 +1046,70 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
         bivd S1))
   end.
 
-Definition create_arguments_object S C l (xs : list prop_name) (args : list value) L str : result :=
-  (* LATER:  This code is only temporary for tests and does not follow the specification. *)
-  let obj := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
-  let (l, S') := object_alloc S obj in
-  out_ter S' l.
+Definition make_arg_getter S l x L : result :=
+  out_ter S l (* TODO:  This is temporary, waiting for the specification. *).
+
+Definition make_arg_setter S l x L : result :=
+  out_ter S l (* TODO:  This is temporary, waiting for the specification. *).
+
+
+Fixpoint arguments_object_map_loop S l xs len args L str lmap xsmap : result_void :=
+  (* [len] should always be [length args]. *)
+  match len with
+  | O => (* args = nil *)
+    ifb xsmap = nil then out_void S
+    else (
+      let O := pick (object_binds S l) in
+      let O' := object_for_args_object O lmap builtin_get_args_obj
+                  builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj
+                  builtin_delete_args_obj in
+      out_void (object_write S l O')
+    )
+  | S len' => (* args <> nil *)
+    let arguments_object_map_loop' S xsmap :=
+      arguments_object_map_loop S l xs len' (removelast args) L str lmap xsmap in
+    let A := attributes_data_intro_all_true (last args undef) in
+    if_bool (object_define_own_prop S l (convert_prim_to_string len') A false) (fun S1 b =>
+      ifb len' >= length xs then
+        arguments_object_map_loop' S1 xsmap
+      else (
+        let x := List.nth len' xs "" in
+        ifb str = true \/ In x xsmap then
+          arguments_object_map_loop' S1 xsmap
+        else
+          if_object (make_arg_getter S1 l x L) (fun S2 lgetter =>
+            if_object (make_arg_setter S2 l x L) (fun S3 lsetter =>
+              let A' := attributes_accessor_intro (value_object lgetter) (value_object lsetter) false true in
+              if_bool (object_define_own_prop S3 lmap (convert_prim_to_string len') A' false) (fun S4 b' =>
+                arguments_object_map_loop' S4 (x :: xsmap)))))
+      )
+  end.
+
+Definition arguments_object_map runs S C l xs args L str : result_void :=
+  if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S' lmap =>
+    arguments_object_map_loop S' l xs (length args) args L str lmap nil).
+
+Definition create_arguments_object runs S C lf xs args L str : result :=
+  let O := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
+  let (l, S') := object_alloc S O in
+  let A := attributes_data_intro (JsNumber.of_int (length args)) true false true in
+  if_bool (object_define_own_prop S' l "length" A false) (fun S1 b =>
+    if_void (arguments_object_map runs S1 C l xs args L str) (fun S2 =>
+      if str then (
+        let A := attributes_data_intro (value_object lf) true false true in
+        if_bool (object_define_own_prop S2 l "callee" A false) (fun S3 b' =>
+          out_ter S3 l)
+      ) else (
+        let vthrower := value_object prealloc_throw_type_error in
+        let A := attributes_accessor_intro vthrower vthrower false false in
+        if_bool (object_define_own_prop S2 l "caller" A false) (fun S3 b' =>
+          if_bool (object_define_own_prop S3 l "callee" A false) (fun S4 b'' =>
+            out_ter S4 l))))).
 
 Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
   let arguments := "arguments" in
   let str := prog_intro_strictness p in
-    if_object (create_arguments_object S C lf xs args L str) (fun S1 largs =>
+    if_object (create_arguments_object runs S C lf xs args L str) (fun S1 largs =>
       if str then
         if_void (env_record_create_immutable_binding S1 L arguments) (fun S2 =>
           env_record_initialize_immutable_binding S2 L arguments largs)
@@ -1518,7 +1572,7 @@ Fixpoint run_var_decl runs S C xeos : result :=
 Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr)
   (K : state -> list value -> result) : result :=
   match es with
-  | nil => K S1 (LibList.rev vs)
+  | nil => K S1 (rev vs)
   | e :: es' =>
     if_success_value runs C (runs_type_expr runs S1 C e) (fun S2 v =>
       run_list_expr runs S2 C (v :: vs) es' K)

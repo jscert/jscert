@@ -385,6 +385,9 @@ Qed.
 Global Instance le_int_decidable : forall i1 i2 : int, Decidable (i1 <= i2).
 Admitted.
 
+Global Instance ge_nat_decidable : forall n1 n2 : nat, Decidable (n1 >= n2).
+Admitted.
+
 
 (**************************************************************)
 (** ** LATER: move to LibHeap *)

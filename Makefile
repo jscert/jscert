@@ -206,11 +206,14 @@ endif
 #######################################################
 # CLEAN
 
-clean:
+clean_cm:
+	bash -c "rm -f interp/src/*.{cmi,cmx}" || echo ok
+	bash -c "rm -f interp/src/extract/*.{cmi,cmx}" || echo ok
+
+clean: clean_cm
 	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
 	bash -c "rm -f .depend" || echo ok
-	bash -c "rm -f interp/src/*.{cmi,cmx}" || echo ok
-	bash -c "rm -f interp/src/extract/*.{ml,mli,cmi,cmx}" || echo ok
+	bash -c "rm -f interp/src/extract/*.{ml,mli}" || echo ok
 	bash -c "rm -f interp/run_js" || echo ok
 
 clean_all: clean
@@ -224,3 +227,4 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
+

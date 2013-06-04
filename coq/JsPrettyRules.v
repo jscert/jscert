@@ -2425,7 +2425,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_make_arg_getter : forall S C l x L o,
      (* TODO *)
      red_expr S C (spec_make_arg_getter l x L) o
-     
+
   (* An auxiliary reduction for the MakeArgSetter abstract operation *)
   | red_spec_make_arg_setter : forall S C l x L o,
      (* TODO *)
@@ -2445,7 +2445,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_arguments_object_map_2_nil : forall S C l xs L str lmap xsmap o, (* Step 11 *)  
       red_expr S C (spec_arguments_object_map_8 l lmap xsmap) o ->
       red_expr S C (spec_arguments_object_map_2 l xs nil L str lmap xsmap) o
-      
+
   | red_spec_arguments_object_map_2_cons : forall A o1 S C l xs args L str lmap xsmap o, (* Step 11 a-b *)
       args <> nil ->
       (* 'last' requires a default value in the empty list case *)
@@ -2453,12 +2453,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop l (convert_prim_to_string (length args - 1)) A false) o1 ->
       red_expr S C (spec_arguments_object_map_3 l xs args L str lmap xsmap o1) o ->
       red_expr S C (spec_arguments_object_map_2 l xs args L str lmap xsmap) o
-      
+
   | red_spec_arguments_object_map_3_skip : forall S C l xs args L str lmap xsmap S' b o,  (* Step 11 c skip *)
       length args - 1 >= length xs ->     
       red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) L str lmap xsmap) o ->
       red_expr S C (spec_arguments_object_map_3 l xs args L str lmap xsmap (out_ter S' b)) o
-      
+
   | red_spec_arguments_object_map_3_cont_skip : forall x o1 S C l xs args L str lmap xsmap S' b o,   (* Step 11 c i, ii skip *)
       length args - 1 < length xs ->  
       (* Default value is not used because of the contraint above *)   
@@ -2474,7 +2474,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       str = false /\ not (In x xsmap) ->
       red_expr S' C (spec_arguments_object_map_4 l xs args L str lmap xsmap x) o ->
       red_expr S C (spec_arguments_object_map_3 l xs args L str lmap xsmap (out_ter S' b)) o
-      
+
   | red_spec_arguments_object_map_4 : forall o1 S C l xs args L str lmap xsmap x o,  (* Step 11 c ii 1 - 2 *) 
       red_expr S C (spec_make_arg_getter l x L) o1 ->
       red_expr S C (spec_arguments_object_map_5 l xs args L str lmap (x::xsmap) x o1) o ->
@@ -2490,11 +2490,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_object_define_own_prop lmap (convert_prim_to_string (length args - 1)) A false) o1 ->
       red_expr S' C (spec_arguments_object_map_7 l xs args L str lmap xsmap o1) o ->
       red_expr S C (spec_arguments_object_map_6 l xs args L str lmap xsmap lgetter (out_ter S' lsetter)) o
-      
+
   | red_spec_arguments_object_map_7 : forall S C l xs args L str lmap xsmap S' b o,  (* Step 11 loop *) 
       red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) L str lmap xsmap) o ->
       red_expr S C (spec_arguments_object_map_7 l xs args L str lmap xsmap (out_ter S' b)) o
-      
+
   | red_spec_arguments_object_map_8_cons : forall O O' S C l lmap xsmap S',  (* Step 12 not empty *) 
       xsmap <> nil ->
       object_binds S l O ->
@@ -2517,22 +2517,22 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
       red_expr S' C (spec_create_arguments_object_1 lf xs args L str l o1) o ->
       red_expr S C (spec_create_arguments_object lf xs args L str) o   
-      
+
   | red_spec_create_arguments_object_1 : forall O l A o1 S C lf xs args L str l S' b o, (* Steps 8 - 12 *)
       red_expr S' C (spec_arguments_object_map l xs args L str) o1 ->
       red_expr S' C (spec_create_arguments_object_2 lf str l o1) o ->
       red_expr S C (spec_create_arguments_object_1 lf xs args L str l (out_ter S' b)) o 
-      
+
   | red_spec_create_arguments_object_2_non_strict : forall A o1 S C lf l S' o, (* Step 13 *)
       A = attributes_data_intro (value_object lf) true false true ->
       red_expr S' C (spec_object_define_own_prop l "callee" A false) o1 ->
       red_expr S' C (spec_create_arguments_object_4 l o1) o ->
       red_expr S C (spec_create_arguments_object_2 lf false l (out_void S')) o 
-      
+
   | red_spec_create_arguments_object_2_strict : forall vthrower A o1 S C lf l S' o, (* Step 14 a-b *)
       vthrower = value_object prealloc_throw_type_error ->
       A = attributes_accessor_intro vthrower vthrower false false ->
-      red_expr S' C (spec_object_define_own_prop l "caller" A false) o1 ->
+      red_expr S' C (spec_object_define_own_prop l "caller" A false) o1 -> (* This looks like a behavior of the non-strict mode, and reciprocally, the behavior of this `non-strict' mode looks like the one of the strict one:  isn't there a shuffling there? -- Martin. *)
       red_expr S' C (spec_create_arguments_object_3 l vthrower A o1) o ->
       red_expr S C (spec_create_arguments_object_2 lf true l (out_void S')) o
       
@@ -2994,7 +2994,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_new_1 v) o ->
       red_expr S C (spec_construct_prealloc prealloc_object args) o 
-      
+
   | red_spec_call_object_new_1_object : forall S C v,
       type_of v = type_object ->
       red_expr S C (spec_call_object_new_1 v) (out_ter S v)
@@ -3965,9 +3965,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       )) ->
       object_get_own_property S l x An'.
 *)
-
-
-
 
 
 
