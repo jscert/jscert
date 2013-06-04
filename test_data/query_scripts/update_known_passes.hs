@@ -6,9 +6,6 @@ import ResultsDB(getConnection,strPASS,strFAIL,strABORT)
 import Database.HDBC(toSql,withTransaction,prepare,execute,fetchAllRows,SqlValue,fromSql)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
-import Data.Time.Clock(getCurrentTime,UTCTime)
-import System.Locale(defaultTimeLocale)
-import Data.Time.Format(formatTime)
 import System.FilePath((<.>))
 import Data.Maybe(fromMaybe)
 
@@ -53,9 +50,9 @@ getPasses bid con = do
 getRegressions :: [String] -> [String] -> [String]
 getRegressions oldPasses newPasses = filter (not . (`elem` newPasses)) oldPasses
 
-outputFileName :: UTCTime ->  FilePath
+outputFileName :: FilePath
 outputFileName time =
-    ("passed_tests_"++ formatTime defaultTimeLocale "%_y-%m-%dT%H:%M:%S" time) <.> "txt"
+    "passed_tests" <.> "txt"
 
 main :: IO ()
 main = do
@@ -68,6 +65,4 @@ main = do
   putStrLn $ "There were "++(show $ length regressions)++" regressions. They were:"
   mapM putStrLn regressions
   putStrLn $ "Those were the "++(show $ length regressions)++" regressions."
-  time <- getCurrentTime
-  let outfile = outputFileName time
-  writeFile outfile $ unlines newPassSet
+  writeFile outputFileName $ unlines newPassSet
