@@ -129,7 +129,7 @@ Definition object_prealloc_global_properties :=
   let P := write_constant P "Infinity" JsNumber.infinity in
   let P := write_constant P "undefined" undef in
   let P := write_native P "eval" prealloc_global_eval in
-  let P := write_native P "isNan" prealloc_global_is_nan in
+  let P := write_native P "isNaN" prealloc_global_is_nan in
   let P := write_native P "isFinite" prealloc_global_is_finite in
   (* LATER: other functions to insert here *)
   let P := write_native P "Object" prealloc_object in

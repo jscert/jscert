@@ -2943,7 +2943,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       res_type R = restype_throw ->
       red_expr S0 C (spec_call_global_eval_3 (out_ter S R)) (out_ter S (res_throw (res_value R)))     
   
-  (** IsNan (returns bool)  (15.1.4) *)
+  (** IsNaN (returns bool)  (15.1.2.4) *)
 
   | red_spec_call_global_is_nan : forall S C v o o1 args, 
       arguments_from args (v::nil)  -> 
