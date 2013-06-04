@@ -1,0 +1,13 @@
+Everything in the tests and jit-test subdirectories of this directory
+comes straight out of the Mozilla repo. That includes all the README
+files and all the python scripts.
+
+JSCert scripts and docs should be left no lower than this directory.
+
+This will make it possible to drop in new checkouts of the Mozilla
+tests when we want to.
+
+tests corresponds to Mozilla/Central/js/src/tests/
+
+jit-test corresponds to Mozilla/Central/js/src/jit-test/
+
