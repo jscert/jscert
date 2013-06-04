@@ -641,7 +641,7 @@ Definition object_define_own_prop S l x Desc str : result :=
           end
       end)
     | builtin_define_own_prop_args_obj =>
-      stuck_heap S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]." (* TODO:  Waiting for the specification *)
+      out_ter S true (*stuck_heap S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
   end.
 
 
@@ -1069,8 +1069,7 @@ Fixpoint arguments_object_map_loop S l xs len args L str lmap xsmap : result_voi
       let O' := object_for_args_object O lmap builtin_get_args_obj
                   builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj
                   builtin_delete_args_obj in
-      out_void (object_write S l O')
-    )
+      out_void (object_write S l O'))
   | S len' => (* args <> nil *)
     let arguments_object_map_loop' S xsmap :=
       arguments_object_map_loop S l xs len' (removelast args) L str lmap xsmap in
