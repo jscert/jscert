@@ -25,7 +25,7 @@ Parameter to_string : number -> string.
 Parameter nan : number.
 Parameter zero : number.
 Parameter neg_zero : number.
-Definition one := Fappli_IEEE_bits.b64_of_bits (Fappli_IEEE_bits.join_bits 52 11 false 0 1023).
+Definition one := Fappli_IEEE.binary_normalize 53 1024 eq_refl eq_refl Fappli_IEEE.mode_NE 1 0 false.
 Parameter infinity : number.
 Parameter neg_infinity : number.
 
