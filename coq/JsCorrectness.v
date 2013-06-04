@@ -333,6 +333,14 @@ Proof.
   cases_if; reflexivity.
 Qed.
 
+Lemma expressions_only_throws_or_normal : forall S S' C e R,
+  red_expr S C e (out_ter S' R) ->
+  res_type R = restype_normal \/ res_type R = restype_throw.
+Proof.
+  introv. gen S S' C R.
+  (* induction e; introv H; inverts H; tryfalse; simpl; auto*. *) (* TODO *)
+Admitted.
+
 
 (**************************************************************)
 (** Operations on objects *)
@@ -372,12 +380,13 @@ Proof.
     (* this *)
     apply~ red_expr_this.
     (* identifier *)
-    skip. (* apply~ red_expr_identifier. *)
+    skip. (* apply~ red_expr_identifier.  FIXME:  [spec_identifier_resolution] needs rules! *)
     (* literal *)
-    skip. (* apply~ red_expr_literal. *)
+    skip. (* apply~ red_expr_literal. FIXME:  [red_expr_literal] takes a noisy argument. *)
     (* object *)
     skip. (* Needs an intermediate lemma *)
-    skip. skip. (* Abort cases. *)
+     (* Abort cases. *)
+     skip. skip.
     (* function *)
     skip.
     (* access *)
@@ -388,7 +397,8 @@ Proof.
     skip.
     (* call *)
     skip.
-    skip. skip. (* Abort cases. *)
+     (* Abort cases. *)
+     skip. skip.
     (* unary_op *)
     skip.
     (* binary_op *)
@@ -397,9 +407,10 @@ Proof.
     skip.
     (* assign *)
     skip.
-    applys~ red_expr_assign RC.
-     apply~ red_expr_abort. constructors~. absurd_neg.
-    skip.
+     (* Abort cases. *)
+     applys~ red_expr_assign RC.
+      apply~ red_expr_abort. constructors~. absurd_neg.
+     skip. (* Is that really possible for an expression to throw a non-normal and non-throw exception?!? *)
 
    (* run_stat *)
    skip.
