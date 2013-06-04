@@ -133,6 +133,10 @@ Extract Constant parse_pickable => "(fun s ->
 Extract Constant stuck_because => "(fun s ->
   print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
   Coq_result_stuck)".
+Extract Constant stuck_heap => "(fun s message ->
+  print_endline (""Stuck!\nState: "" ^ Prheap.prstate true s
+    ^ ""\nMessage:\t"" ^ Prheap.string_of_char_list message) ;
+  Coq_result_stuck)".
 
 
 (* Final Extraction *)
