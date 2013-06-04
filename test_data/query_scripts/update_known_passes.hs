@@ -2,8 +2,8 @@
 
 module Main where
 
-import ResultsDB(getConnection,strPASS,strFAIL,strABORT)
-import Database.HDBC(toSql,withTransaction,prepare,execute,fetchAllRows,SqlValue,fromSql)
+import ResultsDB(getConnection,strPASS)
+import Database.HDBC(toSql,prepare,execute,fetchAllRows,fromSql)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
 import System.FilePath((<.>))
@@ -11,13 +11,16 @@ import Data.Maybe(fromMaybe)
 
 data UpdateKnownPasses = UpdateKnownPasses { oldTestID :: Maybe Int
                                            , newTestID :: Maybe Int
+                                           , skipfile :: Bool
                                            } deriving (Data,Typeable,Show)
 
 progOpts :: UpdateKnownPasses
 progOpts = UpdateKnownPasses { oldTestID = Nothing
                                            &= help "The ID of the older test batch we're comparing"
                              , newTestID = Nothing
-                                           &= help "the ID of the newer test batch we're comparing"}
+                                           &= help "the ID of the newer test batch we're comparing"
+                             , skipfile = False
+                                          &= help ("Don't write out to "++ outputFileName) }
            &= help ("Find out the regressions between the last two test batch runs in the DB. "
                     ++"Or you can specify which runs to compare. Writes the most recent pass set to a dated file.")
 
@@ -64,5 +67,9 @@ main = do
   let regressions = getRegressions oldPassSet newPassSet
   putStrLn $ "There were "++(show $ length regressions)++" regressions. They were:"
   mapM putStrLn regressions
-  putStrLn $ "Those were the "++(show $ length regressions)++" regressions."
-  writeFile outputFileName $ unlines newPassSet
+  putStrLn $ "Those were the "++(show $ length regressions)++" regressions. There were "
+    ++(show $ length oldPassSet)++" old passes, and "
+    ++(show $ length newPassSet)++" new passes"
+  if (skipfile opts)
+    then return ()
+    else writeFile outputFileName $ unlines newPassSet
