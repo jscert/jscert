@@ -2,7 +2,7 @@
 
 module Main where
 
-import ResultsDB(getConnection)
+import ResultsDB(getConnection,strPASS,strFAIL,strABORT)
 import Database.HDBC(toSql,withTransaction,prepare,execute,fetchAllRows,SqlValue,fromSql)
 import Database.HDBC.Sqlite3(Connection)
 import Text.Hastache
@@ -76,13 +76,6 @@ data SingleTestRun = SingleTestRun
                      , strStdout :: String
                      , strStderr :: String
                      } deriving Show
-
-strPASS :: String
-strPASS = "PASS"
-strFAIL :: String
-strFAIL = "FAIL"
-strABORT :: String
-strABORT = "ABORT"
 
 stmts :: [StdOutPattern] -> [StdErrPattern] -> QueryType -> String
 stmts _ _ StmtGetTestRunByID       = "SELECT * from test_batch_runs where id=?"
