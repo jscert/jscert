@@ -21,7 +21,7 @@ import Data.List(intersperse)
 data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
                | StmtGetSTRsByBatch | StmtGetSTRsByBatchStdOut
                | StdOutLike | StdOutNotLike | StdOutNotLikeEither
-               | StdOutErrNotLikeAny
+               | StdOutErrNotLikeAny | StdErrLike
                               deriving (Data,Typeable,Enum,Eq,Show)
 
 type StdErrPattern = String
@@ -106,6 +106,7 @@ stmts _ _ GetLatestBatch           = "select id,"++
 stmts _ _ StmtGetSTRsByBatchStdOut = "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"
 stmts _ _ StmtGetSTRsByBatch       = "SELECT * from single_test_runs where batch_id=?"
 stmts _ _ StdOutLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
+stmts _ _ StdErrLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stderr LIKE ? AND batch_id=?;"
 stmts _ _ StdOutNotLike            = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "++
                                      "batch_id = ? AND "++
                                      "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
@@ -208,6 +209,7 @@ getLatestBatch con = do
 
 makeQueryArgs :: QueryType -> Int -> String -> String -> [StdOutPattern] -> [StdErrPattern] -> [SqlValue]
 makeQueryArgs StdOutLike batch querystr1 _ _ _ = [toSql querystr1, toSql batch]
+makeQueryArgs StdErrLike batch querystr1 _ _ _ = [toSql querystr1, toSql batch]
 makeQueryArgs StdOutNotLike batch querystr1 _ _ _ = [toSql batch, toSql querystr1, toSql batch]
 makeQueryArgs StdOutNotLikeEither batch querystr1 querystr2 _ _ = [toSql batch, toSql querystr1, toSql batch, toSql querystr2, toSql batch]
 makeQueryArgs StdOutErrNotLikeAny batch _ _ outs errs = [toSql batch] ++ pairUp outs ++ pairUp errs
