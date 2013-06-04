@@ -81,6 +81,28 @@ let prprealloc = function
   | Coq_prealloc_error_proto -> "Coq_prealloc_error_proto"
   | Coq_prealloc_error_proto_to_string -> "Coq_prealloc_error_proto_to_string"
 
+let prcall = function
+  | Coq_call_default -> "Coq_call_default"
+  | Coq_call_after_bind -> "Coq_call_after_bind"
+  | Coq_call_prealloc pa -> "Coq_call_prealloc " ^ prprealloc pa
+
+let prconstruct = function
+  | Coq_construct_default -> "Coq_construct_default"
+  | Coq_construct_after_bind -> "Coq_construct_after_bind"
+  | Coq_construct_prealloc pa -> "Coq_construct_prealloc " ^ prprealloc pa
+
+let prhas_instance = function
+  | Coq_builtin_has_instance_function -> "Coq_builtin_has_instance_function"
+  | Coq_builtin_has_instance_after_bind -> "Coq_builtin_has_instance_after_bind"
+
+let prget = function
+  | Coq_builtin_get_default -> "Coq_builtin_get_default"
+  | Coq_builtin_get_function -> "Coq_builtin_get_function"
+  | Coq_builtin_get_args_obj -> "Coq_builtin_get_args_obj"
+
+let prdelete = function
+  | Coq_builtin_delete_default -> "Coq_builtin_delete_default"
+  | Coq_builtin_delete_args_obj -> "Coq_builtin_delete_args_obj"
 
 let prloc = function
   | Coq_object_loc_normal i -> "@" ^ string_of_int i
@@ -95,6 +117,9 @@ let prmutability = function
 
 let prenv_loc i =
 	"#" ^ string_of_int i
+
+let prlexical_env l =
+    String.concat ", " (List.map prenv_loc l)
 
 let string_of_char_list cl =
 	let s = String.create (List.length cl) in
@@ -183,7 +208,7 @@ let probject_properties_aux skip_init old str p =
 			  && morph_option false (fun old0 ->
 				List.mem (x, a) old0) old
 			then acc
-			else Printf.sprintf "\t %s %s =  %s;\n"
+			else Printf.sprintf "\t %s %s = %s;\n"
                   str
 				  (string_of_char_list x)
 				  (prattributes a)
@@ -204,12 +229,36 @@ let prheap =
   "rankdir=LR;\n" ^
   (String.concat ""
   	  (List.rev (List.map (fun (key, v) ->
-  			prfieldmap (try
-  					Some (heap_to_list
-  						(object_properties_
-  							(List.assoc key list_heap_init)))
-  				with Not_found -> None) skip_init
-  			  key v) (heap_to_list heap)
+        let str =
+          let old =
+              try Some (List.assoc key list_heap_init)
+              with Not_found -> None in
+  	      prfieldmap (morph_option None (fun obj ->
+  	      		Some (heap_to_list (object_properties_ obj))) old)
+  	      	skip_init key v ^
+          String.concat "" (
+              let pr s p g =
+                if p (g v) = "" || (skip_init
+                  && morph_option false (fun obj ->
+                    g v = g obj) old)
+                then ""
+                else
+                    Printf.sprintf "\t %s @ %s = %s;\n"
+                      (prloc key) s (p (g v)) in [
+                  pr "proto" prvalue object_proto_ ;
+                  pr "class" string_of_char_list object_class_ ;
+                  pr "this" (morph_option "" prvalue) (fun obj -> obj.object_bound_this_) ;
+                  pr "call" (morph_option "" prcall) object_call_ ;
+                  pr "construct" (morph_option "" prconstruct) object_construct_ ;
+                  pr "has_instance" (morph_option "" prhas_instance) object_has_instance_ ;
+                  pr "prim_value" (morph_option "" prvalue) object_prim_value_ ;
+                  pr "extensible" prbool object_extensible_ ;
+                  pr "get" prget object_get_ ;
+                  pr "delete" prdelete (fun obj -> obj.object_delete_) ;
+                  pr "scope" (morph_option "" prlexical_env) object_scope_ ;
+              ]) in
+        if str = "" then Printf.sprintf "\t %s, an object;\n" (prloc key)
+        else str) (heap_to_list heap)
   	))) ^
   "}"
 

@@ -14,7 +14,7 @@ let string_to_list str = (* Does it already exists somewhere? *)
       ) else
         current := !current ^ String.make 1 c
     ) str ;
-    !current :: !l
+    !current :: List.rev !l
 
 let arguments () =
   let usage_msg="Usage: -jsparser <path> -file <path>" in

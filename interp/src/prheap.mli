@@ -5,9 +5,16 @@ val string_of_char_list : char list -> string
 val char_list_of_string : string -> char list
 
 val prprealloc : JsSyntax.prealloc -> string
+val prcall : JsSyntax.call -> string
+val prconstruct : JsSyntax.construct -> string
+val prhas_instance : JsSyntax.builtin_has_instance -> string
+val prget : JsSyntax.builtin_get -> string
+val prdelete : JsSyntax.builtin_delete -> string
+
 val prloc : JsSyntax.object_loc -> string
 val prprop_name : char list -> string
 val prenv_loc : JsSyntax.env_loc -> string
+val prlexical_env : JsSyntax.lexical_env -> string
 val prattributes : JsSyntax.attributes -> string
 
 val prbinary_op : JsSyntax.binary_op -> string
