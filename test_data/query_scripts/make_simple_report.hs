@@ -16,11 +16,16 @@ import Data.Time.Clock(getCurrentTime,UTCTime)
 import System.Locale(defaultTimeLocale)
 import Data.Time.Format(formatTime)
 import Control.Monad.IO.Class
+import Data.List(intersperse)
 
 data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
                | StmtGetSTRsByBatch | StmtGetSTRsByBatchStdOut
                | StdOutLike | StdOutNotLike | StdOutNotLikeEither
+               | StdOutErrNotLikeAny
                               deriving (Data,Typeable,Enum,Eq,Show)
+
+type StdErrPattern = String
+type StdOutPattern = String
 
 data Options = Options
                { reportName :: String
@@ -28,6 +33,8 @@ data Options = Options
                , queryType :: QueryType
                , query :: String
                , query2 :: String
+               , stdOutList :: [StdOutPattern]
+               , stdErrList :: [StdErrPattern]
                } deriving (Data,Typeable,Show)
 
 progOpts :: Options
@@ -37,6 +44,12 @@ progOpts = Options
            , queryType = StdOutLike &= help "Which sort of query should we do? Default=StdOutLike"
            , query = "%Not implemented code%" &= help "The query to perform over stderr"
            , query2 = "%Translation of Javascript syntax does not support%" &= help "Sometimes we want more than one argument in a query"
+           , stdOutList = ["%Translation of Javascript syntax does not support%"
+                          ,"%Not implemented code%"
+                          ]
+                          &= help "All the things we want to check from stdout"
+           , stdErrList = ["%Fatal error: exception Parser.%"]
+                          &= help "All the things we want to check from stderr"
            }
 
 data Batch = Batch
@@ -71,35 +84,41 @@ strFAIL = "FAIL"
 strABORT :: String
 strABORT = "ABORT"
 
-stmts :: QueryType -> String
-stmts StmtGetTestRunByID       = "SELECT * from test_batch_runs where id=?"
-stmts StmtGetBatchIDs          = "SELECT id from test_batch_runs ORDER BY id DESC"
-stmts GetLatestBatch           = "select id,"++
-                                 "time,"++
-                                 "implementation,"++
-                                 "impl_path,"++
-                                 "impl_version,"++
-                                 "title,"++
-                                 "notes,"++
-                                 "timestamp,"++
-                                 "system,"++
-                                 "osnodename,"++
-                                 "osrelease,"++
-                                 "osversion,"++
-                                 "hardware from test_batch_runs where id=("++
-                                 "select max(id) from ("++
-                                 "(select * from test_batch_runs where "++
-                                 "implementation='JSRef')))"
-stmts StmtGetSTRsByBatchStdOut = "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"
-stmts StmtGetSTRsByBatch       = "SELECT * from single_test_runs where batch_id=?"
-stmts StdOutLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
-stmts StdOutNotLike            = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "++
-                                 "batch_id = ? AND "++
-                                 "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
-stmts StdOutNotLikeEither      = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "++
-                                 "batch_id = ? AND "++
-                                 "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?) AND "++
-                                 "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
+stmts :: [StdOutPattern] -> [StdErrPattern] -> QueryType -> String
+stmts _ _ StmtGetTestRunByID       = "SELECT * from test_batch_runs where id=?"
+stmts _ _ StmtGetBatchIDs          = "SELECT id from test_batch_runs ORDER BY id DESC"
+stmts _ _ GetLatestBatch           = "select id,"++
+                                     "time,"++
+                                     "implementation,"++
+                                     "impl_path,"++
+                                     "impl_version,"++
+                                     "title,"++
+                                     "notes,"++
+                                     "timestamp,"++
+                                     "system,"++
+                                     "osnodename,"++
+                                     "osrelease,"++
+                                     "osversion,"++
+                                     "hardware from test_batch_runs where id=("++
+                                     "select max(id) from ("++
+                                     "(select * from test_batch_runs where "++
+                                     "implementation='JSRef')))"
+stmts _ _ StmtGetSTRsByBatchStdOut = "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"
+stmts _ _ StmtGetSTRsByBatch       = "SELECT * from single_test_runs where batch_id=?"
+stmts _ _ StdOutLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
+stmts _ _ StdOutNotLike            = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "++
+                                     "batch_id = ? AND "++
+                                     "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
+stmts _ _ StdOutNotLikeEither      = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "++
+                                     "batch_id = ? AND "++
+                                     "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?) AND "++
+                                     "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
+stmts outs errs StdOutErrNotLikeAny = "SELECT id,test_id,batch_id,status, stdout,stderr from single_test_runs where "
+                                      ++ "batch_id = ? AND "
+                                      ++ (concat $ intersperse " AND "
+                                          ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
+                                          ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))
+
 
 dbToBatch :: [SqlValue] -> Batch
 dbToBatch res = Batch
@@ -182,25 +201,28 @@ reportContext qname comment user time batch results = mkStrContext context
 
 getLatestBatch :: Connection -> IO Batch
 getLatestBatch con = do
-  stmt <- prepare con (stmts GetLatestBatch)
+  stmt <- prepare con (stmts [] [] GetLatestBatch)
   execute stmt []
   dat <- fmap head $ fetchAllRows stmt
   return $ dbToBatch dat
 
-makeQueryArgs :: QueryType -> Int -> String -> String -> [SqlValue]
-makeQueryArgs StdOutLike batch querystr1 _ = [toSql querystr1, toSql batch]
-makeQueryArgs StdOutNotLike batch querystr1 _ = [toSql batch, toSql querystr1, toSql batch]
-makeQueryArgs StdOutNotLikeEither batch querystr1 querystr2 = [toSql batch, toSql querystr1, toSql batch, toSql querystr2, toSql batch]
-makeQueryArgs StmtGetTestRunByID rId _ _ = [toSql rId]
-makeQueryArgs StmtGetBatchIDs _ _ _ = []
-makeQueryArgs GetLatestBatch _ _ _ = []
-makeQueryArgs StmtGetSTRsByBatchStdOut batchId stdout _ = [toSql stdout, toSql batchId]
-makeQueryArgs StmtGetSTRsByBatch batchId _ _ = [toSql batchId]
+makeQueryArgs :: QueryType -> Int -> String -> String -> [StdOutPattern] -> [StdErrPattern] -> [SqlValue]
+makeQueryArgs StdOutLike batch querystr1 _ _ _ = [toSql querystr1, toSql batch]
+makeQueryArgs StdOutNotLike batch querystr1 _ _ _ = [toSql batch, toSql querystr1, toSql batch]
+makeQueryArgs StdOutNotLikeEither batch querystr1 querystr2 _ _ = [toSql batch, toSql querystr1, toSql batch, toSql querystr2, toSql batch]
+makeQueryArgs StdOutErrNotLikeAny batch _ _ outs errs = [toSql batch] ++ pairUp outs ++ pairUp errs
+  where
+    pairUp = concatMap (\s -> [toSql s,toSql batch])
+makeQueryArgs StmtGetTestRunByID rId _ _ _ _ = [toSql rId]
+makeQueryArgs StmtGetBatchIDs _ _ _ _ _ = []
+makeQueryArgs GetLatestBatch _ _ _ _ _ = []
+makeQueryArgs StmtGetSTRsByBatchStdOut batchId stdout _ _ _ = [toSql stdout, toSql batchId]
+makeQueryArgs StmtGetSTRsByBatch batchId _ _ _ _ = [toSql batchId]
 
-getTestsBySomeQuery :: QueryType -> Int -> String -> String  -> Connection -> IO [SingleTestRun]
-getTestsBySomeQuery querytype batch querystr1 querystr2 con = do
-  stmt <- prepare con (stmts querytype )
-  execute stmt $ makeQueryArgs querytype batch querystr1 querystr2
+getTestsBySomeQuery :: QueryType -> Int -> String -> String -> [StdOutPattern] -> [StdErrPattern] -> Connection -> IO [SingleTestRun]
+getTestsBySomeQuery querytype batch querystr1 querystr2 outs errs con = do
+  stmt <- prepare con (stmts  outs errs querytype)
+  execute stmt $ makeQueryArgs querytype batch querystr1 querystr2 outs errs
   dat <- fetchAllRows stmt
   return $ map dbToSTR dat
 
@@ -214,7 +236,7 @@ main = do
   con <- getConnection
   latestBatch <- withTransaction con getLatestBatch
   strs <- withTransaction con $
-          getTestsBySomeQuery (queryType opts) (bId latestBatch) (query opts) (query2 opts)
+          getTestsBySomeQuery (queryType opts) (bId latestBatch) (query opts) (query2 opts) (stdOutList opts) (stdErrList opts)
   outertemp <- outerTemplate
   template <- reportTemplate
   username <- getEnv "USER"
