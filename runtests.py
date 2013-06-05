@@ -353,6 +353,20 @@ setup = lambda : 0
 teardown = lambda : 0
 test_runner = lambda filename : ['echo "Something weird is happening!"']
 
+def jsRefArgBuilder(filename):
+    arglist = [args.interp_path,
+               "-jsparser",
+               os.path.join("interp","parser","lib","js_parser.jar")]
+    if args.debug:
+        arglist.append("-print-heap")
+        arglist.append("-verbose")
+        arglist.append("-skip-init")
+    arglist.append("-test_prelude")
+    arglist.append(os.path.join("interp","test_prelude.js"))
+    arglist.append("-file")
+    arglist.append(filename)
+    return arglist
+
 if args.spidermonkey:
     test_runner = lambda filename : [args.interp_path, filename]
 elif args.nodejs:
@@ -363,23 +377,8 @@ elif args.lambdaS5:
     teardown = lambda : os.chdir(current_dir)
     test_runner = lambda filename: [os.path.abspath(args.interp_path),
                                     filename]
-elif args.debug:
-    test_runner = lambda filename : [args.interp_path,
-                                     "-jsparser",
-                                     os.path.join("interp","parser","lib","js_parser.jar"),
-                                     "-print-heap",
-                                     "-verbose",
-                                     "-skip-init",
-                                     "-test_prelude",
-                                     os.path.join("interp","test_prelude.js"),
-                                     "-file",filename]
 else:
-    test_runner = lambda filename : [args.interp_path,
-                                     "-jsparser",
-                                     os.path.join("interp","parser","lib","js_parser.jar"),
-                                     "-test_prelude",
-                                     os.path.join("interp","test_prelude.js"),
-                                     "-file",filename]
+    test_runner = jsRefArgBuilder
 
 # Now let's get down to the business of running the tests
 starttime = calendar.timegm(time.gmtime())
