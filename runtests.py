@@ -353,6 +353,34 @@ setup = lambda : 0
 teardown = lambda : 0
 test_runner = lambda filename : ['echo "Something weird is happening!"']
 
+def jsRefArgBuilder(filename):
+    # Normally we run a test like this:
+    #./interp/run_js -jsparser interp/parser/lib/js_parser.jar -test_prelude interp/test_prelude.js -file filename
+    # But if this is a LambdaS5 test, we need additional kit, like this:
+    # ./interp/run_js -jsparser interp/parser/lib/js_parser.jar -test_prelude interp/test_prelude.js -test_prelude tests/LambdaS5/lambda-pre.js -test_prelude filename -file tests/LambdaS5/lambda-post.js
+    # We can tell if it's a LambdaS5 test, because those start with "tests/LambdaS5/unit-tests/".
+    # In addition, we may want to add some debug flags.
+    arglist = [args.interp_path,
+               "-jsparser",
+               os.path.join("interp","parser","lib","js_parser.jar")]
+    if args.debug:
+        arglist.append("-print-heap")
+        arglist.append("-verbose")
+        arglist.append("-skip-init")
+    arglist.append("-test_prelude")
+    arglist.append(os.path.join("interp","test_prelude.js"))
+    if filename.startswith(os.path.join(os.getcwd(),"tests/LambdaS5/unit-tests/")):
+        arglist.append("-test_prelude")
+        arglist.append("tests/LambdaS5/lambda-pre.js")
+        arglist.append("-test_prelude")
+        arglist.append(filename)
+        arglist.append("-file")
+        arglist.append("tests/LambdaS5/lambda-post.js")
+    else:
+        arglist.append("-file")
+        arglist.append(filename)
+    return arglist
+
 if args.spidermonkey:
     test_runner = lambda filename : [args.interp_path, filename]
 elif args.nodejs:
@@ -363,23 +391,8 @@ elif args.lambdaS5:
     teardown = lambda : os.chdir(current_dir)
     test_runner = lambda filename: [os.path.abspath(args.interp_path),
                                     filename]
-elif args.debug:
-    test_runner = lambda filename : [args.interp_path,
-                                     "-jsparser",
-                                     os.path.join("interp","parser","lib","js_parser.jar"),
-                                     "-print-heap",
-                                     "-verbose",
-                                     "-skip-init",
-                                     "-test_prelude",
-                                     os.path.join("interp","test_prelude.js"),
-                                     "-file",filename]
 else:
-    test_runner = lambda filename : [args.interp_path,
-                                     "-jsparser",
-                                     os.path.join("interp","parser","lib","js_parser.jar"),
-                                     "-test_prelude",
-                                     os.path.join("interp","test_prelude.js"),
-                                     "-file",filename]
+    test_runner = jsRefArgBuilder
 
 # Now let's get down to the business of running the tests
 starttime = calendar.timegm(time.gmtime())
@@ -388,7 +401,6 @@ for filename in args.filenames:
     current_test = printer.start_test(filename)
 
     setup()
-
     test_pipe = subprocess.Popen(test_runner(filename), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output,errors = test_pipe.communicate()
     output = output.decode("utf8").encode("ascii","xmlcharrefreplace")
