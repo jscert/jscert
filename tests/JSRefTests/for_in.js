@@ -96,11 +96,9 @@ function test2() {
         if (i =="t") {
             if (deleted_t_yet && a[i]===6) {
                 ret = "The shadowed t appeared after we deleted the local one.";
-                $ERROR(ret);
             }
             else if (deleted_t_yet && a[i]!==6){
                 ret = "Something very odd happened. Did deleting fail, but report success?";
-                $ERROR(ret);
             }
             else { ret = "We didn't delete t fast enough. This test is invalid.";}
         }
@@ -151,7 +149,7 @@ function test3() {
 }
 
 function test3a() {
-    var title = "Changing prototypes probably shouldn't expose the non-enumerable properties";
+    var title = "Changing prototypes probably shouldn't expose the non-enumerable properties. But nothing in the spec outright outlaws it.";
     var expected = "In V8, Opera, WebKit and SpiderMonkey we can't even expose enumerable ones. LambdaS5 and IE seem to do the right thing.";
     var ret = "the non-enumerable property was not enumerated";
     var switched_proto_yet = false;
@@ -164,7 +162,7 @@ function test3a() {
             c.__proto__ = a;
         }
         if (i=='z') {
-            if(switched_proto_yet) { ret = "the non-enumerable property was enumerated";$ERROR(ret);}
+            if(switched_proto_yet) { ret = "the non-enumerable property was enumerated";}
             else { ret = "We didn't switch prototypes fast enough. This test is invalid.";}
         }
     }
