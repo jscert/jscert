@@ -12,11 +12,20 @@ strFAIL = "FAIL"
 strABORT :: String
 strABORT = "ABORT"
 
-dbPath :: IO FilePath
-dbPath = do
+dbPathFromQueries :: IO FilePath
+dbPathFromQueries = do
   dir <- getCurrentDirectory
   username <- getEnv "USER"
   return $ (takeDirectory dir) </> username<.>"db"
 
-getConnection :: IO Connection
-getConnection = connectSqlite3 =<< dbPath
+dbPathFromTrunk :: IO FilePath
+dbPathFromTrunk = do
+  username <- getEnv "USER"
+  return $ "test_data"</>username<.>"db"
+
+
+getConnectionFromQueries :: IO Connection
+getConnectionFromQueries = connectSqlite3 =<< dbPathFromQueries
+
+getConnectionFromTrunk :: IO Connection
+getConnectionFromTrunk = connectSqlite3 =<< dbPathFromTrunk

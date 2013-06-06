@@ -2,7 +2,7 @@
 
 module Main where
 
-import ResultsDB(getConnection,strPASS,strFAIL,strABORT)
+import ResultsDB(getConnectionFromQueries,strPASS,strFAIL,strABORT)
 import Database.HDBC(toSql,withTransaction,prepare,execute,fetchAllRows,SqlValue,fromSql)
 import Database.HDBC.Sqlite3(Connection)
 import Text.Hastache
@@ -228,7 +228,7 @@ escapelessConfig = defaultConfig {muEscapeFunc = emptyEscape}
 main :: IO ()
 main = do
   opts <- cmdArgs progOpts
-  con <- getConnection
+  con <- getConnectionFromQueries
   latestBatch <- withTransaction con getLatestBatch
   strs <- withTransaction con $
           getTestsBySomeQuery (queryType opts) (bId latestBatch) (query opts) (query2 opts) (stdOutList opts) (stdErrList opts)

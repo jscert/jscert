@@ -6,17 +6,11 @@
 module Main where
 
 import Database.HDBC(toSql,withTransaction,prepare,execute)
-import Database.HDBC.Sqlite3(connectSqlite3)
 import System.Environment
 import Control.Monad(void)
 import qualified Data.ByteString.Char8 as C
 import Data.List(transpose)
-import System.FilePath((</>),(<.>))
-
-dbPath :: IO FilePath
-dbPath = do
-  username <- getEnv "USER"
-  return $ "test_data"</>username<.>"db"
+import ResultsDB(getConnectionFromTrunk)
 
 stmtAddCase :: String
 stmtAddCase = "INSERT INTO test_cases (filepath,negative) VALUES (?,?)"
@@ -28,7 +22,7 @@ isNegative path = do
 
 addCases :: [FilePath] -> [Bool] -> IO ([Integer])
 addCases files negs = do
-  conn <- connectSqlite3 =<< dbPath
+  conn <- getConnectionFromTrunk
   stmt <- prepare conn stmtAddCase
   let testcases = transpose $ [map toSql files, map toSql negs]
   withTransaction conn (const $ mapM (execute stmt) testcases)

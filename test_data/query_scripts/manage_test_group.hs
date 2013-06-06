@@ -2,12 +2,13 @@
 
 module Main where
 
-import ResultsDB(getConnection)
-import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow)
+import ResultsDB(getConnectionFromTrunk)
+import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow,Statement)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
 import Data.Maybe
 import Control.Monad(void)
+import Data.List(transpose)
 
 -- data UpdateType = CreateGroup | AppendToGroup
 --                 deriving (Data,Typeable,Enum,Eq,Show)
@@ -32,18 +33,18 @@ data ManageTestGroup = CreateGroup
 createDefaults :: ManageTestGroup
 createDefaults = CreateGroup
              { groupDescription  = "" &= help "A description of this test group"
-             , files = [] &= help "The test files in this group"
+             , files = [] &= args
              }
 
 appendByDescDefaults :: ManageTestGroup
 appendByDescDefaults = AppendByDesc
                        { groupDescription = "" &= help "The description of the group to update"
-                       , files = [] &= help "The test files to add to this group"
+                       , files = [] &= args
                        }
 appendByIdDefaults :: ManageTestGroup
 appendByIdDefaults = AppendById
                        { groupId = 0 &= help "The id of the group to update"
-                       , files = [] &= help "The test files to add to this group"
+                       , files = [] &= args
                        }
 amendDescDefaults :: ManageTestGroup
 amendDescDefaults = AmendDesc
@@ -68,19 +69,18 @@ stmtGetLatestGroup = "SELECT id from test_groups ORDER BY id DESC"
 
 -- Returns the ID of the group we created
 makeGroup :: String -> Connection -> IO Int
-makeGroup desc connection =
-  withTransaction connection (
-    \con -> do
+makeGroup desc con = do
       mkstmt <- prepare con stmtMakeGroup
       execute mkstmt [toSql desc]
       getstmt <- prepare con stmtGetLatestGroup
       execute getstmt []
-      fmap (fromSql.head.fromJust) $ fetchRow getstmt)
+      fmap (fromSql.head.fromJust) $ fetchRow getstmt
 
-addFileToGroup :: Int -> String -> Connection -> IO ()
-addFileToGroup gid tid con = do
+addFilesToGroup :: Int -> [String] -> Connection -> IO ()
+addFilesToGroup gid tids con = do
   stmt <- prepare con stmtAddFileToGroup
-  void $ execute stmt [toSql gid,toSql tid]
+  let stmtargs = transpose [replicate (length tids) (toSql gid) , map toSql tids]
+  void $ mapM (execute stmt) stmtargs
 
 updateDesc :: Int -> String -> Connection -> IO ()
 updateDesc gid desc con = do
@@ -96,18 +96,15 @@ getGroupId desc con = do
 dispatch :: ManageTestGroup -> Connection -> IO ()
 dispatch (CreateGroup desc filenames) con = do
   gid <- makeGroup desc con
-  void $ mapM (flip (addFileToGroup gid) con) filenames
+  addFilesToGroup gid filenames con
 dispatch (AppendByDesc desc filenames) con = do
   gid <- getGroupId desc con
-  void $ mapM (flip (addFileToGroup gid) con) filenames
-  error ".."
-dispatch (AppendById gid filenames) con = do
-  void $ mapM (flip (addFileToGroup gid) con) filenames
-  error ".."
+  addFilesToGroup gid filenames con
+dispatch (AppendById gid filenames) con = addFilesToGroup gid filenames con
 dispatch (AmendDesc gid desc) con = updateDesc gid desc con
 
 main :: IO ()
 main = do
   opts <- cmdArgs (modes [createDefaults,appendByDescDefaults, appendByIdDefaults,amendDescDefaults])
-  con <- getConnection
+  con <- getConnectionFromTrunk
   withTransaction con $ dispatch opts

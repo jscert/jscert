@@ -2,7 +2,7 @@
 
 module Main where
 
-import ResultsDB(getConnection,strPASS)
+import ResultsDB(getConnectionFromQueries,strPASS)
 import Database.HDBC(toSql,prepare,execute,fetchAllRows,fromSql)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
@@ -59,7 +59,7 @@ outputFileName =
 
 main :: IO ()
 main = do
-  con <- getConnection
+  con <- getConnectionFromQueries
   opts <- cmdArgs progOpts
   (oldID,newID) <- getLastTwoIDs (oldTestID opts) (newTestID opts) con
   newPassSet <- getPasses newID con
