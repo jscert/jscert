@@ -2447,11 +2447,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      red_expr S C (spec_object_get_own_prop lmap x (spec_args_obj_get_1 vthis l x lmap)) o -> 
      red_expr S C (spec_object_get_1 builtin_get_args_obj vthis l x) o
      
-  | red_spec_object_get_args_obj_1 : forall o1 S C vthis l x lmap o, (* Step 3 *)
-     (* Steps 3 a - c are identical to the steps of 15.3.5.4. *)
-     red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o ->
-     red_expr S C (spec_args_obj_get_1 vthis l x lmap full_descriptor_undef) o
-     
   | red_spec_object_get_args_obj_1_undef : forall o1 S C vthis l x lmap o, (* Step 3 *)
      (* Steps 3 a - c are identical to the steps of 15.3.5.4. *)
      red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o ->
