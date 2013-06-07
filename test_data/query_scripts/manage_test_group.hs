@@ -3,7 +3,7 @@
 module Main where
 
 import ResultsDB(getConnectionFromTrunk)
-import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow,Statement)
+import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow,Statement,SqlValue)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
 import Data.Maybe
@@ -80,7 +80,7 @@ addFilesToGroup :: Int -> [String] -> Connection -> IO ()
 addFilesToGroup gid tids con = do
   stmt <- prepare con stmtAddFileToGroup
   let stmtargs = transpose [replicate (length tids) (toSql gid) , map toSql tids]
-  void $ mapM (execute stmt) stmtargs
+  mapM_ (execute stmt) stmtargs
 
 updateDesc :: Int -> String -> Connection -> IO ()
 updateDesc gid desc con = do
