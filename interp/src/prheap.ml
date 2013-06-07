@@ -130,6 +130,13 @@ let string_of_char_list cl =
 
 let prprop_name = string_of_char_list
 
+let prlabel = function
+    | Coq_label_empty -> "<empty>"
+    | Coq_label_string l -> "label:" ^ string_of_char_list l
+
+let prlabel_set s =
+    "{ " ^ String.concat "; " (List.map prlabel s) ^ " }"
+
 let char_list_of_string s =
 	let rec acc_ch acc n =
 		if n < 0 then acc else acc_ch ((String.get s n)::acc) (n-1)
@@ -282,6 +289,13 @@ let prstate skip s =
 	"\tHeap:\n" ^ prheap skip (state_object_heap s) ^
 	"\n\tEnv. Record:\n" ^ prenv_record (state_env_record_heap s)
 
+let prrestype = function
+  | Coq_restype_normal -> "normal"
+  | Coq_restype_break -> "break"
+  | Coq_restype_continue -> "continue"
+  | Coq_restype_return -> "return"
+  | Coq_restype_throw -> "throw"
+
 (*
 module M1 = Map.Make (struct type t = loc let compare = Pervasives.compare end)
 module M2 = Map.Make (struct type t = field let compare = Pervasives.compare end)
@@ -323,7 +337,7 @@ let dump_funcbody_step = function
 let dump_stat_step = function
   | Coq_stat_expr _ -> "Stat_expr"
   | Coq_stat_block _ -> "Stat_block"
-  | Coq_stat_label _ -> "Stat_label"
+  | Coq_stat_label (l, _) -> "Stat_label: " ^ string_of_char_list l
   | Coq_stat_var_decl _ -> "Stat_var_decl"
   | Coq_stat_if _ -> "Stat_if"
   | Coq_stat_while _ -> "Stat_while"

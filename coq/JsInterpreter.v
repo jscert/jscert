@@ -202,10 +202,9 @@ Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
 
 Definition if_break (o : result) (K : state -> res -> result) : result :=
   if_ter o (fun S R =>
-    let default := out_ter S R in
     match res_type R with
     | restype_break => K S R
-    | _ => default
+    | _ => out_ter S R
     end).
 
 Definition if_value (o : result) (K : state -> value -> result) : result :=
@@ -1757,7 +1756,8 @@ Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
 
 Definition run_stat_label runs S C lab t : result :=
   if_break (runs_type_stat runs S C t) (fun S1 R1 =>
-    out_ter S1 (res_value R1)).
+    out_ter S1
+      (ifb res_label R1 = lab then res_value R1 else R1)).
 
 Definition run_stat_with runs S C e1 t2 : result :=
   if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>

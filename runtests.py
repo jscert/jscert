@@ -412,3 +412,4 @@ for filename in args.filenames:
 
 printer.time_taken = calendar.timegm(time.gmtime()) - starttime
 printer.end_message()
+

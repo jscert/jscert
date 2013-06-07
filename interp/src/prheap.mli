@@ -4,6 +4,9 @@ val proption : ('a -> string) -> 'a option -> string
 val string_of_char_list : char list -> string
 val char_list_of_string : string -> char list
 
+val prlabel : JsSyntax.label -> string
+val prlabel_set : JsSyntax.label_set -> string
+
 val prprealloc : JsSyntax.prealloc -> string
 val prcall : JsSyntax.call -> string
 val prconstruct : JsSyntax.construct -> string
@@ -39,6 +42,8 @@ val prenv_record :
   string
 
 val prstate : bool (* skip init *) -> JsSyntax.state -> string
+
+val prrestype : JsSyntax.restype -> string
 
 val dump_expr_step : JsSyntax.expr -> string
 val dump_propbody_step : JsSyntax.propbody -> string
