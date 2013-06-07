@@ -46,6 +46,7 @@ progOpts = Options
            , query2 = "%Translation of Javascript syntax does not support%" &= help "Sometimes we want more than one argument in a query"
            , stdOutList = ["%Translation of Javascript syntax does not support%"
                           ,"%Not implemented code%"
+                          ,"%Parsing problem with the file%"
                           ]
                           &= help "All the things we want to check from stdout"
            , stdErrList = ["%Fatal error: exception Parser.%"]
