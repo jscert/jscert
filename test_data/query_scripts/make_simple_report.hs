@@ -21,7 +21,7 @@ import Data.List(intersperse)
 data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
                | StmtGetSTRsByBatch | StmtGetSTRsByBatchStdOut
                | StdOutLike | StdOutNotLike | StdOutNotLikeEither
-               | StdOutErrNotLikeAny | StdErrLike
+               | StdOutErrNotLikeAny | StdErrLike | OnlyInteresting
                               deriving (Data,Typeable,Enum,Eq,Show)
 
 type StdErrPattern = String
@@ -109,6 +109,13 @@ stmts _ _ StdOutNotLikeEither      = "SELECT id,test_id,batch_id,status,stdout,s
                                      "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)"
 stmts outs errs StdOutErrNotLikeAny = "SELECT id,test_id,batch_id,status, stdout,stderr from single_test_runs where "
                                       ++ "batch_id = ? AND "
+                                      ++ (concat $ intersperse " AND "
+                                          ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
+                                          ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))
+stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,stderr from single_test_runs where "
+                                      ++ "batch_id = ? AND "
+                                       -- Not boring arithmetic errors https://gforge.inria.fr/tracker/index.php?func=detail&aid=15848&group_id=4179&atid=13867
+                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id = 5) AND "
                                       ++ (concat $ intersperse " AND "
                                           ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
                                           ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))
@@ -206,6 +213,9 @@ makeQueryArgs StdErrLike batch querystr1 _ _ _ = [toSql querystr1, toSql batch]
 makeQueryArgs StdOutNotLike batch querystr1 _ _ _ = [toSql batch, toSql querystr1, toSql batch]
 makeQueryArgs StdOutNotLikeEither batch querystr1 querystr2 _ _ = [toSql batch, toSql querystr1, toSql batch, toSql querystr2, toSql batch]
 makeQueryArgs StdOutErrNotLikeAny batch _ _ outs errs = [toSql batch] ++ pairUp outs ++ pairUp errs
+  where
+    pairUp = concatMap (\s -> [toSql s,toSql batch])
+makeQueryArgs OnlyInteresting batch _ _ outs errs = [toSql batch] ++ pairUp outs ++ pairUp errs
   where
     pairUp = concatMap (\s -> [toSql s,toSql batch])
 makeQueryArgs StmtGetTestRunByID rId _ _ _ _ = [toSql rId]
