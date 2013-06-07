@@ -17,6 +17,8 @@ cabal install hastache
 
 cabal install cmdargs
 
+cabal install regex-pcre
+
 #+begin_src sql
 CREATE TABLE single_test_runs (
   id integer primary key autoincrement

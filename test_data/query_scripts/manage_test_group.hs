@@ -2,13 +2,12 @@
 
 module Main where
 
-import ResultsDB(getConnectionFromTrunk)
-import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow,Statement,SqlValue)
+import ResultsDB(getConnectionFromTrunk,addFilesToGroup,makeGroup)
+import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow,Statement)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
 import Data.Maybe
 import Control.Monad(void)
-import Data.List(transpose)
 
 -- data UpdateType = CreateGroup | AppendToGroup
 --                 deriving (Data,Typeable,Enum,Eq,Show)
@@ -52,35 +51,11 @@ amendDescDefaults = AmendDesc
                     , groupDescription = "" &= help "The new description"
                     }
 
-stmtMakeGroup :: String
-stmtMakeGroup = "INSERT INTO test_groups (description) VALUES (?)"
-
-stmtAddFileToGroup :: String
-stmtAddFileToGroup = "INSERT INTO test_group_memberships (group_id,test_id) VALUES (?,?)"
-
 stmtUpdateDesc :: String
 stmtUpdateDesc = "UPDATE test_groups SET description=? WHERE id=?"
 
 stmtGetGroupId :: String
 stmtGetGroupId = "SELECT id FROM test_groups WHERE description=?"
-
-stmtGetLatestGroup :: String
-stmtGetLatestGroup = "SELECT id from test_groups ORDER BY id DESC"
-
--- Returns the ID of the group we created
-makeGroup :: String -> Connection -> IO Int
-makeGroup desc con = do
-      mkstmt <- prepare con stmtMakeGroup
-      execute mkstmt [toSql desc]
-      getstmt <- prepare con stmtGetLatestGroup
-      execute getstmt []
-      fmap (fromSql.head.fromJust) $ fetchRow getstmt
-
-addFilesToGroup :: Int -> [String] -> Connection -> IO ()
-addFilesToGroup gid tids con = do
-  stmt <- prepare con stmtAddFileToGroup
-  let stmtargs = transpose [replicate (length tids) (toSql gid) , map toSql tids]
-  mapM_ (execute stmt) stmtargs
 
 updateDesc :: Int -> String -> Connection -> IO ()
 updateDesc gid desc con = do
