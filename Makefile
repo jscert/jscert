@@ -69,17 +69,13 @@ JS_VO=$(JS_SRC:.v=.vo)
 #######################################################
 # EXTENSIONS
 
-.PHONY: all bisect report depend clean
+.PHONY: all report depend clean
 .SUFFIXES: .v .vo
 
 #######################################################
 # MAIN TARGETS
 
-all:
-	make -f Makefile.main TARGET=Makefile.none
-
-bisect:
-	make -f Makefile.main TARGET=Makefile.bisect
+all: $(JS_VO) interpreter
 
 report:
 	bisect-report -html report bisect*.out
@@ -92,6 +88,7 @@ flocq: $(FLOCQ_VO)
 
 tags: $(JS_SRC)
 	./gentags.sh
+
 
 #######################################################
 # EXTERNAL LIBRARIES: TLC and Flocq
@@ -117,6 +114,8 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	$(COQC) -I coq -I $(TLC) $< # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
 	mv *.ml interp/src/extract/
 	mv *.mli interp/src/extract/
+	cp interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreterBisect.ml
+	cp interp/src/extract/JsInterpreter.mli interp/src/extract/JsInterpreterBisect.mli
 	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
 
@@ -161,23 +160,15 @@ interp/src/parser_main.cmx: interp/parser/src/parser_main.ml interp/src/parser_m
 interp/src/parser_main.cmi: interp/src/parser_main.mli
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
+interp/src/extract/JsInterpreterBisect.cmx:
+	ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.mli
+	ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.ml
+
 interp/src/extract/%.cmi: interp/src/extract/%.mli
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
 interp/src/extract/%.cmx: interp/src/extract/%.ml interp/src/extract/%.cmi
-	# You are on interp/src/extract/%.cmx.
 	$(OCAMLOPT) -c -w -20 -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/extract/JsInterpreter.cmx: $(TARGET)
-
-interp/src/extract/JsInterpreter.bisect: interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreter.mli
-	# You are on interp/src/extract/JsInterpreter.bisect.
-	ocamlfind $(OCAMLOPT) -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreter.mli
-	ocamlfind $(OCAMLOPT) -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreter.ml
-
-interp/src/extract/JsInterpreter.none: interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreter.cmi
-	# You are on interp/src/extract/JsInterpreter.none.
-	$(OCAMLOPT) -c -w -20 -I interp/src -I interp/src/extract -o interp/src/extract/JsInterpreter.cmx $<
 
 interp/src/translate_syntax.cmi: interp/src/translate_syntax.mli interp/src/extract/JsSyntax.cmi
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
@@ -197,12 +188,18 @@ interp/src/print_syntax.cmx: interp/src/print_syntax.ml interp/src/extract/JsSyn
 interp/src/run_js.cmx: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmx
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
 
+interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmx
+	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
+
 mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*.ml}
 mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
+mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
+mlfileswithoutbisect=${shell echo ${mlfilestransformed} | grep -v JsInterpreterBisect.cmx | grep -v js_runbisect.cmx}
 
 interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
-	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o $@ xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $^
+	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
+	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $^
 
 
 #######################################################
@@ -228,13 +225,13 @@ endif
 
 clean_cm:
 	bash -c "rm -f interp/src/*.{cmi,cmx}" || echo ok
-	bash -c "rm -f interp/src/extract/*.{cmi,cmx,cmp}" || echo ok
+	bash -c "rm -f interp/src/extract/*.{cmi,cmx}" || echo ok
 
 clean: clean_cm
 	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
 	bash -c "rm -f .depend" || echo ok
 	bash -c "rm -f interp/src/extract/*.{ml,mli}" || echo ok
-	bash -c "rm -f interp/run_js" || echo ok
+	bash -c "rm -f interp/run_js interp/run_jsbisect" || echo ok
 
 clean_all: clean
 	find . -iname "*.vo" -exec rm {} \;
