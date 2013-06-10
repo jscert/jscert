@@ -185,13 +185,18 @@ Ltac dealing_follows :=
 (**************************************************************)
 (** Monadic Constructors, Lemmae *)
 
-Definition if_regular_lemma (res : result) M :=
+Definition if_regular_lemma (res : result) S0 R0 M :=
   exists S R, res = out_ter S R /\
-    (res_type R <> restype_normal \/ M S R).
+    ((res_type R <> restype_normal /\ S = S0 /\ R = R0)
+      \/ M S R).
+
+(* TODO: The following proofs look a lot like each other, that's
+ because they share a common subterm [if_ter] and there might be
+ factorisation to be done here. *)
 
 Lemma if_success_out : forall res K S R,
   if_success res K = out_ter S R ->
-  if_regular_lemma res (fun S' R' => exists rt rv rl,
+  if_regular_lemma res S R (fun S' R' => exists rt rv rl,
     R' = res_intro rt rv rl /\
     K S' rv = out_ter S R).
 Proof.
@@ -199,8 +204,38 @@ Proof.
   destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
   subst. simpls. sets_eq t Et: (res_type R0). unfolds. repeat eexists.
   rewrite~ res_overwrite_value_if_empty_empty in H.
-  destruct t; try solve [ left; inverts H; rewrite <- Et; discriminate ].
+  destruct t; try solve [ left; inverts H; rewrite <- Et; splits~; discriminate ].
   right. destruct R0. simpls. repeat eexists. auto*.
+Qed.
+
+Lemma if_value_out : forall res K S R,
+  if_value res K = out_ter S R ->
+  if_regular_lemma res S R (fun S' R' => exists rt v rl,
+    R' = res_intro rt (resvalue_value v) rl /\
+    K S' v = out_ter S R).
+Proof.
+  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
+  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
+  subst. simpls. sets_eq t Et: (res_type R0). unfolds. repeat eexists.
+  rewrite~ res_overwrite_value_if_empty_empty in H.
+  destruct t; try solve [ left; inverts H; rewrite <- Et; splits~; discriminate ].
+  right. destruct R0. simpls. destruct res_value; tryfalse.
+  repeat eexists. auto*.
+Qed.
+
+Lemma if_object_out : forall res K S R,
+  if_object res K = out_ter S R ->
+  if_regular_lemma res S R (fun S' R' => exists rt l rl,
+    R' = res_intro rt (resvalue_value (value_object l)) rl /\
+    K S' l = out_ter S R).
+Proof.
+  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
+  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
+  subst. simpls. sets_eq t Et: (res_type R0). unfolds. repeat eexists.
+  rewrite~ res_overwrite_value_if_empty_empty in H.
+  destruct t; try solve [ left; inverts H; rewrite <- Et; splits~; discriminate ].
+  right. destruct R0. simpls. destruct res_value; tryfalse. destruct v; tryfalse.
+  repeat eexists. auto*.
 Qed.
 
 
@@ -208,13 +243,15 @@ Qed.
 (** Monadic Constructors, Tactics *)
 
 Ltac deal_with_regular_lemma k res H if_out :=
-  let H1 := fresh "Hnn" in
-  let H2 := fresh "HM" in
-  let H3 := fresh "HER" in
-  let H4 := fresh "HE" in
+  let Hnn := fresh "Hnn" in
+  let HM := fresh "HM" in
+  let HER := fresh "HER" in
+  let HE := fresh "HE" in
+  let HS := fresh "HS" in
+  let HR := fresh "HR" in
   let S' := fresh "S" in
   let R' := fresh "R" in
-  lets (S'&R'&H4&[H1|(?&?&?&H3&H2)]): if_out (rm H);
+  lets (S'&R'&HE&[(Hnn&HS&HR)|(?&?&?&HER&HM)]): if_out (rm H);
   [k|].
 
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
@@ -224,145 +261,14 @@ Ltac if_unmonad_with k :=
     inverts~ H
   | H : if_success ?res ?K = result_out ?o' |- _ =>
     deal_with_regular_lemma k res H if_success_out
+  | H : if_value ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma k res H if_value_out
+  | H : if_object ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma k res H if_object_out
   end.
 
-(*
-(* Unfolds one monadic contructor in the environnement, calling the
-  continuation when getting an unsolved non-terminating reduction. *)
-Ltac if_unmonad_basic k :=
-  match goal with
-
-  | I : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
-    inverts~ I
-
-  | I : if_ter ?o ?K = ?o0 |- _ =>
-    unfold if_ter in I;
-    let o' := fresh "o" in
-    let o'' := fresh "o" in
-    let Eqo' := fresh "Eq" o' in
-    sets_eq <- o' Eqo': o;
-    destruct o' as [o''| |]; cbv beta in I;
-      [destruct o'';
-        [ k I |]
-      | k I | k I ]
-
-  | I : if_success_state ?rv ?o ?K = ?o0 |- _ =>
-    unfold if_success_state in I;
-    if_unmonad_basic k; (* Deal with the [if_ter]. *)
-    match goal with
-      I : match res_type ?r with
-          | restype_normal => ?C1
-          | restype_break => ?C2
-          | restype_continue => ?C3
-          | restype_return => ?C4
-          | restype_throw => ?C5
-          end = ?o0,
-      I' : _ = result_out (out_ter ?s ?r) |- _ =>
-      let rt := fresh "rt" in
-      sets_eq <- rt: (res_type r);
-      let T1 := fresh "T" in
-      tests_basic T1: (rt = restype_normal);
-        [ rewrite T1 in * |- *; clear T1
-        | let T2 := fresh "T" in
-          tests_basic T2: (rt = restype_throw);
-            [ rewrite T2 in I
-            | let I'' := fresh "R" in
-              asserts I'': (C2 = o0);
-                [ destruct rt; tryfalse; auto*
-                | clear I; rename I'' into I ]]]
-    end
-
-  | I : if_success ?o ?K = ?o0 |- _ =>
-    unfold if_success in I;
-    if_unmonad_basic k
-
-  | I : if_not_throw ?rv ?o ?K = ?o0 |- _ =>
-    unfold if_not_throw in I;
-    if_unmonad_basic k; (* Deal with the [if_ter]. *)
-    match goal with
-      I : match res_type ?r with
-          | restype_normal => ?C1
-          | restype_break => ?C2
-          | restype_continue => ?C3
-          | restype_return => ?C4
-          | restype_throw => ?C5
-          end = ?o0,
-      I' : _ = result_out (out_ter ?s ?r) |- _ =>
-      let rt := fresh "rt" in
-      sets_eq <- rt: (res_type r);
-      let T := fresh "T" in
-      tests_basic T: (rt = restype_throw);
-      [ rewrite T in * |- *; clear T
-      | let I'' := fresh "R" in
-        asserts I'': (C1 = o0);
-        [ destruct rt; tryfalse; auto*
-        | clear I; rename I'' into I ]]
-    end
-
-  | I : if_some ?op ?K = ?o0 |- _ =>
-    unfold if_some in I;
-    unfold morph_option in I;
-    let o := fresh "op" in
-    sets_eq <- o : op;
-    destruct o;
-    [| k I ]
-
-  end.
-
-Lemma match_resvalue_value : forall K rv (o o1 o2 : result),
-   match rv with
-   | resvalue_empty => o1
-   | resvalue_value v => K v
-   | resvalue_ref _ => o2
-   end = o ->
-   (exists v, rv = resvalue_value v)
-   \/ o1 = o \/ o2 = o.
-Proof. introv. destruct* rv. Qed.
-
-Lemma match_value_object : forall K v (o o1 : result),
-   match v with
-   | value_prim _ => o1
-   | value_object l => K l
-   end = o ->
-   (exists l, v = value_object l)
-   \/ o1 = o.
-Proof. introv. destruct* v. Qed.
-
-Ltac if_unmonad_value k :=
-  match goal with
-
-  | I : if_value ?o ?K = ?o0 |- _ =>
-    unfold if_value in I;
-    if_unmonad_basic k; (* Deal with the [if_success]. *)
-    try ( (* The `failed' cases may not be resolved at this point. *)
-      let TMP := fresh "TEMP" in
-      lets TMP: (match_resvalue_value _ _ _ _ I);
-      let v := fresh "v" in
-      let E := fresh "Eq" in
-      destruct TMP as [[v E]|E];
-      [ rewrite E in I
-      | clear I; (apply or_idempotent in E || destruct E as [E|E]);
-        rename E into I; k I ])
-
-  | I : if_object ?o ?K = ?o0 |- _ =>
-    unfold if_object in I;
-    if_unmonad_value k; (* Deal with the [if_value]. *)
-    try ( (* The `failed' cases may not be resolved at this point. *)
-      let TMP := fresh "TEMP" in
-      lets TMP: (match_value_object _ _ _ I);
-      let l := fresh "l" in
-      let E := fresh "Eq" in
-      destruct TMP as [[l E]|E];
-      [ rewrite E in I
-      | clear I; rename E into I; k E ])
-
-  end.
-
-Ltac if_unmonad k :=
-  first
-    [ if_unmonad_basic k
-    | if_unmonad_value k ].
-*)
+Ltac unmonad k :=
+  repeat progress (try if_unmonad_with k; try dealing_follows).
 
 
 (**************************************************************)
@@ -391,16 +297,6 @@ Proof.
   cases_if; reflexivity.
 Qed.
 
-(*
-Lemma expressions_only_throws_or_normal : forall S S' C e R,
-  red_expr S C e (out_ter S' R) ->
-  res_type R = restype_normal \/ res_type R = restype_throw.
-Proof.
-  introv. gen S S' C R.
-  (* induction e; introv H; inverts H; tryfalse; simpl; auto*. *) (* TODO *)
-Admitted.
-*)
-
 
 (**************************************************************)
 (** Operations on objects *)
@@ -425,7 +321,6 @@ Qed.
 (**************************************************************)
 (** ** Main theorems *)
 
-(*
 Theorem runs_correct : forall num,
   runs_type_correct (runs num) (run_elements num).
 Proof.
@@ -437,7 +332,7 @@ Proof.
    constructors.
 
    (* run_expr *)
-   intros S C e S' res R. destruct e; simpl in R; unmonad.
+   intros S C e S' res R. destruct e; simpl in R; unmonad ltac:idtac.
     (* this *)
     apply~ red_expr_this.
     (* identifier *)
@@ -445,9 +340,10 @@ Proof.
     (* literal *)
     skip. (* apply~ red_expr_literal. FIXME:  [red_expr_literal] takes a noisy argument. *)
     (* object *)
-    skip. (* Needs an intermediate lemma *)
-     (* Abort cases. *)
-     skip. skip.
+     (* Abort case *)
+     skip.
+     (* Normal case *)
+     skip. (* Needs an intermediate lemma for [init_object]. *)
     (* function *)
     skip.
     (* access *)
@@ -457,9 +353,12 @@ Proof.
     (* new *)
     skip.
     (* call *)
-    skip.
-     (* Abort cases. *)
-     skip. skip.
+     (* Abort case *)
+     applys~ red_expr_call RC. apply~ red_expr_abort.
+      constructors. absurd_neg.
+      absurd_neg.
+     (* Normal case *)
+     skip.
     (* unary_op *)
     skip.
     (* binary_op *)
@@ -468,10 +367,6 @@ Proof.
     skip.
     (* assign *)
     skip.
-     (* Abort cases. *)
-     applys~ red_expr_assign RC.
-      apply~ red_expr_abort. constructors~. absurd_neg.
-     skip. (* Is that really possible for an expression to throw a non-normal and non-throw exception?!? *)
 
    (* run_stat *)
    skip.
@@ -485,7 +380,7 @@ Proof.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
      (* stat *)
-     unmonad.
+     unmonad ltac:idtac.
       skip. (*
       (* throw *)
       applys~ red_prog_1_cons_stat RC.
@@ -503,13 +398,8 @@ Proof.
    skip.
 
    (* run_call_full *)
-   intros l vs S C v S' res R. simpls. unmonad. destruct c; tryfalse.
-    skip.
-    unmonad.
-     apply~ red_spec_call.
-      skip. (* TODO:  Deal with object_method *)
-     applys~ red_spec_call_1_prealloc RC.
+   intros l vs S C v S' res R. simpls. unmonad ltac:idtac.
+   skip.
 
 Qed.
-*)
 
