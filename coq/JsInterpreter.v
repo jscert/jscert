@@ -85,6 +85,7 @@ Definition result_void := result.
 (* It can be useful to get details on why a stuck is obtained. *)
 Definition stuck_because s := result_stuck.
 Definition stuck_heap S s := result_stuck.
+Definition stuck_because_other {A : Type} `{Inhab A} s : A := arbitrary.
 
 
 (* Coercion *)
@@ -940,6 +941,17 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
   | prealloc_string =>
     arbitrary (* TODO:  Waiting for specification *)
 
+  | prealloc_error =>
+    let v := get_arg 0 args in
+    build_error S prealloc_error_proto v
+
+  | prealloc_native_error ne =>
+    let v := get_arg 0 args in
+    build_error S (prealloc_native_error ne) v
+
+  | prealloc_native_error_proto ne =>
+    arbitrary (* TODO:  Waiting for specification *)
+
   | _ => stuck_heap S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
 
   end.
@@ -1272,7 +1284,7 @@ Definition get_puremath_op (op : binary_op) : number -> number -> number :=
   | binary_op_div => JsNumber.div
   | binary_op_mod => JsNumber.fmod
   | binary_op_sub => JsNumber.sub
-  | _ => arbitrary
+  | _ => stuck_because_other "[get_puremath_op]:  Missing case."
   end.
 
 Definition get_inequality_op (op : binary_op) : bool * bool :=
@@ -1281,7 +1293,7 @@ Definition get_inequality_op (op : binary_op) : bool * bool :=
   | binary_op_gt => (true, false)
   | binary_op_le => (true, true)
   | binary_op_ge => (false, true)
-  | _ => arbitrary
+  | _ => stuck_because_other "[get_inequality_op]:  Missing case."
   end.
 
 Definition get_shift_op (op : binary_op) : bool * (int -> int -> int) :=
@@ -1289,7 +1301,7 @@ Definition get_shift_op (op : binary_op) : bool * (int -> int -> int) :=
   | binary_op_left_shift => (false, JsNumber.int32_left_shift)
   | binary_op_right_shift => (false, JsNumber.int32_right_shift)
   | binary_op_unsigned_right_shift => (true, JsNumber.uint32_right_shift)
-  | _ => arbitrary
+  | _ => stuck_because_other "[get_shift_op]:  Missing case."
   end.
 
 Definition get_bitwise_op (op : binary_op) : int -> int -> int :=
@@ -1297,7 +1309,7 @@ Definition get_bitwise_op (op : binary_op) : int -> int -> int :=
   | binary_op_bitwise_and => JsNumber.int32_bitwise_and
   | binary_op_bitwise_or => JsNumber.int32_bitwise_or
   | binary_op_bitwise_xor => JsNumber.int32_bitwise_xor
-  | _ => arbitrary
+  | _ => stuck_because_other "[get_bitwise_op]:  Missing case."
   end.
 
 
@@ -1424,7 +1436,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
       match op with
       | binary_op_equal => b
       | binary_op_disequal => negb b
-      | _ => arbitrary
+      | _ => stuck_because_other "[run_binary_op], [binary_op_(dis)equal]:  Missing case."
       end in
     if_bool (run_equal conv_number conv_primitive S v1 v2) (fun S0 b0 =>
       out_ter S0 (finalPass b0))
@@ -1446,7 +1458,7 @@ Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
   | unary_op_pre_decr => (sub_one, true)
   | unary_op_post_incr => (add_one, false)
   | unary_op_post_decr => (sub_one, false)
-  | _ => arbitrary
+  | _ => stuck_because_other "[run_prepost_op]:  Missing case."
   end.
 
 Definition run_typeof_value S v :=

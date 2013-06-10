@@ -3796,7 +3796,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (*------------------------------------------------------------*)
   (** ** Error prototype builtin functions *)
-  
+
   (** Error.prototype.toString()  (15.11.4.4) *)
   (* TODO: step 6 and 7 are redundant, right? *)
 
