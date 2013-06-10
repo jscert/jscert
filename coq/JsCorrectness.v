@@ -185,24 +185,22 @@ Ltac dealing_follows :=
 (**************************************************************)
 (** Monadic Constructors, Lemmae *)
 
-Definition if_regular_lemma (res : result) o M := forall S R,
-  res = out_ter S R ->
-    (res_type R <> restype_normal /\ res = o)
-    \/ M.
+Definition if_regular_lemma (res : result) M :=
+  exists S R, res = out_ter S R /\
+    (res_type R <> restype_normal \/ M S R).
 
-Lemma if_success_out : forall res o K,
-  if_success res K = result_out o ->
-  if_regular_lemma res o (exists S R rt rv rl,
-    res = out_ter S R /\
-    R = res_intro rt rv rl /\
-    K S rv = o).
+Lemma if_success_out : forall res K S R,
+  if_success res K = out_ter S R ->
+  if_regular_lemma res (fun S' R' => exists rt rv rl,
+    R' = res_intro rt rv rl /\
+    K S' rv = out_ter S R).
 Proof.
-  introv H E. subst. simpls. sets_eq t: (res_type R).
+  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
+  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
+  subst. simpls. sets_eq t Et: (res_type R0). unfolds. repeat eexists.
   rewrite~ res_overwrite_value_if_empty_empty in H.
-  destruct t; try solve [ left; splits;
-              [ discriminate
-              | inverts H; do 2 fequals]].
-  right. destruct R. simpls. repeat eexists. auto*.
+  destruct t; try solve [ left; inverts H; rewrite <- Et; discriminate ].
+  right. destruct R0. simpls. repeat eexists. auto*.
 Qed.
 
 
@@ -210,55 +208,23 @@ Qed.
 (** Monadic Constructors, Tactics *)
 
 Ltac deal_with_regular_lemma k res H if_out :=
-  let H1 := fresh "Hif" in
-  forwards H1: if_out H;
-  let H2 := fresh "Hter" in
+  let H1 := fresh "Hnn" in
+  let H2 := fresh "HM" in
+  let H3 := fresh "HER" in
+  let H4 := fresh "HE" in
   let S' := fresh "S" in
   let R' := fresh "R" in
-  asserts (S'&R'&H2): (exists S R, res = out_ter S R);
-  [| let H3 := fresh "Hnn" in
-     let H4 := fresh "HM" in
-     let H5 := fresh "HE" in
-     forwards [[H3 ?]|(?&?&?&?&?&H5&?&H4)]: H1 H2;
-     [ k |];
-     clear H H1 H2].
+  lets (S'&R'&H4&[H1|(?&?&?&H3&H2)]): if_out (rm H);
+  [k|].
 
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac if_unmonad_with k :=
   match goal with
   | H : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
     inverts~ H
-(*  | H : if_success ?res ?K = result_out ?o' |- _ =>
-    deal_with_regular_lemma k res H if_success_out *)
+  | H : if_success ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma k res H if_success_out
   end.
-
-(*
-Theorem runs_correct : forall num,
-  runs_type_correct (runs num) (run_elements num).
-Proof.
-
-  induction num.
-   constructors; introv R; inverts R.
-
-   lets [IHe IHs IHp IHel IHc IHcf]: (rm IHnum).
-   constructors.
-
-   (* run_expr *)
-   intros S C e S' res R. destruct e; simpl in R;
-   repeat progress (first [if_unmonad_with ltac:(idtac)|
-                    dealing_follows]).
-   skip. skip. skip.
-   skip.
-   skip. skip. skip. skip.
-   deal_with_regular_lemma ltac:idtac (runs_type_expr
-           {|
-           runs_type_expr := run_expr num;
-           runs_type_stat := run_stat num;
-           runs_type_prog := run_prog num;
-           runs_type_call := run_call num;
-           runs_type_call_full := run_call_full num |} S C e) R if_success_out.
-   skip. skip.
-*)
 
 (*
 (* Unfolds one monadic contructor in the environnement, calling the
@@ -459,6 +425,7 @@ Qed.
 (**************************************************************)
 (** ** Main theorems *)
 
+(*
 Theorem runs_correct : forall num,
   runs_type_correct (runs num) (run_elements num).
 Proof.
@@ -544,4 +511,5 @@ Proof.
      applys~ red_spec_call_1_prealloc RC.
 
 Qed.
+*)
 
