@@ -2038,7 +2038,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
     | prealloc_object_get_proto_of =>
       let v := get_arg 0 args in
       ifb type_of v <> type_object then
-        result_stuck
+        stuck_heap S "[run_call], [prealloc_object_get_proto_of] case:  not an object."
       else
         out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
@@ -2066,7 +2066,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                   else A
                 in if_void (object_define_own_prop S0 l x A' true) (fun S1 =>
                   object_seal S1 xs')
-              | full_descriptor_undef => result_stuck
+              | full_descriptor_undef => stuck_heap S0 "[run_call], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) S xs
       | value_prim _ => run_error S native_error_type
@@ -2088,7 +2088,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                 if attributes_configurable A then
                   out_ter S false
                 else object_is_sealed xs'
-              | full_descriptor_undef => result_stuck
+              | full_descriptor_undef => stuck_heap S "[run_call], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) xs
       | value_prim _ => run_error S native_error_type
@@ -2122,7 +2122,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                   else A'
                 in if_void (object_define_own_prop S0 l x A'' true) (fun S1 =>
                   object_freeze S1 xs')
-              | full_descriptor_undef => result_stuck
+              | full_descriptor_undef => stuck_heap S0 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) S xs
       | value_prim _ => run_error S native_error_type
@@ -2151,7 +2151,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                 else check_configurable Ad
               | attributes_accessor_of Aa =>
                 check_configurable Aa
-              | full_descriptor_undef => result_stuck
+              | full_descriptor_undef => stuck_heap S "[run_call], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) xs
       | value_prim _ => run_error S native_error_type
@@ -2266,7 +2266,7 @@ with run_call_full (max_step : nat) S C l vthis args : result := (* Corresponds 
         entering_func_code runs' S C l vthis args
       | call_prealloc B =>
         run_call' S C B args
-      | call_after_bind => result_stuck
+      | call_after_bind => stuck_heap S "[run_call_full]:  [call_after_bind] found."
       end)
   end.
 

@@ -115,6 +115,44 @@ Proof. introv [?|?]; auto. Qed.
 
 
 (**************************************************************)
+(** Generic constructions *)
+
+Lemma get_arg_correct : forall args vs,
+  arguments_from args vs ->
+  forall num,
+    num < length vs ->
+    get_arg num args = LibList.nth num vs.
+Proof.
+  introv A. induction~ A.
+   introv I. false I. lets (I'&_): (rm I). inverts~ I'.
+   introv I. destruct* num. simpl. rewrite <- IHA.
+    unfolds. repeat rewrite~ get_nth_nil.
+    rewrite length_cons in I. nat_math.
+   introv I. destruct* num. simpl. rewrite <- IHA.
+    unfolds. repeat rewrite~ get_nth_cons.
+    rewrite length_cons in I. nat_math.
+Qed.
+
+Lemma res_type_res_overwrite_value_if_empty : forall rv R,
+  res_type R = res_type (res_overwrite_value_if_empty rv R).
+Proof.
+  introv. destruct R. unfold res_overwrite_value_if_empty. simpl.
+  cases_if; reflexivity.
+Qed.
+
+Lemma ref_get_value_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S0 C0 rv S R,
+  ref_get_value runs S0 C0 rv = out_ter S R ->
+  red_expr S0 C0 (spec_get_value rv) (out_ter S R).
+Proof.
+  introv RC E. destruct rv; tryfalse.
+   inverts E. apply~ red_spec_ref_get_value_value.
+   simpls. destruct r as [rb rn rs].
+   destruct rb as [[()|l]|?]; unfold ref_kind_of in E; simpls.
+Admitted (* TODO *).
+
+
+(**************************************************************)
 (** Unfolding Functions *)
 
 Ltac unfold_func vs0 :=
@@ -269,33 +307,6 @@ Ltac if_unmonad_with k :=
 
 Ltac unmonad k :=
   repeat progress (try if_unmonad_with k; try dealing_follows).
-
-
-(**************************************************************)
-(** Generic constructions *)
-
-Lemma get_arg_correct : forall args vs,
-  arguments_from args vs ->
-  forall num,
-    num < length vs ->
-    get_arg num args = LibList.nth num vs.
-Proof.
-  introv A. induction~ A.
-   introv I. false I. lets (I'&_): (rm I). inverts~ I'.
-   introv I. destruct* num. simpl. rewrite <- IHA.
-    unfolds. repeat rewrite~ get_nth_nil.
-    rewrite length_cons in I. nat_math.
-   introv I. destruct* num. simpl. rewrite <- IHA.
-    unfolds. repeat rewrite~ get_nth_cons.
-    rewrite length_cons in I. nat_math.
-Qed.
-
-Lemma res_type_res_overwrite_value_if_empty : forall rv R,
-  res_type R = res_type (res_overwrite_value_if_empty rv R).
-Proof.
-  introv. destruct R. unfold res_overwrite_value_if_empty. simpl.
-  cases_if; reflexivity.
-Qed.
 
 
 (**************************************************************)
