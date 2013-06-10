@@ -103,8 +103,164 @@ Ltac findHyp t :=
 
 
 (**************************************************************)
-(** Monadic constructors *)
+(** General Lemmae *)
 
+Lemma res_overwrite_value_if_empty_empty : forall R,
+  res_overwrite_value_if_empty resvalue_empty R = R.
+Proof. introv. unfolds. cases_if~. destruct R; simpls; inverts~ e. Qed.
+
+Lemma or_idempotent : forall A : Prop, A \/ A -> A.
+(* This probably already exists, but I didn't found it. *)
+Proof. introv [?|?]; auto. Qed.
+
+
+(**************************************************************)
+(** Unfolding Functions *)
+
+Ltac unfold_func vs0 :=
+  match vs0 with (@boxer ?T ?t) :: ?vs =>
+    let t := constr:(t : T) in
+    first
+      [ match goal with
+        | I : context [ t ] |- _ => unfolds in I
+        end | unfold_func vs ]
+  end.
+
+Ltac rm_variables :=
+  repeat match goal with
+  | I : ?x = ?y |- _ =>
+    subst x || subst y
+  end.
+
+Ltac dealing_follows_with IHe IHs IHp IHel IHc IHcf :=
+  repeat first
+    [ progress rm_variables
+    | unfold_func (>> run_expr_access run_expr_function
+                      run_expr_new run_expr_call
+                      run_unary_op run_binary_op
+                      run_expr_conditionnal run_expr_assign
+                      entering_func_code)
+    | idtac ];
+  repeat match goal with
+  | I : runs_type_expr ?runs ?S ?C ?e = ?o |- _ =>
+    unfold runs_type_expr in I
+  | I : run_expr ?num ?S ?C ?e = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHe (rm I)
+  | I : runs_type_stat ?runs ?S ?C ?t = ?o |- _ =>
+    unfold runs_type_stat in I
+  | I : run_stat ?num ?S ?C ?t = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHs (rm I)
+  | I : runs_type_prog ?runs ?S ?C ?p = ?o |- _ =>
+    unfold runs_type_prog in I
+  | I : run_prog ?num ?S ?C ?p = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHp (rm I)
+  | I : run_elements ?num ?S ?C ?rv ?els = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHel (rm I)
+  | I : runs_type_call ?runs ?S ?C ?B ?vs = ?o |- _ =>
+    unfold runs_type_call in I
+  | I : run_call ?num ?S ?C ?B ?vs = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHc (rm I)
+  | I : runs_type_call_full ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
+    unfold runs_type_call_full in I
+  | I : run_call_full ?num ?S ?C ?l ?v ?vs = ?o |- _ =>
+    let RC := fresh "RC" in
+    forwards~ RC: IHcf (rm I)
+  end.
+
+Ltac dealing_follows :=
+  let IHe := findHyp follow_expr in
+  let IHs := findHyp follow_stat in
+  let IHp := findHyp follow_prog in
+  let IHel := findHyp follow_elements in
+  let IHc := findHyp follow_call in
+  let IHcf := findHyp follow_call_full in
+  dealing_follows_with IHe IHs IHp IHel IHc IHcf.
+
+
+(**************************************************************)
+(** Monadic Constructors, Lemmae *)
+
+Definition if_regular_lemma (res : result) o M := forall S R,
+  res = out_ter S R ->
+    (res_type R <> restype_normal /\ res = o)
+    \/ M.
+
+Lemma if_success_out : forall res o K,
+  if_success res K = result_out o ->
+  if_regular_lemma res o (exists S R rt rv rl,
+    res = out_ter S R /\
+    R = res_intro rt rv rl /\
+    K S rv = o).
+Proof.
+  introv H E. subst. simpls. sets_eq t: (res_type R).
+  rewrite~ res_overwrite_value_if_empty_empty in H.
+  destruct t; try solve [ left; splits;
+              [ discriminate
+              | inverts H; do 2 fequals]].
+  right. destruct R. simpls. repeat eexists. auto*.
+Qed.
+
+
+(**************************************************************)
+(** Monadic Constructors, Tactics *)
+
+Ltac deal_with_regular_lemma k res H if_out :=
+  let H1 := fresh "Hif" in
+  forwards H1: if_out H;
+  let H2 := fresh "Hter" in
+  let S' := fresh "S" in
+  let R' := fresh "R" in
+  asserts (S'&R'&H2): (exists S R, res = out_ter S R);
+  [| let H3 := fresh "Hnn" in
+     let H4 := fresh "HM" in
+     let H5 := fresh "HE" in
+     forwards [[H3 ?]|(?&?&?&?&?&H5&?&H4)]: H1 H2;
+     [ k |];
+     clear H H1 H2].
+
+(* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
+Ltac if_unmonad_with k :=
+  match goal with
+  | H : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
+    inverts~ H
+(*  | H : if_success ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma k res H if_success_out *)
+  end.
+
+(*
+Theorem runs_correct : forall num,
+  runs_type_correct (runs num) (run_elements num).
+Proof.
+
+  induction num.
+   constructors; introv R; inverts R.
+
+   lets [IHe IHs IHp IHel IHc IHcf]: (rm IHnum).
+   constructors.
+
+   (* run_expr *)
+   intros S C e S' res R. destruct e; simpl in R;
+   repeat progress (first [if_unmonad_with ltac:(idtac)|
+                    dealing_follows]).
+   skip. skip. skip.
+   skip.
+   skip. skip. skip. skip.
+   deal_with_regular_lemma ltac:idtac (runs_type_expr
+           {|
+           runs_type_expr := run_expr num;
+           runs_type_stat := run_stat num;
+           runs_type_prog := run_prog num;
+           runs_type_call := run_call num;
+           runs_type_call_full := run_call_full num |} S C e) R if_success_out.
+   skip. skip.
+*)
+
+(*
 (* Unfolds one monadic contructor in the environnement, calling the
   continuation when getting an unsolved non-terminating reduction. *)
 Ltac if_unmonad_basic k :=
@@ -187,9 +343,6 @@ Ltac if_unmonad_basic k :=
 
   end.
 
-Lemma or_idempotent : forall A : Prop, A \/ A -> A.
-Proof. introv [?|?]; auto. Qed.
-
 Lemma match_resvalue_value : forall K rv (o o1 o2 : result),
    match rv with
    | resvalue_empty => o1
@@ -243,68 +396,7 @@ Ltac if_unmonad k :=
   first
     [ if_unmonad_basic k
     | if_unmonad_value k ].
-
-Ltac unfold_func vs0 :=
-  match vs0 with (@boxer ?T ?t) :: ?vs =>
-    let t := constr:(t : T) in
-    first
-      [ match goal with
-        | I : context [ t ] |- _ => unfolds in I
-        end | unfold_func vs ]
-  end.
-
-Ltac rm_variables :=
-  repeat match goal with
-  | I : ?x = ?y |- _ =>
-    subst x || subst y
-  end.
-
-Ltac unmonad_with IHe IHs IHp IHel IHc IHcf :=
-  repeat first
-    [ progress rm_variables
-    | if_unmonad ltac:(fun I => tryfalse; try inverts I)
-    | unfold_func (>> run_expr_access run_expr_function run_expr_new run_expr_call run_unary_op run_binary_op run_expr_conditionnal run_expr_assign)
-    | unfold_func (>> entering_func_code)
-    | idtac ];
-  repeat match goal with
-  | I : runs_type_expr ?runs ?S ?C ?e = ?o |- _ =>
-    unfold runs_type_expr in I
-  | I : run_expr ?num ?S ?C ?e = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHe (rm I)
-  | I : runs_type_stat ?runs ?S ?C ?t = ?o |- _ =>
-    unfold runs_type_stat in I
-  | I : run_stat ?num ?S ?C ?t = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHs (rm I)
-  | I : runs_type_prog ?runs ?S ?C ?p = ?o |- _ =>
-    unfold runs_type_prog in I
-  | I : run_prog ?num ?S ?C ?p = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHp (rm I)
-  | I : run_elements ?num ?S ?C ?rv ?els = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHel (rm I)
-  | I : runs_type_call ?runs ?S ?C ?B ?vs = ?o |- _ =>
-    unfold runs_type_call in I
-  | I : run_call ?num ?S ?C ?B ?vs = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHc (rm I)
-  | I : runs_type_call_full ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
-    unfold runs_type_call_full in I
-  | I : run_call_full ?num ?S ?C ?l ?v ?vs = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHcf (rm I)
-  end.
-
-Ltac unmonad :=
-  let IHe := findHyp follow_expr in
-  let IHs := findHyp follow_stat in
-  let IHp := findHyp follow_prog in
-  let IHel := findHyp follow_elements in
-  let IHc := findHyp follow_call in
-  let IHcf := findHyp follow_call_full in
-  unmonad_with IHe IHs IHp IHel IHc IHcf.
+*)
 
 
 (**************************************************************)
@@ -333,6 +425,7 @@ Proof.
   cases_if; reflexivity.
 Qed.
 
+(*
 Lemma expressions_only_throws_or_normal : forall S S' C e R,
   red_expr S C e (out_ter S' R) ->
   res_type R = restype_normal \/ res_type R = restype_throw.
@@ -340,6 +433,7 @@ Proof.
   introv. gen S S' C R.
   (* induction e; introv H; inverts H; tryfalse; simpl; auto*. *) (* TODO *)
 Admitted.
+*)
 
 
 (**************************************************************)
