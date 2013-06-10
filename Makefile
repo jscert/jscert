@@ -195,7 +195,7 @@ mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*
 mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
 mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
-mlfileswithoutbisect=${shell echo ${mlfilestransformed} | grep -v JsInterpreterBisect.cmx | grep -v js_runbisect.cmx}
+mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|interp/src/run_jsbisect.cmx||'}
 
 interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
 	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
