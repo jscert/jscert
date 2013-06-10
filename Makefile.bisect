@@ -1,0 +1,12 @@
+ifeq (${FILE}, interp/src/extract/JsInterpreter.ml)
+  CMD1 = ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract $(FILE)i
+  CMD2 = ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract $(FILE)
+else
+  CMD1 = ocamlopt -c -w -20 -I interp/src -I interp/src/extract $(FILE)i
+  CMD2 = ocamlopt -c -w -20 -I interp/src -I interp/src/extract $(FILE)
+endif
+
+all:
+	$(CMD1)
+	$(CMD2)
+

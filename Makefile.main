@@ -69,22 +69,13 @@ JS_VO=$(JS_SRC:.v=.vo)
 #######################################################
 # EXTENSIONS
 
-.PHONY: all bisect report depend clean
+.PHONY: all depend clean
 .SUFFIXES: .v .vo
 
 #######################################################
 # MAIN TARGETS
 
-all:
-	make -f Makefile.main TARGET=Makefile.none
-
-bisect:
-	make -f Makefile.main TARGET=Makefile.bisect
-
-report:
-	bisect-report -html report bisect*.out
-	firefox report/index.html
-	rm bisect*
+all: $(JS_VO) interpreter
 
 tlc: $(TLC_VO)
 
@@ -161,23 +152,8 @@ interp/src/parser_main.cmx: interp/parser/src/parser_main.ml interp/src/parser_m
 interp/src/parser_main.cmi: interp/src/parser_main.mli
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
-interp/src/extract/%.cmi: interp/src/extract/%.mli
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
-
 interp/src/extract/%.cmx: interp/src/extract/%.ml interp/src/extract/%.cmi
-	# You are on interp/src/extract/%.cmx.
-	$(OCAMLOPT) -c -w -20 -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/extract/JsInterpreter.cmx: $(TARGET)
-
-interp/src/extract/JsInterpreter.bisect: interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreter.mli
-	# You are on interp/src/extract/JsInterpreter.bisect.
-	ocamlfind $(OCAMLOPT) -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreter.mli
-	ocamlfind $(OCAMLOPT) -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreter.ml
-
-interp/src/extract/JsInterpreter.none: interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreter.cmi
-	# You are on interp/src/extract/JsInterpreter.none.
-	$(OCAMLOPT) -c -w -20 -I interp/src -I interp/src/extract -o interp/src/extract/JsInterpreter.cmx $<
+	make -f $(TARGET) FILE=$<
 
 interp/src/translate_syntax.cmi: interp/src/translate_syntax.mli interp/src/extract/JsSyntax.cmi
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
@@ -221,29 +197,3 @@ depend: .depend
 ifeq ($(findstring $(MAKECMDGOALS),init depend clean clean_all),)
 include .depend
 endif
-
-
-#######################################################
-# CLEAN
-
-clean_cm:
-	bash -c "rm -f interp/src/*.{cmi,cmx}" || echo ok
-	bash -c "rm -f interp/src/extract/*.{cmi,cmx,cmp}" || echo ok
-
-clean: clean_cm
-	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
-	bash -c "rm -f .depend" || echo ok
-	bash -c "rm -f interp/src/extract/*.{ml,mli}" || echo ok
-	bash -c "rm -f interp/run_js" || echo ok
-
-clean_all: clean
-	find . -iname "*.vo" -exec rm {} \;
-	find . -iname "*.glob" -exec rm {} \;
-
-
-#######################################################
-# LOCAL: copy all flocq and tlc .vo files to the head folder
-
-local:
-	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
-	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)

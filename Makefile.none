@@ -1,0 +1,7 @@
+  CMD1 = ocamlopt -c -w -20 -I interp/src -I interp/src/extract $(FILE)i
+  CMD2 = ocamlopt -c -w -20 -I interp/src -I interp/src/extract $(FILE)
+
+all:
+	$(CMD1)
+	$(CMD2)
+
