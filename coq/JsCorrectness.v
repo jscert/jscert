@@ -114,9 +114,6 @@ Lemma or_idempotent : forall A : Prop, A \/ A -> A.
 Proof. introv [?|?]; auto. Qed.
 
 
-(**************************************************************)
-(** Generic constructions *)
-
 Lemma get_arg_correct : forall args vs,
   arguments_from args vs ->
   forall num,
@@ -139,17 +136,6 @@ Proof.
   introv. destruct R. unfold res_overwrite_value_if_empty. simpl.
   cases_if; reflexivity.
 Qed.
-
-Lemma ref_get_value_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S0 C0 rv S R,
-  ref_get_value runs S0 C0 rv = out_ter S R ->
-  red_expr S0 C0 (spec_get_value rv) (out_ter S R).
-Proof.
-  introv RC E. destruct rv; tryfalse.
-   inverts E. apply~ red_spec_ref_get_value_value.
-   simpls. destruct r as [rb rn rs].
-   destruct rb as [[()|l]|?]; unfold ref_kind_of in E; simpls.
-Admitted (* TODO *).
 
 
 (**************************************************************)
@@ -228,6 +214,24 @@ Definition if_regular_lemma (res : result) S0 R0 M :=
     ((res_type R <> restype_normal /\ S = S0 /\ R = R0)
       \/ M S R).
 
+Ltac deal_with_regular_lemma k H if_out :=
+  let Hnn := fresh "Hnn" in
+  let HE := fresh "HE" in
+  let HS := fresh "HS" in
+  let HR := fresh "HR" in
+  let HM := fresh "HM" in
+  let S' := fresh "S" in
+  let R' := fresh "R" in
+  lets (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
+  [k|repeat match goal with
+            | HM : exists x, _ |- _ =>
+              let x := fresh x in destruct HM as [x HM]
+            end; intuit;
+     repeat match goal with
+            | H : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
+              inverts~ H
+            end].
+
 (* TODO: The following proofs look a lot like each other, that's
  because they share a common subterm [if_ter] and there might be
  factorisation to be done here. *)
@@ -276,27 +280,39 @@ Proof.
   repeat eexists. auto*.
 Qed.
 
+Lemma run_error_correct : forall S C ne S' R',
+  run_error S ne = out_ter S' R' ->
+  red_expr S C (spec_error ne) (out_ter S' R').
+Proof.
+  introv E. deal_with_regular_lemma ltac:idtac E if_object_out; substs.
+  unfolds build_error. destruct S as [E L [l S]]. simpls. cases_if; tryfalse.
+   inverts HE. false~ Hnn.
+  unfolds build_error. destruct S as [E L [l' S]]. simpls.
+   apply~ red_spec_error; [|apply~ red_spec_error_1].
+   apply~ red_spec_build_error. reflexivity.
+   cases_if. inverts HE.
+   apply~ red_spec_build_error_1_no_msg.
+Qed.
+
+Lemma ref_get_value_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S0 C0 rv S R,
+  ref_get_value runs S0 C0 rv = out_ter S R ->
+  red_expr S0 C0 (spec_get_value rv) (out_ter S R).
+Proof.
+  introv RC E. destruct rv; tryfalse.
+   inverts E. apply~ red_spec_ref_get_value_value.
+   simpls. destruct r as [rb rn rs].
+   destruct rb as [[()|l]|?]; unfold ref_kind_of in E; simpls.
+    apply~ red_spec_ref_get_value_ref_a. constructors.
+Admitted (* TODO *).
+
 
 (**************************************************************)
 (** Monadic Constructors, Tactics *)
 
-Ltac deal_with_regular_lemma k res H if_out :=
-  let Hnn := fresh "Hnn" in
-  let HM := fresh "HM" in
-  let HER := fresh "HER" in
-  let HE := fresh "HE" in
-  let HS := fresh "HS" in
-  let HR := fresh "HR" in
-  let S' := fresh "S" in
-  let R' := fresh "R" in
-  lets (S'&R'&HE&[(Hnn&HS&HR)|(?&?&?&HER&HM)]): if_out (rm H);
-  [k|].
-
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac if_unmonad_with k :=
   match goal with
-  | H : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
-    inverts~ H
   | H : if_success ?res ?K = result_out ?o' |- _ =>
     deal_with_regular_lemma k res H if_success_out
   | H : if_value ?res ?K = result_out ?o' |- _ =>
@@ -331,6 +347,7 @@ Qed.
 
 (**************************************************************)
 (** ** Main theorems *)
+
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num) (run_elements num).
