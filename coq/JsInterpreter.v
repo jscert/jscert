@@ -289,13 +289,6 @@ Section LexicalEnvironments.
 (** Error Handling *)
 
 (** [out_error_or_cst S str B R] throws the builtin B if
-    [str] is true, the value [R] otherwise. *)
-
-Definition out_error_or_cst S str B R :=
-  if str then out_ter S (res_throw B)
-  else out_ter S R.
-
-(** [out_error_or_cst S str B R] throws the builtin B if
     [str] is true, empty otherwise. *)
 
 Definition out_error_or_void S str B :=
@@ -311,6 +304,13 @@ Definition build_error S vproto vmsg : result :=
 Definition run_error S ne : result :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
     out_ter S' (res_throw l)).
+
+(** [out_error_or_cst S str ne v] throws the error [ne] if
+    [str] is true, the value [v] otherwise. *)
+
+Definition out_error_or_cst S str (ne : native_error) v :=
+  if str then run_error S ne
+  else out_ter S v.
 
 
 (**************************************************************)
@@ -487,7 +487,7 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
               match vthis with
               | value_object lthis =>
                   runs_type_call_full runs S C lf lthis nil
-              | value_prim _ => stuck_heap S "The `this' argument of [object_get_builtin] is a prmitive."
+              | value_prim _ => stuck_heap S "The `this' argument of [object_get_builtin] is a primitive."
               end
           | value_prim _ => (* TODO:  Waiting for the specification. *)
               stuck_heap S "Waiting for specification in [object_get_builtin]."
