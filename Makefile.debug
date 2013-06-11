@@ -40,7 +40,7 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
 COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
-OCAMLOPT=ocamlopt
+OCAMLOPT=ocamlc -g
 
 #######################################################
 # MAIN SOURCE FILES
@@ -149,62 +149,62 @@ interp/src/extract/%.mli: coq/JsInterpreterExtraction.vo
 
 PARSER_INC=-I $(shell ocamlfind query xml-light) -I interp/src -I interp/src/extract
 
-interp/src/parser_syntax.cmx: interp/parser/src/parser_syntax.ml
+interp/src/parser_syntax.cmo: interp/parser/src/parser_syntax.ml
 	$(OCAMLOPT) -c -o $@ $<
 
-interp/src/pretty_print.cmx: interp/parser/src/pretty_print.ml interp/src/parser_syntax.cmx
+interp/src/pretty_print.cmo: interp/parser/src/pretty_print.ml interp/src/parser_syntax.cmo
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
-interp/src/parser.cmx: interp/parser/src/parser.ml interp/src/parser_syntax.cmx
-	$(OCAMLOPT) $(PARSER_INC) -c -o $@ str.cmxa $<
+interp/src/parser.cmo: interp/parser/src/parser.ml interp/src/parser_syntax.cmo
+	$(OCAMLOPT) $(PARSER_INC) -c -o $@ str.cma $<
 
-interp/src/parser_main.cmx: interp/parser/src/parser_main.ml interp/src/parser_main.cmi interp/src/parser.cmx interp/src/pretty_print.cmx
+interp/src/parser_main.cmo: interp/parser/src/parser_main.ml interp/src/parser_main.cmi interp/src/parser.cmo interp/src/pretty_print.cmo
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
 interp/src/parser_main.cmi: interp/src/parser_main.mli
 	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
 
-interp/src/extract/JsInterpreterBisect.cmx:
-	ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.mli
-	ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.ml
+interp/src/extract/JsInterpreterBisect.cmo:
+	ocamlfind $(OCAMLOPT) -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.mli
+	ocamlfind $(OCAMLOPT) -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.ml
 
 interp/src/extract/%.cmi: interp/src/extract/%.mli
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
-interp/src/extract/%.cmx: interp/src/extract/%.ml interp/src/extract/%.cmi
+interp/src/extract/%.cmo: interp/src/extract/%.ml interp/src/extract/%.cmi
 	$(OCAMLOPT) -c -w -20 -I interp/src -I interp/src/extract -o $@ $<
 
 interp/src/translate_syntax.cmi: interp/src/translate_syntax.mli interp/src/extract/JsSyntax.cmi
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
-interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/translate_syntax.cmi interp/src/extract/JsSyntax.cmx
+interp/src/translate_syntax.cmo: interp/src/translate_syntax.ml interp/src/translate_syntax.cmi interp/src/extract/JsSyntax.cmo
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
 interp/src/prheap.cmi: interp/src/prheap.mli interp/src/extract/JsSyntax.cmi
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
-interp/src/prheap.cmx: interp/src/prheap.ml interp/src/extract/JsSyntax.cmx interp/src/prheap.cmi
+interp/src/prheap.cmo: interp/src/prheap.ml interp/src/extract/JsSyntax.cmo interp/src/prheap.cmi
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
-interp/src/print_syntax.cmx: interp/src/print_syntax.ml interp/src/extract/JsSyntax.cmx
+interp/src/print_syntax.cmo: interp/src/print_syntax.ml interp/src/extract/JsSyntax.cmo
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
 
-interp/src/run_js.cmx: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmx
+interp/src/run_js.cmo: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmo
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
 
-interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmx
+interp/src/run_jsbisect.cmo: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmo
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
 
 mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*.ml}
 mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
-mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
-mlfileswithbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreter.cmx||' | sed 's|interp/src/run_js.cmx||'}
-mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|interp/src/run_jsbisect.cmx||'}
+mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmo}
+mlfileswithbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreter.cmo||' | sed 's|interp/src/run_js.cmo||'}
+mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmo||' | sed 's|interp/src/run_jsbisect.cmo||'}
 
-interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
-	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
-	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
+interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmo}
+	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cma unix.cma str.cma $(mlfileswithoutbisect)
+	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cma unix.cma str.cma bisect.cma $(mlfileswithbisect)
 
 
 #######################################################
