@@ -232,9 +232,15 @@ Ltac deal_with_regular_lemma k H if_out :=
               inverts~ H
             end].
 
-(* TODO: The following proofs look a lot like each other, that's
- because they share a common subterm [if_ter] and there might be
- factorisation to be done here. *)
+Lemma if_ter_out : forall res K S R,
+  if_ter res K = out_ter S R ->
+  if_regular_lemma res S R (fun S' R' =>
+    K S' R' = out_ter S R).
+Proof.
+  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
+  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
+  subst. do 2 eexists. splits~.
+Qed.
 
 Lemma if_success_out : forall res K S R,
   if_success res K = out_ter S R ->
@@ -242,12 +248,12 @@ Lemma if_success_out : forall res K S R,
     R' = res_intro rt rv rl /\
     K S' rv = out_ter S R).
 Proof.
-  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
-  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
-  subst. simpls. sets_eq t Et: (res_type R0). unfolds. repeat eexists.
-  rewrite~ res_overwrite_value_if_empty_empty in H.
-  destruct t; try solve [ left; inverts H; rewrite <- Et; splits~; discriminate ].
-  right. destruct R0. simpls. repeat eexists. auto*.
+  introv H. deal_with_regular_lemma ltac:idtac H if_ter_out; substs.
+   repeat eexists. left~.
+   sets_eq t Et: (res_type R0). repeat eexists.
+   rewrite~ res_overwrite_value_if_empty_empty in HM.
+   destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
+   right. destruct R0. simpls. repeat eexists. auto*.
 Qed.
 
 Lemma if_value_out : forall res K S R,
@@ -256,13 +262,13 @@ Lemma if_value_out : forall res K S R,
     R' = res_intro rt (resvalue_value v) rl /\
     K S' v = out_ter S R).
 Proof.
-  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
-  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
-  subst. simpls. sets_eq t Et: (res_type R0). unfolds. repeat eexists.
-  rewrite~ res_overwrite_value_if_empty_empty in H.
-  destruct t; try solve [ left; inverts H; rewrite <- Et; splits~; discriminate ].
-  right. destruct R0. simpls. destruct res_value; tryfalse.
-  repeat eexists. auto*.
+  introv H. deal_with_regular_lemma ltac:idtac H if_ter_out; substs.
+   repeat eexists. left~.
+   sets_eq t Et: (res_type R0). repeat eexists.
+   rewrite~ res_overwrite_value_if_empty_empty in HM.
+   destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
+   right. destruct R0. simpls. destruct res_value; tryfalse.
+   repeat eexists. auto*.
 Qed.
 
 Lemma if_object_out : forall res K S R,
@@ -271,13 +277,13 @@ Lemma if_object_out : forall res K S R,
     R' = res_intro rt (resvalue_value (value_object l)) rl /\
     K S' l = out_ter S R).
 Proof.
-  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
-  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
-  subst. simpls. sets_eq t Et: (res_type R0). unfolds. repeat eexists.
-  rewrite~ res_overwrite_value_if_empty_empty in H.
-  destruct t; try solve [ left; inverts H; rewrite <- Et; splits~; discriminate ].
-  right. destruct R0. simpls. destruct res_value; tryfalse. destruct v; tryfalse.
-  repeat eexists. auto*.
+  introv H. deal_with_regular_lemma ltac:idtac H if_ter_out; substs.
+   repeat eexists. left~.
+   sets_eq t Et: (res_type R0). repeat eexists.
+   rewrite~ res_overwrite_value_if_empty_empty in HM.
+   destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
+   right. destruct R0. simpls. destruct res_value; tryfalse. destruct v; tryfalse.
+   repeat eexists. auto*.
 Qed.
 
 Lemma run_error_correct : forall S C ne S' R',
@@ -302,9 +308,14 @@ Proof.
   introv RC E. destruct rv; tryfalse.
    inverts E. apply~ red_spec_ref_get_value_value.
    simpls. destruct r as [rb rn rs].
-   destruct rb as [[()|l]|?]; unfold ref_kind_of in E; simpls.
-    apply~ red_spec_ref_get_value_ref_a. constructors.
-Admitted (* TODO *).
+   destruct rb as [[v|l]|?]; unfold ref_kind_of in E; simpls.
+    skip (*destruct v.
+     apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.*).
+    apply~ red_spec_ref_get_value_ref_b. right~. reflexivity. do 2 cases_if.
+     skip (*apply~ object_get_correct*).
+    apply~ red_spec_ref_get_value_ref_c. reflexivity.
+     skip (*apply~ env_record_get_binding_value_coorect*).
+Qed.
 
 
 (**************************************************************)

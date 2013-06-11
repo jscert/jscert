@@ -749,7 +749,7 @@ Definition ref_is_env_record r L :=
   ref_base r = ref_base_type_env_loc L.
 
 (** [ref_is_unresolvable r] asserts that the reference [r]
-    as either [undef] for base. *)
+    has [undef] as base. *)
 
 Definition ref_is_unresolvable r :=
   ref_kind_of r = ref_kind_undef.  (* todo: double check *)

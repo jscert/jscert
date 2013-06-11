@@ -653,7 +653,8 @@ Definition ref_get_value runs S C rv : result :=
   | resvalue_value v => out_ter S v
   | resvalue_ref r =>
     match ref_kind_of r with
-    | ref_kind_null | ref_kind_undef => run_error S native_error_ref
+    | ref_kind_null => stuck_heap S "[ref_get_value] received a reference whose base is [null]."
+    | ref_kind_undef => run_error S native_error_ref
     | ref_kind_primitive_base | ref_kind_object =>
       match ref_base r with
       | ref_base_type_value v =>
