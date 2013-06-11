@@ -349,6 +349,7 @@ Qed.
 (** ** Main theorems *)
 
 
+(*
 Theorem runs_correct : forall num,
   runs_type_correct (runs num) (run_elements num).
 Proof.
@@ -430,4 +431,4 @@ Proof.
    skip.
 
 Qed.
-
+*)
