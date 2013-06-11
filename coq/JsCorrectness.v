@@ -300,6 +300,24 @@ Proof.
    apply~ red_spec_build_error_1_no_msg.
 Qed.
 
+Lemma object_get_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S0 C0 v x S R,
+  object_get runs S0 C0 v x = out_ter S R ->
+  red_expr S0 C0 (spec_object_get v x) (out_ter S R).
+Admitted. (* TODO *)
+
+Lemma prim_value_get_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S0 C0 v x S R,
+  prim_value_get runs S0 C0 v x = out_ter S R ->
+  red_expr S0 C0 (spec_prim_value_get v x) (out_ter S R).
+Admitted. (* TODO *)
+
+Lemma env_record_get_binding_value_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S0 C0 L x str S R,
+  env_record_get_binding_value runs S0 C0 L x str = out_ter S R ->
+  red_expr S0 C0 (spec_env_record_get_binding_value L x str) (out_ter S R).
+Admitted. (* TODO *)
+
 Lemma ref_get_value_correct : forall runs run_elements,
   runs_type_correct runs run_elements -> forall S0 C0 rv S R,
   ref_get_value runs S0 C0 rv = out_ter S R ->
@@ -307,14 +325,16 @@ Lemma ref_get_value_correct : forall runs run_elements,
 Proof.
   introv RC E. destruct rv; tryfalse.
    inverts E. apply~ red_spec_ref_get_value_value.
-   simpls. destruct r as [rb rn rs].
-   destruct rb as [[v|l]|?]; unfold ref_kind_of in E; simpls.
-    skip (*destruct v.
-     apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.*).
-    apply~ red_spec_ref_get_value_ref_b. right~. reflexivity. do 2 cases_if.
-     skip (*apply~ object_get_correct*).
-    apply~ red_spec_ref_get_value_ref_c. reflexivity.
-     skip (*apply~ env_record_get_binding_value_coorect*).
+   tests: (ref_is_property r).
+    destruct r as [rb rn rs]; destruct rb as [v|?]; try solve [inverts C; false].
+     apply~ red_spec_ref_get_value_ref_b. reflexivity.
+     cases_if; destruct v as [()|l]; simpls; try (solve [inverts C; false]);
+       cases_if; first [ applys~ prim_value_get_correct RC | applys~ object_get_correct RC ].
+    destruct r as [rb rn rs]; destruct rb as [[()|l]|?]; simpls; tryfalse;
+      try (false C; first [ solve [left~] | solve [right~] ]).
+     apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
+     apply~ red_spec_ref_get_value_ref_c. reflexivity.
+     applys~ env_record_get_binding_value_correct RC.
 Qed.
 
 

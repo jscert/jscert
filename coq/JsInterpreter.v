@@ -661,11 +661,12 @@ Definition ref_get_value runs S C rv : result :=
         (ifb ref_has_primitive_base r then prim_value_get
         else object_get) runs S C v (ref_name r)
       | ref_base_type_env_loc L =>
-        env_record_get_binding_value runs S C L (ref_name r) (ref_strict r)
+        stuck_heap S "[ref_get_value] received a reference to a value whose base type is an environnment record."
       end
     | ref_kind_env_record =>
       match ref_base r with
-      | ref_base_type_value v => stuck_heap S "[ref_get_value] received a reference to an environnment record whose base type is a value."
+      | ref_base_type_value v =>
+        stuck_heap S "[ref_get_value] received a reference to an environnment record whose base type is a value."
       | ref_base_type_env_loc L =>
         env_record_get_binding_value runs S C L (ref_name r) (ref_strict r)
       end
