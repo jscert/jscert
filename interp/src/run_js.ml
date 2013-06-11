@@ -145,13 +145,14 @@ let _ =
                        JsSyntax.ref_strict = false } in
                      match get_value_ref state r with
                      | Some v' ->
-                       print_endline ("A `__$ERROR__' field has been defined, equals to " ^ Prheap.prvalue v')
+                       print_endline ("Fetching the `__$ERROR__' field of this returned object resulted to:\t" ^ Prheap.prvalue v')
                      | None ->
                        print_endline "No `__$ERROR__' field has been defined in this returned object.")
 				 | JsSyntax.Coq_resvalue_ref _ ->
 				   print_endline "With a reference."
 				 | JsSyntax.Coq_resvalue_empty ->
 				   print_endline "No result with this throw.") ;
+                 pr_test state ;
 				 exit_if_test ()
             end
          | JsSyntax.Coq_out_div ->
