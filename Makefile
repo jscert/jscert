@@ -116,6 +116,7 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	mv *.mli interp/src/extract/
 	cp interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreterBisect.ml
 	cp interp/src/extract/JsInterpreter.mli interp/src/extract/JsInterpreterBisect.mli
+	sed -i 's| stuck| (*BISECT-IGNORE*) stuck|g' interp/src/extract/JsInterpreterBisect.ml
 	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
 
@@ -195,11 +196,12 @@ mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*
 mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
 mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
+mlfileswithbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreter.cmx||' | sed 's|interp/src/run_js.cmx||'}
 mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|interp/src/run_jsbisect.cmx||'}
 
 interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
 	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
-	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $^
+	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
 
 
 #######################################################
