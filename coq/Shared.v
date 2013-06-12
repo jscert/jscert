@@ -324,6 +324,24 @@ Implicit Arguments pick [A [Pickable]].
 Extraction Inline pick.
 
 
+Class Pickable_option (A : Type) (P : A -> Prop) := pickable_option_make {
+  pick_option : option A;
+  pick_option_correct : forall a, pick_option = Some a -> P a;
+  pick_option_defined : (exists a, P a) -> (exists a, pick_option = Some a) }.
+
+Implicit Arguments pick_option [A [Pickable_option]].
+Extraction Inline pick_option.
+
+Global Instance Pickable_option_Pickable :
+  forall (A : Type) (P : A -> Prop), Inhab A ->
+  Pickable_option P -> Pickable P.
+Proof.
+  introv I [[pi|] C D].
+   applys pickable_make pi. introv _. apply~ C.
+   applys pickable_make arbitrary. introv E. forwards (a&N): D E. inverts N.
+Qed.
+
+
 Global Instance neg_decidable (P : Prop) :
   Decidable P -> Decidable (~ P).
 Proof.
@@ -347,6 +365,7 @@ Proof.
   introv. applys pickable_make a.
   intro. reflexivity.
 Qed.
+
 
 (**************************************************************)
 (** ** LATER: move to LibHeap *)

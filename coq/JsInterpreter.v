@@ -92,7 +92,6 @@ Definition result_void := result.
 (* It can be useful to get details on why a stuck is obtained. *)
 Definition impossible_because s := result_impossible.
 Definition impossible_with_heap_because S s := result_impossible.
-Definition impossible_because_other {A : Type} `{Inhab A} s : A := arbitrary.
 
 Definition TODO {A : Type} `{Inhab A} (_ : unit) : A := arbitrary. (* Temporary *)
 
@@ -1293,38 +1292,38 @@ Definition is_lazy_op (op : binary_op) : option bool :=
   | _ => None
   end.
 
-Definition get_puremath_op (op : binary_op) : number -> number -> number :=
+Definition get_puremath_op (op : binary_op) : option (number -> number -> number) :=
   match op with
-  | binary_op_mult => JsNumber.mult
-  | binary_op_div => JsNumber.div
-  | binary_op_mod => JsNumber.fmod
-  | binary_op_sub => JsNumber.sub
-  | _ => impossible_because_other "[get_puremath_op]:  Missing case."
+  | binary_op_mult => Some JsNumber.mult
+  | binary_op_div => Some JsNumber.div
+  | binary_op_mod => Some JsNumber.fmod
+  | binary_op_sub => Some JsNumber.sub
+  | _ => None
   end.
 
-Definition get_inequality_op (op : binary_op) : bool * bool :=
+Definition get_inequality_op (op : binary_op) : option (bool * bool) :=
   match op with
-  | binary_op_lt => (false, false)
-  | binary_op_gt => (true, false)
-  | binary_op_le => (true, true)
-  | binary_op_ge => (false, true)
-  | _ => impossible_because_other "[get_inequality_op]:  Missing case."
+  | binary_op_lt => Some (false, false)
+  | binary_op_gt => Some (true, false)
+  | binary_op_le => Some (true, true)
+  | binary_op_ge => Some (false, true)
+  | _ => None
   end.
 
-Definition get_shift_op (op : binary_op) : bool * (int -> int -> int) :=
+Definition get_shift_op (op : binary_op) : option (bool * (int -> int -> int)) :=
   match op with
-  | binary_op_left_shift => (false, JsNumber.int32_left_shift)
-  | binary_op_right_shift => (false, JsNumber.int32_right_shift)
-  | binary_op_unsigned_right_shift => (true, JsNumber.uint32_right_shift)
-  | _ => impossible_because_other "[get_shift_op]:  Missing case."
+  | binary_op_left_shift => Some (false, JsNumber.int32_left_shift)
+  | binary_op_right_shift => Some (false, JsNumber.int32_right_shift)
+  | binary_op_unsigned_right_shift => Some (true, JsNumber.uint32_right_shift)
+  | _ => None
   end.
 
-Definition get_bitwise_op (op : binary_op) : int -> int -> int :=
+Definition get_bitwise_op (op : binary_op) : option (int -> int -> int) :=
   match op with
-  | binary_op_bitwise_and => JsNumber.int32_bitwise_and
-  | binary_op_bitwise_or => JsNumber.int32_bitwise_or
-  | binary_op_bitwise_xor => JsNumber.int32_bitwise_xor
-  | _ => impossible_because_other "[get_bitwise_op]:  Missing case."
+  | binary_op_bitwise_and => Some JsNumber.int32_bitwise_and
+  | binary_op_bitwise_or => Some JsNumber.int32_bitwise_or
+  | binary_op_bitwise_xor => Some JsNumber.int32_bitwise_xor
+  | _ => None
   end.
 
 
@@ -1401,32 +1400,37 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
             out_ter S2 (JsNumber.add n1 n2)))
 
   | binary_op_mult | binary_op_div | binary_op_mod | binary_op_sub =>
-    let mop := get_puremath_op op in
-    convert_twice_number S v1 v2 (fun S1 n1 n2 =>
-      out_ter S1 (mop n1 n2))
+    if_some (get_puremath_op op) (fun mop =>
+      convert_twice_number S v1 v2 (fun S1 n1 n2 =>
+        out_ter S1 (mop n1 n2)))
 
-  | binary_op_and | binary_op_or => impossible_with_heap_because S "Undealt lazy operator in [run_binary_op]." (* Lazy operators are already dealt with at this point. *)
+  | binary_op_and | binary_op_or =>
+    (* Lazy operators are already dealt with at this point. *)
+    impossible_with_heap_because S "Undealt lazy operator in [run_binary_op]."
 
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift =>
-    let (b_unsigned, F) := get_shift_op op in
-    (if b_unsigned then to_uint32 else to_int32) runs S C v1 (fun S1 k1 =>
-      to_uint32 runs S1 C v2 (fun S2 k2 =>
-        let k2' := JsNumber.modulo_32 k2 in
-        out_ter S2 (JsNumber.of_int (F k1 k2'))))
+    if_some (get_shift_op op) (fun so =>
+      let (b_unsigned, F) := so in
+      (if b_unsigned then to_uint32 else to_int32) runs S C v1 (fun S1 k1 =>
+        to_uint32 runs S1 C v2 (fun S2 k2 =>
+          let k2' := JsNumber.modulo_32 k2 in
+          out_ter S2 (JsNumber.of_int (F k1 k2')))))
 
   | binary_op_bitwise_and | binary_op_bitwise_or | binary_op_bitwise_xor =>
     to_int32 runs S C v1 (fun S1 k1 =>
       to_int32 runs S1 C v2 (fun S2 k2 =>
-        out_ter S2 (JsNumber.of_int (get_bitwise_op op k1 k2))))
+        if_some (get_bitwise_op op) (fun bo =>
+          out_ter S2 (JsNumber.of_int (bo k1 k2)))))
 
   | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
-    let (b_swap, b_neg) := get_inequality_op op in
-    convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>
-      let (wa, wb) := if b_swap then (w2, w1) else (w1, w2) in
-      let wr := inequality_test_primitive wa wb in
-      out_ter S1 (ifb wr = prim_undef then false
-        else ifb b_neg = true /\ wr = true then false
-        else wr))
+    if_some (get_inequality_op op) (fun io =>
+      let (b_swap, b_neg) :=  io in
+      convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>
+        let (wa, wb) := if b_swap then (w2, w1) else (w1, w2) in
+        let wr := inequality_test_primitive wa wb in
+        out_ter S1 (ifb wr = prim_undef then false
+          else ifb b_neg = true /\ wr = true then false
+          else wr)))
 
   | binary_op_instanceof =>
     match v2 with
@@ -1449,12 +1453,12 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
   | binary_op_equal | binary_op_disequal =>
     let finalPass b :=
       match op with
-      | binary_op_equal => b
-      | binary_op_disequal => negb b
-      | _ => impossible_because_other "[run_binary_op], [binary_op_(dis)equal]:  Missing case."
+      | binary_op_equal => Some b
+      | binary_op_disequal => Some (negb b)
+      | _ => None
       end in
     if_bool (run_equal conv_number conv_primitive S v1 v2) (fun S0 b0 =>
-      out_ter S0 (finalPass b0))
+      if_some (finalPass b0) (out_ter S0))
 
   | binary_op_strict_equal =>
     out_ter S (strict_equality_test v1 v2)
@@ -1467,13 +1471,13 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
 
   end.
 
-Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
+Definition run_prepost_op (op : unary_op) : option ((number -> number) * bool) :=
   match op with
-  | unary_op_pre_incr => (add_one, true)
-  | unary_op_pre_decr => (sub_one, true)
-  | unary_op_post_incr => (add_one, false)
-  | unary_op_post_decr => (sub_one, false)
-  | _ => impossible_because_other "[run_prepost_op]:  Missing case."
+  | unary_op_pre_incr => Some (add_one, true)
+  | unary_op_pre_decr => Some (sub_one, true)
+  | unary_op_post_incr => Some (add_one, false)
+  | unary_op_post_decr => Some (sub_one, false)
+  | _ => None
   end.
 
 Definition run_typeof_value S v :=
@@ -1487,11 +1491,12 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
     if_success (runs_type_expr runs S C e) (fun S1 rv1 =>
       if_success_value runs C (out_ter S1 rv1) (fun S2 v2 =>
         if_number (to_number runs S2 C v2) (fun S3 n1 =>
-          let (number_op, is_pre) := run_prepost_op op in
-          let n2 := number_op n1 in
-          let v := prim_number (if is_pre then n2 else n1) in
-          if_void (ref_put_value runs S3 C rv1 n2) (fun S4 =>
-            out_ter S4 v))))
+          if_some (run_prepost_op op) (fun po =>
+            let (number_op, is_pre) := po in
+            let n2 := number_op n1 in
+            let v := prim_number (if is_pre then n2 else n1) in
+            if_void (ref_put_value runs S3 C rv1 n2) (fun S4 =>
+              out_ter S4 v)))))
   else
     match op with
 

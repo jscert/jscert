@@ -343,7 +343,7 @@ Proof.
   introv E. eapply red_spec_object_has_prop. apply run_object_method_correct.
    skip. (* TODO:  How to deal with this properly? *)
    unfolds in E. name_object_method. destruct B.
-    skip (* Skipeed because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *)
+    skip (* Skiped because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *)
 Qed.
 
 Lemma object_get_correct : forall runs run_elements,

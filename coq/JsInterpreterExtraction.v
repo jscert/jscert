@@ -214,9 +214,6 @@ Extract Constant impossible_with_heap_because => "(fun s message ->
   print_endline (""Stuck!\nState: "" ^ Prheap.prstate true s
     ^ ""\nMessage:\t"" ^ Prheap.string_of_char_list message) ;
   Coq_result_impossible)".
-Extract Constant impossible_because_other => "(fun s ->
-  print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
-  assert false)".
 Extraction Inline TODO.
 
 
