@@ -9,6 +9,19 @@ Require JsNumber.
 Notation "'number'" := (JsNumber.number).
 
 
+
+(* There seems to be problems with modules and I've temporarily added
+  this lemma to avoid those troubles, but there surely is a better
+  solution for it. -- Martin. *)
+Lemma Heap_binds_func : forall (K V : Type) `{Comparable K}
+  (h : Heap.heap K V) (k : K) (v v' : V),
+  Heap.binds h k v -> Heap.binds h k v' -> v = v'.
+Proof.
+  introv C B1 B2. rewrite Heap.binds_equiv_read_option in B1,B2.
+  rewrite B1 in B2. inverts~ B2.
+Qed.
+
+
 (**************************************************************)
 (* TODO for MARTIN: implement *)
 

@@ -382,18 +382,6 @@ Proof.
    introv [a Ba]. forwards R: @binds_read_option Ba. exists~ a.
 Qed.
 
-(* If we keep [Pickable_option], this one is implied by the previous
-  lemma and the instance [Pickable_option_Pickable]. *)
-Global Instance binds_pickable : forall K V : Type,
-  `{Comparable K} -> `{Inhab V} ->
-  forall (h : heap K V) (v : K),
-  Pickable (binds h v).
-Proof.
-  introv CK IV; introv. applys pickable_make (read h v).
-  introv [a Ba].
-  apply~ read_binds. applys @binds_indom Ba.
-Qed.
-
 
 (**************************************************************)
 (** ** LATER: move to LibProd *)
@@ -769,5 +757,17 @@ End HeapAxioms.
 End HeapId.
 
 
+(**************************************************************)
+(** ** LATER: move to LibOption *)
 
+Lemma option_map_some_back : forall (A B : Type) (f : A -> B) ao (b : B),
+  option_map f ao = Some b ->
+  exists a, ao = Some a /\ f a = b.
+Proof. introv E. destruct~ ao. exists a. splits~. inverts~ E. inverts E. Qed.
+
+Lemma option_map_some_forw : forall (A B : Type) (f : A -> B) ao (a : A) (b : B),
+  ao = Some a ->
+  f a = b ->
+  option_map f ao = Some b.
+Proof. introv E1 E2. substs. fequals. Qed.
 

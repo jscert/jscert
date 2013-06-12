@@ -195,16 +195,6 @@ Proof.
    introv [a Ba]. exists a. rewrite <- @Heap.binds_equiv_read_option. auto*.
 Qed.
 
-(* If we keep [Pickable_option], this lemma (as all the following about
- [Pickable] that have a corresponding [Pickable_option] are useless. *)
-Global Instance object_binds_pickable : forall S l,
-  Pickable (object_binds S l).
-Proof.
-  introv. applys pickable_make (Heap.read (state_object_heap S) l).
-  unfolds object_binds. introv [a Ba]. erewrite~ @Heap.binds_equiv_read.
-  erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
-Qed.
-
 Global Instance env_record_binds_pickable_option : forall S L,
   Pickable_option (env_record_binds S L).
 Proof.
@@ -214,27 +204,12 @@ Proof.
    introv [a Ba]. exists a. rewrite <- @Heap.binds_equiv_read_option. auto*.
 Qed.
 
-Global Instance env_record_binds_pickable : forall S L,
-  Pickable (env_record_binds S L).
-Proof.
-  introv. applys pickable_make (Heap.read (state_env_record_heap S) L).
-  unfolds env_record_binds. introv [a Ba]. erewrite~ @Heap.binds_equiv_read.
-  erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
-Qed.
-
 Global Instance decl_env_record_pickable_option : forall Ed x,
   Pickable_option (Heap.binds Ed x).
 Proof.
   introv. applys pickable_option_make (Heap.read_option Ed x).
    introv E. rewrite <- @Heap.binds_equiv_read_option in E. auto*.
    introv [a Ba]. exists a. rewrite <- @Heap.binds_equiv_read_option. auto*.
-Qed.
-
-Global Instance decl_env_record_pickable : forall Ed x,
-  Pickable (Heap.binds Ed x).
-Proof.
-  introv. applys pickable_make (Heap.read Ed x). introv [a Ba].
-  erewrite~ @Heap.binds_equiv_read. erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
 Qed.
 
 
@@ -268,7 +243,7 @@ Global Instance attributes_is_data_dec : forall A,
 Proof. intro A. destruct A; typeclass. Qed.
 
 
-Definition run_object_heap_map_properties_option S l F : option state :=
+Definition run_object_heap_map_properties S l F : option state :=
   option_map
     (fun O => object_write S l (object_map_properties O F))
     (pick_option (object_binds S l)).
@@ -276,34 +251,15 @@ Definition run_object_heap_map_properties_option S l F : option state :=
 Global Instance object_heap_map_properties_pickable_option : forall S l F,
   Pickable_option (object_heap_map_properties S l F).
 Proof.
-  introv. applys pickable_option_make (run_object_heap_map_properties_option S l F).
-   introv E.  (* TODO *) --
-   skip.
-  introv [a [O [B E]]]. exists O. splits~.
-  unfolds run_object_heap_map_properties.
-  fequals. fequals. forwards*: @pick_spec (object_binds S l).
-  unfolds object_binds. erewrite @Heap.binds_equiv_read_option in B,H.
-  rewrite H in B. inverts~ B.
+  introv. unfold object_heap_map_properties.
+  applys pickable_option_make (run_object_heap_map_properties S l F).
+   introv E. forwards (O&P&E'): option_map_some_back (rm E).
+    exists O. splits~. apply~ @pick_option_correct.
+  introv [S' [O [B E]]]. exists S'. unfolds.
+   forwards Ex: ex_intro B. forwards~ (?&P): @pick_option_defined Ex.
+   applys option_map_some_forw P. forwards C: @pick_option_correct P.
+   forwards: @Heap_binds_func B C. typeclass. substs~.
 Qed.
-
-Definition run_object_heap_map_properties S l F : state :=
-  let O := pick (object_binds S l) in
-  object_write S l (object_map_properties O F).
-
-Global Instance object_heap_map_properties_pickable : forall S l F,
-  Pickable (object_heap_map_properties S l F).
-Proof.
-  introv. applys pickable_make (run_object_heap_map_properties S l F).
-  introv [a [O [B E]]]. exists O. splits~.
-  unfolds run_object_heap_map_properties.
-  fequals. fequals. forwards*: @pick_spec (object_binds S l).
-  unfolds object_binds. erewrite @Heap.binds_equiv_read_option in B,H.
-  rewrite H in B. inverts~ B.
-Qed.
-
-Global Instance object_set_property_pickable : forall S l x A,
-  Pickable (object_set_property S l x A).
-Proof. typeclass. Qed.
 
 Global Instance descriptor_contains_dec : forall Desc1 Desc2,
   Decidable (descriptor_contains Desc1 Desc2).
@@ -357,7 +313,7 @@ Proof. introv. typeclass. Qed.
 Definition run_callable S v : option call :=
   match v with
   | value_prim w => None
-  | value_object l => object_call_ (pick (object_binds S l))
+  | value_object l => morph_option None object_call_ (pick_option (object_binds S l))
   end.
 
 Global Instance is_callable_dec : forall S v,
@@ -368,6 +324,15 @@ Proof.
   destruct v; simpl.
    fold_bool. rewrite is_False with (P := is_callable _ _). rewrite* isTrue_false.
     intro A. do 2 inverts A as A.
-  skip. (* TODO:  This proof has already been done, but with the old version of heaps. *)
+   tests: (is_callable S o).
+    rewrite~ isTrue_true. lets (B&O&Bo&E): (rm C).
+     forwards Ex: ex_intro Bo. forwards (O'&H): @pick_option_defined Ex.
+     rewrite H. simpl. asserts: (O = O').
+      forwards: @pick_option_correct H. applys Heap_binds_func Bo H0. typeclass.
+     substs. rewrite~ E.
+    rewrite~ isTrue_false. unfold is_callable in C. rew_logic in C. simpls.
+     unfold object_call in C. sets_eq <- Ob PS: (pick_option (object_binds S o)).
+     destruct~ Ob as [o'|]. forwards B: @pick_option_correct PS. simpl.
+     sets_eq <- Oc CD: (object_call_ o'). destruct~ Oc. false (C c). exists* o'.
 Qed.
 
