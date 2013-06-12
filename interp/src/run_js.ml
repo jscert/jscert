@@ -162,7 +162,7 @@ let _ =
     | JsInterpreter.Coq_result_impossible ->
 		print_endline "\n\nFIXME:  this should be impossible!\n" ;
 		exit_if_test ()
-    | JsInterpreter.Coq_result_stuck ->
+    | JsInterpreter.Coq_result_not_yet_implemented ->
 		print_endline "\n\nStuck:  this is not implemented yet!\n" ;
         exit 2
 	| JsInterpreter.Coq_result_bottom -> print_endline "\n\nBOTTOM\n"

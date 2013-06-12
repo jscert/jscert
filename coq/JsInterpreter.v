@@ -283,7 +283,7 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
     | value_object _ => impossible_with_heap_because S "[if_primitive] called on an object."
     end).
 
-Definition if_def_full_descriptor {A : Type} (o : option full_descriptor) (d : A) (K : full_descriptor -> A) : A :=
+Definition if_def {A B : Type} (o : option B) (d : A) (K : B -> A) : A :=
   morph_option d K o.
 
 Definition convert_option_attributes : option attributes -> option full_descriptor :=
@@ -325,30 +325,34 @@ Definition out_error_or_cst S str (ne : native_error) v :=
 (**************************************************************)
 (** Operations on objects *)
 
-Definition run_object_method Z (Proj : object -> Z) S l : Z :=
-  Proj (pick (object_binds S l)).
+Definition run_object_method Z (Proj : object -> Z) S l : option Z :=
+  option_map Proj (pick_option (object_binds S l)).
 
-Definition run_object_code_empty S l : bool :=
-  morph_option true (fun _ => false)
-    (object_code_ (pick (object_binds S l))).
+Definition run_object_code_empty S l : option bool :=
+  option_map (fun O =>
+    morph_option true (fun _ => false) (object_code_ O))
+    (pick_option (object_binds S l)).
 
-Definition run_object_heap_set_properties S l P' : state :=
-  let O := pick (object_binds S l) in
-  object_write S l (object_with_properties O P').
+Definition run_object_heap_set_properties S l P' : option state :=
+  option_map (fun O =>
+    object_write S l (object_with_properties O P'))
+    (pick_option (object_binds S l)).
 
 (* todo: move elsewhere : *)
 Global Instance object_properties_keys_as_list_pickable : forall S l,
-  Pickable (object_properties_keys_as_list S l).
+  Pickable_option (object_properties_keys_as_list S l).
 Proof.
-  introv. applys pickable_make
-    (map fst (Heap.to_list (run_object_method object_properties_ S l))).
-  introv [xs Hxs]. lets (P&HP&C): (rm Hxs). exists P. splits~.
-  skip. (* Needs properties about [heap_keys_as_list]. *)
+  introv. applys pickable_option_make
+    (option_map (fun props =>
+      map fst (Heap.to_list props))
+    (run_object_method object_properties_ S l)).
+  skip. skip. (* Needs properties about [heap_keys_as_list]. *)
 Qed.
 
-Definition run_object_heap_set_extensible b S l : state :=
-  let O := pick (object_binds S l) in
-  object_write S l (object_set_extensible O b).
+Definition run_object_heap_set_extensible b S l : option state :=
+  option_map (fun O =>
+    object_write S l (object_set_extensible O b))
+    (pick_option (object_binds S l)).
 
 
 (**************************************************************)
@@ -371,52 +375,56 @@ Implicit Type runs : runs_type.
 (**************************************************************)
 (** Operations on environments *)
 
-Definition run_decl_env_record_binds_value Ed x : value :=
-  snd (pick (Heap.binds Ed x)).
-
 Definition run_object_get_own_prop S l x : option full_descriptor :=
-  match run_object_method object_get_own_prop_ S l with
-  | builtin_get_own_prop_default =>
-    let P := run_object_method object_properties_ S l in
-    if_def_full_descriptor (convert_option_attributes (Heap.read_option P x))
-      (Some full_descriptor_undef)
-      (fun D => Some D)
-  | builtin_get_own_prop_args_obj =>
-    TODO tt (* TODO:  Waiting for the specification *)
-  end.
+  if_def (run_object_method object_get_own_prop_ S l)
+    None (fun B =>
+    match B with
+    | builtin_get_own_prop_default =>
+      if_def (run_object_method object_properties_ S l)
+        None (fun P =>
+        if_def (convert_option_attributes (Heap.read_option P x))
+          (Some full_descriptor_undef)
+          (fun D => Some D))
+    | builtin_get_own_prop_args_obj =>
+      TODO tt (* TODO:  Waiting for the specification *)
+    end).
 
 Definition object_get_prop_body run_object_get_prop S v x : option full_descriptor :=
   match v with
   | value_prim w =>
     ifb v = null then Some full_descriptor_undef else None
   | value_object l =>
-    if_def_full_descriptor (run_object_get_own_prop S l x)
+    if_def (run_object_get_own_prop S l x)
       None (fun D =>
         ifb D = full_descriptor_undef then (
-          let lproto := run_object_method object_proto_ S l in
-          run_object_get_prop S lproto x
+          if_def (run_object_method object_proto_ S l)
+            None (fun lproto => run_object_get_prop S lproto x)
         ) else Some D)
   end.
 
 Definition run_object_get_prop := FixFun3 object_get_prop_body.
 
 Definition object_has_prop S l x : option bool :=
-  match run_object_method object_has_prop_ S l with
-  | builtin_has_prop_default =>
-    option_map (fun D =>
-      decide (D <> full_descriptor_undef))
-      (run_object_get_prop S l x)
-  end.
+  if_def (run_object_method object_has_prop_ S l)
+    None (fun B =>
+    match B with
+    | builtin_has_prop_default =>
+      option_map (fun D =>
+        decide (D <> full_descriptor_undef))
+        (run_object_get_prop S l x)
+    end).
 
 Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
-  match run_object_method object_proto_ S l with
-  | null => out_ter S false
-  | value_object l' =>
+  if_some (run_object_method object_proto_ S l) (fun B =>
+    match B with
+    | null => out_ter S false
+    | value_object l' =>
       ifb l' = l0
         then out_ter S true
         else run_object_proto_is_prototype_of S l0 l'
-  | value_prim _ => impossible_with_heap_because S "[run_object_method] returned a primitive in [object_proto_is_prototype_of_body]."
-  end.
+    | value_prim _ =>
+      impossible_with_heap_because S "[run_object_method] returned a primitive in [object_proto_is_prototype_of_body]."
+    end).
 
 Definition run_object_proto_is_prototype_of :=
   FixFun3 object_proto_is_prototype_of_body.
@@ -444,40 +452,48 @@ Fixpoint lexical_env_get_identifier_ref S X x str : option ref :=
   end.
 
 Definition object_delete S l x str : result :=
-  let B := run_object_method object_delete_ S l in
-  if_some (run_object_get_own_prop S l x) (fun D =>
-    match D with
-    | full_descriptor_undef => out_ter S true
-    | full_descriptor_some A =>
-      if attributes_configurable A then
-        out_ter (pick (object_rem_property S l x)) true
-      else
-        out_error_or_cst S str native_error_type false
+  if_some (run_object_method object_delete_ S l) (fun B =>
+    match B with
+    | builtin_delete_default =>
+      if_some (run_object_get_own_prop S l x) (fun D =>
+        match D with
+        | full_descriptor_undef => out_ter S true
+        | full_descriptor_some A =>
+          if attributes_configurable A then
+            if_some (pick_option (object_rem_property S l x)) (fun S' =>
+              out_ter S' true)
+          else
+            out_error_or_cst S str native_error_type false
+        end)
+    | builtin_delete_args_obj =>
+      result_not_yet_implemented (* TODO *)
     end).
 
 Definition env_record_delete_binding S L x : result :=
-  let E := pick (env_record_binds S L) in
-  match E with
-  | env_record_decl Ed =>
-    match Heap.read_option Ed x with
-    | None =>
-        out_ter S true
-    | Some (mutability_deletable, v) =>
-      let S' := env_record_write S L (decl_env_record_rem Ed x) in
-      out_ter S' true
-    | Some (mu, v) =>
-      out_ter S false
-    end
-  | env_record_object l pt =>
-    object_delete S l x throw_false
-  end.
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
+    | env_record_decl Ed =>
+      match Heap.read_option Ed x with
+      | None =>
+          out_ter S true
+      | Some (mutability_deletable, v) =>
+        let S' := env_record_write S L (decl_env_record_rem Ed x) in
+        out_ter S' true
+      | Some (mu, v) =>
+        out_ter S false
+      end
+    | env_record_object l pt =>
+      object_delete S l x throw_false
+    end).
 
-Definition env_record_implicit_this_value S L : value :=
-  match pick (env_record_binds S L) with
-  | env_record_decl Ed => undef
-  | env_record_object l provide_this =>
-    if provide_this then l else undef
-  end.
+Definition env_record_implicit_this_value S L : option value :=
+  if_def (pick_option (env_record_binds S L))
+    None (fun E => Some (
+      match E with
+      | env_record_decl Ed => undef
+      | env_record_object l provide_this =>
+        if provide_this then l else undef
+      end)).
 
 Definition identifier_res S C x :=
   let X := execution_ctx_lexical_env C in
@@ -516,8 +532,8 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
 Definition object_get runs S C v x : result := (* This [v] should be a location. *)
   match v with
   | value_object l =>
-      let B := run_object_method object_get_ S l in
-      object_get_builtin runs B S C l l x
+      if_some (run_object_method object_get_ S l) (fun B =>
+        object_get_builtin runs B S C l l x)
   | value_prim _ => impossible_with_heap_because S "Calling [object_get] on a primitive."
   end.
 
@@ -539,15 +555,18 @@ Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
     object_get_builtin runs builtin_get_default S' C v l x).
 
-Definition run_value_viewable_as_prim s S v : option prim :=
+Definition run_value_viewable_as_prim s S v : option (option prim) :=
   match v with
-  | value_prim w => Some w
+  | value_prim w => Some (Some w)
   | value_object l =>
-      let s := run_object_method object_class_ S l in
-      match run_object_method object_prim_value_ S l with
-      | Some (value_prim w) => Some w
-      | _ => None
-      end
+      if_def (run_object_method object_class_ S l)
+        None (fun s =>
+          if_def (run_object_method object_prim_value_ S l)
+            None (fun wo => Some (
+              match wo with
+              | Some (value_prim w) => Some w
+              | _ => None
+              end)))
   end.
 
 
@@ -570,91 +589,97 @@ Definition env_record_get_binding_value runs S C L x str : result :=
     end) tt.
 
 Definition object_can_put S l x : option bool :=
-  match run_object_method object_can_put_ S l with
-
-  | builtin_can_put_default =>
-    if_def_full_descriptor (run_object_get_own_prop S l x)
-      None (fun D =>
-        match D with
-        | attributes_accessor_of Aa =>
-          Some (decide (attributes_accessor_set Aa <> undef))
-        | attributes_data_of Ad =>
-          Some (attributes_data_writable Ad)
-        | full_descriptor_undef =>
-          match run_object_method object_proto_ S l with
-          | null =>
-            Some (run_object_method object_extensible_ S l)
-          | value_object lproto =>
-            option_map (fun D' =>
-              match D' with
-              | full_descriptor_undef =>
-                run_object_method object_extensible_ S l
-              | attributes_accessor_of Aa =>
-                decide (attributes_accessor_set Aa <> undef)
-              | attributes_data_of Ad =>
-                if run_object_method object_extensible_ S l then
-                  attributes_data_writable Ad
-                else false
-            end) (run_object_get_prop S lproto x)
-          | value_prim _ => None
-          end
-        end)
-
-  end.
+  if_def (run_object_method object_can_put_ S l)
+    None (fun B =>
+      match B with
+      
+      | builtin_can_put_default =>
+        if_def (run_object_get_own_prop S l x)
+          None (fun D =>
+            match D with
+            | attributes_accessor_of Aa =>
+              Some (decide (attributes_accessor_set Aa <> undef))
+            | attributes_data_of Ad =>
+              Some (attributes_data_writable Ad)
+            | full_descriptor_undef =>
+              if_def (run_object_method object_proto_ S l)
+                None (fun vproto =>
+                  match vproto with
+                  | null =>
+                    run_object_method object_extensible_ S l
+                  | value_object lproto =>
+                    morph_option None (fun D' =>
+                      match D' with
+                      | full_descriptor_undef =>
+                        run_object_method object_extensible_ S l
+                      | attributes_accessor_of Aa =>
+                        Some (decide (attributes_accessor_set Aa <> undef))
+                      | attributes_data_of Ad =>
+                        if_def (run_object_method object_extensible_ S l)
+                          None (fun ext => Some (
+                            if ext then attributes_data_writable Ad
+                            else false))
+                    end) (run_object_get_prop S lproto x)
+                  | value_prim _ => None
+                  end)
+            end)
+      
+      end).
 
 Definition object_define_own_prop S l x Desc str : result :=
-  let B := run_object_method object_define_own_prop_ S l
-  in match B with
-  | builtin_define_own_prop_default =>
-    if_some (run_object_get_own_prop S l x) (fun D =>
-      let reject S :=
-        out_error_or_cst S str native_error_type false
-      in match D, run_object_method object_extensible_ S l with
-      | full_descriptor_undef, false => reject S
-      | full_descriptor_undef, true =>
-        let A : attributes :=
-          ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
-          then attributes_data_of_descriptor Desc
-          else attributes_accessor_of_descriptor Desc
-        in let S1 := pick (object_set_property S l x A)
-        in out_ter S1 true
-      | full_descriptor_some A, bext =>
-        let object_define_own_prop_write S A :=
-          let A' := attributes_update A Desc in
-          let S' := pick (object_set_property S l x A') in
-          out_ter S' true
-        in ifb descriptor_contains A Desc then
-          out_ter S true
-        else ifb attributes_change_enumerable_on_non_configurable A Desc then
-          reject S
-        else ifb descriptor_is_generic Desc then
-          object_define_own_prop_write S A
-        else ifb attributes_is_data A <> descriptor_is_data Desc then
-          if neg (attributes_configurable A) then
-            reject S
-          else let A':=
-              match A return attributes with
-              | attributes_data_of Ad =>
-                attributes_accessor_of_attributes_data Ad
-              | attributes_accessor_of Aa =>
-                attributes_data_of_attributes_accessor Aa
-              end
-            in let S' := pick (object_set_property S l x A')
-            in object_define_own_prop_write S' A'
-        else match A with
-          | attributes_data_of Ad =>
-            ifb attributes_change_data_on_non_configurable Ad Desc then
-              reject S
-            else object_define_own_prop_write S A
-          | attributes_accessor_of Aa =>
-            ifb attributes_change_accessor_on_non_configurable Aa Desc then
-              reject S
-            else object_define_own_prop_write S A
-          end
-      end)
-    | builtin_define_own_prop_args_obj =>
-      out_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
-  end.
+  if_some (run_object_method object_define_own_prop_ S l) (fun B =>
+    match B with
+    | builtin_define_own_prop_default =>
+      if_some (run_object_get_own_prop S l x) (fun D =>
+        let reject S :=
+          out_error_or_cst S str native_error_type false
+        in if_some (run_object_method object_extensible_ S l) (fun ext =>
+             match D, ext with
+             | full_descriptor_undef, false => reject S
+             | full_descriptor_undef, true =>
+               let A : attributes :=
+                 ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
+                 then attributes_data_of_descriptor Desc
+                 else attributes_accessor_of_descriptor Desc
+               in if_some (pick_option (object_set_property S l x A)) (fun S1 =>
+                    out_ter S1 true)
+             | full_descriptor_some A, bext =>
+               let object_define_own_prop_write S A :=
+                 let A' := attributes_update A Desc in
+                 if_some (pick_option (object_set_property S l x A')) (fun S' =>
+                   out_ter S' true)
+               in ifb descriptor_contains A Desc then
+                 out_ter S true
+               else ifb attributes_change_enumerable_on_non_configurable A Desc then
+                 reject S
+               else ifb descriptor_is_generic Desc then
+                 object_define_own_prop_write S A
+               else ifb attributes_is_data A <> descriptor_is_data Desc then
+                 if neg (attributes_configurable A) then
+                   reject S
+                 else let A':=
+                     match A return attributes with
+                     | attributes_data_of Ad =>
+                       attributes_accessor_of_attributes_data Ad
+                     | attributes_accessor_of Aa =>
+                       attributes_data_of_attributes_accessor Aa
+                     end
+                   in if_some (pick_option (object_set_property S l x A')) (fun S' =>
+                        object_define_own_prop_write S' A')
+               else match A with
+                 | attributes_data_of Ad =>
+                   ifb attributes_change_data_on_non_configurable Ad Desc then
+                     reject S
+                   else object_define_own_prop_write S A
+                 | attributes_accessor_of Aa =>
+                   ifb attributes_change_accessor_on_non_configurable Aa Desc then
+                     reject S
+                   else object_define_own_prop_write S A
+                 end
+             end))
+      | builtin_define_own_prop_args_obj =>
+        out_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
+    end).
 
 
 (**************************************************************)
@@ -732,22 +757,23 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
     end.
 
 Definition object_put runs S C l x v str : result_void :=
-  let B := run_object_method object_put_ S l in
-  object_put_complete runs B S C l l x v str.
+  if_some (run_object_method object_put_ S l) (fun B =>
+    object_put_complete runs B S C l l x v str).
 
 Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
-  match pick (env_record_binds S L) with
-  | env_record_decl Ed =>
-    if_some (Heap.read_option Ed x) (fun rm =>
-      let (mu, v_old) := rm in
-      ifb mutability_is_mutable mu then
-        out_void (env_record_write_decl_env S L x mu v)
-      else if str then
-        run_error S native_error_type
-      else out_ter S prim_undef)
-  | env_record_object l pt =>
-    object_put runs S C l x v str
-  end.
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
+    | env_record_decl Ed =>
+      if_some (Heap.read_option Ed x) (fun rm =>
+        let (mu, v_old) := rm in
+        ifb mutability_is_mutable mu then
+          out_void (env_record_write_decl_env S L x mu v)
+        else if str then
+          run_error S native_error_type
+        else out_ter S prim_undef)
+    | env_record_object l pt =>
+      object_put runs S C l x v str
+    end).
 
 Definition prim_value_put runs S C w x v str : result_void :=
   if_object (to_object S w) (fun S1 l =>
@@ -785,75 +811,80 @@ Definition if_success_value runs C (o : result) (K : state -> value -> result) :
 
 Definition env_record_create_mutable_binding S L x (deletable_opt : option bool) : result_void :=
   let deletable := unsome_default false deletable_opt in
-  match pick (env_record_binds S L) with
-  | env_record_decl Ed =>
-    ifb decl_env_record_indom Ed x then
-      impossible_with_heap_because S "Already declared environnment record in [env_record_create_mutable_binding]."
-    else
-      let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
-      out_void S'
-  | env_record_object l pt =>
-    if_bool_option_result (object_has_prop S l x) (fun _ => impossible_with_heap_because S
-      "Already declared binding in [env_record_create_mutable_binding].") (fun _ =>
-      let A := attributes_data_intro undef true true deletable in
-      if_success (object_define_own_prop S l x A throw_true) (fun S1 rv =>
-        out_void S1))
-  end.
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
+    | env_record_decl Ed =>
+      ifb decl_env_record_indom Ed x then
+        impossible_with_heap_because S "Already declared environnment record in [env_record_create_mutable_binding]."
+      else
+        let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
+        out_void S'
+    | env_record_object l pt =>
+      if_bool_option_result (object_has_prop S l x) (fun _ => impossible_with_heap_because S
+        "Already declared binding in [env_record_create_mutable_binding].") (fun _ =>
+        let A := attributes_data_intro undef true true deletable in
+        if_success (object_define_own_prop S l x A throw_true) (fun S1 rv =>
+          out_void S1))
+    end).
 
 Definition env_record_create_set_mutable_binding runs S C L x (deletable_opt : option bool) v str : result_void :=
   if_void (env_record_create_mutable_binding S L x deletable_opt) (fun S =>
     env_record_set_mutable_binding runs S C L x v str).
 
 Definition env_record_create_immutable_binding S L x : result_void :=
-  match pick (env_record_binds S L) with
-  | env_record_decl Ed =>
-    ifb decl_env_record_indom Ed x then
-      impossible_with_heap_because S "Already declared environnment record in [env_record_create_immutable_binding]."
-    else out_void
-      (env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
-  | env_record_object _ _ =>
-      impossible_with_heap_because S "[env_record_create_immutable_binding] received an environnment record object."
-  end.
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
+    | env_record_decl Ed =>
+      ifb decl_env_record_indom Ed x then
+        impossible_with_heap_because S "Already declared environnment record in [env_record_create_immutable_binding]."
+      else out_void
+        (env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
+    | env_record_object _ _ =>
+        impossible_with_heap_because S "[env_record_create_immutable_binding] received an environnment record object."
+    end).
 
 Definition env_record_initialize_immutable_binding S L x v : result_void :=
-  match pick (env_record_binds S L) with
-  | env_record_decl Ed =>
-    ifb pick (Heap.binds Ed x) = (mutability_uninitialized_immutable, undef) then
-      let S' := env_record_write_decl_env S L x mutability_immutable v in
-      out_void S'
-    else impossible_with_heap_because S "Non suitable binding in [env_record_initialize_immutable_binding]."
-  | env_record_object _ _ => impossible_with_heap_because S "[env_record_initialize_immutable_binding] received an environnment record object."
-  end.
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
+    | env_record_decl Ed =>
+      if_some (pick_option (Heap.binds Ed x)) (fun evs =>
+        ifb evs = (mutability_uninitialized_immutable, undef) then
+          let S' := env_record_write_decl_env S L x mutability_immutable v in
+          out_void S'
+        else impossible_with_heap_because S "Non suitable binding in [env_record_initialize_immutable_binding].")
+    | env_record_object _ _ => impossible_with_heap_because S "[env_record_initialize_immutable_binding] received an environnment record object."
+    end).
 
 
 (**************************************************************)
 (** Conversions *)
 
 Definition object_default_value runs S C l (prefo : option preftype) : result :=
-  match run_object_method object_default_value_ S l with
-
-  | builtin_default_value_default =>
-    let gpref := unsome_default preftype_number prefo in
-    let lpref := other_preftypes gpref in
-    let gmeth := method_of_preftype gpref in
-    let sub S' x K :=
-      if_object (object_get runs S' C l x) (fun S1 lfo =>
-        let lf := value_object lfo in
-        match run_callable S1 lf with
-        | Some B =>
-          if_success_value runs C
-            (runs_type_call_full runs S1 C lfo l nil) (fun S2 v =>
-            match v with
-            | value_prim w => out_ter S2 w
-            | value_object l => K S2
-            end)
-        | None => K S1
-        end) in
-    sub S gmeth (fun S' =>
-      let lmeth := method_of_preftype lpref in
-      sub S' lmeth (fun S'' => run_error S'' native_error_type))
-
-  end.
+  if_some (run_object_method object_default_value_ S l) (fun B =>
+    match B with
+    
+    | builtin_default_value_default =>
+      let gpref := unsome_default preftype_number prefo in
+      let lpref := other_preftypes gpref in
+      let gmeth := method_of_preftype gpref in
+      let sub S' x K :=
+        if_object (object_get runs S' C l x) (fun S1 lfo =>
+          let lf := value_object lfo in
+          match run_callable S1 lf with
+          | Some B =>
+            if_success_value runs C
+              (runs_type_call_full runs S1 C lfo l nil) (fun S2 v =>
+              match v with
+              | value_prim w => out_ter S2 w
+              | value_object l => K S2
+              end)
+          | None => K S1
+          end) in
+      sub S gmeth (fun S' =>
+        let lmeth := method_of_preftype lpref in
+        sub S' lmeth (fun S'' => run_error S'' native_error_type))
+    
+    end).
 
 
 Definition to_primitive runs S C v (prefo : option preftype) : result :=
@@ -913,10 +944,11 @@ Definition call_object_new S v : result :=
 
 Definition bool_proto_value_of_call S C : result :=
   let v := execution_ctx_this_binding C in
-  match run_value_viewable_as_prim "Boolean" S v with
-  | Some (prim_bool b) => out_ter S b
-  | _ => run_error S native_error_type
-  end.
+  if_some (run_value_viewable_as_prim "Boolean" S v) (fun vw =>
+    match vw with
+    | Some (prim_bool b) => out_ter S b
+    | _ => run_error S native_error_type
+    end).
 
 Definition run_construct_prealloc runs B S C (args : list value) : result :=
   match B with
@@ -983,15 +1015,16 @@ Definition run_construct_default runs S C l args :=
       out_ter S3 vr)).
 
 Definition run_construct runs S C l args : result :=
-  if_some (run_object_method object_construct_ S l) (fun co =>
-    match co with
-    | construct_default =>
-      run_construct_default runs S C l args
-    | construct_prealloc B =>
-      run_construct_prealloc runs B S C args
-    | construct_after_bind =>
-      impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
-    end).
+  if_some (run_object_method object_construct_ S l) (fun coo =>
+    if_some coo (fun co =>
+      match co with
+      | construct_default =>
+        run_construct_default runs S C l args
+      | construct_prealloc B =>
+        run_construct_prealloc runs B S C args
+      | construct_after_bind =>
+        impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
+      end)).
 
 
 (**************************************************************)
@@ -1090,11 +1123,11 @@ Fixpoint arguments_object_map_loop S l xs len args L str lmap xsmap : result_voi
   | O => (* args = nil *)
     ifb xsmap = nil then out_void S
     else (
-      let O := pick (object_binds S l) in
-      let O' := object_for_args_object O lmap builtin_get_args_obj
-                  builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj
-                  builtin_delete_args_obj in
-      out_void (object_write S l O'))
+      if_some (pick_option (object_binds S l)) (fun O =>
+        let O' := object_for_args_object O lmap builtin_get_args_obj
+                    builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj
+                    builtin_delete_args_obj in
+        out_void (object_write S l O')))
   | S len' => (* args <> nil *)
     let arguments_object_map_loop' S xsmap :=
       arguments_object_map_loop S l xs len' (removelast args) L str lmap xsmap in
@@ -1167,12 +1200,15 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
           end))
     in match ct, funco with
       | codetype_func, Some func =>
-        if_some (run_object_method object_formal_parameters_ S func) (fun names =>
-          if_void (binding_inst_formal_params runs S C L args names str) (fun S' =>
-            follow S' names))
-      | codetype_func, _ => impossible_with_heap_because S "Not coherent functionnal code type in [execution_ctx_binding_inst]."
+        if_some (run_object_method object_formal_parameters_ S func) (fun nameso =>
+          if_some nameso (fun names =>
+            if_void (binding_inst_formal_params runs S C L args names str) (fun S' =>
+              follow S' names)))
+      | codetype_func, _ =>
+        impossible_with_heap_because S "Not coherent functionnal code type in [execution_ctx_binding_inst]."
       | _, None => follow S nil
-      | _, _ => impossible_with_heap_because S "Not coherent non-functionnal code type in [execution_ctx_binding_inst]."
+      | _, _ =>
+        impossible_with_heap_because S "Not coherent non-functionnal code type in [execution_ctx_binding_inst]."
       end) tt.
 
 
@@ -1184,29 +1220,32 @@ Definition run_call_default runs S C (lf : object_loc) : result := (* Correspond
     if_success_or_return o
       (fun S' => out_ter S' undef) out_ter
   in let default := out_ter S undef
-  in match run_object_method object_code_ S lf with
-  | None => follow default
-  | Some bd =>
-    follow
-      (ifb funcbody_empty bd then default
-      else runs_type_prog runs S C (funcbody_prog bd))
-  end.
+  in if_some (run_object_method object_code_ S lf) (fun OC =>
+       match OC with
+       | None => follow default
+       | Some bd =>
+         follow
+           (ifb funcbody_empty bd then default
+           else runs_type_prog runs S C (funcbody_prog bd))
+       end).
 
 Definition entering_func_code runs S C lf vthis (args : list value) : result :=
-  if_some (run_object_method object_code_ S lf) (fun bd =>
-    let str := funcbody_is_strict bd in
-    let follow S' vthis' :=
-      if_some (run_object_method object_scope_ S' lf) (fun lex =>
-        let (lex', S1) := lexical_env_alloc_decl S' lex in
-        let C' := execution_ctx_intro_same lex' vthis' str in
-        if_void (execution_ctx_binding_inst runs S1 C' codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
-        run_call_default runs S2 C' lf))
-    in if str then follow S vthis
-    else match vthis with
-    | value_object lthis => follow S vthis
-    | null | undef => follow S prealloc_global
-    | value_prim _ => if_value (to_object S vthis) follow
-    end).
+  if_some (run_object_method object_code_ S lf) (fun bdo =>
+    if_some bdo (fun bd =>
+      let str := funcbody_is_strict bd in
+      let follow S' vthis' :=
+        if_some (run_object_method object_scope_ S' lf) (fun lexo =>
+          if_some lexo (fun lex =>
+            let (lex', S1) := lexical_env_alloc_decl S' lex in
+            let C' := execution_ctx_intro_same lex' vthis' str in
+            if_void (execution_ctx_binding_inst runs S1 C' codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
+            run_call_default runs S2 C' lf)))
+      in if str then follow S vthis
+      else match vthis with
+      | value_object lthis => follow S vthis
+      | null | undef => follow S prealloc_global
+      | value_prim _ => if_value (to_object S vthis) follow
+      end)).
 
 
 (**************************************************************)
@@ -1219,15 +1258,16 @@ Fixpoint run_object_has_instance_loop (max_step : nat) S lv vo : result :=
     | value_prim _ =>
       run_error S native_error_type
     | value_object lo =>
-      match run_object_method object_proto_ S lv with
-      | null =>
-        out_ter S false
-      | value_object proto =>
-        ifb proto = lo then out_ter S true
-        else run_object_has_instance_loop max_step' S proto lo
-      | value_prim _ =>
-        impossible_with_heap_because S "Primitive found in the prototype chain in [run_object_has_instance_loop]."
-      end
+      if_some (run_object_method object_proto_ S lv) (fun vproto =>
+        match vproto with
+        | null =>
+          out_ter S false
+        | value_object proto =>
+          ifb proto = lo then out_ter S true
+          else run_object_has_instance_loop max_step' S proto lo
+        | value_prim _ =>
+          impossible_with_heap_because S "Primitive found in the prototype chain in [run_object_has_instance_loop]."
+        end)
     end
   end.
 
@@ -1435,10 +1475,11 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
   | binary_op_instanceof =>
     match v2 with
     | value_object l =>
-      morph_option (fun _ => run_error S native_error_type : result)
-      (fun has_instance_id _ =>
-        run_object_has_instance max_step runs has_instance_id S C l v1)
-      (run_object_method object_has_instance_ S l) tt
+      if_some (run_object_method object_has_instance_ S l) (fun B =>
+        morph_option (fun _ => run_error S native_error_type : result)
+        (fun has_instance_id _ =>
+          run_object_has_instance max_step runs has_instance_id S C l v1)
+        B tt)
     | value_prim _ => run_error S native_error_type
     end
 
@@ -1676,11 +1717,11 @@ Definition run_expr_function runs S C fo args bd : result :=
   | Some fn =>
     let (lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
     let follow L :=
-      let E := pick (env_record_binds S' L) in
-      if_void (env_record_create_immutable_binding S' L fn) (fun S1 =>
-        if_object (creating_function_object runs S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
-          if_void (env_record_initialize_immutable_binding S2 L fn l) (fun S3 =>
-            out_ter S3 l))) in
+      if_some (pick_option (env_record_binds S' L)) (fun E =>
+        if_void (env_record_create_immutable_binding S' L fn) (fun S1 =>
+          if_object (creating_function_object runs S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
+            if_void (env_record_initialize_immutable_binding S2 L fn l) (fun S3 =>
+              out_ter S3 l)))) in
     destr_list lex' (fun _ =>
       impossible_with_heap_because S' "Empty lexical environnment allocated in [run_expr_function].")
       (fun L _ => follow L) tt
@@ -1757,7 +1798,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
                 ifb ref_is_property r then follow v
                 else impossible_with_heap_because S3 "[run_expr_call] unable to call a non-property function."
               | ref_base_type_env_loc L =>
-                follow (env_record_implicit_this_value S3 L)
+                if_some (env_record_implicit_this_value S3 L) follow
               end
             | resvalue_empty => impossible_with_heap_because S3 "[run_expr_call] unable to call an  empty result."
             end
@@ -2068,27 +2109,27 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
     | prealloc_object_seal =>
       match get_arg 0 args with
       | value_object l =>
-        let xs := pick (object_properties_keys_as_list S l)
-        in (fix object_seal S0 xs : result :=
-          match xs with
-          | nil =>
-            let S1 := run_object_heap_set_extensible false S0 l in
-            out_ter S1 l
-          | x :: xs' =>
-            if_some (run_object_get_own_prop S0 l x) (fun D =>
-              match D with
-              | full_descriptor_some A =>
-                let A' :=
-                  if attributes_configurable A then
-                    let Desc :=
-                      descriptor_intro None None None None None (Some false)
-                    in attributes_update A Desc
-                  else A
-                in if_void (object_define_own_prop S0 l x A' true) (fun S1 =>
-                  object_seal S1 xs')
-              | full_descriptor_undef => impossible_with_heap_because S0 "[run_call], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) S xs
+        if_some (pick_option (object_properties_keys_as_list S l)) (
+          (fix object_seal S0 xs : result :=
+            match xs with
+            | nil =>
+              if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
+                out_ter S1 l)
+            | x :: xs' =>
+              if_some (run_object_get_own_prop S0 l x) (fun D =>
+                match D with
+                | full_descriptor_some A =>
+                  let A' :=
+                    if attributes_configurable A then
+                      let Desc :=
+                        descriptor_intro None None None None None (Some false)
+                      in attributes_update A Desc
+                    else A
+                  in if_void (object_define_own_prop S0 l x A' true) (fun S1 =>
+                    object_seal S1 xs')
+                | full_descriptor_undef => impossible_with_heap_because S0 "[run_call], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
+                end)
+            end) S)
       | value_prim _ => run_error S native_error_type
       end
 
@@ -2096,21 +2137,22 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       let v := get_arg 0 args in
       match v with
       | value_object l =>
-        let xs := pick (object_properties_keys_as_list S l)
-        in (fix object_is_sealed xs : result :=
-          match xs with
-          | nil =>
-            out_ter S (neg (run_object_method object_extensible_ S l))
-          | x :: xs' =>
-            if_some (run_object_get_own_prop S l x) (fun D =>
-              match D with
-              | full_descriptor_some A =>
-                if attributes_configurable A then
-                  out_ter S false
-                else object_is_sealed xs'
-              | full_descriptor_undef => impossible_with_heap_because S "[run_call], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) xs
+        if_some (pick_option (object_properties_keys_as_list S l))
+          (fix object_is_sealed xs : result :=
+            match xs with
+            | nil =>
+              if_some (run_object_method object_extensible_ S l) (fun ext =>
+                out_ter S (neg ext))
+            | x :: xs' =>
+              if_some (run_object_get_own_prop S l x) (fun D =>
+                match D with
+                | full_descriptor_some A =>
+                  if attributes_configurable A then
+                    out_ter S false
+                  else object_is_sealed xs'
+                | full_descriptor_undef => impossible_with_heap_because S "[run_call], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
+                end)
+            end)
       | value_prim _ => run_error S native_error_type
       end
 
@@ -2118,33 +2160,33 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       let v := get_arg 0 args in
       match v with
       | value_object l =>
-        let xs := pick (object_properties_keys_as_list S l)
-        in (fix object_freeze S0 xs : result :=
-          match xs with
-          | nil =>
-            let S1 := run_object_heap_set_extensible false S0 l
-            in out_ter S1 l
-          | x :: xs' =>
-            if_some (run_object_get_own_prop S l x) (fun D =>
-              match D with
-              | full_descriptor_some A =>
-                let A' :=
-                  ifb attributes_is_data A /\ attributes_writable A then
-                    let Desc :=
-                      descriptor_intro None (Some false) None None None None
-                    in attributes_update A Desc
-                  else A
-                in let A'' :=
-                  if attributes_configurable A' then
-                    let Desc :=
-                      descriptor_intro None None None None None (Some false)
-                    in attributes_update A' Desc
-                  else A'
-                in if_void (object_define_own_prop S0 l x A'' true) (fun S1 =>
-                  object_freeze S1 xs')
-              | full_descriptor_undef => impossible_with_heap_because S0 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) S xs
+        if_some (pick_option (object_properties_keys_as_list S l)) (
+          (fix object_freeze S0 xs : result :=
+            match xs with
+            | nil =>
+              if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
+                out_ter S1 l)
+            | x :: xs' =>
+              if_some (run_object_get_own_prop S l x) (fun D =>
+                match D with
+                | full_descriptor_some A =>
+                  let A' :=
+                    ifb attributes_is_data A /\ attributes_writable A then
+                      let Desc :=
+                        descriptor_intro None (Some false) None None None None
+                      in attributes_update A Desc
+                    else A
+                  in let A'' :=
+                    if attributes_configurable A' then
+                      let Desc :=
+                        descriptor_intro None None None None None (Some false)
+                      in attributes_update A' Desc
+                    else A'
+                  in if_void (object_define_own_prop S0 l x A'' true) (fun S1 =>
+                    object_freeze S1 xs')
+                | full_descriptor_undef => impossible_with_heap_because S0 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
+                end)
+            end) S)
       | value_prim _ => run_error S native_error_type
       end
 
@@ -2153,27 +2195,28 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       let v := get_arg 0 args in
       match v with
       | value_object l =>
-        let xs := pick (object_properties_keys_as_list S l)
-        in (fix object_is_frozen xs : result :=
-          match xs with
-          | nil =>
-            out_ter S (neg (run_object_method object_extensible_ S l))
-          | x :: xs' =>
-            if_some (run_object_get_own_prop S l x) (fun D =>
-              let check_configurable A :=
-                if attributes_configurable A then
-                  out_ter S false : result
-                else object_is_frozen xs'
-              in match D with
-              | attributes_data_of Ad =>
-                if attributes_writable Ad then
-                  out_ter S false
-                else check_configurable Ad
-              | attributes_accessor_of Aa =>
-                check_configurable Aa
-              | full_descriptor_undef => impossible_with_heap_because S "[run_call], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) xs
+        if_some (pick_option (object_properties_keys_as_list S l))
+          (fix object_is_frozen xs : result :=
+            match xs with
+            | nil =>
+              if_some (run_object_method object_extensible_ S l) (fun ext =>
+                out_ter S (neg ext))
+            | x :: xs' =>
+              if_some (run_object_get_own_prop S l x) (fun D =>
+                let check_configurable A :=
+                  if attributes_configurable A then
+                    out_ter S false : result
+                  else object_is_frozen xs'
+                in match D with
+                | attributes_data_of Ad =>
+                  if attributes_writable Ad then
+                    out_ter S false
+                  else check_configurable Ad
+                | attributes_accessor_of Aa =>
+                  check_configurable Aa
+                | full_descriptor_undef => impossible_with_heap_because S "[run_call], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
+                end)
+            end)
       | value_prim _ => run_error S native_error_type
       end
 
@@ -2181,7 +2224,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       let v := get_arg 0 args in
       match v with
       | value_object l =>
-        out_ter S (run_object_method object_extensible_ S l)
+        if_some (run_object_method object_extensible_ S l) (out_ter S)
       | value_prim _ => run_error S native_error_type
       end
 
@@ -2189,10 +2232,10 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       let v := get_arg 0 args in
       match v with
       | value_object l =>
-        let O := pick (object_binds S l) in
-        let O1 := object_with_extension O false in
-        let S' := object_write S l O1 in
-        out_ter S' l
+        if_some (pick_option (object_binds S l)) (fun O =>
+          let O1 := object_with_extension O false in
+          let S' := object_write S l O1 in
+          out_ter S' l)
       | value_prim _ => run_error S native_error_type
       end
 
@@ -2203,8 +2246,8 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       | null => out_ter S "[object Null]"
       | _ =>
         if_object (to_object S v) (fun S1 l =>
-          let s := run_object_method object_class_ S l in
-          out_ter S1 ("[object " ++ s ++ "]"))
+          if_some (run_object_method object_class_ S l) (fun s =>
+            out_ter S1 ("[object " ++ s ++ "]")))
       end
 
     | prealloc_object_proto_value_of =>
@@ -2259,10 +2302,11 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
 
     | prealloc_number_proto_value_of =>
       let v := execution_ctx_this_binding C in
-      match run_value_viewable_as_prim "Number" S v with
-      | Some (prim_number n) => out_ter S n
-      | _ => run_error S native_error_type
-      end
+      if_some (run_value_viewable_as_prim "Number" S v) (fun vw =>
+        match vw with
+        | Some (prim_number n) => out_ter S n
+        | _ => run_error S native_error_type
+        end)
 
     | _ =>
       result_not_yet_implemented (* TODO *)
@@ -2280,15 +2324,16 @@ with run_call_full (max_step : nat) S C l vthis args : result := (* Corresponds 
     let run_call' := run_call max_step' in
     let run_call_full' := run_call_full max_step' in
     let runs' := runs_type_intro run_expr' run_stat' run_prog' run_call' run_call_full' in
-    if_some (run_object_method object_call_ S l) (fun c =>
-      match c with
-      | call_default =>
-        entering_func_code runs' S C l vthis args
-      | call_prealloc B =>
-        run_call' S C B args
-      | call_after_bind =>
-        impossible_with_heap_because S "[run_call_full]:  [call_after_bind] found."
-      end)
+    if_some (run_object_method object_call_ S l) (fun co =>
+      if_some co (fun c =>
+        match c with
+        | call_default =>
+          entering_func_code runs' S C l vthis args
+        | call_prealloc B =>
+          run_call' S C B args
+        | call_after_bind =>
+          impossible_with_heap_because S "[run_call_full]:  [call_after_bind] found."
+        end))
   end.
 
 (**************************************************************)
