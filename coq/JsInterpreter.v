@@ -71,9 +71,16 @@ Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
 (**************************************************************)
 (** ** Some types used by the interpreter *)
 
+(*
+  * [result_out] is the normal result when the computation terminates normally.
+  * [result_stuck] means that this result is not implemented yet.
+  * [result_impossible] should not happen.
+  * [result_bottom] means that the computation taked too long and we run out of fuel.
+*)
 Inductive result :=
   | result_out : out -> result
   | result_stuck
+  | result_impossible
   | result_bottom.
 
 (* In the semantics, some rules returns an [out] which actually never
@@ -83,9 +90,9 @@ Inductive result :=
 Definition result_void := result.
 
 (* It can be useful to get details on why a stuck is obtained. *)
-Definition stuck_because s := result_stuck.
-Definition stuck_heap S s := result_stuck.
-Definition stuck_because_other {A : Type} `{Inhab A} s : A := arbitrary.
+Definition impossible_because s := result_stuck.
+Definition impossible_with_heap_because S s := result_stuck.
+Definition impossible_because_other {A : Type} `{Inhab A} s : A := arbitrary.
 
 
 (* Coercion *)
@@ -95,7 +102,7 @@ Coercion result_out : out >-> result.
 (* Inhabited *)
 
 Global Instance result_inhab : Inhab result.
-Proof. applys prove_Inhab stuck_because. exact "Result is inhabited". Qed.
+Proof. applys prove_Inhab impossible_because. exact "Result is inhabited". Qed.
 
 
 (**************************************************************)
@@ -125,12 +132,12 @@ Definition if_bool_option (A : Type) (d : A) (bo : option bool) (K1 : unit -> A)
 
 Definition if_bool_option_result bo K1 K2 :=
   if_bool_option
-    (fun _ => stuck_because "[if_bool_option_result] called with [None].")
+    (fun _ => impossible_because "[if_bool_option_result] called with [None].")
     bo (fun _ => K1) (fun _ => K2) tt.
 
 Definition if_some {A : Type} (op : option A) (K : A -> result) : result :=
   match op with
-  | None => stuck_because "[if_some] called with [None]."
+  | None => impossible_because "[if_some] called with [None]."
   | Some a => K a
   end.
 
@@ -157,7 +164,7 @@ Definition if_void (o : result_void) (K : state -> result) : result :=
   if_success o (fun S rv =>
     match rv with
     | resvalue_empty => K S
-    | _ => stuck_heap S "[if_void called] with non-void result value."
+    | _ => impossible_with_heap_because S "[if_void called] with non-void result value."
     end).
 
 Definition if_not_throw (o : result) (K : state -> res -> result) : result :=
@@ -174,7 +181,8 @@ Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> v
     | restype_throw =>
       match res_value R with
       | resvalue_value v => K2 S v
-      | _ => stuck_heap S "[if_any_or_throw] called with a non-value result."
+      | _ =>
+        impossible_with_heap_because S "[if_any_or_throw] called with a non-value result."
       end
     | _ => K1 o
     end).
@@ -212,14 +220,14 @@ Definition if_value (o : result) (K : state -> value -> result) : result :=
   if_success o (fun S rv =>
     match rv with
     | resvalue_value v => K S v
-    | _ => stuck_heap S "[if_value] called with non-value."
+    | _ => impossible_with_heap_because S "[if_value] called with non-value."
     end).
 
 Definition if_bool (o : result) (K : state -> bool -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_bool b => K S b
-    | _ => stuck_heap S "[if_bool] called with non-boolean value."
+    | _ => impossible_with_heap_because S "[if_bool] called with non-boolean value."
     end).
 
 Definition if_success_bool (o : result) (K1 K2 : state -> result) : result :=
@@ -231,12 +239,12 @@ Definition if_success_primitive (o : result) (K : state -> prim -> result) : res
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | value_object _ => stuck_heap S "[if_success_primitive] didn't get a primitive."
+    | value_object _ => impossible_with_heap_because S "[if_success_primitive] didn't get a primitive."
     end).
 
 Definition if_defined {B : Type} (op : option B) (K : B -> result) : result :=
   match op with
-  | None => stuck_because "Undefined value in [if_defined]."
+  | None => impossible_because "Undefined value in [if_defined]."
   | Some a => K a
   end.
 
@@ -250,28 +258,28 @@ Definition if_object (o : result) (K : state -> object_loc -> result) : result :
   if_value o (fun S v =>
     match v with
     | value_object l => K S l
-    | value_prim _ => stuck_heap S "[if_object] called on a primitive."
+    | value_prim _ => impossible_with_heap_because S "[if_object] called on a primitive."
     end).
 
 Definition if_string (o : result) (K : state -> string -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_string s => K S s
-    | _ => stuck_heap S "[if_string] called on a non-string value."
+    | _ => impossible_with_heap_because S "[if_string] called on a non-string value."
     end).
 
 Definition if_number (o : result) (K : state -> number -> result) : result :=
   if_value o (fun S v =>
     match v with
     | prim_number n => K S n
-    | _ => stuck_heap S "[if_number] called with non-number value."
+    | _ => impossible_with_heap_because S "[if_number] called with non-number value."
     end).
 
 Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | value_object _ => stuck_heap S "[if_primitive] called on an object."
+    | value_object _ => impossible_with_heap_because S "[if_primitive] called on an object."
     end).
 
 Definition if_def_full_descriptor {A : Type} (o : option full_descriptor) (d : A) (K : full_descriptor -> A) : A :=
@@ -403,7 +411,7 @@ Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S 
       ifb l' = l0
         then out_ter S true
         else run_object_proto_is_prototype_of S l0 l'
-  | value_prim _ => stuck_heap S "[run_object_method] returned a primitive in [object_proto_is_prototype_of_body]."
+  | value_prim _ => impossible_with_heap_because S "[run_object_method] returned a primitive in [object_proto_is_prototype_of_body]."
   end.
 
 Definition run_object_proto_is_prototype_of :=
@@ -487,10 +495,10 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
               match vthis with
               | value_object lthis =>
                   runs_type_call_full runs S C lf lthis nil
-              | value_prim _ => stuck_heap S "The `this' argument of [object_get_builtin] is a primitive."
+              | value_prim _ => impossible_with_heap_because S "The `this' argument of [object_get_builtin] is a primitive."
               end
           | value_prim _ => (* TODO:  Waiting for the specification. *)
-              stuck_heap S "Waiting for specification in [object_get_builtin]."
+              impossible_with_heap_because S "Waiting for specification in [object_get_builtin]."
           end
       end)
 
@@ -506,7 +514,7 @@ Definition object_get runs S C v x : result := (* This [v] should be a location.
   | value_object l =>
       let B := run_object_method object_get_ S l in
       object_get_builtin runs B S C l l x
-  | value_prim _ => stuck_heap S "Calling [object_get] on a primitive."
+  | value_prim _ => impossible_with_heap_because S "Calling [object_get] on a primitive."
   end.
 
 
@@ -542,7 +550,7 @@ Definition run_value_viewable_as_prim s S v : option prim :=
 (**************************************************************)
 
 Definition env_record_get_binding_value runs S C L x str : result :=
-  env_record_lookup (fun _ => stuck_heap S
+  env_record_lookup (fun _ => impossible_with_heap_because S
     "[env_record_lookup] failed in [env_record_get_binding_value].") S L (fun er _ =>
     match er with
     | env_record_decl Ed =>
@@ -641,7 +649,7 @@ Definition object_define_own_prop S l x Desc str : result :=
           end
       end)
     | builtin_define_own_prop_args_obj =>
-      out_ter S true (*stuck_heap S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
+      out_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
   end.
 
 
@@ -649,11 +657,11 @@ Definition object_define_own_prop S l x Desc str : result :=
 
 Definition ref_get_value runs S C rv : result :=
   match rv with
-  | resvalue_empty => stuck_heap S "[ref_get_value] received an empty result."
+  | resvalue_empty => impossible_with_heap_because S "[ref_get_value] received an empty result."
   | resvalue_value v => out_ter S v
   | resvalue_ref r =>
     match ref_kind_of r with
-    | ref_kind_null => stuck_heap S "[ref_get_value] received a reference whose base is [null]."
+    | ref_kind_null => impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
     | ref_kind_undef => run_error S native_error_ref
     | ref_kind_primitive_base | ref_kind_object =>
       match ref_base r with
@@ -661,12 +669,12 @@ Definition ref_get_value runs S C rv : result :=
         (ifb ref_has_primitive_base r then prim_value_get
         else object_get) runs S C v (ref_name r)
       | ref_base_type_env_loc L =>
-        stuck_heap S "[ref_get_value] received a reference to a value whose base type is an environnment record."
+        impossible_with_heap_because S "[ref_get_value] received a reference to a value whose base type is an environnment record."
       end
     | ref_kind_env_record =>
       match ref_base r with
       | ref_base_type_value v =>
-        stuck_heap S "[ref_get_value] received a reference to an environnment record whose base type is a value."
+        impossible_with_heap_because S "[ref_get_value] received a reference to an environnment record whose base type is a value."
       | ref_base_type_env_loc L =>
         env_record_get_binding_value runs S C L (ref_name r) (ref_strict r)
       end
@@ -700,7 +708,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
                 | value_object lfsetter =>
                   if_success (runs_type_call_full runs S C lfsetter vthis (v::nil)) (fun S1 rv =>
                     out_void S1)
-                | value_prim _ => stuck_heap S "[object_put_complete] found a primitive in an `set' accessor."
+                | value_prim _ => impossible_with_heap_because S "[object_put_complete] found a primitive in an `set' accessor."
                 end
               | _ =>
                 match vthis with
@@ -755,11 +763,11 @@ Definition ref_put_value runs S C rv v : result_void :=
       | ref_base_type_value (value_prim w) =>
         ifb ref_kind_of r = ref_kind_primitive_base then
           prim_value_put runs S C w (ref_name r) v (ref_strict r)
-        else stuck_heap S "[ref_put_value] found a primitive base whose kind is not a primitive!"
+        else impossible_with_heap_because S "[ref_put_value] found a primitive base whose kind is not a primitive!"
       | ref_base_type_env_loc L =>
         env_record_set_mutable_binding runs S C L (ref_name r) v (ref_strict r)
       end
-  | resvalue_empty => stuck_heap S "[ref_put_value] received an empty result."
+  | resvalue_empty => impossible_with_heap_because S "[ref_put_value] received an empty result."
   end.
 
 Definition if_success_value runs C (o : result) (K : state -> value -> result) : result :=
@@ -776,12 +784,12 @@ Definition env_record_create_mutable_binding S L x (deletable_opt : option bool)
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
     ifb decl_env_record_indom Ed x then
-      stuck_heap S "Already declared environnment record in [env_record_create_mutable_binding]."
+      impossible_with_heap_because S "Already declared environnment record in [env_record_create_mutable_binding]."
     else
       let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
       out_void S'
   | env_record_object l pt =>
-    if_bool_option_result (object_has_prop S l x) (fun _ => stuck_heap S
+    if_bool_option_result (object_has_prop S l x) (fun _ => impossible_with_heap_because S
       "Already declared binding in [env_record_create_mutable_binding].") (fun _ =>
       let A := attributes_data_intro undef true true deletable in
       if_success (object_define_own_prop S l x A throw_true) (fun S1 rv =>
@@ -796,11 +804,11 @@ Definition env_record_create_immutable_binding S L x : result_void :=
   match pick (env_record_binds S L) with
   | env_record_decl Ed =>
     ifb decl_env_record_indom Ed x then
-      stuck_heap S "Already declared environnment record in [env_record_create_immutable_binding]."
+      impossible_with_heap_because S "Already declared environnment record in [env_record_create_immutable_binding]."
     else out_void
       (env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
   | env_record_object _ _ =>
-      stuck_heap S "[env_record_create_immutable_binding] received an environnment record object."
+      impossible_with_heap_because S "[env_record_create_immutable_binding] received an environnment record object."
   end.
 
 Definition env_record_initialize_immutable_binding S L x v : result_void :=
@@ -809,8 +817,8 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
     ifb pick (Heap.binds Ed x) = (mutability_uninitialized_immutable, undef) then
       let S' := env_record_write_decl_env S L x mutability_immutable v in
       out_void S'
-    else stuck_heap S "Non suitable binding in [env_record_initialize_immutable_binding]."
-  | env_record_object _ _ => stuck_heap S "[env_record_initialize_immutable_binding] received an environnment record object."
+    else impossible_with_heap_because S "Non suitable binding in [env_record_initialize_immutable_binding]."
+  | env_record_object _ _ => impossible_with_heap_because S "[env_record_initialize_immutable_binding] received an environnment record object."
   end.
 
 
@@ -864,7 +872,7 @@ Definition to_integer runs S C v : result :=
     match rv1 with
     | prim_number n =>
       out_ter S1 (convert_number_to_integer n)
-    | _ => stuck_heap S1 "[to_number] failed in [to_integer]."
+    | _ => impossible_with_heap_because S1 "[to_number] failed in [to_integer]."
     end).
 
 Definition to_int32 runs S C v (K : state -> int -> result) : result :=
@@ -954,7 +962,7 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
   | prealloc_native_error_proto ne =>
     arbitrary (* TODO:  Waiting for specification *)
 
-  | _ => stuck_heap S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
+  | _ => impossible_with_heap_because S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
 
   end.
 
@@ -978,7 +986,7 @@ Definition run_construct runs S C l args : result :=
     | construct_prealloc B =>
       run_construct_prealloc runs B S C args
     | construct_after_bind =>
-      stuck_heap S "[construct_after_bind] received in [run_construct]."
+      impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
     end).
 
 
@@ -1039,7 +1047,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
           ifb L = env_loc_global_env_record then (
             if_some (run_object_get_prop S1 prealloc_global fname) (fun D =>
               match D with
-              | full_descriptor_undef => stuck_heap S1 "Undefined full descriptor in [binding_inst_function_decls]."
+              | full_descriptor_undef => impossible_with_heap_because S1 "Undefined full descriptor in [binding_inst_function_decls]."
               | full_descriptor_some A =>
                 ifb attributes_configurable A then (
                   let A' := attributes_data_intro undef true true bconfig in
@@ -1135,7 +1143,7 @@ Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
         env_record_create_set_mutable_binding runs S1 C L arguments None largs false).
 
 Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
-  destr_list (execution_ctx_variable_env C) (fun _ => stuck_heap S
+  destr_list (execution_ctx_variable_env C) (fun _ => impossible_with_heap_because S
     "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst].") (fun L _ =>
     let str := prog_intro_strictness p in
     let follow S' names :=
@@ -1150,7 +1158,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S1 C func p names args L) (fun S2 =>
               follow2 S2)
-          | codetype_func, _, false => stuck_heap S1 "Strange `arguments' object in [execution_ctx_binding_inst]."
+          | codetype_func, _, false => impossible_with_heap_because S1 "Strange `arguments' object in [execution_ctx_binding_inst]."
           | _, _, _ => follow2 S1
           end))
     in match ct, funco with
@@ -1158,9 +1166,9 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
         if_some (run_object_method object_formal_parameters_ S func) (fun names =>
           if_void (binding_inst_formal_params runs S C L args names str) (fun S' =>
             follow S' names))
-      | codetype_func, _ => stuck_heap S "Not coherent functionnal code type in [execution_ctx_binding_inst]."
+      | codetype_func, _ => impossible_with_heap_because S "Not coherent functionnal code type in [execution_ctx_binding_inst]."
       | _, None => follow S nil
-      | _, _ => stuck_heap S "Not coherent non-functionnal code type in [execution_ctx_binding_inst]."
+      | _, _ => impossible_with_heap_because S "Not coherent non-functionnal code type in [execution_ctx_binding_inst]."
       end) tt.
 
 
@@ -1214,7 +1222,7 @@ Fixpoint run_object_has_instance_loop (max_step : nat) S lv vo : result :=
         ifb proto = lo then out_ter S true
         else run_object_has_instance_loop max_step' S proto lo
       | value_prim _ =>
-        stuck_heap S "Primitive found in the prototype chain in [run_object_has_instance_loop]."
+        impossible_with_heap_because S "Primitive found in the prototype chain in [run_object_has_instance_loop]."
       end
     end
   end.
@@ -1286,7 +1294,7 @@ Definition get_puremath_op (op : binary_op) : number -> number -> number :=
   | binary_op_div => JsNumber.div
   | binary_op_mod => JsNumber.fmod
   | binary_op_sub => JsNumber.sub
-  | _ => stuck_because_other "[get_puremath_op]:  Missing case."
+  | _ => impossible_because_other "[get_puremath_op]:  Missing case."
   end.
 
 Definition get_inequality_op (op : binary_op) : bool * bool :=
@@ -1295,7 +1303,7 @@ Definition get_inequality_op (op : binary_op) : bool * bool :=
   | binary_op_gt => (true, false)
   | binary_op_le => (true, true)
   | binary_op_ge => (false, true)
-  | _ => stuck_because_other "[get_inequality_op]:  Missing case."
+  | _ => impossible_because_other "[get_inequality_op]:  Missing case."
   end.
 
 Definition get_shift_op (op : binary_op) : bool * (int -> int -> int) :=
@@ -1303,7 +1311,7 @@ Definition get_shift_op (op : binary_op) : bool * (int -> int -> int) :=
   | binary_op_left_shift => (false, JsNumber.int32_left_shift)
   | binary_op_right_shift => (false, JsNumber.int32_right_shift)
   | binary_op_unsigned_right_shift => (true, JsNumber.uint32_right_shift)
-  | _ => stuck_because_other "[get_shift_op]:  Missing case."
+  | _ => impossible_because_other "[get_shift_op]:  Missing case."
   end.
 
 Definition get_bitwise_op (op : binary_op) : int -> int -> int :=
@@ -1311,7 +1319,7 @@ Definition get_bitwise_op (op : binary_op) : int -> int -> int :=
   | binary_op_bitwise_and => JsNumber.int32_bitwise_and
   | binary_op_bitwise_or => JsNumber.int32_bitwise_or
   | binary_op_bitwise_xor => JsNumber.int32_bitwise_xor
-  | _ => stuck_because_other "[get_bitwise_op]:  Missing case."
+  | _ => impossible_because_other "[get_bitwise_op]:  Missing case."
   end.
 
 
@@ -1392,7 +1400,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
     convert_twice_number S v1 v2 (fun S1 n1 n2 =>
       out_ter S1 (mop n1 n2))
 
-  | binary_op_and | binary_op_or => stuck_heap S "Undealt lazy operator in [run_binary_op]." (* Lazy operators are already dealt with at this point. *)
+  | binary_op_and | binary_op_or => impossible_with_heap_because S "Undealt lazy operator in [run_binary_op]." (* Lazy operators are already dealt with at this point. *)
 
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift =>
     let (b_unsigned, F) := get_shift_op op in
@@ -1438,7 +1446,7 @@ Definition run_binary_op (max_step : nat) runs S C (op : binary_op) v1 v2 : resu
       match op with
       | binary_op_equal => b
       | binary_op_disequal => negb b
-      | _ => stuck_because_other "[run_binary_op], [binary_op_(dis)equal]:  Missing case."
+      | _ => impossible_because_other "[run_binary_op], [binary_op_(dis)equal]:  Missing case."
       end in
     if_bool (run_equal conv_number conv_primitive S v1 v2) (fun S0 b0 =>
       out_ter S0 (finalPass b0))
@@ -1460,7 +1468,7 @@ Definition run_prepost_op (op : unary_op) : (number -> number) * bool :=
   | unary_op_pre_decr => (sub_one, true)
   | unary_op_post_incr => (add_one, false)
   | unary_op_post_decr => (sub_one, false)
-  | _ => stuck_because_other "[run_prepost_op]:  Missing case."
+  | _ => impossible_because_other "[run_prepost_op]:  Missing case."
   end.
 
 Definition run_typeof_value S v :=
@@ -1486,7 +1494,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
       if_success (runs_type_expr runs S C e) (fun S1 rv =>
         match rv with
         | resvalue_value v => out_ter S1 true
-        | resvalue_empty => stuck_heap S1 "Empty result for a `delete' in [run_unary_op]."
+        | resvalue_empty => impossible_with_heap_because S1 "Empty result for a `delete' in [run_unary_op]."
         | resvalue_ref r =>
           ifb ref_is_unresolvable r then
             out_ter S1 true
@@ -1511,7 +1519,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
           else
             if_success_value runs C (out_ter S1 r) (fun S2 v =>
               out_ter S2 (run_typeof_value S2 v))
-        | resvalue_empty => stuck_heap S1 "Empty result for a `typeof' in [run_unary_op]."
+        | resvalue_empty => impossible_with_heap_because S1 "Empty result for a `typeof' in [run_unary_op]."
         end)
 
     | _ => (* Regular operators *)
@@ -1533,7 +1541,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
         | unary_op_not =>
           out_ter S1 (neg (convert_value_to_boolean v))
 
-        | _ => stuck_heap S1 "Undealt regular operator in [run_unary_op]."
+        | _ => impossible_with_heap_because S1 "Undealt regular operator in [run_unary_op]."
 
         end)
 
@@ -1639,7 +1647,7 @@ Definition run_expr_assign run_binary_op' runs S C (opo : option binary_op) e1 e
       | resvalue_value v =>
         if_void (ref_put_value runs S C rv1 v) (fun S' =>
          out_ter S' v)
-      | _ => stuck_heap S "Non-value result in [run_expr_assign]."
+      | _ => impossible_with_heap_because S "Non-value result in [run_expr_assign]."
       end in
     match opo with
     | None =>
@@ -1664,7 +1672,7 @@ Definition run_expr_function runs S C fo args bd : result :=
           if_void (env_record_initialize_immutable_binding S2 L fn l) (fun S3 =>
             out_ter S3 l))) in
     destr_list lex' (fun _ =>
-      stuck_heap S' "Empty lexical environnment allocated in [run_expr_function].")
+      impossible_with_heap_because S' "Empty lexical environnment allocated in [run_expr_function].")
       (fun L _ => follow L) tt
   end.
 
@@ -1704,9 +1712,9 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
             | resvalue_empty =>
               out_ter S2 undef
             | resvalue_ref r =>
-              stuck_heap S2 "Reference found in the result of an `eval' in [run_eval]."
+              impossible_with_heap_because S2 "Reference found in the result of an `eval' in [run_eval]."
             end
-          | _ => stuck_heap S2 "Forbidden result type returned by an `eval' in [run_eval]."
+          | _ => impossible_with_heap_because S2 "Forbidden result type returned by an `eval' in [run_eval]."
           end))
     end
   | v => out_ter S v
@@ -1737,11 +1745,11 @@ Definition run_expr_call runs S C e1 e2s : result :=
               match ref_base r with
               | ref_base_type_value v =>
                 ifb ref_is_property r then follow v
-                else stuck_heap S3 "[run_expr_call] unable to call a non-property function."
+                else impossible_with_heap_because S3 "[run_expr_call] unable to call a non-property function."
               | ref_base_type_env_loc L =>
                 follow (env_record_implicit_this_value S3 L)
               end
-            | resvalue_empty => stuck_heap S3 "[run_expr_call] unable to call an  empty result."
+            | resvalue_empty => impossible_with_heap_because S3 "[run_expr_call] unable to call an  empty result."
             end
         | value_prim _ => run_error S3 native_error_type
         end))).
@@ -1832,7 +1840,7 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
           runs S' C L x None v throw_irrelevant) (fun S2 =>
             let C' := execution_ctx_with_lex C lex' in
             finally (runs_type_stat runs S2 C' t2))
-      | nil => stuck_heap S1 "Empty lexical environnment in [run_stat_try]."
+      | nil => impossible_with_heap_because S1 "Empty lexical environnment in [run_stat_try]."
       end
     end).
 
@@ -2040,7 +2048,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
     | prealloc_object_get_proto_of =>
       let v := get_arg 0 args in
       ifb type_of v <> type_object then
-        stuck_heap S "[run_call], [prealloc_object_get_proto_of] case:  not an object."
+        impossible_with_heap_because S "[run_call], [prealloc_object_get_proto_of] case:  not an object."
       else
         out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
@@ -2068,7 +2076,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                   else A
                 in if_void (object_define_own_prop S0 l x A' true) (fun S1 =>
                   object_seal S1 xs')
-              | full_descriptor_undef => stuck_heap S0 "[run_call], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
+              | full_descriptor_undef => impossible_with_heap_because S0 "[run_call], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) S xs
       | value_prim _ => run_error S native_error_type
@@ -2090,7 +2098,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                 if attributes_configurable A then
                   out_ter S false
                 else object_is_sealed xs'
-              | full_descriptor_undef => stuck_heap S "[run_call], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
+              | full_descriptor_undef => impossible_with_heap_because S "[run_call], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) xs
       | value_prim _ => run_error S native_error_type
@@ -2124,7 +2132,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                   else A'
                 in if_void (object_define_own_prop S0 l x A'' true) (fun S1 =>
                   object_freeze S1 xs')
-              | full_descriptor_undef => stuck_heap S0 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
+              | full_descriptor_undef => impossible_with_heap_because S0 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) S xs
       | value_prim _ => run_error S native_error_type
@@ -2153,7 +2161,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
                 else check_configurable Ad
               | attributes_accessor_of Aa =>
                 check_configurable Aa
-              | full_descriptor_undef => stuck_heap S "[run_call], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
+              | full_descriptor_undef => impossible_with_heap_because S "[run_call], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) xs
       | value_prim _ => run_error S native_error_type
@@ -2268,7 +2276,8 @@ with run_call_full (max_step : nat) S C l vthis args : result := (* Corresponds 
         entering_func_code runs' S C l vthis args
       | call_prealloc B =>
         run_call' S C B args
-      | call_after_bind => stuck_heap S "[run_call_full]:  [call_after_bind] found."
+      | call_after_bind =>
+        impossible_with_heap_because S "[run_call_full]:  [call_after_bind] found."
       end)
   end.
 

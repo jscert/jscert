@@ -159,9 +159,12 @@ let _ =
 			print_endline "\n\nDIV\n" ;
 			exit_if_test ()
        end;
-    | JsInterpreter.Coq_result_stuck ->
-		print_endline "\n\nFIXME:  stuck!\n" ;
+    | JsInterpreter.Coq_result_impossible ->
+		print_endline "\n\nFIXME:  this should be impossible!\n" ;
 		exit_if_test ()
+    | JsInterpreter.Coq_result_stuck ->
+		print_endline "\n\nStuck:  this is not implemented yet!\n" ;
+        exit 2
 	| JsInterpreter.Coq_result_bottom -> print_endline "\n\nBOTTOM\n"
   with
   | Assert_failure (file, line, col) ->

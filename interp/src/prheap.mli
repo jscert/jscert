@@ -26,6 +26,7 @@ val prmutability : JsSyntax.mutability -> string
 val prliteral : JsSyntax.literal -> string
 val prprim : JsSyntax.prim -> string
 val prvalue : JsSyntax.value -> string
+val prref : JsSyntax.ref -> string
 
 val prdescriptor : JsSyntax.descriptor -> string
 val prfull_descriptor : JsSyntax.full_descriptor -> string

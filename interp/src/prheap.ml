@@ -296,6 +296,13 @@ let prrestype = function
   | Coq_restype_return -> "return"
   | Coq_restype_throw -> "throw"
 
+let prref_base_type = function
+  | Coq_ref_base_type_value v -> "value: " ^ prvalue v
+  | Coq_ref_base_type_env_loc l -> "env_loc: " ^ prenv_loc l
+
+let prref { ref_base = rb ; ref_name = rn ; ref_strict = str } =
+    (if str then "strict " else "") ^ "ref: (" ^ prref_base_type rb ^ ") . " ^ prprop_name rn
+
 (*
 module M1 = Map.Make (struct type t = loc let compare = Pervasives.compare end)
 module M2 = Map.Make (struct type t = field let compare = Pervasives.compare end)
