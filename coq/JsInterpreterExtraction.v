@@ -201,7 +201,7 @@ Extract Constant parse_pickable => "(fun s ->
       Some (JsSyntaxInfos.add_infos_prog strictness_false (* TODO:  This should be called afterwards, and this be taken into account in the semantics. *)
         (Translate_syntax.exp_to_prog parserExp))
     with
-    | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *)
+    (* | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *) *)
     | Parser.InvalidArgument _ -> None
   )".
 
@@ -217,6 +217,7 @@ Extract Constant impossible_with_heap_because => "(fun s message ->
 Extract Constant impossible_because_other => "(fun s ->
   print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
   raise Not_found)".
+Extraction Inline TODO.
 
 
 (* Final Extraction *)

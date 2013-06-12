@@ -1,5 +1,3 @@
-(* (* Temporary *)
-
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix LibList.
@@ -252,7 +250,7 @@ Lemma if_ter_out : forall res K S R,
     K S' R' = out_ter S R).
 Proof.
   introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
-  destruct res as [o'| |]; tryfalse. destruct o'; tryfalse. repeat eexists.
+  destruct res as [o'| | |]; tryfalse. destruct o'; tryfalse. repeat eexists.
   subst. do 2 eexists. splits~.
 Qed.
 
@@ -526,6 +524,5 @@ Proof.
    skip.
 
 Qed.
-*)
 *)
 

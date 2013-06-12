@@ -90,9 +90,11 @@ Inductive result :=
 Definition result_void := result.
 
 (* It can be useful to get details on why a stuck is obtained. *)
-Definition impossible_because s := result_stuck.
-Definition impossible_with_heap_because S s := result_stuck.
+Definition impossible_because s := result_impossible.
+Definition impossible_with_heap_because S s := result_impossible.
 Definition impossible_because_other {A : Type} `{Inhab A} s : A := arbitrary.
+
+Definition TODO {A : Type} `{Inhab A} (_ : unit) : A := arbitrary. (* Temporary *)
 
 
 (* Coercion *)
@@ -307,7 +309,7 @@ Definition build_error S vproto vmsg : result :=
   let O := object_new vproto "Error" in
   let (l, S') := object_alloc S O in
   ifb vmsg = undef then out_ter S' l
-  else arbitrary (* TODO:  Need [to_string] *).
+  else result_stuck (* TODO:  Need [to_string] *).
 
 Definition run_error S ne : result :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
@@ -381,7 +383,7 @@ Definition run_object_get_own_prop S l x : option full_descriptor :=
       (Some full_descriptor_undef)
       (fun D => Some D)
   | builtin_get_own_prop_args_obj =>
-    arbitrary (* TODO:  Waiting for the specification *)
+    TODO tt (* TODO:  Waiting for the specification *)
   end.
 
 Definition object_get_prop_body run_object_get_prop S v x : option full_descriptor :=
@@ -503,10 +505,10 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
       end)
 
   | builtin_get_function =>
-    arbitrary (* TODO:  Waiting for the specification *)
+    result_stuck (* TODO:  Waiting for the specification *)
 
   | builtin_get_args_obj =>
-    arbitrary (* TODO:  Waiting for the specification *)
+    result_stuck (* TODO:  Waiting for the specification *)
   end.
 
 Definition object_get runs S C v x : result := (* This [v] should be a location. *)
@@ -522,7 +524,7 @@ Definition object_get runs S C v x : result := (* This [v] should be a location.
 (** Conversions *)
 
 Definition prim_new_object S w : result :=
-  arbitrary (* TODO:  Waiting for the specification *).
+  result_stuck (* TODO:  Waiting for the specification *).
 
 Definition to_object S v : result :=
   match v with
@@ -922,7 +924,7 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
     call_object_new S v
 
   | prealloc_function =>
-    arbitrary (* TODO:  Waiting for specification *)
+    result_stuck (* TODO:  Waiting for specification *)
 
   | prealloc_bool =>
     let v := get_arg 0 args in
@@ -946,10 +948,10 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
       if_value (to_number runs S C v) follow
 
   | prealloc_array =>
-    arbitrary (* TODO:  Waiting for specification*)
+    result_stuck (* TODO:  Waiting for specification*)
 
   | prealloc_string =>
-    arbitrary (* TODO:  Waiting for specification *)
+    result_stuck (* TODO:  Waiting for specification *)
 
   | prealloc_error =>
     let v := get_arg 0 args in
@@ -960,7 +962,7 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
     build_error S (prealloc_native_error ne) v
 
   | prealloc_native_error_proto ne =>
-    arbitrary (* TODO:  Waiting for specification *)
+    result_stuck (* TODO:  Waiting for specification *)
 
   | _ => impossible_with_heap_because S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
 
@@ -1239,7 +1241,7 @@ Definition run_object_has_instance (max_step : nat) runs B S C l v : result :=
     end
 
   | builtin_has_instance_after_bind =>
-    arbitrary (* TODO:  Waiting for the specification *)
+    result_stuck (* TODO:  Waiting for the specification *)
 
   end.
 
@@ -1950,7 +1952,7 @@ with run_stat (max_step : nat) S C t : result :=
       run_stat_if runs' S C e1 t2 to
 
     | stat_do_while ls t1 e2 =>
-      arbitrary (* TODO *)
+      result_stuck (* TODO *)
 
     | stat_while ls e1 t2 =>
       run_stat_while max_step' runs' resvalue_empty S C ls e1 t2
@@ -1971,10 +1973,10 @@ with run_stat (max_step : nat) S C t : result :=
       out_ter S (res_continue so)
 
     | stat_for_in ls e1 e2 s =>
-      arbitrary (* TODO *)
+      result_stuck (* TODO *)
 
     | stat_for_in_var ls x e1o e2 s =>
-      arbitrary (* TODO *)
+      result_stuck (* TODO *)
 
     | stat_debugger =>
       out_ter S res_empty
@@ -2053,7 +2055,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
         out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
     | prealloc_object_get_own_prop_descriptor =>
-      arbitrary (* TODO:  Waiting for specification *)
+      result_stuck (* TODO:  Waiting for specification *)
 
     | prealloc_object_seal =>
       match get_arg 0 args with
@@ -2255,7 +2257,7 @@ with run_call (max_step : nat) S C B (args : list value) : result := (* Correspo
       end
 
     | _ =>
-      arbitrary (* TODO *)
+      result_stuck (* TODO *)
 
     end
   end
