@@ -1656,7 +1656,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S C (spec_object_put_4 lthis l x v throw (attributes_data_of Ad)) o
-      (* According to the spec, it should be every cases that are not [attributes_accessor_of].  There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
+      (* According to the spec, it should be every cases that are not [attributes_accessor_of].  There thus (unless it's not possible?) lacks a case there:  [full_descriptor_undef]. -- Martin *)
 
   | red_spec_object_put_4_not_accessor_prim : forall S C (wthis:prim) l x v throw Ad o, (* Step 6, for prim values *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
@@ -2350,7 +2350,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_var_decls_cons : forall o1 L S0 S C vd vds bconfig str o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
       red_expr S C (spec_binding_inst_var_decls_1 L vd vds bconfig str o1) o ->
-      red_expr S0 C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o (* I think this [S0] should be removed of this rule. -- Martin. *)
+      red_expr S0 C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o (* I think this [S0] should be removed of this rule, and in the following three. -- Martin. *)
 
   | red_spec_binding_inst_var_decls_1_true : forall o1 L S0 S C vd vds bconfig str o, (* Step 8c *)
       red_expr S C (spec_binding_inst_var_decls L vds bconfig str) o ->

@@ -209,14 +209,14 @@ Extract Constant parse_pickable => "(fun s ->
 (* Debugging *)
 Extract Constant impossible_because => "(fun s ->
   print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
-  Coq_result_stuck)".
+  Coq_result_impossible)".
 Extract Constant impossible_with_heap_because => "(fun s message ->
   print_endline (""Stuck!\nState: "" ^ Prheap.prstate true s
     ^ ""\nMessage:\t"" ^ Prheap.string_of_char_list message) ;
-  Coq_result_stuck)".
+  Coq_result_impossible)".
 Extract Constant impossible_because_other => "(fun s ->
   print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
-  raise Not_found)".
+  assert false)".
 Extraction Inline TODO.
 
 
