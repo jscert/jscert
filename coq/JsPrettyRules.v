@@ -1667,7 +1667,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** HasProperty (8.12.6) *)
 
-  | red_spec_object_has_prop_1_default : forall o1 S C l x o, (* Step 1 *)
+  | red_spec_object_has_prop_1_default : forall o1 (* This [o1] should be removed -- Martin. *) S C l x o, (* Step 1 *)
       red_expr S C (spec_object_get_prop l x spec_object_has_prop_2) o ->
       red_expr S C (spec_object_has_prop_1 builtin_has_prop_default l x) o  
 

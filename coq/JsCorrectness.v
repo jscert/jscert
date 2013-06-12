@@ -113,6 +113,13 @@ Ltac rewrite_morph_option :=
     destruct xn
   end.
 
+Ltac name_object_method :=
+  match goal with
+  | |- appcontext [ run_object_method ?meth ?S ?l ] =>
+    let B := fresh "B" in
+    sets_eq B: (run_object_method meth S l)
+  end.
+
 
 (**************************************************************)
 (** General Lemmae *)
@@ -312,11 +319,6 @@ Proof.
    apply~ red_spec_build_error_1_no_msg.
 Qed.
 
-Lemma object_has_prop_correct : forall S C l x b,
-  object_has_prop S l x = Some b ->
-  red_expr S C (spec_object_has_prop l x) (out_ter S b).
-Admitted. (* TODO (May be painful) *)
-
 Lemma out_error_or_cst_correct : forall S C str ne v S' R',
   out_error_or_cst S str (ne : native_error) v = out_ter S' R' ->
   red_expr S C (spec_error_or_cst str ne v) (out_ter S' R').
@@ -334,6 +336,16 @@ Proof.
   eexists. splits~. apply pick_spec. apply B.
 Qed.
 
+Lemma object_has_prop_correct : forall S C l x b,
+  object_has_prop S l x = Some b ->
+  red_expr S C (spec_object_has_prop l x) (out_ter S b).
+Proof.
+  introv E. eapply red_spec_object_has_prop. apply run_object_method_correct.
+   skip. (* TODO:  How to deal with this properly? *)
+   unfolds in E. name_object_method. destruct B.
+    skip (* Skipeed because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *)
+Qed.
+
 Lemma object_get_correct : forall runs run_elements,
   runs_type_correct runs run_elements -> forall S0 C0 v x S R,
   object_get runs S0 C0 v x = out_ter S R ->
@@ -341,7 +353,7 @@ Lemma object_get_correct : forall runs run_elements,
 Proof.
   introv RC E. destruct v; tryfalse. simpls.
   apply~ red_spec_object_get. apply run_object_method_correct.
-   skip. (* TODO:  How can we deal with this? *)
+   skip. (* TODO:  How to deal with this properly? *)
    skip. (* LATER:  There are some arbitrary left there anyway. *)
 Qed.
 

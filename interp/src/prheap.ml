@@ -303,6 +303,11 @@ let prref_base_type = function
 let prref { ref_base = rb ; ref_name = rn ; ref_strict = str } =
     (if str then "strict " else "") ^ "ref: (" ^ prref_base_type rb ^ ") . " ^ prprop_name rn
 
+let prresvalue = function
+  | Coq_resvalue_empty -> "Coq_resvalue_empty"
+  | Coq_resvalue_value v -> "Coq_resvalue_value: " ^ prvalue v
+  | Coq_resvalue_ref r -> "Coq_resvalue_ref: " ^ prref r
+
 (*
 module M1 = Map.Make (struct type t = loc let compare = Pervasives.compare end)
 module M2 = Map.Make (struct type t = field let compare = Pervasives.compare end)

@@ -401,10 +401,13 @@ Definition object_get_prop_body run_object_get_prop S v x : option full_descript
 
 Definition run_object_get_prop := FixFun3 object_get_prop_body.
 
-Definition object_has_prop S l x : option bool := (* TODO:  Should be reread (and re-implemented) as the specification changed. *)
-  option_map (fun D =>
-    decide (D <> full_descriptor_undef))
-    (run_object_get_prop S l x).
+Definition object_has_prop S l x : option bool :=
+  match run_object_method object_has_prop_ S l with
+  | builtin_has_prop_default =>
+    option_map (fun D =>
+      decide (D <> full_descriptor_undef))
+      (run_object_get_prop S l x)
+  end.
 
 Definition object_proto_is_prototype_of_body run_object_proto_is_prototype_of S l0 l : result :=
   match run_object_method object_proto_ S l with
