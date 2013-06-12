@@ -116,7 +116,7 @@ stmts outs errs StdOutErrNotLikeAny = "SELECT id,test_id,batch_id,status, stdout
 stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,stderr from single_test_runs where "
                                       ++ "batch_id = ? AND "
                                        -- Not boring arithmetic errors https://gforge.inria.fr/tracker/index.php?func=detail&aid=15848&group_id=4179&atid=13867
-                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id = 5) AND "
+                                      -- Alan fixed this one ++ "test_id NOT IN (select test_id from test_group_memberships where group_id = 5) AND "
                                       ++ (concat $ intersperse " AND "
                                           ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
                                           ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))
