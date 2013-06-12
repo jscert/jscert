@@ -372,6 +372,18 @@ Qed.
 
 Require Import LibHeap.
 
+Global Instance binds_pickable_option : forall K V : Type,
+  `{Comparable K} -> `{Inhab V} ->
+  forall (h : heap K V) (v : K),
+  Pickable_option (binds h v).
+Proof.
+  introv CK IV; introv. applys pickable_option_make (read_option h v).
+   apply read_option_binds. 
+   introv [a Ba]. forwards R: @binds_read_option Ba. exists~ a.
+Qed.
+
+(* If we keep [Pickable_option], this one is implied by the previous
+  lemma and the instance [Pickable_option_Pickable]. *)
 Global Instance binds_pickable : forall K V : Type,
   `{Comparable K} -> `{Inhab V} ->
   forall (h : heap K V) (v : K),

@@ -186,6 +186,17 @@ Qed.
 (**************************************************************)
 (** ** Some pickable instances *)
 
+Global Instance object_binds_pickable_option : forall S l,
+  Pickable_option (object_binds S l).
+Proof.
+  introv. unfolds object_binds.
+  applys pickable_option_make (Heap.read_option (state_object_heap S) l).
+   introv E. rewrite <- @Heap.binds_equiv_read_option in E. auto*.
+   introv [a Ba]. exists a. rewrite <- @Heap.binds_equiv_read_option. auto*.
+Qed.
+
+(* If we keep [Pickable_option], this lemma (as all the following about
+ [Pickable] that have a corresponding [Pickable_option] are useless. *)
 Global Instance object_binds_pickable : forall S l,
   Pickable (object_binds S l).
 Proof.
@@ -194,12 +205,29 @@ Proof.
   erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
 Qed.
 
+Global Instance env_record_binds_pickable_option : forall S L,
+  Pickable_option (env_record_binds S L).
+Proof.
+  introv. unfold env_record_binds.
+  applys pickable_option_make (Heap.read_option (state_env_record_heap S) L).
+   introv E. rewrite <- @Heap.binds_equiv_read_option in E. auto*.
+   introv [a Ba]. exists a. rewrite <- @Heap.binds_equiv_read_option. auto*.
+Qed.
+
 Global Instance env_record_binds_pickable : forall S L,
   Pickable (env_record_binds S L).
 Proof.
   introv. applys pickable_make (Heap.read (state_env_record_heap S) L).
   unfolds env_record_binds. introv [a Ba]. erewrite~ @Heap.binds_equiv_read.
   erewrite~ @Heap.indom_equiv_binds. eexists. auto*.
+Qed.
+
+Global Instance decl_env_record_pickable_option : forall Ed x,
+  Pickable_option (Heap.binds Ed x).
+Proof.
+  introv. applys pickable_option_make (Heap.read_option Ed x).
+   introv E. rewrite <- @Heap.binds_equiv_read_option in E. auto*.
+   introv [a Ba]. exists a. rewrite <- @Heap.binds_equiv_read_option. auto*.
 Qed.
 
 Global Instance decl_env_record_pickable : forall Ed x,
@@ -239,6 +267,24 @@ Global Instance attributes_is_data_dec : forall A,
   Decidable (attributes_is_data A).
 Proof. intro A. destruct A; typeclass. Qed.
 
+
+Definition run_object_heap_map_properties_option S l F : option state :=
+  option_map
+    (fun O => object_write S l (object_map_properties O F))
+    (pick_option (object_binds S l)).
+
+Global Instance object_heap_map_properties_pickable_option : forall S l F,
+  Pickable_option (object_heap_map_properties S l F).
+Proof.
+  introv. applys pickable_option_make (run_object_heap_map_properties_option S l F).
+   introv E.  (* TODO *) --
+   skip.
+  introv [a [O [B E]]]. exists O. splits~.
+  unfolds run_object_heap_map_properties.
+  fequals. fequals. forwards*: @pick_spec (object_binds S l).
+  unfolds object_binds. erewrite @Heap.binds_equiv_read_option in B,H.
+  rewrite H in B. inverts~ B.
+Qed.
 
 Definition run_object_heap_map_properties S l F : state :=
   let O := pick (object_binds S l) in
