@@ -1540,8 +1540,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
         TODO: is it correct? *)
 
   | red_spec_object_get_1_default : forall S C vthis l x o, (* Step 1 *)
-      red_expr S C (spec_object_get_prop l x (spec_object_get_2 vthis l)) o ->      
-      red_expr S C (spec_object_get_1 builtin_get_default vthis l x) o  
+      red_expr S C (spec_object_get_prop l x (spec_object_get_2 vthis l)) o ->
+      red_expr S C (spec_object_get_1 builtin_get_default vthis l x) o
 
   | red_spec_object_get_2_undef : forall S C vthis l, (* Step 2 *)
       red_expr S C (spec_object_get_2 vthis l full_descriptor_undef) (out_ter S undef)

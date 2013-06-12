@@ -1,5 +1,3 @@
-(* (* Temporary *)
-
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix LibList.
@@ -119,7 +117,10 @@ Ltac name_object_method :=
   match goal with
   | |- appcontext [ run_object_method ?meth ?S ?l ] =>
     let B := fresh "B" in
-    sets_eq B: (run_object_method meth S l)
+    sets_eq <- B: (run_object_method meth S l)
+  | H : appcontext [ run_object_method ?meth ?S ?l ] |- _ =>
+    let B := fresh "B" in
+    sets_eq <- B: (run_object_method meth S l)
   end.
 
 
@@ -330,22 +331,31 @@ Proof.
    inverts E. apply~ red_spec_error_or_cst_false.
 Qed.
 
-Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l,
-  (exists O, object_binds S l O) ->
-  object_method meth S l (run_object_method meth S l).
+Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l (z : Z),
+  run_object_method meth S l = Some z ->
+  object_method meth S l z.
 Proof.
-  introv B. unfolds. unfold run_object_method.
-  eexists. splits~. apply pick_spec. apply B.
+  introv B. unfolds. forwards (O&Bi&E): option_map_some_back B.
+  forwards: @pick_option_correct Bi. exists* O.
 Qed.
+
+Lemma run_object_get_prop_correct : forall S S0 C C0 l x D K o,
+  run_object_get_prop S l x = Some D ->
+  red_expr S0 C0 (K D) o ->
+  red_expr S C (spec_object_get_prop l x K) o.
+Proof.
+  introv E R. apply~ red_spec_object_get_prop.
+Admitted. (* TODO *)
 
 Lemma object_has_prop_correct : forall S C l x b,
   object_has_prop S l x = Some b ->
   red_expr S C (spec_object_has_prop l x) (out_ter S b).
 Proof.
-  introv E. eapply red_spec_object_has_prop. apply run_object_method_correct.
-   skip. (* TODO:  How to deal with this properly? *)
-   unfolds in E. name_object_method. destruct B.
-    skip (* Skiped because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *)
+  introv E. unfolds in E. name_object_method.
+  destruct B as [B|]; simpls; tryfalse.
+  destruct B. forwards (D&E'&N): option_map_some_back E.
+  (* I think the interpreter is relatively broken there. *)
+  skip (* Skiped because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *)
 Qed.
 
 Lemma object_get_correct : forall runs run_elements,
@@ -354,9 +364,12 @@ Lemma object_get_correct : forall runs run_elements,
   red_expr S0 C0 (spec_object_get v x) (out_ter S R).
 Proof.
   introv RC E. destruct v; tryfalse. simpls.
-  apply~ red_spec_object_get. apply run_object_method_correct.
-   skip. (* TODO:  How to deal with this properly? *)
-   skip. (* LATER:  There are some arbitrary left there anyway. *)
+  rewrite_morph_option; simpls; tryfalse.
+  forwards OM: run_object_method_correct EQx0.
+  applys red_spec_object_get OM. destruct b; tryfalse.
+  (* Default *)
+  apply~ red_spec_object_get_1_default.
+  skip (* There is something odd here. *). (* apply~ run_object_get_prop_correct. *)
 Qed.
 
 Lemma prim_value_get_correct : forall runs run_elements,
@@ -540,4 +553,3 @@ Proof.
 Qed.
 *)
 
-*)

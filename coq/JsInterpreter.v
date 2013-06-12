@@ -375,6 +375,7 @@ Implicit Type runs : runs_type.
 (**************************************************************)
 (** Operations on environments *)
 
+(* TODO:  Reread those lines. *)
 Definition run_object_get_own_prop S l x : option full_descriptor :=
   if_def (run_object_method object_get_own_prop_ S l)
     None (fun B =>
