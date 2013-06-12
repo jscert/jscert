@@ -1,10 +1,10 @@
-let ref_get_value runs s c r =\\n
-  let res = ref_get_value runs s c r in match res with\\n
-    \| Coq_result_out ( Coq_out_ter (_, rs)) -> begin match rs.res_value with\\n
-        \|Coq_resvalue_value (Coq_value_prim (Coq_prim_undef)) ->\\n
-          print_string (\"Warning: ref_get_value returns the undefined value on \"); print_string (Prheap.prresvalue r); print_newline(); res\\n
-        \| _ -> res\\n
-      end\\n
-    \| _ -> res\\n
-\\n
+let ref_get_value runs s c r =\\\n
+  let res = ref_get_value runs s c r in match res with\\\n
+    \| Coq_result_out ( Coq_out_ter (_, rs)) -> begin match rs.res_value with\\\n
+        \|Coq_resvalue_value (Coq_value_prim (Coq_prim_undef)) ->\\\n
+          print_string (\"Warning: ref_get_value returns the undefined value on \"); print_string (Prheap.prresvalue r); print_newline(); res\\\n
+        \| _ -> res\\\n
+      end\\\n
+    \| _ -> res\\\n
+\\\n
 (\*\* val object_put_complete :

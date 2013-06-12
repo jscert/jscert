@@ -119,7 +119,7 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	mv *.ml interp/src/extract/
 	mv *.mli interp/src/extract/
 	cp interp/src/extract/JsInterpreter.mli interp/src/extract/JsInterpreterBisect.mli
-	sed -e 's|(\*\* val object_put_complete :|'"$(INSERT)"'|' interp/src/extract/JsInterpreter.ml >  interp/src/extract/JsInterpreter.ml.bak
+	sed -e $$'s|(\*\* val object_put_complete :|$(INSERT)|' interp/src/extract/JsInterpreter.ml >  interp/src/extract/JsInterpreter.ml.bak
 	sed -e 's| stuck| (*BISECT-IGNORE*) stuck|g' interp/src/extract/JsInterpreter.ml.bak >  interp/src/extract/JsInterpreterBisect.ml
 	mv interp/src/extract/JsInterpreter.ml.bak interp/src/extract/JsInterpreter.ml
 	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
