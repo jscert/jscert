@@ -72,7 +72,10 @@ Definition follow_call_full l vs :=
   follow_spec
     (fun v => spec_call l v vs)
     red_expr.
-
+Definition follow_object_get_builtin v l x :=
+  follow_spec
+    (fun B => spec_object_get_1 B v l x)
+    red_expr.
 
 Record runs_type_correct runs run_elements :=
   make_runs_type_correct {
@@ -84,7 +87,11 @@ Record runs_type_correct runs run_elements :=
     runs_type_correct_call : forall vs,
       follow_call vs (fun S C B => runs_type_call runs S C B vs);
     runs_type_correct_call_full : forall l vs,
-      follow_call_full l vs (fun S C vthis => runs_type_call_full runs S C l vthis vs)
+      follow_call_full l vs (fun S C vthis =>
+        runs_type_call_full runs S C l vthis vs);
+    runs_type_correct_object_get_builtin : forall v l x,
+      follow_object_get_builtin v l x (fun S C B =>
+        runs_type_object_get_builtin runs S C B v l x)
   }.
 
 
@@ -353,11 +360,10 @@ Lemma object_has_prop_correct : forall runs run_elements,
   object_has_prop runs S C l x = passing_some S1 b ->
   red_expr S C (spec_object_has_prop l x) (out_ter S1 b).
 Proof.
-  introv RC E. (* unfolds in E. name_object_method.
+  introv RC E. unfolds in E. name_object_method.
   destruct B as [B|]; simpls; tryfalse.
-  destruct B. forwards (D&E'&N): option_map_some_back E. *)
+  destruct B.
   skip. (* TODO *)
-  (* skip (* Skiped because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *) *)
 Qed.
 
 Lemma object_get_correct : forall runs run_elements,
@@ -366,14 +372,18 @@ Lemma object_get_correct : forall runs run_elements,
   red_expr S0 C0 (spec_object_get l x) (out_ter S R).
 Proof.
   introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
-  forwards OM: run_object_method_correct EQx0.
-  applys red_spec_object_get OM. destruct b; tryfalse.
-  (* Default *)
-  apply~ red_spec_object_get_1_default.
-  skip (* There is something odd here. *). (* apply~ run_object_get_prop_correct. *)
-  skip. skip. (* TODO:  There lacks a property in [follow_spec]! *)
+  forwards OM: run_object_method_correct (rm EQx0).
+  lets [_ _ _ _ _ _ RCo]: RC. forwards: (rm RCo) (rm E).
+  applys~ red_spec_object_get OM.
 Qed.
 
+Lemma env_record_get_binding_value_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S0 S C0 L rn rs R,
+  env_record_get_binding_value runs S0 C0 L rn rs = out_ter S R ->
+  red_expr S0 C0 (spec_env_record_get_binding_value L rn rs) (out_ter S R).
+Proof.
+  introv RC E.
+Admitted. (* TODO *)
 
 Lemma ref_get_value_correct : forall runs run_elements,
   runs_type_correct runs run_elements -> forall S0 C0 rv S R,
@@ -391,7 +401,7 @@ Proof.
       try (false C; first [ solve [left~] | solve [right~] ]).
      apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
-     skip. (* applys~ env_record_get_binding_value_correct RC. *)
+     applys~ env_record_get_binding_value_correct RC.
 Qed.
 
 
@@ -399,18 +409,19 @@ Qed.
 (** Monadic Constructors, Tactics *)
 
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
-Ltac if_unmonad_with :=
-  match goal with
-  | H : if_success ?res ?K = result_out ?o' |- _ =>
-    deal_with_regular_lemma res H if_success_out
-  | H : if_value ?res ?K = result_out ?o' |- _ =>
-    deal_with_regular_lemma res H if_value_out
-  | H : if_object ?res ?K = result_out ?o' |- _ =>
-    deal_with_regular_lemma res H if_object_out
-  end.
-
 Ltac unmonad :=
-  repeat progress (try if_unmonad_with; try dealing_follows).
+  repeat progress
+    match goal with
+    | H : if_success ?res ?K = result_out ?o' |- _ =>
+      deal_with_regular_lemma H if_success_out
+    | H : if_value ?res ?K = result_out ?o' |- _ =>
+      deal_with_regular_lemma H if_value_out
+    | H : if_object ?res ?K = result_out ?o' |- _ =>
+      deal_with_regular_lemma H if_object_out
+    | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
+      inverts H
+    | |- _ => dealing_follows
+    end.
 
 
 (**************************************************************)
@@ -434,10 +445,9 @@ Qed.
 
 
 (**************************************************************)
-(** ** Main theorems *)
+(** ** Main theorem *)
 
 
-(*
 Theorem runs_correct : forall num,
   runs_type_correct (runs num) (run_elements num).
 Proof.
@@ -445,11 +455,11 @@ Proof.
   induction num.
    constructors; introv R; inverts R.
 
-   lets [IHe IHs IHp IHel IHc IHcf]: (rm IHnum).
+   lets [IHe IHs IHp IHel IHc IHcf IHob]: (rm IHnum).
    constructors.
 
    (* run_expr *)
-   intros S C e S' res R. destruct e; simpl in R; unmonad ltac:idtac.
+   intros S C e S' res R. destruct e; simpl in R; unmonad.
     (* this *)
     apply~ red_expr_this.
     (* identifier *)
@@ -497,7 +507,7 @@ Proof.
     inverts R. apply~ red_prog_1_nil.
     destruct e.
      (* stat *)
-     unmonad ltac:idtac.
+     unmonad.
       skip. (*
       (* throw *)
       applys~ red_prog_1_cons_stat RC.
@@ -515,9 +525,23 @@ Proof.
    skip.
 
    (* run_call_full *)
-   intros l vs S C v S' res R. simpls. unmonad ltac:idtac.
-   skip.
+   intros l vs S C v S' res R. simpls. unmonad.
+   name_object_method. do 2 (destruct B as [B|]; tryfalse). destruct B; tryfalse.
+    (* Call Default *)
+    skip.
+    (* Call Prealloc *)
+    apply~ red_spec_call. applys run_object_method_correct EQB.
+    apply~ red_spec_call_1_prealloc. apply~ IHc.
+
+   (* object_get_builtin *)
+   intros v l x S C B S' res R.  destruct~ B; simpls; unmonad.
+    (* Default *)
+    skip. (* Use: red_spec_object_get_1_default. *)
+    (* Function *)
+    false. (* Temporary *)
+    (* Get Args *)
+    false. (* Temporary *)
 
 Qed.
-*)
+
 

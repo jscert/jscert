@@ -422,7 +422,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_prog : state -> execution_ctx -> prog -> result;
     runs_type_call : state -> execution_ctx -> prealloc -> list value -> result;
     runs_type_call_full : state -> execution_ctx -> object_loc -> value -> list value -> result;
-    runs_type_object_get_builtin : builtin_get -> state -> execution_ctx -> value -> object_loc -> prop_name -> result (* Corresponds to the construction [spec_object_get_1] of the specification. *)
+    runs_type_object_get_builtin : state -> execution_ctx -> builtin_get -> value -> object_loc -> prop_name -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -433,7 +433,7 @@ Implicit Type runs : runs_type.
 
 Definition run_object_get runs S C l x : result :=
   if_some (run_object_method object_get_ S l) (fun B =>
-    runs_type_object_get_builtin runs B S C l l x).
+    runs_type_object_get_builtin runs S C B l l x).
 
 Definition run_object_get_own_prop_body run_object_get_own_prop
     runs S C l x : passing full_descriptor :=
@@ -607,7 +607,7 @@ Definition to_object S v : result :=
 
 Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
-    runs_type_object_get_builtin runs builtin_get_default S' C v l x).
+    runs_type_object_get_builtin runs S' C builtin_get_default v l x).
 
 Definition run_value_viewable_as_prim s S v : option (option prim) :=
   match v with
@@ -2405,7 +2405,7 @@ with run_call_full (max_step : nat) S C l vthis args : result := (* Corresponds 
         end))
   end
 
-with object_get_builtin (max_step : nat) B S C vthis l x : result :=
+with object_get_builtin (max_step : nat) S C B vthis l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
   match max_step with
   | O => result_bottom
