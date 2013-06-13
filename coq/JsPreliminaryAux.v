@@ -336,3 +336,14 @@ Proof.
      sets_eq <- Oc CD: (object_call_ o'). destruct~ Oc. false (C c). exists* o'.
 Qed.
 
+Global Instance object_properties_keys_as_list_pickable_option : forall S l,
+  Pickable_option (object_properties_keys_as_list S l).
+Proof.
+  introv. applys pickable_option_make
+    (option_map (fun props =>
+      LibList.map fst (Heap.to_list props))
+    (option_map object_properties_ (pick_option (object_binds S l)))).
+  skip. skip. (* Needs properties about [heap_keys_as_list]. *)
+Qed.
+
+

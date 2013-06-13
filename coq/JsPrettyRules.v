@@ -2456,7 +2456,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_get_args_obj_1_attrs : forall S C vthis l x lmap A o, (* Step 4 *)
      red_expr S C (spec_object_get (value_object lmap) x) o ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap (full_descriptor_some A)) o
-     
+
   (* Arguments Object: GetOwnProperty (passes a fully-populated property descriptor to the continuation) (10.6) *) 
   | red_spec_object_get_own_prop_args_obj : forall S C l x K o, (* Step 1 *)
       red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x (spec_args_obj_get_own_prop_1 l x K)) o ->
@@ -2480,7 +2480,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_args_obj_get_own_prop_4 K (attributes_data_with_value Ad v)) o -> 
       red_expr S C (spec_args_obj_get_own_prop_3 K (attributes_data_of Ad) (out_ter S' v)) o
       (* What happens if we have an accessor property descriptor? The spec assumes it is a data property descriptor. *)
-      
+
   | red_spec_object_get_own_prop_args_obj_2_undef : forall S C l x K lmap A o, (* Step 5 else *)
       red_expr S C (spec_args_obj_get_own_prop_4 K A) o -> 
       red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A full_descriptor_undef) o  

@@ -93,8 +93,6 @@ Definition result_void := result.
 Definition impossible_because s := result_impossible.
 Definition impossible_with_heap_because S s := result_impossible.
 
-Definition TODO {A : Type} `{Inhab A} (_ : unit) : A := arbitrary. (* Temporary *)
-
 
 (* Coercion *)
 
@@ -127,9 +125,11 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 (** Monadic Constructors *)
 
 Definition if_bool_option (A : Type) (d : A) (bo : option bool) (K1 : unit -> A) (K2 : unit -> A) : A :=
-  morph_option d (fun b =>
-    if b then K1 tt else K2 tt) bo.
-  (* todo: use an explicit "match" here, it will be easier for people to make sense of the definition *)
+  match bo with
+  | None => d
+  | Some b =>
+    if b then K1 tt else K2 tt
+  end.
 
 Definition if_bool_option_result bo K1 K2 :=
   if_bool_option
@@ -259,7 +259,8 @@ Definition if_object (o : result) (K : state -> object_loc -> result) : result :
   if_value o (fun S v =>
     match v with
     | value_object l => K S l
-    | value_prim _ => impossible_with_heap_because S "[if_object] called on a primitive."
+    | value_prim _ =>
+      impossible_with_heap_because S "[if_object] called on a primitive."
     end).
 
 Definition if_string (o : result) (K : state -> string -> result) : result :=
@@ -280,7 +281,8 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | value_object _ => impossible_with_heap_because S "[if_primitive] called on an object."
+    | value_object _ =>
+      impossible_with_heap_because S "[if_primitive] called on an object."
     end).
 
 Definition if_def {A B : Type} (o : option B) (d : A) (K : B -> A) : A :=
@@ -338,17 +340,6 @@ Definition run_object_heap_set_properties S l P' : option state :=
     object_write S l (object_with_properties O P'))
     (pick_option (object_binds S l)).
 
-(* todo: move elsewhere : *)
-Global Instance object_properties_keys_as_list_pickable : forall S l,
-  Pickable_option (object_properties_keys_as_list S l).
-Proof.
-  introv. applys pickable_option_make
-    (option_map (fun props =>
-      map fst (Heap.to_list props))
-    (run_object_method object_properties_ S l)).
-  skip. skip. (* Needs properties about [heap_keys_as_list]. *)
-Qed.
-
 Definition run_object_heap_set_extensible b S l : option state :=
   option_map (fun O =>
     object_write S l (object_set_extensible O b))
@@ -375,7 +366,53 @@ Implicit Type runs : runs_type.
 (**************************************************************)
 (** Operations on environments *)
 
-(* TODO:  Reread those lines. *)
+(* (* This should be the new definition of [run_object_get_own_prop],
+  but it adds so much circular loops that I see no immediate way of
+  dealing with it. :\ *)
+Definition run_object_get_own_prop_body run_object_get_own_prop
+    runs S C l x : option (state * full_descriptor) :=
+  if_def (run_object_method object_get_own_prop_ S l)
+    None (fun B =>
+    let default (_ : unit) :=
+      if_def (run_object_method object_properties_ S l)
+        None (fun P =>
+        if_def (convert_option_attributes (Heap.read_option P x))
+          (Some full_descriptor_undef)
+          (fun D => Some D))
+    in match B with
+      | builtin_get_own_prop_default =>
+        default tt
+      | builtin_get_own_prop_args_obj =>
+        if_def (default tt)
+          None (fun D =>
+            match D with
+            | full_descriptor_undef =>
+              Some full_descriptor_undef
+            | full_descriptor_some A =>
+              if_def (run_object_method object_parameter_map_ S l)
+                None (fun lmapo =>
+                  if_def lmapo None (fun lmap =>
+                    if_def (run_object_get_own_prop runs S C lmap x)
+                      None (fun D =>
+                        let follow S' A :=
+                          (S', full_descriptor_some A)
+                        in match D with
+                           | full_descriptor_undef =>
+                             follow S A
+                           | full_descriptor_some Amap =>
+                             if_value (run_object_get runs S C lmap x) (fun S1 v =>
+                               match A with
+                               | attributes_data_of Ad =>
+                                 follow S1 (attributes_data_with_value Ad v)
+                               | attributes_accessor_of Aa =>
+                                 impossible_with_heap_because S1 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens."
+                               end)
+                           end)))
+            end)
+      end).
+*)
+
+(* Old (outdated) version of [run_object_get_own_prop]. *)
 Definition run_object_get_own_prop S l x : option full_descriptor :=
   if_def (run_object_method object_get_own_prop_ S l)
     None (fun B =>
@@ -387,21 +424,29 @@ Definition run_object_get_own_prop S l x : option full_descriptor :=
           (Some full_descriptor_undef)
           (fun D => Some D))
     | builtin_get_own_prop_args_obj =>
-      TODO tt (* TODO:  Waiting for the specification *)
+      arbitrary
     end).
 
-Definition object_get_prop_body run_object_get_prop S v x : option full_descriptor :=
-  match v with
-  | value_prim w =>
-    ifb v = null then Some full_descriptor_undef else None
-  | value_object l =>
-    if_def (run_object_get_own_prop S l x)
-      None (fun D =>
-        ifb D = full_descriptor_undef then (
-          if_def (run_object_method object_proto_ S l)
-            None (fun lproto => run_object_get_prop S lproto x)
-        ) else Some D)
-  end.
+Definition object_get_prop_body run_object_get_prop S l x : option full_descriptor :=
+  if_def (run_object_method object_get_prop_ S l)
+    None (fun B =>
+      match B with
+      | builtin_get_prop_default =>
+        if_def (run_object_get_own_prop S l x)
+          None (fun D =>
+            ifb D = full_descriptor_undef then (
+              if_def (run_object_method object_proto_ S l)
+                None (fun proto =>
+                  match proto with
+                  | null =>
+                    Some full_descriptor_undef
+                  | value_object lproto =>
+                    run_object_get_prop S lproto x
+                  | value_prim _ =>
+                    None
+                  end)
+            ) else Some D)
+      end).
 
 Definition run_object_get_prop := FixFun3 object_get_prop_body.
 
@@ -516,7 +561,8 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
               match vthis with
               | value_object lthis =>
                   runs_type_call_full runs S C lf lthis nil
-              | value_prim _ => impossible_with_heap_because S "The `this' argument of [object_get_builtin] is a primitive."
+              | value_prim _ =>
+                impossible_with_heap_because S "The `this' argument of [object_get_builtin] is a primitive."
               end
           | value_prim _ => (* TODO:  Waiting for the specification. *)
               impossible_with_heap_because S "Waiting for specification in [object_get_builtin]."
@@ -530,12 +576,13 @@ Definition object_get_builtin runs B S C vthis l x : result := (* Corresponds to
     result_not_yet_implemented (* TODO:  Waiting for the specification *)
   end.
 
-Definition object_get runs S C v x : result := (* This [v] should be a location. *)
+Definition run_object_get runs S C v x : result := (* This [v] should be a location. *)
   match v with
   | value_object l =>
       if_some (run_object_method object_get_ S l) (fun B =>
         object_get_builtin runs B S C l l x)
-  | value_prim _ => impossible_with_heap_because S "Calling [object_get] on a primitive."
+  | value_prim _ =>
+    impossible_with_heap_because S "Calling [object_get] on a primitive."
   end.
 
 
@@ -585,7 +632,7 @@ Definition env_record_get_binding_value runs S C L x str : result :=
         else out_ter S v)
     | env_record_object l pt =>
       if_bool_option_result (object_has_prop S l x) (fun _ =>
-        object_get runs S C l x) (fun _ =>
+        run_object_get runs S C l x) (fun _ =>
         out_error_or_cst S str native_error_ref undef)
     end) tt.
 
@@ -697,7 +744,7 @@ Definition ref_get_value runs S C rv : result :=
       match ref_base r with
       | ref_base_type_value v =>
         (ifb ref_has_primitive_base r then prim_value_get
-        else object_get) runs S C v (ref_name r)
+        else run_object_get) runs S C v (ref_name r)
       | ref_base_type_env_loc L =>
         impossible_with_heap_because S "[ref_get_value] received a reference to a value whose base type is an environnment record."
       end
@@ -869,7 +916,7 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
       let lpref := other_preftypes gpref in
       let gmeth := method_of_preftype gpref in
       let sub S' x K :=
-        if_object (object_get runs S' C l x) (fun S1 lfo =>
+        if_object (run_object_get runs S' C l x) (fun S1 lfo =>
           let lf := value_object lfo in
           match run_callable S1 lf with
           | Some B =>
@@ -1004,7 +1051,7 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
   end.
 
 Definition run_construct_default runs S C l args :=
-  if_value (object_get runs S C l "prototype") (fun S1 v1 =>
+  if_value (run_object_get runs S C l "prototype") (fun S1 v1 =>
     let vproto :=
       ifb type_of v1 = type_object then v1
       else prealloc_object_proto
@@ -1279,7 +1326,7 @@ Definition run_object_has_instance (max_step : nat) runs B S C l v : result :=
     match v with
     | value_prim w => out_ter S false
     | value_object lv =>
-      if_value (object_get runs S C l "prototype") (fun S1 v =>
+      if_value (run_object_get runs S C l "prototype") (fun S1 v =>
         run_object_has_instance_loop max_step S1 lv v)
     end
 
