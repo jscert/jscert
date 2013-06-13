@@ -339,73 +339,41 @@ Proof.
   forwards: @pick_option_correct Bi. exists* O.
 Qed.
 
-Lemma run_object_get_prop_correct : forall S S0 C C0 l x D K o,
-  run_object_get_prop S l x = Some D ->
-  red_expr S0 C0 (K D) o ->
+Lemma run_object_get_prop_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S S0 C l x D K o,
+  run_object_get_prop runs S C l x = passing_some S0 D ->
+  red_expr S0 C (K D) o ->
   red_expr S C (spec_object_get_prop l x K) o.
 Proof.
-  introv E R. apply~ red_spec_object_get_prop.
+  introv RC E R. apply~ red_spec_object_get_prop.
 Admitted. (* TODO *)
 
-Lemma object_has_prop_correct : forall S C l x b,
-  object_has_prop S l x = Some b ->
-  red_expr S C (spec_object_has_prop l x) (out_ter S b).
+Lemma object_has_prop_correct : forall runs run_elements,
+  runs_type_correct runs run_elements -> forall S S1 C l x b,
+  object_has_prop runs S C l x = passing_some S1 b ->
+  red_expr S C (spec_object_has_prop l x) (out_ter S1 b).
 Proof.
-  introv E. unfolds in E. name_object_method.
+  introv RC E. (* unfolds in E. name_object_method.
   destruct B as [B|]; simpls; tryfalse.
-  destruct B. forwards (D&E'&N): option_map_some_back E.
-  (* I think the interpreter is relatively broken there. *)
-  skip (* Skiped because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *)
+  destruct B. forwards (D&E'&N): option_map_some_back E. *)
+  skip. (* TODO *)
+  (* skip (* Skiped because of a noisy [out] in the corresponding rule*). (* apply red_spec_object_has_prop_1_default. *) *)
 Qed.
 
 Lemma object_get_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S0 C0 v x S R,
-  object_get runs S0 C0 v x = out_ter S R ->
-  red_expr S0 C0 (spec_object_get v x) (out_ter S R).
+  runs_type_correct runs run_elements -> forall S0 C0 l x S R,
+  run_object_get runs S0 C0 l x = out_ter S R ->
+  red_expr S0 C0 (spec_object_get l x) (out_ter S R).
 Proof.
-  introv RC E. destruct v; tryfalse. simpls.
-  rewrite_morph_option; simpls; tryfalse.
+  introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
   forwards OM: run_object_method_correct EQx0.
   applys red_spec_object_get OM. destruct b; tryfalse.
   (* Default *)
   apply~ red_spec_object_get_1_default.
   skip (* There is something odd here. *). (* apply~ run_object_get_prop_correct. *)
+  skip. skip. (* TODO:  There lacks a property in [follow_spec]! *)
 Qed.
 
-Lemma prim_value_get_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S0 C0 v x S R,
-  prim_value_get runs S0 C0 v x = out_ter S R ->
-  red_expr S0 C0 (spec_prim_value_get v x) (out_ter S R).
-Proof.
-  introv RC E. deal_with_regular_lemma E if_object_out; substs.
-   skip. (*apply~ red_spec_prim_value_get.*) (* LATER:  There are some arbitrary left there anyway. *)
-   skip. (* LATER:  There are some arbitrary left there anyway. *)
-Qed.
-
-Lemma env_record_get_binding_value_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S0 C0 L x str S R,
-  env_record_get_binding_value runs S0 C0 L x str = out_ter S R ->
-  red_expr S0 C0 (spec_env_record_get_binding_value L x str) (out_ter S R).
-Proof.
-  introv RC E. do 2 unfolds in E.
-  rewrite_morph_option; simpls; tryfalse.
-  rewrite <- Heap.binds_equiv_read_option in EQx0.
-  applys~ red_spec_env_record_get_binding_value EQx0. destruct e.
-   rewrite_morph_option; simpls; tryfalse.
-    rewrite <- Heap.binds_equiv_read_option in EQx1. destruct p.
-    applys~ red_spec_env_record_get_binding_value_1_decl EQx1.
-    repeat cases_if.
-     apply~ out_error_or_cst_correct.
-     inverts E. apply~ red_spec_returns.
-   do 2 unfolds in E. rewrite_morph_option; simpls; tryfalse.
-    forwards OP: object_has_prop_correct EQx1.
-    applys~ red_spec_env_record_get_binding_value_1_object OP.
-    cases_if; subst.
-     apply~ red_spec_env_record_get_binding_value_obj_2_true.
-      applys~ object_get_correct RC.
-     apply~ red_spec_env_record_get_binding_value_2_false.
-      apply~ out_error_or_cst_correct.
-Qed.
 
 Lemma ref_get_value_correct : forall runs run_elements,
   runs_type_correct runs run_elements -> forall S0 C0 rv S R,
@@ -423,7 +391,7 @@ Proof.
       try (false C; first [ solve [left~] | solve [right~] ]).
      apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
-     applys~ env_record_get_binding_value_correct RC.
+     skip. (* applys~ env_record_get_binding_value_correct RC. *)
 Qed.
 
 
