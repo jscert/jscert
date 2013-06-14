@@ -120,6 +120,15 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                       -- Not tests that use the Number object
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description=\"Number object tests\")) AND "
+                                      -- Not tests that use the Number constructor
+                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      ++   "(SELECT id from test_groups where description=\"Number constructor object tests\")) AND "
+                                      -- Not tests that use the Boolean constructor
+                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      ++   "(SELECT id from test_groups where description=\"Boolean constructor object tests\")) AND "
+                                      -- Not tests that use the String constructor
+                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      ++   "(SELECT id from test_groups where description=\"String constructor object tests\")) AND "
                                       ++ (concat $ intersperse " AND "
                                           ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
                                           ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))

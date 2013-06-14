@@ -28,9 +28,21 @@ isMathFile content = ("<< 0" `isInfixOf` content)
 isNumFile :: ByteString -> Bool
 isNumFile = ("Number." `isInfixOf`)
 
+isNumConstructorFile :: ByteString -> Bool
+isNumConstructorFile = ("Number(" `isInfixOf`)
+
+isBoolConstructorFile :: ByteString -> Bool
+isBoolConstructorFile = ("Boolean(" `isInfixOf`)
+
+isStringConstructorFile :: ByteString -> Bool
+isStringConstructorFile = ("String(" `isInfixOf`)
+
 grouptypes :: String -> (String, ByteString -> Bool)
 grouptypes "arith" = ("Arithmetic error tests", isMathFile)
 grouptypes "number" = ("Number object tests", isNumFile)
+grouptypes "numconstructor" = ("Number constructor object tests", isNumConstructorFile)
+grouptypes "boolconstructor" = ("Boolean constructor object tests", isBoolConstructorFile)
+grouptypes "stringconstructor" = ("String constructor object tests", isStringConstructorFile)
 
 main :: IO ()
 main = do
