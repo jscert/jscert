@@ -1,4 +1,126 @@
 
+========== Global object ===============
+
+global heap:
+   prealloc_global --> object_prealloc_global
+
+object_prealloc_global
+   .properties_:
+      "Number" --> prealloc_number
+
+
+========== Object Number ===============
+
+global heap:
+   prealloc_number --> object_prealloc_number
+
+object_prealloc_number:
+   .class_ := "Function"
+   .proto_ := prealloc_function_proto
+   .construct_ := (construct_prealloc prealloc_number)
+   .properties_ :
+      "NaN" --> JsNumber.nan
+      "prototype" --> prealloc_number_proto
+
+
+========== Class Number.prototype ===============
+
+global heap:
+   prealloc_number_proto --> object_prealloc_number_proto
+
+object_prealloc_number_proto:
+   .value_ := JsNumbe.zero
+   .proto_ := prealloc_object_proto
+   .class_ := "Number"
+   .properties_ :=
+      "toString" --> prealloc_number_proto_to_string
+      "constructor" --> prealloc_number
+
+
+========== Method toString from Number.prototype ===============
+
+object_prealloc_number_proto.properties_:
+   "toString" --> prealloc_number_proto_to_string
+
+global heap:
+   prealloc_number_proto_to_string --> number_proto_to_string_function_object
+
+number_proto_to_string_function_object:
+   .proto_ := prealloc_function_proto
+   .class_ := "Function" 
+   .properties_ := "length" --> (attrib_constant 0) 
+   .call_:= Some (call_prealloc prealloc_number_proto_to_string)
+
+red_spec_call_number_proto_to_string:
+   ... -> red_expr S C (spec_call_prealloc prealloc_number_proto_to_string args) o
+
+
+========== Constructor method of Number ===============
+
+The "new Number(args)" syntax gives rise to "spec_construct".
+
+  | red_spec_constructor : forall S C l B args o,
+      object_method object_construct_ S l (Some B) ->
+      red_expr S C (spec_construct_1 B l args) o ->
+      red_expr S C (spec_construct l args) o
+
+In the "construct_" field, we find a "construct_prealloc".
+
+  | red_spec_construct_1_prealloc : forall S C B l args o,
+      red_expr S C (spec_construct_prealloc B args) o -> 
+      red_expr S C (spec_construct_1 (construct_prealloc B) l args) o   
+
+The reductions rule for "spec_construct_prealloc prealloc_number" lead to:
+
+   ...
+   let O1 := object_new prealloc_number_proto "Number" in
+   let O := object_with_primitive_value O1 v in 
+   (l, S') = object_alloc S O ->
+   red_expr S C (spec_construct_prealloc prealloc_number args) (out_ter S' l) 
+
+The latter allocates a new object of class "Number" with prototype "prealloc_number_proto"
+
+
+========== Calls to Number() without new ===============
+
+If we write "Number()" without new, we get a call:
+
+  | red_spec_call_1_prealloc : forall S C B lo this args o,
+      red_expr S C (spec_call_prealloc B args) o -> 
+      red_expr S C (spec_call_1 (call_prealloc B) lo this args) o
+ 
+In the "call_" field, we find a "construct_prealloc".
+
+  | red_spec_call_1_prealloc : forall S C B lo this args o,
+      red_expr S C (spec_call_prealloc B args) o -> 
+      red_expr S C (spec_call_1 (call_prealloc B) lo this args) o
+
+The reductions rule for "spec_call_prealloc prealloc_number" lead to:
+
+  | red_spec_call_number_nil : forall S C, 
+      red_expr S C (spec_call_prealloc prealloc_number nil) (out_ter S JsNumber.zero) 
+
+  | red_spec_call_number_not_nil : forall S C v o args,
+      args <> nil ->
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_to_number v) o ->
+      red_expr S C (spec_call_prealloc prealloc_number args) o 
+
+The latter rules directly return a value, without allocating an object.
+
+
+
+
+
+---------
+---------
+---------
+---------
+---------
+---------
+---------
+---------
+
 
 x = { a: 1 }
 y = { b: 2 }

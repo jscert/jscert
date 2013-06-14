@@ -431,7 +431,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (K v) o ->
       red_stat S0 C (spec_expr_get_value_conv_stat_2 (out_ter S v) K) o
 
-(** Switch statement (12.11) *)
+(** Switch statement (12.11) 
+
+  FOR DANIELE: move all the section above to the right place *)
 (*  TODO: 
       -implicit types for switchbody ('sb'), switchclause ('sc')
        and switchclauses ('scs')? 
@@ -452,6 +454,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
 | red_stat_switch_2_break: : (* step 3 *)
     R = res_intro restype_break rv lab ->
+    (* FOR DANIELE: you're missing a premise that says lab in the current label set (see while loops for how to do it) *)
     red_stat S0 C (stat_switch_2 (out_ter S R)) (out_ter S (res_normal rv))
 
 | red_stat_switch_2_normal : (* step 4 *)
@@ -463,7 +466,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
     red_stat S C (stat_switch_nodefault_5 rv nil) o ->
     red_stat S C (stat_switch_nodefault_1 v rv nil) o
 
-  | red_stat_switch_nodefault_1_cons : 
+  | red_stat_switch_nodefault_1_cons :
       red_expr S C (spec_expr_get_value e) o1 ->
       red_expr S C (stat_switch_nodefault_2 o1 v rv ts scs) o ->
       red_stat S C (stat_switch_nodefault_1 v rv ((switchclause_intro e ts)::scs)) o
@@ -478,19 +481,20 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_expr S C (stat_switch_nodefault_3 false v rv ts scs) o ->
 
   | red_stat_switch_nodefault_3_true : 
-      red_stat S C (stat_block ts) o1 -> (* Daniele: not sure if I should use block here.. ? *)
+      red_stat S C (stat_block ts) o1 -> (* Daniele: not sure if I should use block here.. ? --> FOR DANIELE i think it's ok, but you should check with sergio/gareth/martin *)
       red_stat S C (stat_switch_nodefault_4 o1 scs) o ->
       red_expr S C (stat_switch_nodefault_3 true v rv ts scs) o ->
 
   | red_stat_switch_nodefault_4 :
-      red_stat S C (stat_switch_nodefault_5 rv scs) o ->
+      red_stat S C (stat_switch_nodefault_5 rv scs) o -> (* FOR DANIELE: this is wrong, you're supposed to go back to step 1. *)
       red_stat S C (stat_switch_nodefault_4 (out_ter rv) scs) o
 
   | red_stat_switch_nodefault_5_nil :
+      (* FOR DANIELE: confusion between v and rv: you want to return "(out_ter S rv)" *)
       red_stat S C (stat_switch_nodefault_5 rv nil)  (out_ter S (res_normal v)) ->
 
   | red_stat_switch_nodefault_5_cons :
-      red_stat S C (stat_block (t::ts)) o1 -> (* not sure *) 
+      red_stat S C (stat_block (t::ts)) o1 -> (* not sure  FOR DANIELE: I don't understand why you impose the block to be of the form "t::ts"; I think it should simply be "ts". (By the syntax invariant, we might know that "ts" is not empty, but we don't need to impose it here) *) 
       red_stat S C (stat_switch_nodefault_6 o1 scs) o ->
       red_stat S C (stat_switch_nodefault_5 rv ((switchclause_intro e (t::ts))::scs)) o
 
@@ -499,8 +503,13 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_nodefault_6 (out_ter rv) scs) o
 
   | red_stat_switch_nodefault_6_abrupt :
-      true = abrupt_res rv -> (* not sure *)
+      true = abrupt_res rv -> (* not sure -- FOR DANIELE: This is incorrect, you should be using R instead of rv, and write a premise "~ res_is_normal R", and then return the behavior "res_overwrite_value_if_empty rv R" *)
       red_stat S C (stat_switch_nodefault_6 (out_ter rv) scs) (out_ter S (res_intro (res_type rv) v (res_label rv)))
+
+(*
+FOR DANIELE: for the version of switch that has a default case, use similar techniques...
+*)
+
 *)
 
 (*
