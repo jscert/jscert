@@ -7,6 +7,10 @@
 
 -- number: Find all files that contain "Number."
 
+-- A good way to run this is:
+-- ./test_data/query_scripts/make_group_by_content number `find tests/ -type f -name \*.js`
+
+
 module Main where
 
 import Prelude hiding (readFile)
@@ -16,14 +20,17 @@ import Database.HDBC(withTransaction)
 import Data.ByteString.Char8(ByteString,readFile,isInfixOf)
 import Text.Regex.PCRE((=~))
 
-
 isMathFile :: ByteString -> Bool
 isMathFile content = ("<< 0" `isInfixOf` content)
                      || (">>> 0" `isInfixOf` content)
                      || content =~ ("~\\d"::ByteString)
 
+isNumFile :: ByteString -> Bool
+isNumFile = ("Number." `isInfixOf`)
+
 grouptypes :: String -> (String, ByteString -> Bool)
 grouptypes "arith" = ("Arithmetic error tests", isMathFile)
+grouptypes "number" = ("Number object tests", isNumFile)
 
 main :: IO ()
 main = do
