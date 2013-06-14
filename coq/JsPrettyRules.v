@@ -2678,8 +2678,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       vthrower = value_object prealloc_throw_type_error ->
       A = attributes_accessor_intro vthrower vthrower false false ->
       red_expr S' C (spec_object_define_own_prop l "caller" A false) o1 -> 
-      (* This looks like a behavior of the non-strict mode, and reciprocally, the behavior of this `non-strict' mode looks like the one of the strict one:  isn't there a shuffling there? -- Martin. *)
-      (* It is a behaviour of strict mode. If the code is strict and it tries to access "caller" or "callee", TypeError is thrown. NOTE 3 in p. 62 *)
       red_expr S' C (spec_create_arguments_object_3 l vthrower A o1) o ->
       red_expr S C (spec_create_arguments_object_2 lf true l (out_void S')) o
       
