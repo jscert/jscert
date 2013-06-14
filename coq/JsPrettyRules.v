@@ -1676,7 +1676,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** HasProperty (8.12.6) *)
 
-  | red_spec_object_has_prop_1_default : forall o1 (* This [o1] should be removed -- Martin. *) S C l x o, (* Step 1 *)
+  | red_spec_object_has_prop_1_default : forall S C l x o, (* Step 1 *)
       red_expr S C (spec_object_get_prop l x spec_object_has_prop_2) o ->
       red_expr S C (spec_object_has_prop_1 builtin_has_prop_default l x) o  
 
@@ -2361,7 +2361,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_var_decls_1 L vd vds bconfig str o1) o ->
       red_expr S0 C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o (* I think this [S0] should be removed of this rule, and in the following three. -- Martin. *)
 
-  | red_spec_binding_inst_var_decls_1_true : forall o1 L S0 S C vd vds bconfig str o, (* Step 8c *)
+  | red_spec_binding_inst_var_decls_1_true : forall L S0 S C vd vds bconfig str o, (* Step 8c *)
       red_expr S C (spec_binding_inst_var_decls L vds bconfig str) o ->
       red_expr S0 C (spec_binding_inst_var_decls_1 L vd vds bconfig str (out_ter S true)) o
 
@@ -2417,16 +2417,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_7 code bconfig L o1) o ->
       red_expr S0 C (spec_binding_inst_6 codetype_func (Some lf) code xs args bconfig L (out_ter S false)) o
       
-  | red_spec_binding_inst_7 : forall o1 L S C code bconfig L o, (* Step 7, continued *)
+  | red_spec_binding_inst_7 : forall L S C code bconfig L o, (* Step 7, continued *)
       red_expr S C (spec_binding_inst_8 code bconfig L) o ->
       red_expr S C (spec_binding_inst_7 code bconfig L (out_void S)) o
 
-  | red_spec_binding_inst_6_no_arguments : forall o1 L S0 S C ct olf code xs args bconfig bdefined o, (* Step 7 not needed *) 
+  | red_spec_binding_inst_6_no_arguments : forall L S0 S C ct olf code xs args bconfig bdefined o, (* Step 7 not needed *) 
       ~ (ct = codetype_func /\ bdefined = true) ->
       red_expr S C (spec_binding_inst_8 code bconfig L) o ->
       red_expr S0 C (spec_binding_inst_6 ct olf code xs args bconfig L (out_ter S bdefined)) o
 
-  | red_spec_binding_inst_8 : forall o1 S0 L S C code bconfig o, (* Step 8 *)
+  | red_spec_binding_inst_8 : forall S0 L S C code bconfig o, (* Step 8 *)
       red_expr S C (spec_binding_inst_var_decls L (prog_vardecl code) bconfig (prog_intro_strictness code)) o ->
       red_expr S0 C (spec_binding_inst_8 code bconfig L) o
 
@@ -2687,8 +2687,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       vthrower = value_object prealloc_throw_type_error ->
       A = attributes_accessor_intro vthrower vthrower false false ->
       red_expr S' C (spec_object_define_own_prop l "caller" A false) o1 -> 
-      (* This looks like a behavior of the non-strict mode, and reciprocally, the behavior of this `non-strict' mode looks like the one of the strict one:  isn't there a shuffling there? -- Martin. *)
-      (* It is a behaviour of strict mode. If the code is strict and it tries to access "caller" or "callee", TypeError is thrown. NOTE 3 in p. 62 *)
       red_expr S' C (spec_create_arguments_object_3 l vthrower A o1) o ->
       red_expr S C (spec_create_arguments_object_2 lf true l (out_void S')) o
       

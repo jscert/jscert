@@ -174,7 +174,18 @@ Definition global_is_finite_function_object :=
 Definition object_prealloc_object :=
   let P := Heap.empty in
   let P := write_constant P "prototype" prealloc_object_proto in
-  let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in
+  let P := write_native P "getPrototypeOf" prealloc_object_get_proto_of in
+  let P := write_native P "getOwnPropertyDescriptor" prealloc_object_get_own_prop_descriptor in
+  let P := write_native P "getOwnPropertyNames" prealloc_object_get_own_prop_name in
+  let P := write_native P "create" prealloc_object_create in
+  let P := write_native P "defineProperty" prealloc_object_define_prop in
+  let P := write_native P "defineProperties" prealloc_object_define_properties in
+  let P := write_native P "seal" prealloc_object_seal in
+  let P := write_native P "freeze" prealloc_object_freeze in
+  let P := write_native P "preventExtensions" prealloc_object_prevent_extensions in
+  let P := write_native P "isSealed" prealloc_object_is_sealed in
+  let P := write_native P "isFrozen" prealloc_object_is_frozen in
+  let P := write_native P "isExtensible" prealloc_object_is_extensible in
   (* LATER: complete list *)
   object_create_prealloc_constructor prealloc_object 1 P.
   
@@ -211,7 +222,7 @@ Definition object_proto_is_prototype_of_function_object :=
 Definition object_prealloc_function :=
   let P := Heap.empty in
   let P := write_constant P "prototype" (value_object prealloc_function_proto) in
-  let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in
+  let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in (* This one seems odd, isn't it? -- Martin *)
   (* LATER: complete list *)
   object_create_prealloc_constructor prealloc_function 1 P.
 
