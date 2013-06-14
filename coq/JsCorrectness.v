@@ -348,7 +348,7 @@ Qed.
 
 Lemma run_object_get_prop_correct : forall runs run_elements,
   runs_type_correct runs run_elements -> forall S S0 C l x D K o,
-  run_object_get_prop runs S C l x = passing_some S0 D ->
+  run_object_get_prop runs S C l x = passing_normal S0 D ->
   red_expr S0 C (K D) o ->
   red_expr S C (spec_object_get_prop l x K) o.
 Proof.
@@ -357,7 +357,7 @@ Admitted. (* TODO *)
 
 Lemma object_has_prop_correct : forall runs run_elements,
   runs_type_correct runs run_elements -> forall S S1 C l x b,
-  object_has_prop runs S C l x = passing_some S1 b ->
+  object_has_prop runs S C l x = passing_normal S1 b ->
   red_expr S C (spec_object_has_prop l x) (out_ter S1 b).
 Proof.
   introv RC E. unfolds in E. name_object_method.

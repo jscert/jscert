@@ -165,7 +165,8 @@ let _ =
     | JsInterpreter.Coq_result_not_yet_implemented ->
 		print_endline "\n\nStuck:  this is not implemented yet!\n" ;
         exit 2
-	| JsInterpreter.Coq_result_bottom -> print_endline "\n\nBOTTOM\n"
+	| JsInterpreter.Coq_result_bottom s ->
+        print_endline ("\n\nBOTTOM\nCurrent state:\n" ^ Prheap.prstate !skipInit s)
   with
   | Assert_failure (file, line, col) ->
 	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) ;
