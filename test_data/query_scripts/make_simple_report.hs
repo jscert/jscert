@@ -47,6 +47,7 @@ progOpts = Options
            , stdOutList = ["%Translation of Javascript syntax does not support%"
                           ,"%Not implemented code%"
                           ,"%Parsing problem with the file%"
+                          ,"%Stuck:  this is not implemented yet!%"
                           ]
                           &= help "All the things we want to check from stdout"
            , stdErrList = ["%Fatal error: exception Parser.%"]
