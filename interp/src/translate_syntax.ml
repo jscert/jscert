@@ -100,7 +100,20 @@ let rec exp_to_exp exp : JsSyntax.expr =
       | New (e1, e2s) -> JsSyntax.Coq_expr_new (f e1, map (fun e2 -> f e2) e2s)
       | AnnonymousFun (s, vs, e) -> JsSyntax.Coq_expr_function (None, (map string_to_coq vs), exp_to_funcbody e s)
       | NamedFun (s, n, vs, e) -> JsSyntax.Coq_expr_function (Some (string_to_coq n), (map string_to_coq vs), exp_to_funcbody e s)
-      | Obj xs -> JsSyntax.Coq_expr_object (map (fun (s,e) -> JsSyntax.Coq_propname_string (string_to_coq s), JsSyntax.Coq_propbody_val (f e)) xs)
+      | Obj xs -> JsSyntax.Coq_expr_object (map (fun (s,p,e) -> JsSyntax.Coq_propname_string (string_to_coq s),
+        (match p with
+          | PropbodyVal -> JsSyntax.Coq_propbody_val (f e)
+          | PropbodyGet -> 
+            begin match e.exp_stx with 
+              | AnnonymousFun (s, vs, e) -> JsSyntax.Coq_propbody_get (exp_to_funcbody e s) 
+              | _ -> raise Parser.InvalidArgument
+            end
+          | PropbodySet ->
+            begin match e.exp_stx with
+              | AnnonymousFun (s, vs, e) -> JsSyntax.Coq_propbody_set (map string_to_coq vs, exp_to_funcbody e s) 
+              | _ -> raise Parser.InvalidArgument
+            end) 
+        ) xs)
       | Array _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | ConditionalOp (e1, e2, e3) -> JsSyntax.Coq_expr_conditional (f e1, f e2, f e3)
 
