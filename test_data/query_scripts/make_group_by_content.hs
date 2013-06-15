@@ -37,12 +37,16 @@ isBoolConstructorFile = ("Boolean(" `isInfixOf`)
 isStringConstructorFile :: ByteString -> Bool
 isStringConstructorFile = ("String(" `isInfixOf`)
 
+isToNumberTest :: ByteString -> Bool
+isToNumberTest = (" * Operator uses ToNumber" `isInfixOf`)
+
 grouptypes :: String -> (String, ByteString -> Bool)
 grouptypes "arith" = ("Arithmetic error tests", isMathFile)
 grouptypes "number" = ("Number object tests", isNumFile)
 grouptypes "numconstructor" = ("Number constructor object tests", isNumConstructorFile)
 grouptypes "boolconstructor" = ("Boolean constructor object tests", isBoolConstructorFile)
 grouptypes "stringconstructor" = ("String constructor object tests", isStringConstructorFile)
+grouptypes "tonumber" = ("ToNumber conversion tests", isToNumberTest)
 
 main :: IO ()
 main = do
