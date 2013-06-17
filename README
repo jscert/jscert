@@ -22,7 +22,7 @@ INSTALLATION AND COMPILATION
 
    http://opam.ocamlpro.com/
 
-   Then run "opam install coq ; opam install ocamlfind ; opam install xml-light"
+   Then run "opam install coq ; opam install ocamlfind ; opam install xml-light ; opam install bisect"
 
 1) Run "make init" to install the parser, TLC, and Flocq (requires subversion)
 
