@@ -1087,7 +1087,8 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
   | prealloc_native_error_proto ne =>
     result_not_yet_implemented (* TODO:  Waiting for specification *)
 
-  | _ => impossible_with_heap_because S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
+  | _ =>
+    impossible_with_heap_because S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
 
   end.
 
