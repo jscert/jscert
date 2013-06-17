@@ -417,7 +417,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_stat : state -> execution_ctx -> stat -> result;
     runs_type_prog : state -> execution_ctx -> prog -> result;
     runs_type_call : state -> execution_ctx -> object_loc -> value -> list value -> result;
-    runs_type_object_has_instance_default : state -> object_loc -> value -> result;
+    runs_type_function_has_instance : state -> object_loc -> value -> result;
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor;
@@ -1339,7 +1339,8 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
 
 (**************************************************************)
 
-Definition run_object_has_instance_default runs S lv vo : result :=
+Definition run_function_has_instance runs S lv vo : result :=
+  (* Corresponds to the [spec_function_has_instance_1] of the specification.] *)
   match vo with
   | value_prim _ =>
     run_error S native_error_type
@@ -1350,7 +1351,7 @@ Definition run_object_has_instance_default runs S lv vo : result :=
         out_ter S false
       | value_object proto =>
         ifb proto = lo then out_ter S true
-        else runs_type_object_has_instance_default runs S proto lo
+        else runs_type_function_has_instance runs S proto lo
       | value_prim _ =>
         impossible_with_heap_because S "Primitive found in the prototype chain in [run_object_has_instance_loop]."
       end)
@@ -1364,7 +1365,7 @@ Definition run_object_has_instance runs B S C l v : result :=
     | value_prim w => out_ter S false
     | value_object lv =>
       if_value (run_object_get runs S C l "prototype") (fun S1 v =>
-        runs_type_object_has_instance_default runs S1 lv v)
+        runs_type_function_has_instance runs S1 lv v)
     end
 
   | builtin_has_instance_after_bind =>
@@ -2392,7 +2393,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat := fun S _ _ => result_bottom S;
       runs_type_prog := fun S _ _ => result_bottom S;
       runs_type_call := fun S _ _ _ _ => result_bottom S;
-      runs_type_object_has_instance_default := fun S _ _ => result_bottom S;
+      runs_type_function_has_instance := fun S _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_object_get_own_prop := fun S _ _ _ => passing_abort (result_bottom S);
       runs_type_object_get_prop := fun S _ _ _ => passing_abort (result_bottom S);
@@ -2407,8 +2408,8 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat := wrap run_stat;
       runs_type_prog := wrap run_prog;
       runs_type_call := wrap run_call;
-      runs_type_object_has_instance_default :=
-        wrap run_object_has_instance_default;
+      runs_type_function_has_instance :=
+        wrap run_function_has_instance;
       runs_type_stat_while := wrap run_stat_while;
       runs_type_object_get_own_prop :=
         wrap run_object_get_own_prop;

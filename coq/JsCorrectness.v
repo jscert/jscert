@@ -1,4 +1,3 @@
-(*
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix LibList.
@@ -65,34 +64,44 @@ Definition follow_stat := follow_spec stat_basic red_stat.
 Definition follow_prog := follow_spec prog_basic red_prog.
 Definition follow_elements rv :=
   follow_spec (prog_1 rv) red_prog.
-Definition follow_call vs :=
-  follow_spec
-    (fun B => spec_call_prealloc B vs)
-    red_expr.
-Definition follow_call_full l vs :=
+Definition follow_call l vs :=
   follow_spec
     (fun v => spec_call l v vs)
     red_expr.
-Definition follow_object_get_builtin v l x :=
+Definition follow_function_has_instance (_ : state -> object_loc -> value -> result) :=
+  True. (* TODO *)
+Definition follow_stat_while ls e t :=
   follow_spec
-    (fun B => spec_object_get_1 B v l x)
-    red_expr.
+    (stat_while_1 ls e t)
+    red_stat.
+Definition follow_object_get_own_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor) :=
+  True. (* TODO *)
+Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor) :=
+  True. (* TODO *)
+Definition follow_object_proto_is_prototype_of (_ : state -> object_loc -> object_loc -> result) :=
+  True. (* TODO *)
 
-Record runs_type_correct runs run_elements :=
+Record runs_type_correct runs :=
   make_runs_type_correct {
     runs_type_correct_expr : follow_expr (runs_type_expr runs);
     runs_type_correct_stat : follow_stat (runs_type_stat runs);
     runs_type_correct_prog : follow_prog (runs_type_prog runs);
-    runs_type_correct_elements : forall rv,
-      follow_elements rv (fun S C => run_elements S C rv);
-    runs_type_correct_call : forall vs,
-      follow_call vs (fun S C B => runs_type_call runs S C B vs);
-    runs_type_correct_call_full : forall l vs,
-      follow_call_full l vs (fun S C vthis =>
-        runs_type_call_full runs S C l vthis vs);
-    runs_type_correct_object_get_builtin : forall v l x,
-      follow_object_get_builtin v l x (fun S C B =>
-        runs_type_object_get_builtin runs S C B v l x)
+    (*runs_type_correct_elements : forall rv,
+      follow_elements rv (fun S C => run_elements runs S C rv);*)
+    runs_type_correct_call : forall l vs,
+      follow_call l vs (fun S C vthis =>
+        runs_type_call runs S C l vthis vs);
+    runs_type_function_has_instance :
+      follow_function_has_instance (runs_type_function_has_instance runs);
+    runs_type_stat_while : forall ls e t,
+      follow_stat_while ls e t (fun S C rv =>
+        runs_type_stat_while runs S C rv ls e t);
+    runs_type_object_get_own_prop :
+      follow_object_get_own_prop (runs_type_object_get_own_prop runs);
+    runs_type_object_get_prop :
+      follow_object_get_prop (runs_type_object_get_prop runs);
+    runs_type_object_proto_is_prototype_of :
+      follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs)
   }.
 
 
@@ -186,7 +195,7 @@ Ltac rm_variables :=
     subst x || subst y
   end.
 
-Ltac dealing_follows_with IHe IHs IHp IHel IHc IHcf :=
+Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
   repeat first
     [ progress rm_variables
     | unfold_func (>> run_expr_access run_expr_function
@@ -211,29 +220,29 @@ Ltac dealing_follows_with IHe IHs IHp IHel IHc IHcf :=
   | I : run_prog ?num ?S ?C ?p = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHp (rm I)
-  | I : run_elements ?num ?S ?C ?rv ?els = ?o |- _ =>
+  (*| I : run_elements ?num ?S ?C ?rv ?els = ?o |- _ =>
     let RC := fresh "RC" in
-    forwards~ RC: IHel (rm I)
-  | I : runs_type_call ?runs ?S ?C ?B ?vs = ?o |- _ =>
+    forwards~ RC: IHel (rm I)*)
+  | I : runs_type_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
     unfold runs_type_call in I
-  | I : run_call ?num ?S ?C ?B ?vs = ?o |- _ =>
+  | I : run_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHc (rm I)
-  | I : runs_type_call_full ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
-    unfold runs_type_call_full in I
-  | I : run_call_full ?num ?S ?C ?l ?v ?vs = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHcf (rm I)
+  (* TODO:  Complete. *)
   end.
 
 Ltac dealing_follows :=
   let IHe := findHyp follow_expr in
   let IHs := findHyp follow_stat in
   let IHp := findHyp follow_prog in
-  let IHel := findHyp follow_elements in
+  (*let IHel := findHyp follow_elements in*)
   let IHc := findHyp follow_call in
-  let IHcf := findHyp follow_call_full in
-  dealing_follows_with IHe IHs IHp IHel IHc IHcf.
+  let IHhi := findHyp follow_function_has_instance in
+  let IHw := findHyp follow_stat_while in
+  let IHowp := findHyp follow_object_get_own_prop in
+  let IHop := findHyp follow_object_get_prop in
+  let IHpo := findHyp follow_object_proto_is_prototype_of in
+  dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo.
 
 
 (**************************************************************)
@@ -347,8 +356,8 @@ Proof.
   forwards: @pick_option_correct Bi. exists* O.
 Qed.
 
-Lemma run_object_get_prop_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S S0 C l x D K o,
+Lemma run_object_get_prop_correct : forall runs,
+  runs_type_correct runs -> forall S S0 C l x D K o,
   run_object_get_prop runs S C l x = passing_normal S0 D ->
   red_expr S0 C (K D) o ->
   red_expr S C (spec_object_get_prop l x K) o.
@@ -356,8 +365,8 @@ Proof.
   introv RC E R. apply~ red_spec_object_get_prop.
 Admitted. (* TODO *)
 
-Lemma object_has_prop_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S S1 C l x b,
+Lemma object_has_prop_correct : forall runs,
+  runs_type_correct runs -> forall S S1 C l x b,
   object_has_prop runs S C l x = passing_normal S1 b ->
   red_expr S C (spec_object_has_prop l x) (out_ter S1 b).
 Proof.
@@ -367,27 +376,28 @@ Proof.
   skip. (* TODO *)
 Qed.
 
-Lemma object_get_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S0 C0 l x S R,
+Lemma object_get_correct : forall runs,
+  runs_type_correct runs -> forall S0 C0 l x S R,
   run_object_get runs S0 C0 l x = out_ter S R ->
   red_expr S0 C0 (spec_object_get l x) (out_ter S R).
 Proof.
+  skip. (* Old proof:
   introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
   forwards OM: run_object_method_correct (rm EQx0).
   lets [_ _ _ _ _ _ RCo]: RC. forwards: (rm RCo) (rm E).
-  applys~ red_spec_object_get OM.
+  applys~ red_spec_object_get OM. *)
 Qed.
 
-Lemma env_record_get_binding_value_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S0 S C0 L rn rs R,
+Lemma env_record_get_binding_value_correct : forall runs,
+  runs_type_correct runs -> forall S0 S C0 L rn rs R,
   env_record_get_binding_value runs S0 C0 L rn rs = out_ter S R ->
   red_expr S0 C0 (spec_env_record_get_binding_value L rn rs) (out_ter S R).
 Proof.
   introv RC E.
 Admitted. (* TODO *)
 
-Lemma ref_get_value_correct : forall runs run_elements,
-  runs_type_correct runs run_elements -> forall S0 C0 rv S R,
+Lemma ref_get_value_correct : forall runs,
+  runs_type_correct runs -> forall S0 C0 rv S R,
   ref_get_value runs S0 C0 rv = out_ter S R ->
   red_expr S0 C0 (spec_get_value rv) (out_ter S R).
 Proof.
@@ -450,13 +460,13 @@ Qed.
 
 
 Theorem runs_correct : forall num,
-  runs_type_correct (runs num) (run_elements num).
+  runs_type_correct (runs num).
 Proof.
 
   induction num.
-   constructors; introv R; inverts R.
+   constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R.
 
-   lets [IHe IHs IHp IHel IHc IHcf IHob]: (rm IHnum).
+   lets [IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo]: (rm IHnum).
    constructors.
 
    (* run_expr *)
@@ -482,7 +492,7 @@ Proof.
     skip.
     (* call *)
      (* Abort case *)
-     applys~ red_expr_call RC. apply~ red_expr_abort.
+     forwards~ RC: IHe HE. applys~ red_expr_call RC. apply~ red_expr_abort.
       constructors. absurd_neg.
       absurd_neg.
      (* Normal case *)
@@ -501,8 +511,9 @@ Proof.
 
    (* run_prog *)
    intros S C p S' res R. destruct p as [str es]. simpls.
-   forwards RC: IHel R. apply~ red_prog_prog.
+   skip. (* forwards RC: IHel R. apply~ red_prog_prog. *)
 
+   (* OLD
    (* run_elements *)
    intros rv S C es S' res R. destruct es; simpls.
     inverts R. apply~ red_prog_1_nil.
@@ -521,19 +532,19 @@ Proof.
         substs. unfold res_overwrite_value_if_empty. cases_if. simpls. apply~ red_prog_3. *) *)
      (* func_decl *)
      forwards RC: IHel R. apply~ red_prog_1_cons_funcdecl.
+   *)
 
    (* run_call *)
-   skip.
-
-   (* run_call_full *)
-   intros l vs S C v S' res R. simpls. unmonad.
+   intros l vs S C v S' res R. simpls. unfolds in R. unmonad.
    name_object_method. do 2 (destruct B as [B|]; tryfalse). destruct B; tryfalse.
     (* Call Default *)
     skip.
     (* Call Prealloc *)
     apply~ red_spec_call. applys run_object_method_correct EQB.
-    apply~ red_spec_call_1_prealloc. apply~ IHc.
+    apply~ red_spec_call_1_prealloc.
+    skip.
 
+   (* OLD
    (* object_get_builtin *)
    intros v l x S C B S' res R.  destruct~ B; simpls; unmonad.
     (* Default *)
@@ -542,8 +553,23 @@ Proof.
     false. (* Temporary *)
     (* Get Args *)
     false. (* Temporary *)
+   *)
+
+   (* HasInstance *)
+   skip.
+
+   (* While *)
+   skip.
+
+   (* GetOwnprop *)
+   skip.
+
+   (* Getprop *)
+   skip.
+
+   (* IsPrototypeOf *)
+   skip.
 
 Qed.
 
-*)
 
