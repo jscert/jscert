@@ -1,3 +1,4 @@
+(*
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix LibList.
@@ -544,4 +545,5 @@ Proof.
 
 Qed.
 
+*)
 

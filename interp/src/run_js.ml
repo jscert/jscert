@@ -91,7 +91,7 @@ let _ =
                   end
               else exp
     in match JsInterpreter.run_javascript
-            max_int
+            (JsInterpreter.runs max_int)
             exp'
     with
     | JsInterpreter.Coq_result_out o ->
@@ -163,7 +163,7 @@ let _ =
 		print_endline "\n\nFIXME:  this should be impossible!\n" ;
 		exit_if_test ()
     | JsInterpreter.Coq_result_not_yet_implemented ->
-		print_endline "\n\nStuck:  this is not implemented yet!\n" ;
+		print_endline "\n\nNYI:  this is not implemented yet!\n" ;
         exit 2
 	| JsInterpreter.Coq_result_bottom s ->
         print_endline ("\n\nBOTTOM\nCurrent state:\n" ^ Prheap.prstate !skipInit s)

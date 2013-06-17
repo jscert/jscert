@@ -218,7 +218,7 @@ Extract Constant impossible_with_heap_because => "(fun s message ->
 
 (* Final Extraction *)
 Extraction Blacklist string list bool.
-Separate Extraction run_javascript.
+Separate Extraction runs run_javascript.
 
 
 
