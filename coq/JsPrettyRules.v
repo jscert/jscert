@@ -657,7 +657,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Literal (11.1.3) *)
 
-  | red_expr_literal : forall S C s i v, (* This [s] should be removed. *)
+  | red_expr_literal : forall S C i v,
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
 

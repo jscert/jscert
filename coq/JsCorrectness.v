@@ -421,18 +421,17 @@ Qed.
 
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac unmonad :=
-  repeat progress (* TODO:  Shall not do this loop.  It should only performs a step so that the corresponding rule is applied and so that no existential are introduce. *)
-    match goal with
-    | H : if_success ?res ?K = result_out ?o' |- _ =>
-      deal_with_regular_lemma H if_success_out
-    | H : if_value ?res ?K = result_out ?o' |- _ =>
-      deal_with_regular_lemma H if_value_out
-    | H : if_object ?res ?K = result_out ?o' |- _ =>
-      deal_with_regular_lemma H if_object_out
-    | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
-      inverts H
-    | |- _ => dealing_follows
-    end.
+  match goal with
+  | H : if_success ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma H if_success_out
+  | H : if_value ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma H if_value_out
+  | H : if_object ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma H if_object_out
+  | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
+    inverts H
+  | |- _ => dealing_follows
+  end.
 
 
 (**************************************************************)
@@ -474,9 +473,10 @@ Proof.
     (* this *)
     apply~ red_expr_this.
     (* identifier *)
-    skip. (* apply~ red_expr_identifier.  FIXME:  [spec_identifier_resolution] needs rules! *)
+    apply~ red_expr_identifier.
+    skip. (* FIXME:  [spec_identifier_resolution] needs rules! *)
     (* literal *)
-    skip. (* apply~ red_expr_literal. FIXME:  [red_expr_literal] takes a noisy argument. *)
+    apply~ red_expr_literal.
     (* object *)
      (* Abort case *)
      skip.
@@ -491,7 +491,9 @@ Proof.
     (* new *)
     skip.
     (* call *)
+    unmonad.
      (* Abort case *)
+     unmonad.
      forwards~ RC: IHe HE. applys~ red_expr_call RC. apply~ red_expr_abort.
       constructors. absurd_neg.
       absurd_neg.
