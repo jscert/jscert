@@ -165,7 +165,6 @@ and exp_to_stat exp : JsSyntax.stat =
          (* If a function appears in the middle of a statement, it shall not be interpreted as an expression function, but as a function declaration *)
          (* NOTE in spec p.86 *)
          (* ... It is recommended that ECMAScript implementations either disallow this usage of FunctionDeclaration or issue a warning *)
-	       (* I'm afraid I don't understand the code in `tests/sputnik/tests/Conformance/12_Statement/12.10_The_with_Statement/S12.10_A3.3_T4.js' that precisely declares a function in the middle of a statement. -- Martin *)
 
       (*Statements*)
 	  | Skip -> JsSyntax.Coq_stat_block []
