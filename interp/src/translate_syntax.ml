@@ -4,15 +4,6 @@ open List
 exception CoqSyntaxDoesNotSupport of string
 exception Empty_list
 
-let split_last stmts = (* I think that now this function is useless. -- Martin. *)
-  match stmts with
-    | [] -> raise Empty_list 
-    | hd :: tl ->
-      let rec aux l acc = function
-          | [] -> l, rev acc
-          | hd :: tl -> aux hd (l::acc) tl
-      in aux hd [] tl
-
 let string_to_coq s =
   let l = ref [] in
   String.iter (fun c -> l := c :: !l) s;
@@ -170,8 +161,11 @@ and exp_to_stat exp : JsSyntax.stat =
       | ConditionalOp _ -> JsSyntax.Coq_stat_expr (exp_to_exp exp)
 
       | AnnonymousFun _
-      | NamedFun _ -> raise Parser.InvalidArgument (* If a function appears in the middle of a statement, it shall not be interpreted as an expression function, but as a function declaration and thus be rejected by the parser. *)
-	  (* I'm afraid I don't understand the code in `tests/sputnik/tests/Conformance/12_Statement/12.10_The_with_Statement/S12.10_A3.3_T4.js' that precisely declares a function in the middle of a statement. -- Martin *)
+      | NamedFun _ -> raise Parser.InvalidArgument
+         (* If a function appears in the middle of a statement, it shall not be interpreted as an expression function, but as a function declaration *)
+         (* NOTE in spec p.86 *)
+         (* ... It is recommended that ECMAScript implementations either disallow this usage of FunctionDeclaration or issue a warning *)
+	       (* I'm afraid I don't understand the code in `tests/sputnik/tests/Conformance/12_Statement/12.10_The_with_Statement/S12.10_A3.3_T4.js' that precisely declares a function in the middle of a statement. -- Martin *)
 
       (*Statements*)
 	  | Skip -> JsSyntax.Coq_stat_block []
