@@ -1,3 +1,26 @@
+If you want to be able to run the query scripts, do the following:
+
+1) Install the haskell cabal.
+   In ubuntu this is "sudo apt-get install cabal-install"
+
+2) Install cabal-dev. Since you have cabal you can do "cabal install cabal-dev"
+
+3) cd query_scripts ; cabal-dev install
+
+You will now find all the query script binaries in query_scripts/cabal-dev/bin/
+
+4) create a databse in $USERNAME.db and run the SQL at the end of this file to create your tables.
+
+5) Use query_scripts/cabal-dev/bin/add_test_cases to add the test cases you're interested in to your database. One option would be:
+
+  cd ~/Documents/jscert/src/core/trunk/ ;
+  test_data/query_scripts/cabal-dev/bin/add_test_cases `find tests/ -type f -name \*.js`
+
+6) Run the runtests.py script with the --dbsave option to save the results of your test run.
+
+7) cd test_data/query_scripts and run whatever queries you want to run :)
+
+========================================================
 This file will shortly contain useful instructions for how to use our
 results databases to answer interseting questions about the behaviour
 various JS implementations.
