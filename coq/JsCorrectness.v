@@ -197,6 +197,8 @@ Ltac rm_variables :=
   repeat match goal with
   | I : ?x = ?y |- _ =>
     subst x || subst y
+  | H : ~ False |- _ => clear H (* Some tactics may yield this. *)
+  | H : True |- _ => clear H
   end.
 
 Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
@@ -425,7 +427,7 @@ Qed.
 
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac unmonad :=
-  match goal with
+  try match goal with
   | H : if_success ?res ?K = result_out ?o' |- _ =>
     deal_with_regular_lemma H if_success_out
   | H : if_value ?res ?K = result_out ?o' |- _ =>
@@ -434,8 +436,8 @@ Ltac unmonad :=
     deal_with_regular_lemma H if_object_out
   | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
     inverts H
-  | |- _ => dealing_follows
-  end.
+  end;
+  dealing_follows.
 
 
 (**************************************************************)
@@ -461,6 +463,11 @@ Qed.
 (**************************************************************)
 (** ** Main theorem *)
 
+Ltac abort_expr :=
+  apply~ red_expr_abort;
+   [ try (constructors; absurd_neg)
+   | try absurd_neg].
+
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).
@@ -473,17 +480,18 @@ Proof.
    constructors.
 
    (* run_expr *)
-   intros S C e S' res R. destruct e; simpl in R; unmonad.
+   intros S C e S' res R. destruct e; simpl in R; dealing_follows.
     (* this *)
-    apply~ red_expr_this.
+    unmonad. apply~ red_expr_this.
     (* identifier *)
     apply~ red_expr_identifier.
     skip. (* FIXME:  [spec_identifier_resolution] needs rules! *)
     (* literal *)
-    apply~ red_expr_literal.
+    unmonad. apply~ red_expr_literal.
     (* object *)
+    unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
      (* Abort case *)
-     skip.
+     inverts HE. false~ Hnn.
      (* Normal case *)
      skip. (* Needs an intermediate lemma for [init_object]. *)
     (* function *)
@@ -497,14 +505,39 @@ Proof.
     (* call *)
     unmonad.
      (* Abort case *)
-     unmonad.
-     forwards~ RC: IHe HE. applys~ red_expr_call RC. apply~ red_expr_abort.
-      constructors. absurd_neg.
-      absurd_neg.
+     forwards~ RC: IHe (rm HE). applys~ red_expr_call RC. abort_expr.
      (* Normal case *)
+     forwards~ RC: IHe (rm HE). applys~ red_expr_call RC.
      skip.
     (* unary_op *)
-    skip.
+    destruct~ u; simpls; cases_if; try solve [false~ n].
+     (* Delete *)
+     unmonad.
+      (* Abort case *)
+      forwards~ RC: IHe (rm HE). applys~ red_expr_delete RC. abort_expr.
+      (* Normal case *)
+      forwards~ RC: IHe (rm HE). applys~ red_expr_delete RC.
+      skip.
+     (* Void *)
+     skip.
+     (* TypeOf *)
+     skip.
+     (* Post Incr *)
+     skip.
+     (* Post Decr *)
+     skip.
+     (* Pre Incr *)
+     skip.
+     (* Pre Decr *)
+     skip.
+     (* Add *)
+     skip.
+     (* Neg *)
+     skip.
+     (* Bitwise *)
+     skip.
+     (* Not *)
+     skip.
     (* binary_op *)
     skip.
     (* conditionnal *)

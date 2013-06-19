@@ -1620,8 +1620,6 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
     | unary_op_delete =>
       if_success (runs_type_expr runs S C e) (fun S1 rv =>
         match rv with
-        | resvalue_value v => out_ter S1 true
-        | resvalue_empty => impossible_with_heap_because S1 "Empty result for a `delete' in [run_unary_op]."
         | resvalue_ref r =>
           ifb ref_is_unresolvable r then
             out_ter S1 true
@@ -1633,6 +1631,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
             | ref_base_type_env_loc L =>
               env_record_delete_binding runs S1 C L (ref_name r)
             end
+        | _ => out_ter S1 true
         end)
 
     | unary_op_typeof =>
@@ -2131,7 +2130,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
   | prealloc_object_get_proto_of =>
     let v := get_arg 0 args in
     ifb type_of v <> type_object then
-      impossible_with_heap_because S "[run_call], [prealloc_object_get_proto_of] case:  not an object."
+      impossible_with_heap_because S "[run_call_prealloc], [prealloc_object_get_proto_of] case:  not an object."
     else
       out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
@@ -2160,7 +2159,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
                 in if_void (object_define_own_prop runs S1 C l x A' true) (fun S2 =>
                   object_seal S2 xs')
               | full_descriptor_undef =>
-                impossible_with_heap_because S1 "[run_call], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
+                impossible_with_heap_because S1 "[run_call_prealloc], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end) S)
     | value_prim _ => run_error S native_error_type
@@ -2184,7 +2183,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
                   out_ter S false
                 else object_is_sealed xs'
               | full_descriptor_undef =>
-                impossible_with_heap_because S0 "[run_call], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
+                impossible_with_heap_because S0 "[run_call_prealloc], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end)
     | value_prim _ => run_error S native_error_type
@@ -2250,7 +2249,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
               | attributes_accessor_of Aa =>
                 check_configurable Aa
               | full_descriptor_undef =>
-                impossible_with_heap_because S0 "[run_call], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
+                impossible_with_heap_because S0 "[run_call_prealloc], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
               end)
           end)
     | value_prim _ => run_error S native_error_type
