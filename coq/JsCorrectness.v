@@ -80,6 +80,8 @@ Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> p
   True. (* TODO *)
 Definition follow_object_proto_is_prototype_of (_ : state -> object_loc -> object_loc -> result) :=
   True. (* TODO *)
+Definition follow_equal (_ : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result) :=
+  True. (* TODO *)
 
 Record runs_type_correct runs :=
   make_runs_type_correct {
@@ -91,17 +93,19 @@ Record runs_type_correct runs :=
     runs_type_correct_call : forall l vs,
       follow_call l vs (fun S C vthis =>
         runs_type_call runs S C l vthis vs);
-    runs_type_function_has_instance :
+    runs_type_correct_function_has_instance :
       follow_function_has_instance (runs_type_function_has_instance runs);
-    runs_type_stat_while : forall ls e t,
+    runs_type_correct_stat_while : forall ls e t,
       follow_stat_while ls e t (fun S C rv =>
         runs_type_stat_while runs S C rv ls e t);
-    runs_type_object_get_own_prop :
+    runs_type_correct_object_get_own_prop :
       follow_object_get_own_prop (runs_type_object_get_own_prop runs);
-    runs_type_object_get_prop :
+    runs_type_correct_object_get_prop :
       follow_object_get_prop (runs_type_object_get_prop runs);
-    runs_type_object_proto_is_prototype_of :
-      follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs)
+    runs_type_correct_object_proto_is_prototype_of :
+      follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs);
+    runs_type_correct_equal :
+      follow_equal (runs_type_equal runs)
   }.
 
 
@@ -570,6 +574,9 @@ Proof.
    skip.
 
    (* IsPrototypeOf *)
+   skip.
+
+   (* Equal *)
    skip.
 
 Qed.

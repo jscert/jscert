@@ -421,7 +421,8 @@ Record runs_type : Type := runs_type_intro {
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor;
-    runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result
+    runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
+    runs_type_equal : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -1268,15 +1269,15 @@ Definition create_arguments_object runs S C lf xs args L str : result :=
   if_bool (object_define_own_prop runs S' C l "length" A false) (fun S1 b =>
     if_void (arguments_object_map runs S1 C l xs args L str) (fun S2 =>
       if str then (
-        let A := attributes_data_intro (value_object lf) true false true in
-        if_bool (object_define_own_prop runs S2 C l "callee" A false) (fun S3 b' =>
-          out_ter S3 l)
-      ) else (
         let vthrower := value_object prealloc_throw_type_error in
         let A := attributes_accessor_intro vthrower vthrower false false in
         if_bool (object_define_own_prop runs S2 C l "caller" A false) (fun S3 b' =>
           if_bool (object_define_own_prop runs S3 C l "callee" A false) (fun S4 b'' =>
-            out_ter S4 l))))).
+            out_ter S4 l))
+      ) else (
+        let A := attributes_data_intro (value_object lf) true false true in
+        if_bool (object_define_own_prop runs S2 C l "callee" A false) (fun S3 b' =>
+          out_ter S3 l)))).
 
 Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
   let arguments := "arguments" in
@@ -1459,7 +1460,8 @@ Definition convert_twice {A : Type} (ifv : result -> (state -> A -> result) -> r
     ifv (KC S1 v2) (fun S2 vc2 =>
       K S2 vc1 vc2)).
 
-Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state -> value -> result) S v1 v2 : result :=
+Definition run_equal runs S (conv_number conv_primitive : state -> value -> result)
+    v1 v2 : result :=
   let checkTypesThen S0 v1 v2 (K : type -> type -> result) :=
     let T1 := type_of v1 in
     let T2 := type_of v2 in
@@ -1469,11 +1471,7 @@ Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state
   checkTypesThen S v1 v2 (fun T1 T2 =>
     let dc_conv v1 F v2 :=
       if_value (F S v2) (fun S0 v2' =>
-        match max_depth with
-        | O => result_bottom S0
-        | S max_depth' =>
-          run_equal_partial max_depth' conv_number conv_primitive S0 v1 v2'
-        end) in
+        runs_type_equal runs S0 conv_number conv_primitive v1 v2') in
     let so b :=
       out_ter S b in
     ifb (T1 = type_null \/ T1 = type_undef) /\ (T2 = type_null \/ T2 = type_undef) then
@@ -1491,15 +1489,6 @@ Fixpoint run_equal_partial (max_depth : nat) (conv_number conv_primitive : state
     else ifb T1 = type_object /\ (T2 = type_string \/ T2 = type_number) then
       dc_conv v2 conv_primitive v1
     else so false).
-
-Definition run_equal :=
-  run_equal_partial 4%nat (*
-    If I'm not mistaking, the longest conversion chain is given by the following one:
-     - string, object;
-     - string, boolean;
-     - string, number;
-     - number, number.
-  *).
 
 Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
   let conv_primitive S v :=
@@ -1585,7 +1574,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
       | binary_op_disequal => Some (negb b)
       | _ => None
       end in
-    if_bool (run_equal conv_number conv_primitive S v1 v2) (fun S0 b0 =>
+    if_bool (runs_type_equal runs S conv_number conv_primitive v1 v2) (fun S0 b0 =>
       if_some (finalPass b0) (out_ter S0))
 
   | binary_op_strict_equal =>
@@ -2398,7 +2387,8 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_object_get_own_prop := fun S _ _ _ => passing_abort (result_bottom S);
       runs_type_object_get_prop := fun S _ _ _ => passing_abort (result_bottom S);
-      runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S
+      runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
+      runs_type_equal := fun S _ _ _ _ => result_bottom S
     |}
   | S max_step' =>
     let wrap {A : Type} (f : runs_type -> state -> A) S : A :=
@@ -2417,7 +2407,8 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_get_prop :=
         wrap run_object_get_prop;
       runs_type_object_proto_is_prototype_of :=
-        wrap object_proto_is_prototype_of
+        wrap object_proto_is_prototype_of;
+      runs_type_equal := wrap run_equal
     |}
   end.
 
