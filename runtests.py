@@ -293,7 +293,7 @@ class ResultPrinter:
             with open(os.path.join(args.templatedir,"test_results.tmpl"),"r") as template:
                 outfilenamebits = ["report",getpass.getuser(),self.impl_name()]
                 if args.title : outfilenamebits.append(args.title)
-                outfilenamebits.extend([time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime())])
+                outfilenamebits.extend([time.strftime("%Y-%m-%dT%H%M%SZ",time.gmtime())])
                 outfilename = "-".join(outfilenamebits)+".html"
                 with open(os.path.join(args.reportdir,outfilename),"w") as outfile:
                     outfile.write(simplerenderer.render(outer.read(),{"body":pystache.render(template.read(),report)}))
@@ -412,4 +412,3 @@ for filename in args.filenames:
 
 printer.time_taken = calendar.timegm(time.gmtime()) - starttime
 printer.end_message()
-

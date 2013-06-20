@@ -189,7 +189,7 @@ outputFileName username time tname = do
   dir <- reportDir
   return $
     dir </> ("query_"++username++"_"++tname++"_"++
-             formatTime defaultTimeLocale "%_y-%m-%dT%H:%M:%S" time) <.> "html"
+             formatTime defaultTimeLocale "%_y-%m-%dT%H%M%S" time) <.> "html"
 
 reportContext :: Monad m => String -> String -> String -> UTCTime -> Batch -> [SingleTestRun] -> MuContext m
 reportContext qname comment user time batch results = mkStrContext context
@@ -200,7 +200,7 @@ reportContext qname comment user time batch results = mkStrContext context
     context "implementation" = MuVariable $ bImplementation batch
     context "testtitle" = MuVariable qname
     context "testnote" = MuVariable $ comment ++ " -- " ++ bTitle batch ++ ": " ++ bNotes batch
-    context "time" = MuVariable $ formatTime defaultTimeLocale "%_y-%m-%dT%H:%M:%S" time
+    context "time" = MuVariable $ formatTime defaultTimeLocale "%_y-%m-%dT%H%M%S" time
     context "user" = MuVariable user
     context "system" = MuVariable $ bSystem batch
     context "osnodename" = MuVariable $ bOsnodename batch
