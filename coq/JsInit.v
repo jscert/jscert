@@ -136,8 +136,8 @@ Definition object_prealloc_global_properties :=
   let P := write_native P "Function" prealloc_function in
   (* LATER: let P := write_native P "Array" prealloc_array in
   let P := write_native P "String" prealloc_string in
-  let P := write_native P "Boolean" prealloc_boolean in
-  let P := write_native P "Number" prealloc_number in *)
+  let P := write_native P "Boolean" prealloc_boolean in *)
+  let P := write_native P "Number" prealloc_number in
   let P := write_native P "Math" prealloc_math in
   let P := write_native P "Error" prealloc_error in
   let P := write_native P "EvalError" native_error_eval in
@@ -222,7 +222,7 @@ Definition object_proto_is_prototype_of_function_object :=
 Definition object_prealloc_function :=
   let P := Heap.empty in
   let P := write_constant P "prototype" (value_object prealloc_function_proto) in
-  let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in (* This one seems odd, isn't it? -- Martin *)
+  let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in (* This one seems odd, doesn't it? -- Martin *)
   (* LATER: complete list *)
   object_create_prealloc_constructor prealloc_function 1 P.
 
@@ -235,6 +235,8 @@ Definition object_prealloc_function_proto :=
   let P := write_native P "constructor" prealloc_function in
   let P := Heap.write P "length" (attrib_constant 0) in (* todo: can we use write_constant? *)
   (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* TODO *)
+  (* let P := write_native P "call" prealloc_function_proto_call in *) (* TODO *)
+  (* let P := write_native P "bind" prealloc_function_proto_bind in *) (* TODO *)
   (* LATER: complete list *)
   let O := object_create_builtin prealloc_object_proto "Function" P in
   object_with_invokation O None (Some (call_prealloc prealloc_function_proto)) None.
