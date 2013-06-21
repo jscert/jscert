@@ -516,7 +516,7 @@ Definition run_object_get_prop runs S C l x : passing full_descriptor :=
   passing_def (run_object_method object_get_prop_ S l) (fun B =>
     match B with
     | builtin_get_prop_default =>
-      passing_defined (run_object_get_own_prop runs S C l x) (fun S1 D =>
+      passing_defined (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         ifb D = full_descriptor_undef then (
           passing_def (run_object_method object_proto_ S1 l) (fun proto =>
             match proto with
@@ -551,7 +551,7 @@ Definition object_can_put runs S C l x : passing bool :=
   passing_def (run_object_method object_can_put_ S l) (fun B =>
       match B with
       | builtin_can_put_default =>
-        passing_defined (run_object_get_own_prop runs S C l x) (fun S1 D =>
+        passing_defined (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
           match D with
           | attributes_accessor_of Aa =>
             passing_normal S1 (decide (attributes_accessor_set Aa <> undef))
@@ -587,7 +587,7 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
     match B with
     | builtin_define_own_prop_default =>
-      result_passing (run_object_get_own_prop runs S C l x) (fun S1 D =>
+      result_passing (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         let reject S :=
           out_error_or_cst S str native_error_type false
         in if_some (run_object_method object_extensible_ S1 l) (fun ext =>
@@ -703,7 +703,7 @@ Definition object_delete runs S C l x str : result :=
   if_some (run_object_method object_delete_ S l) (fun B =>
     match B with
     | builtin_delete_default =>
-      result_passing (run_object_get_own_prop runs S C l x) (fun S1 D =>
+      result_passing (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         match D with
         | full_descriptor_undef => out_ter S true
         | full_descriptor_some A =>
@@ -805,7 +805,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
   | builtin_put_default =>
     result_passing (object_can_put runs S C l x) (fun S1 b =>
       if b then
-        result_passing (run_object_get_own_prop runs S1 C l x) (fun S2 D =>
+        result_passing (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
           match D with
 
           | attributes_data_of Ad =>
@@ -2147,7 +2147,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
               out_ter S1 l)
           | x :: xs' =>
-            result_passing (run_object_get_own_prop runs S0 C l x) (fun S1 D =>
+            result_passing (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
               match D with
               | full_descriptor_some A =>
                 let A' :=
@@ -2176,7 +2176,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_method object_extensible_ S l) (fun ext =>
               out_ter S (neg ext))
           | x :: xs' =>
-            result_passing (run_object_get_own_prop runs S C l x) (fun S0 D =>
+            result_passing (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
               match D with
               | full_descriptor_some A =>
                 if attributes_configurable A then
@@ -2200,7 +2200,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
               out_ter S1 l)
           | x :: xs' =>
-            result_passing (run_object_get_own_prop runs S0 C l x) (fun S1 D =>
+            result_passing (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
               match D with
               | full_descriptor_some A =>
                 let A' :=
@@ -2236,7 +2236,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_method object_extensible_ S l) (fun ext =>
               out_ter S (neg ext))
           | x :: xs' =>
-             result_passing (run_object_get_own_prop runs S C l x) (fun S0 D =>
+             result_passing (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
               let check_configurable A :=
                 if attributes_configurable A then
                   out_ter S0 false : result
@@ -2302,7 +2302,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
     let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
       if_object (to_object S1 (execution_ctx_this_binding C)) (fun S2 l =>
-        result_passing (run_object_get_own_prop runs S2 C l x) (fun S3 D =>
+        result_passing (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
           match D with
           | full_descriptor_undef =>
             out_ter S3 false

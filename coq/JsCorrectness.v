@@ -74,10 +74,14 @@ Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
     red_stat.
-Definition follow_object_get_own_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor) :=
-  True. (* TODO *)
-Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor) :=
-  True. (* TODO *)
+Definition follow_object_get_own_prop run_object_get_own_prop := forall S C l x S0 D,
+  run_object_get_own_prop S C l x = passing_normal S0 D -> (* TODO:  Wrap this in a construction similar to [follow_spec]. *)
+  forall K o, red_expr S0 C (K D) o ->
+  red_expr S C (spec_object_get_own_prop l x K) o.
+Definition follow_object_get_prop run_object_get_prop := forall S C l x S0 D,
+  run_object_get_prop S C l x = passing_normal S0 D -> (* TODO:  Wrap this in a construction similar to [follow_spec]. *)
+  forall K o, red_expr S0 C (K D) o ->
+  red_expr S C (spec_object_get_prop l x K) o.
 Definition follow_object_proto_is_prototype_of (_ : state -> object_loc -> object_loc -> result) :=
   True. (* TODO *)
 Definition follow_equal (_ : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result) :=
@@ -182,7 +186,7 @@ Qed.
 
 
 (**************************************************************)
-(** Unfolding Functions *)
+(** Unfolding Tactics *)
 
 Ltac unfold_func vs0 :=
   match vs0 with (@boxer ?T ?t) :: ?vs =>
@@ -234,6 +238,12 @@ Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
   | I : run_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHc (rm I)
+  | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
+    let RC := fresh "RC" in
+    lets~ RC: IHowp (rm I)
+  | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
+    let RC := fresh "RC" in
+    lets~ RC: IHop (rm I)
   (* TODO:  Complete. *)
   end.
 
@@ -259,6 +269,16 @@ Definition if_regular_lemma (res : result) S0 R0 M :=
     ((res_type R <> restype_normal /\ S = S0 /\ R = R0)
       \/ M S R).
 
+Ltac simpl_after_redular_lemma :=
+  repeat match goal with
+         | HM : exists x, _ |- _ =>
+           let x := fresh x in destruct HM as [x HM]
+         end; intuit;
+  repeat match goal with
+         | H : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
+           inverts~ H
+         end.
+
 Ltac deal_with_regular_lemma H if_out :=
   let Hnn := fresh "Hnn" in
   let HE := fresh "HE" in
@@ -268,14 +288,7 @@ Ltac deal_with_regular_lemma H if_out :=
   let S' := fresh "S" in
   let R' := fresh "R" in
   lets (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
-  [|repeat match goal with
-           | HM : exists x, _ |- _ =>
-             let x := fresh x in destruct HM as [x HM]
-           end; intuit;
-    repeat match goal with
-           | H : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S0 ?R0) |- _ =>
-             inverts~ H
-           end].
+  [|simpl_after_redular_lemma].
 
 Lemma if_ter_out : forall res K S R,
   if_ter res K = out_ter S R ->
@@ -331,6 +344,16 @@ Proof.
    repeat eexists. auto*.
 Qed.
 
+Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) a S,
+  passing_def bo K = passing_normal S a ->
+  exists b, bo = Some b /\ K b = passing_normal S a.
+Proof. introv E. destruct* bo. inverts~ E. Qed.
+
+Lemma passing_defined_out : forall (A B : Type) (p : passing B) K S (a : A),
+  passing_defined p K = passing_normal S a ->
+  exists S0 b, p = passing_normal S0 b /\ K S0 b = passing_normal S a.
+Proof. introv E. destruct* p. inverts~ E. Qed.
+
 Lemma run_error_correct : forall S C ne S' R',
   run_error S ne = out_ter S' R' ->
   red_expr S C (spec_error ne) (out_ter S' R').
@@ -361,15 +384,6 @@ Proof.
   introv B. unfolds. forwards (O&Bi&E): option_map_some_back B.
   forwards: @pick_option_correct Bi. exists* O.
 Qed.
-
-Lemma run_object_get_prop_correct : forall runs,
-  runs_type_correct runs -> forall S S0 C l x D K o,
-  run_object_get_prop runs S C l x = passing_normal S0 D ->
-  red_expr S0 C (K D) o ->
-  red_expr S C (spec_object_get_prop l x K) o.
-Proof.
-  introv RC E R. apply~ red_spec_object_get_prop.
-Admitted. (* TODO *)
 
 Lemma object_has_prop_correct : forall runs,
   runs_type_correct runs -> forall S S1 C l x b,
@@ -425,6 +439,13 @@ Qed.
 (**************************************************************)
 (** Monadic Constructors, Tactics *)
 
+Ltac other_follows :=
+  try match goal with
+  | H : run_object_method ?meth ?S ?l = Some ?z |- _ =>
+    let R := fresh "R" in (* Maybe this usage of `fresh' is not very serious... *)
+    forwards R: @run_object_method_correct (rm H)
+  end.
+
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac unmonad :=
   try match goal with
@@ -436,24 +457,26 @@ Ltac unmonad :=
     deal_with_regular_lemma H if_object_out
   | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
     inverts H
+  | H : passing_normal ?S1 ?D1 = passing_normal ?S2 ?D2 |- _ =>
+    inverts H
+  (* TODO:  Complete. *)
+  (* TODO:  Factorize the following tactics. *)
+  | H : passing_def ?bo ?K = passing_normal ?S ?a |- _ =>
+    let B := fresh "B" in
+    let HB := fresh "HB" in
+    let E := fresh "E" in
+    forwards (B&HB&E): @passing_def_out (rm H);
+    simpl_after_redular_lemma
+  | H : passing_defined ?p ?K = passing_normal ?S ?a |- _ =>
+    let S := fresh "S" in
+    let B := fresh "B" in
+    let p := fresh "p" in
+    let E := fresh "E" in
+    forwards (S&B&HB&E): @passing_defined_out (rm H);
+    simpl_after_redular_lemma
   end;
-  dealing_follows.
-
-
-(**************************************************************)
-(** Operations on objects *)
-
-(* TODO
-Lemma run_object_method_correct :
-  forall Proj S l,
-  (* TODO:  Add correctness properties. *)
-    object_method Proj S l (run_object_method Proj S l).
-Proof.
-  introv. eexists. splits*.
-  apply pick_spec.
-  skip. (* Need properties about [l]. *)
-Qed.
-*)
+  dealing_follows;
+  other_follows.
 
 
 (**************************************************************)
@@ -580,7 +603,7 @@ Proof.
     skip.
     (* Call Prealloc *)
     apply~ red_spec_call. applys run_object_method_correct EQB.
-    apply~ red_spec_call_1_prealloc.
+    apply~ red_spec_call_1_prealloc. unmonad.
     skip.
 
    (* OLD
@@ -601,10 +624,23 @@ Proof.
    skip.
 
    (* GetOwnprop *)
-   skip.
+   introv E R. unfolds in E. simpls. unfolds in E. unmonad.
+   applys red_spec_object_get_own_prop R0. destruct B.
+    unmonad. applys~ red_spec_object_get_own_prop_1_default R1.
+     unmonad. sets_eq Ao: (Heap.read_option B x). destruct Ao.
+      apply~ red_spec_object_get_own_prop_2_some_data.
+      apply~ red_spec_object_get_own_prop_2_none.
+    unmonad. apply~ red_spec_object_get_own_prop_args_obj.
+     skip. (* TODO:  Change the definition of [*get_own_prop] to get something closer to the specification. *)
 
    (* Getprop *)
-   skip.
+   introv E R. unfolds in E. simpls. unfolds in E. unmonad.
+   applys red_spec_object_get_prop R0. destruct B.
+    apply~ red_spec_object_get_prop_1_default. unmonad. apply~ RC. cases_if.
+     substs. unmonad. applys~ red_spec_object_get_prop_2_undef R1. destruct B; tryfalse.
+       destruct p; tryfalse. inverts E0. apply~ red_spec_object_get_prop_3_null.
+      unmonad. apply~ red_spec_object_get_prop_3_not_null.
+     destruct B; tryfalse. inverts E. apply~ red_spec_object_get_prop_2_not_undef.
 
    (* IsPrototypeOf *)
    skip.
