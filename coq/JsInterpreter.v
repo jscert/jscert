@@ -329,7 +329,10 @@ Definition passing_success {A : Type} (o : result)
     (K : state -> resvalue -> passing A) : passing A :=
   passing_ter o (fun S R =>
     match res_type R with
-    | restype_normal => K S (res_value R)
+    | restype_normal =>
+      ifb res_label R = label_empty then K S (res_value R)
+      else passing_abort
+             (impossible_with_heap_because S "[passing_success] received a normal result with non-empty label.")
     | _ => passing_abort o
     end).
 

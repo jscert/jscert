@@ -256,9 +256,15 @@ Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
   | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
     let RC := fresh "RC" in
     lets~ RC: (proj1 (IHowp l)) (rm I)
+  | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = passing_abort ?o |- _ =>
+    let RC := fresh "RC" in
+    lets~ RC: (proj2 (IHowp l)) (rm I)
   | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
     let RC := fresh "RC" in
     lets~ RC: (proj1 (IHop l)) (rm I)
+  | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = passing_abort ?o |- _ =>
+    let RC := fresh "RC" in
+    lets~ RC: (proj2 (IHop l)) (rm I)
   (* TODO:  Complete. *)
   end.
 
@@ -369,6 +375,26 @@ Lemma passing_defined_out : forall (A B : Type) (p : passing B) K S (a : A),
   exists S0 b, p = passing_normal S0 b /\ K S0 b = passing_normal S a.
 Proof. introv E. destruct* p. inverts~ E. Qed.
 
+Lemma passing_success_out : forall (A : Type) res K S (a : A),
+  passing_success res K = passing_normal S a ->
+  exists S0 rv, res = out_ter S0 (rv : resvalue) /\
+                K S0 rv = passing_normal S a.
+Proof.
+  introv E. destruct res; tryfalse. destruct o; tryfalse. simpls.
+  destruct r as [T R L]; destruct T; tryfalse. simpls. cases_if. substs.
+  repeat eexists. auto*.
+Qed.
+
+Lemma passing_value_out : forall (A : Type) res K S (a : A),
+  passing_value res K = passing_normal S a ->
+  exists S0 v, res = out_ter S0 (v : value) /\
+               K S0 v = passing_normal S a.
+Proof.
+  introv E. destruct res; tryfalse. destruct o; tryfalse. simpls.
+  destruct r as [T R L]; destruct T; tryfalse. simpls. cases_if. substs.
+  destruct R; tryfalse. repeat eexists. auto*.
+Qed.
+
 Lemma run_error_correct : forall S C ne S' R',
   run_error S ne = out_ter S' R' ->
   red_expr S C (spec_error ne) (out_ter S' R').
@@ -411,7 +437,7 @@ Proof.
   skip. (* TODO *)
 Qed.
 
-Lemma object_get_correct : forall runs,
+Lemma run_object_get_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 l x S R,
   run_object_get runs S0 C0 l x = out_ter S R ->
   red_expr S0 C0 (spec_object_get l x) (out_ter S R).
@@ -442,7 +468,7 @@ Proof.
     destruct r as [rb rn rs]; destruct rb as [v|?]; try solve [inverts C; false].
      apply~ red_spec_ref_get_value_ref_b. reflexivity.
      cases_if; destruct v as [()|l]; simpls; try (solve [inverts C; false]);
-       cases_if; first [ applys~ prim_value_get_correct RC | applys~ object_get_correct RC ].
+       cases_if; first [ applys~ prim_value_get_correct RC | applys~ run_object_get_correct RC ].
     destruct r as [rb rn rs]; destruct rb as [[()|l]|?]; simpls; tryfalse;
       try (false C; first [ solve [left~] | solve [right~] ]).
      apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
@@ -488,6 +514,20 @@ Ltac unmonad :=
     let p := fresh "p" in
     let E := fresh "E" in
     forwards (S&B&HB&E): @passing_defined_out (rm H);
+    simpl_after_redular_lemma
+  | H : passing_success ?p ?K = passing_normal ?S ?a |- _ =>
+    let S := fresh "S" in
+    let rv := fresh "rv" in
+    let E := fresh "E" in
+    let Eo := fresh "Eo" in
+    forwards (S&rv&Eo&E): @passing_success_out (rm H);
+    simpl_after_redular_lemma
+  | H : passing_value ?p ?K = passing_normal ?S ?a |- _ =>
+    let S := fresh "S" in
+    let v := fresh "v" in
+    let E := fresh "E" in
+    let Eo := fresh "Eo" in
+    forwards (S&v&Eo&E): @passing_value_out (rm H);
     simpl_after_redular_lemma
   end;
   dealing_follows;
@@ -659,18 +699,24 @@ Proof.
         unmonad. destruct B; tryfalse. simpls.
         applys~ red_spec_object_get_own_prop_args_obj_1_attrs R1.
         unmonad. apply~ RC. destruct B.
-         apply~ red_spec_object_get_own_prop_args_obj_2_undef.
-          inverts E0. apply~ red_spec_object_get_own_prop_args_obj_4.
-         skip. (* unmonad. apply~ red_spec_object_get_own_prop_args_obj_2_attrs. *)
+         inverts E0. apply~ red_spec_object_get_own_prop_args_obj_2_undef.
+          apply~ red_spec_object_get_own_prop_args_obj_4.
+         unmonad. forwards~ G: run_object_get_correct Eo. constructors~.
+          applys~ red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a0; tryfalse.
+           inverts E. apply~ red_spec_object_get_own_prop_args_obj_3.
+            apply~ red_spec_object_get_own_prop_args_obj_4.
+    skip. (* TODO *)
 
    (* Getprop *)
-   introv E R. unfolds in E. simpls. unfolds in E. unmonad.
-   applys red_spec_object_get_prop R0. destruct B.
-    apply~ red_spec_object_get_prop_1_default. unmonad. apply~ RC. cases_if.
-     substs. unmonad. applys~ red_spec_object_get_prop_2_undef R1. destruct B; tryfalse.
-       destruct p; tryfalse. inverts E0. apply~ red_spec_object_get_prop_3_null.
-      unmonad. apply~ red_spec_object_get_prop_3_not_null.
-     destruct B; tryfalse. inverts E. apply~ red_spec_object_get_prop_2_not_undef.
+   introv. splits.
+    introv E R. unfolds in E. simpls. unfolds in E. unmonad.
+    applys red_spec_object_get_prop R0. destruct B.
+     apply~ red_spec_object_get_prop_1_default. unmonad. apply~ RC. cases_if.
+      substs. unmonad. applys~ red_spec_object_get_prop_2_undef R1. destruct B; tryfalse.
+        destruct p; tryfalse. inverts E0. apply~ red_spec_object_get_prop_3_null.
+       unmonad. apply~ red_spec_object_get_prop_3_not_null.
+      destruct B; tryfalse. inverts E. apply~ red_spec_object_get_prop_2_not_undef.
+    skip. (* TODO *)
 
    (* IsPrototypeOf *)
    skip.
