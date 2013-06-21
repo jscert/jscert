@@ -277,7 +277,7 @@ Definition object_parameter_map S l lmap :=
     stored at address [l] in [S]. *)
 
 Definition object_properties S l P :=
-  exists O, object_binds S l O /\ P = object_properties_ O.
+  exists O, object_binds S l O /\ object_properties_ O = P.
 
 (** [object_properties_keys_as_list S l xs] asserts that [xs]
     is the list of property names associated to the object

@@ -74,13 +74,13 @@ Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
     red_stat.
-Definition follow_object_get_own_prop run_object_get_own_prop := forall S C l x S0 D K o,
+Definition follow_object_get_own_prop run_object_get_own_prop := forall S C l x S0 D,
   run_object_get_own_prop S C l x = passing_normal S0 D -> (* TODO:  Wrap this in a construction similar to [follow_spec]. *)
-  red_expr S0 C (K D) o ->
+  forall K o, red_expr S0 C (K D) o ->
   red_expr S C (spec_object_get_own_prop l x K) o.
-Definition follow_object_get_prop run_object_get_prop := forall S C l x S0 D K o,
+Definition follow_object_get_prop run_object_get_prop := forall S C l x S0 D,
   run_object_get_prop S C l x = passing_normal S0 D -> (* TODO:  Wrap this in a construction similar to [follow_spec]. *)
-  red_expr S0 C (K D) o ->
+  forall K o, red_expr S0 C (K D) o ->
   red_expr S C (spec_object_get_prop l x K) o.
 Definition follow_object_proto_is_prototype_of (_ : state -> object_loc -> object_loc -> result) :=
   True. (* TODO *)
@@ -238,13 +238,12 @@ Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
   | I : run_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHc (rm I)
-  (* FIXME:  This adds some exisential variables...
   | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
     let RC := fresh "RC" in
-    forwards~ RC: IHowp (rm I)
+    lets~ RC: IHowp (rm I)
   | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
     let RC := fresh "RC" in
-    forwards~ RC: IHop (rm I) *)
+    lets~ RC: IHop (rm I)
   (* TODO:  Complete. *)
   end.
 
@@ -458,6 +457,8 @@ Ltac unmonad :=
     deal_with_regular_lemma H if_object_out
   | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
     inverts H
+  | H : passing_normal ?S1 ?D1 = passing_normal ?S2 ?D2 |- _ =>
+    inverts H
   (* TODO:  Complete. *)
   (* TODO:  Factorize the following tactics. *)
   | H : passing_def ?bo ?K = passing_normal ?S ?a |- _ =>
@@ -623,14 +624,23 @@ Proof.
    skip.
 
    (* GetOwnprop *)
-   skip.
+   introv E R. unfolds in E. simpls. unfolds in E. unmonad.
+   applys red_spec_object_get_own_prop R0. destruct B.
+    unmonad. applys~ red_spec_object_get_own_prop_1_default R1.
+     unmonad. sets_eq Ao: (Heap.read_option B x). destruct Ao.
+      apply~ red_spec_object_get_own_prop_2_some_data.
+      apply~ red_spec_object_get_own_prop_2_none.
+    unmonad. apply~ red_spec_object_get_own_prop_args_obj.
+     skip. (* TODO:  Change the definition of [*get_own_prop] to get something closer to the specification. *)
 
    (* Getprop *)
    introv E R. unfolds in E. simpls. unfolds in E. unmonad.
    applys red_spec_object_get_prop R0. destruct B.
-    apply~ red_spec_object_get_prop_1_default. unmonad.
-    (* forwards~ RC: IHowp HB. *)
-    skip. (* TODO *)
+    apply~ red_spec_object_get_prop_1_default. unmonad. apply~ RC. cases_if.
+     substs. unmonad. applys~ red_spec_object_get_prop_2_undef R1. destruct B; tryfalse.
+       destruct p; tryfalse. inverts E0. apply~ red_spec_object_get_prop_3_null.
+      unmonad. apply~ red_spec_object_get_prop_3_not_null.
+     destruct B; tryfalse. inverts E. apply~ red_spec_object_get_prop_2_not_undef.
 
    (* IsPrototypeOf *)
    skip.
