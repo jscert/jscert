@@ -59,6 +59,17 @@ Definition follow_spec {T Te : Type}
   run S C e = out_ter S' res ->
   red S C (conv e) (out_ter S' res).
 
+Definition follow_spec_passing {T Te A : Type}
+    (conv : T -> (A -> Te) -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
+    (run : state -> execution_ctx -> T -> passing A) :=
+  (forall S C (x : T) S0 (a : A),
+    run S C x = passing_normal S0 a ->
+    forall K o, red S0 C (K a) o ->
+    red S C (conv x K) o) /\
+  (forall S C (x : T) o,
+    run S C x = passing_abort o ->
+    forall K, red S C (conv x K) o).
+
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
 Definition follow_prog := follow_spec prog_basic red_prog.
@@ -74,14 +85,10 @@ Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
     red_stat.
-Definition follow_object_get_own_prop run_object_get_own_prop := forall S C l x S0 D,
-  run_object_get_own_prop S C l x = passing_normal S0 D -> (* TODO:  Wrap this in a construction similar to [follow_spec]. *)
-  forall K o, red_expr S0 C (K D) o ->
-  red_expr S C (spec_object_get_own_prop l x K) o.
-Definition follow_object_get_prop run_object_get_prop := forall S C l x S0 D,
-  run_object_get_prop S C l x = passing_normal S0 D -> (* TODO:  Wrap this in a construction similar to [follow_spec]. *)
-  forall K o, red_expr S0 C (K D) o ->
-  red_expr S C (spec_object_get_prop l x K) o.
+Definition follow_object_get_own_prop l :=
+  follow_spec_passing (spec_object_get_own_prop l) red_expr.
+Definition follow_object_get_prop l :=
+  follow_spec_passing (spec_object_get_prop l) red_expr.
 Definition follow_object_proto_is_prototype_of (_ : state -> object_loc -> object_loc -> result) :=
   True. (* TODO *)
 Definition follow_equal (_ : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result) :=
@@ -102,10 +109,11 @@ Record runs_type_correct runs :=
     runs_type_correct_stat_while : forall ls e t,
       follow_stat_while ls e t (fun S C rv =>
         runs_type_stat_while runs S C rv ls e t);
-    runs_type_correct_object_get_own_prop :
-      follow_object_get_own_prop (runs_type_object_get_own_prop runs);
-    runs_type_correct_object_get_prop :
-      follow_object_get_prop (runs_type_object_get_prop runs);
+    runs_type_correct_object_get_own_prop : forall l,
+      follow_object_get_own_prop l (fun S C =>
+        runs_type_object_get_own_prop runs S C l);
+    runs_type_correct_object_get_prop : forall l,
+      follow_object_get_prop l (fun S C => runs_type_object_get_prop runs S C l);
     runs_type_correct_object_proto_is_prototype_of :
       follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs);
     runs_type_correct_equal :
@@ -146,6 +154,13 @@ Ltac name_object_method :=
   | H : appcontext [ run_object_method ?meth ?S ?l ] |- _ =>
     let B := fresh "B" in
     sets_eq <- B: (run_object_method meth S l)
+  end.
+
+Ltac name_passing_def :=
+  match goal with
+  | H : appcontext [ passing_def ?o ?K ] |- _ =>
+    let p := fresh "p" in
+    sets_eq <- p: (passing_def o K)
   end.
 
 
@@ -240,10 +255,10 @@ Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
     forwards~ RC: IHc (rm I)
   | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
     let RC := fresh "RC" in
-    lets~ RC: IHowp (rm I)
+    lets~ RC: (proj1 (IHowp l)) (rm I)
   | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
     let RC := fresh "RC" in
-    lets~ RC: IHop (rm I)
+    lets~ RC: (proj1 (IHop l)) (rm I)
   (* TODO:  Complete. *)
   end.
 
@@ -322,9 +337,9 @@ Lemma if_value_out : forall res K S R,
 Proof.
   introv H. deal_with_regular_lemma H if_ter_out; substs.
    repeat eexists. left~.
-   sets_eq t Et: (res_type R0). repeat eexists.
+   sets_eq <- t Et: (res_type R0). repeat eexists.
    rewrite~ res_overwrite_value_if_empty_empty in HM.
-   destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
+   destruct t; try solve [ left; inverts HM; rewrite Et; splits~; discriminate ].
    right. destruct R0. simpls. destruct res_value; tryfalse.
    repeat eexists. auto*.
 Qed.
@@ -337,9 +352,9 @@ Lemma if_object_out : forall res K S R,
 Proof.
   introv H. deal_with_regular_lemma H if_ter_out; substs.
    repeat eexists. left~.
-   sets_eq t Et: (res_type R0). repeat eexists.
+   sets_eq <- t Et: (res_type R0). repeat eexists.
    rewrite~ res_overwrite_value_if_empty_empty in HM.
-   destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
+   destruct t; try solve [ left; inverts HM; rewrite Et; splits~; discriminate ].
    right. destruct R0. simpls. destruct res_value; tryfalse. destruct v; tryfalse.
    repeat eexists. auto*.
 Qed.
@@ -497,7 +512,7 @@ Theorem runs_correct : forall num,
 Proof.
 
   induction num.
-   constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R.
+   constructors; try solve [unfolds~ (* Temporary *)]; repeat (repeat intro; (splits || tryfalse)).
 
    lets [IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo]: (rm IHnum).
    constructors.
@@ -624,14 +639,29 @@ Proof.
    skip.
 
    (* GetOwnprop *)
-   introv E R. unfolds in E. simpls. unfolds in E. unmonad.
-   applys red_spec_object_get_own_prop R0. destruct B.
-    unmonad. applys~ red_spec_object_get_own_prop_1_default R1.
-     unmonad. sets_eq Ao: (Heap.read_option B x). destruct Ao.
-      apply~ red_spec_object_get_own_prop_2_some_data.
-      apply~ red_spec_object_get_own_prop_2_none.
-    unmonad. apply~ red_spec_object_get_own_prop_args_obj.
-     skip. (* TODO:  Change the definition of [*get_own_prop] to get something closer to the specification. *)
+   introv. splits.
+    introv E R. unfolds in E. simpls. unfolds in E. unmonad.
+     applys red_spec_object_get_own_prop R0. name_passing_def.
+     asserts (S1&D&E): (exists S1 D, p = passing_normal S1 D).
+       destruct* p. destruct B; false.
+     asserts Co: (forall K o,
+                red_expr S1 C (K D) o ->
+                red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o).
+       introv R'. substs. unmonad. applys~ red_spec_object_get_own_prop_1_default R1.
+       unmonad. sets_eq Ao: (Heap.read_option B0 x). destruct Ao.
+        apply~ red_spec_object_get_own_prop_2_some_data.
+        apply~ red_spec_object_get_own_prop_2_none.
+     destruct B.
+      substs. inverts E. apply* Co.
+      rewrite E in E0. clear E. simpls. apply~ red_spec_object_get_own_prop_args_obj.
+       apply~ Co. destruct D.
+        inverts E0. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
+        unmonad. destruct B; tryfalse. simpls.
+        applys~ red_spec_object_get_own_prop_args_obj_1_attrs R1.
+        unmonad. apply~ RC. destruct B.
+         apply~ red_spec_object_get_own_prop_args_obj_2_undef.
+          inverts E0. apply~ red_spec_object_get_own_prop_args_obj_4.
+         skip. (* unmonad. apply~ red_spec_object_get_own_prop_args_obj_2_attrs. *)
 
    (* Getprop *)
    introv E R. unfolds in E. simpls. unfolds in E. unmonad.

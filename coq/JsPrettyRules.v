@@ -2470,11 +2470,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_get_own_prop_args_obj : forall S C l x K o, (* Step 1 *)
       red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x (spec_args_obj_get_own_prop_1 l x K)) o ->
       red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_args_obj l x K) o   
-      
+
   | red_spec_object_get_own_prop_args_obj_1_undef : forall S C l x K o, (* Step 2 *)
       red_expr S C (K full_descriptor_undef) o ->
       red_expr S C (spec_args_obj_get_own_prop_1 l x K full_descriptor_undef) o 
-      
+
   | red_spec_object_get_own_prop_args_obj_1_attrs : forall lmap S C l x K A o, (* Steps 3 - 4 *)
       object_parameter_map S l (Some lmap) ->
       red_expr S C (spec_object_get_own_prop lmap x (spec_args_obj_get_own_prop_2 l x K lmap A)) o -> 
@@ -2484,7 +2484,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_get (value_object lmap) x) o1 ->
       red_expr S C (spec_args_obj_get_own_prop_3 K A o1) o -> 
       red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A (full_descriptor_some Amap)) o
-      
+
   | red_spec_object_get_own_prop_args_obj_3 : forall S C K Ad S' v o, (* Step 5 *)      
       red_expr S' C (spec_args_obj_get_own_prop_4 K (attributes_data_with_value Ad v)) o -> 
       red_expr S C (spec_args_obj_get_own_prop_3 K (attributes_data_of Ad) (out_ter S' v)) o
