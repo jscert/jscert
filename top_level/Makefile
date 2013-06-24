@@ -4,11 +4,16 @@ mlfilestransformed = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g' | 
 
 INCLUDE = -I ../interp/src -I ../interp/src/extract
 
-PACKAGE = -package lwt.syntax -package lwt.simple-top -package lwt -package unix -package str -package xml-light -linkpkg
+PACKAGE = -package unix -package str -package xml-light -linkpkg
+PACKAGELWT = -package lwt.syntax -package lwt.simple-top -package lwt -package unix -package str -package xml-light -linkpkg
 
 all:
-	ocamlfind ocamlopt -syntax camlp4o $(PACKAGE) $(INCLUDE) -o top $(mlfilestransformed) top.ml
-	rm top.cm* *~
+	ocamlfind ocamlopt $(PACKAGE) $(INCLUDE) -o top $(mlfilestransformed) top.ml
+	rm top.cm*
+
+lwt:
+	ocamlfind ocamlopt -syntax camlp4o $(PACKAGELWT) $(INCLUDE) -o top $(mlfilestransformed) toplwt.ml
+	rm toplwt.cm*
 
 clean: 
-	rm *.o top
+	rm *.o

@@ -140,33 +140,37 @@ let print res =
 
 let display env = try (match env#eval with
   | JsInterpreter.Coq_result_out out -> begin match out with
-      | JsSyntax.Coq_out_div ->  env#clear, "Diverge"
-      | JsSyntax.Coq_out_ter (state, res) -> env#update state, print res
+      | JsSyntax.Coq_out_div ->  Lwt.return (env#clear, "Diverge")
+      | JsSyntax.Coq_out_ter (state, res) ->
+          Lwt.return (env#update state, print res)
     end
-  | JsInterpreter.Coq_result_not_yet_implemented -> env#clear, "Not yet implemented"
-  | JsInterpreter.Coq_result_impossible ->  env#clear, "Impossible"
-  | JsInterpreter.Coq_result_bottom bot ->  env#next bot) with
-      Xml.File_not_found s -> env#clear, "";;
+  | JsInterpreter.Coq_result_not_yet_implemented ->  Lwt.return (env#clear, "Not yet implemented")
+  | JsInterpreter.Coq_result_impossible ->  Lwt.return (env#clear, "Impossible")
+  | JsInterpreter.Coq_result_bottom bot ->  Lwt.return (env#next bot)) with
+      Xml.File_not_found s -> Lwt.return (env#clear, "");;
 
-let rec read env = let s = read_line () in scan env s
+let rec read env () =
+  Lwt.bind (Lwt_io.read_line Lwt_io.stdin) (scan env)
 
 and scan env = function
-  | "" -> let (env, str) = display env in Printf.printf "%s\n\n< " str; read env
+  | "" -> lwt (env, str) = display env in
+     Lwt.bind (Lwt_io.printf "%s\n\n< " str) (read env)
   | s -> begin match s.[0] with
     | '#' -> command env s
-    | _ -> print_string "< "; read (env#add ("\n"^s))
+    | _ -> Lwt.bind (Lwt_io.printf "< ") (read (env#add ("\n"^s)))
   end
 
 and command env str = Scanf.sscanf str "# %s %s " (fun s s' -> match s with
-  | "dump" -> Printf.printf "%s\n\n< " env#dump; read env
-  | "load" -> let (env, str) = display (env#load s') in Printf.printf "%s\n\n< " str; read env#clear
-  | "reset" -> print_string "State reinitialised to the initial state\n\n< "; read env#reset
-  | "step" -> print_string "Step-by-step mode available\n\n< "; read env#step
-  | "unstep" -> print_string "Step-by-step mode disable\n\n< "; read env#unstep
-  | _ -> Printf.printf "Unknown command %s\n%s\n< " str command_help; read env);;
+  | "dump" -> Lwt.bind (Lwt_io.printf "%s\n\n< " env#dump) (read env)
+  | "load" -> lwt (env, str) = display (env#load s') in
+      Lwt.bind (Lwt_io.printf "%s\n\n< " str) (read env#clear)
+  | "reset" -> Lwt.bind (Lwt_io.printf "State reinitialised to the initial state\n\n< ") (read env#reset)
+  | "step" -> Lwt.bind (Lwt_io.printf "Step-by-step mode available\n\n< ") (read env#step)
+  | "unstep" -> Lwt.bind (Lwt_io.printf "Step-by-step mode disable\n\n< ") (read env#unstep)
+  | _ -> Lwt.bind (Lwt_io.printf "Unknown command %s\n%s\n< " str command_help) (read env));;
 
 
 
-let () =
+lwt () =
   let env = Environment.create () in
-  print_string "< "; read env;;
+  Lwt.bind (Lwt_io.printf "< ") (read env);;
