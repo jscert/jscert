@@ -2479,7 +2479,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_parameter_map S l (Some lmap) ->
       red_expr S C (spec_object_get_own_prop lmap x (spec_args_obj_get_own_prop_2 l x K lmap A)) o -> 
       red_expr S C (spec_args_obj_get_own_prop_1 l x K (full_descriptor_some A)) o 
-      
+
   | red_spec_object_get_own_prop_args_obj_2_attrs : forall o1 S C l x K lmap A Amap o, (* Step 5 *)
       red_expr S C (spec_object_get (value_object lmap) x) o1 ->
       red_expr S C (spec_args_obj_get_own_prop_3 K A o1) o -> 
@@ -2493,11 +2493,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_get_own_prop_args_obj_2_undef : forall S C l x K lmap A o, (* Step 5 else *)
       red_expr S C (spec_args_obj_get_own_prop_4 K A) o -> 
       red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A full_descriptor_undef) o  
-      
+
   | red_spec_object_get_own_prop_args_obj_4 : forall S C K A o, (* Step 6 *)
       red_expr S C (K (full_descriptor_some A)) o ->
       red_expr S C (spec_args_obj_get_own_prop_4 K A) o    
-      
+
   (* Arguments Object: DefineOwnProperty (returns bool) (10.6) *)
   | red_spec_object_define_own_prop_args_obj : forall lmap S C l x Desc throw o, (* Steps 1 - 2 *)
       object_parameter_map S l (Some lmap) ->
