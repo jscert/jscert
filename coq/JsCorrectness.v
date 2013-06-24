@@ -59,16 +59,21 @@ Definition follow_spec {T Te : Type}
   run S C e = out_ter S' res ->
   red S C (conv e) (out_ter S' res).
 
+Inductive passing_output {Te A : Type}
+    (K : A -> Te) (red : state -> execution_ctx -> Te -> out -> Prop) C
+    : passing A -> result -> Prop :=
+  | passing_output_normal : forall S a S' res,
+    red S C (K a) (out_ter S' res) ->
+    passing_output K red C (passing_normal S a) (out_ter S' res)
+  | passing_normal_abort : forall S res,
+    passing_output K red C (passing_abort (out_ter S res)) (out_ter S res).
+
 Definition follow_spec_passing {T Te A : Type}
     (conv : T -> (A -> Te) -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
-    (run : state -> execution_ctx -> T -> passing A) :=
-  (forall S C (x : T) S0 (a : A),
-    run S C x = passing_normal S0 a ->
-    forall K o, red S0 C (K a) o ->
-    red S C (conv x K) o) /\
-  (forall S C (x : T) o,
-    run S C x = passing_abort o ->
-    forall K, red S C (conv x K) o).
+    (run : state -> execution_ctx -> T -> passing A) := forall S C (x : T) (p : passing A),
+  run S C x = p -> forall K o,
+  passing_output K red C p o ->
+  red S C (conv x K) o.
 
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
@@ -215,7 +220,10 @@ Ltac unfold_func vs0 :=
 Ltac rm_variables :=
   repeat match goal with
   | I : ?x = ?y |- _ =>
-    subst x || subst y
+    match type of x with
+    | passing ?a => idtac (* Given the form of the invariant, this may not be that a good idea. *)
+    | _ => subst x || subst y
+    end
   | H : ~ False |- _ => clear H (* Some tactics may yield this. *)
   | H : True |- _ => clear H
   end.
@@ -253,18 +261,12 @@ Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
   | I : run_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHc (rm I)
-  | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
+  | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = ?p |- _ =>
     let RC := fresh "RC" in
-    lets~ RC: (proj1 (IHowp l)) (rm I)
-  | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = passing_abort ?o |- _ =>
+    lets~ RC: IHowp (rm I)
+  | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = ?p |- _ =>
     let RC := fresh "RC" in
-    lets~ RC: (proj2 (IHowp l)) (rm I)
-  | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = passing_normal ?S0 ?D |- _ =>
-    let RC := fresh "RC" in
-    lets~ RC: (proj1 (IHop l)) (rm I)
-  | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = passing_abort ?o |- _ =>
-    let RC := fresh "RC" in
-    lets~ RC: (proj2 (IHop l)) (rm I)
+    lets~ RC: IHop (rm I)
   (* TODO:  Complete. *)
   end.
 
@@ -365,34 +367,46 @@ Proof.
    repeat eexists. auto*.
 Qed.
 
-Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) a S,
-  passing_def bo K = passing_normal S a ->
-  exists b, bo = Some b /\ K b = passing_normal S a.
-Proof. introv E. destruct* bo. inverts~ E. Qed.
+Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
+  passing_def bo K = p ->
+  (exists b, bo = Some b /\ K b = p) \/
+  (exists o, bo = None /\ p = passing_abort o).
+Proof. introv E. destruct* bo. Qed.
 
-Lemma passing_defined_out : forall (A B : Type) (p : passing B) K S (a : A),
-  passing_defined p K = passing_normal S a ->
-  exists S0 b, p = passing_normal S0 b /\ K S0 b = passing_normal S a.
-Proof. introv E. destruct* p. inverts~ E. Qed.
+Lemma passing_defined_out : forall (A B : Type) (p : passing B) K (pr : passing A),
+  passing_defined p K = pr ->
+  (exists S0 b, p = passing_normal S0 b /\ K S0 b = pr) \/
+  (exists o, p = passing_abort o /\ pr = passing_abort o).
+Proof. introv E. destruct* p. Qed.
 
-Lemma passing_success_out : forall (A : Type) res K S (a : A),
-  passing_success res K = passing_normal S a ->
-  exists S0 rv, res = out_ter S0 (rv : resvalue) /\
-                K S0 rv = passing_normal S a.
+Lemma passing_success_out : forall (A : Type) res K (p : passing A),
+  passing_success res K = p ->
+  (exists S0 rv, res = out_ter S0 (rv : resvalue) /\
+                 K S0 rv = p) \/
+  p = passing_abort res \/
+  (exists o S0 rv ls, p = passing_abort o /\
+                      res = out_ter S0 (res_intro restype_normal rv ls) /\
+                      ls <> label_empty).
 Proof.
-  introv E. destruct res; tryfalse. destruct o; tryfalse. simpls.
-  destruct r as [T R L]; destruct T; tryfalse. simpls. cases_if. substs.
-  repeat eexists. auto*.
+  introv E. destruct* res. destruct* o. destruct r as [T R L]. destruct* T. simpls.
+  cases_if.
+   left. substs. repeat eexists.
+   do 2 right. substs. repeat eexists. auto*.
 Qed.
 
-Lemma passing_value_out : forall (A : Type) res K S (a : A),
-  passing_value res K = passing_normal S a ->
-  exists S0 v, res = out_ter S0 (v : value) /\
-               K S0 v = passing_normal S a.
+Lemma passing_value_out : forall (A : Type) res K (p : passing A),
+  passing_value res K = p ->
+  (exists S0 v, res = out_ter S0 (v : value) /\
+                 K S0 v = p) \/
+  p = passing_abort res \/
+  (exists o S0 rv ls, p = passing_abort o /\
+                      res = out_ter S0 (res_intro restype_normal rv ls) /\
+                      (ls <> label_empty \/ forall v, rv <> v)).
 Proof.
-  introv E. destruct res; tryfalse. destruct o; tryfalse. simpls.
-  destruct r as [T R L]; destruct T; tryfalse. simpls. cases_if. substs.
-  destruct R; tryfalse. repeat eexists. auto*.
+  introv E. destruct* res. destruct* o. destruct r as [T R L]. destruct* T. simpls.
+  cases_if; destruct R; subst; try (
+    do 2 right; repeat eexists; (solve [left*] || solve [right; discriminate])).
+  left. repeat eexists.
 Qed.
 
 Lemma run_error_correct : forall S C ne S' R',
@@ -483,9 +497,43 @@ Qed.
 Ltac other_follows :=
   try match goal with
   | H : run_object_method ?meth ?S ?l = Some ?z |- _ =>
-    let R := fresh "R" in (* Maybe this usage of `fresh' is not very serious... *)
+    let R := fresh "R" in (* Maybe this usage of [fresh] is not very serious... *)
     forwards R: @run_object_method_correct (rm H)
   end.
+
+Ltac unmonad_passing := (* May split the goal in several lemmae. *) (* TODO:  In practise, how do we deal with the failing cases? *)
+  try match goal with
+  (* TODO:  Factorize the following tactics. *)
+  | H : passing_def ?bo ?K = ?p |- _ =>
+    let B := fresh "B" in
+    let HB := fresh "HB" in
+    let E := fresh "E" in
+    forwards [(B&HB&E)|?]: @passing_def_out (rm H);
+    simpl_after_redular_lemma
+  | H : passing_defined ?p ?K = ?p |- _ =>
+    let S := fresh "S" in
+    let B := fresh "B" in
+    let p := fresh "p" in
+    let E := fresh "E" in
+    forwards (S&B&HB&E): @passing_defined_out (rm H);
+    simpl_after_redular_lemma
+  | H : passing_success ?p ?K = ?p |- _ =>
+    let S := fresh "S" in
+    let rv := fresh "rv" in
+    let E := fresh "E" in
+    let Eo := fresh "Eo" in
+    forwards (S&rv&Eo&E): @passing_success_out (rm H);
+    simpl_after_redular_lemma
+  | H : passing_value ?p ?K = ?p |- _ =>
+    let S := fresh "S" in
+    let v := fresh "v" in
+    let E := fresh "E" in
+    let Eo := fresh "Eo" in
+    forwards (S&v&Eo&E): @passing_value_out (rm H);
+    simpl_after_redular_lemma
+  end;
+  dealing_follows;
+  other_follows.
 
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac unmonad :=
@@ -501,34 +549,6 @@ Ltac unmonad :=
   | H : passing_normal ?S1 ?D1 = passing_normal ?S2 ?D2 |- _ =>
     inverts H
   (* TODO:  Complete. *)
-  (* TODO:  Factorize the following tactics. *)
-  | H : passing_def ?bo ?K = passing_normal ?S ?a |- _ =>
-    let B := fresh "B" in
-    let HB := fresh "HB" in
-    let E := fresh "E" in
-    forwards (B&HB&E): @passing_def_out (rm H);
-    simpl_after_redular_lemma
-  | H : passing_defined ?p ?K = passing_normal ?S ?a |- _ =>
-    let S := fresh "S" in
-    let B := fresh "B" in
-    let p := fresh "p" in
-    let E := fresh "E" in
-    forwards (S&B&HB&E): @passing_defined_out (rm H);
-    simpl_after_redular_lemma
-  | H : passing_success ?p ?K = passing_normal ?S ?a |- _ =>
-    let S := fresh "S" in
-    let rv := fresh "rv" in
-    let E := fresh "E" in
-    let Eo := fresh "Eo" in
-    forwards (S&rv&Eo&E): @passing_success_out (rm H);
-    simpl_after_redular_lemma
-  | H : passing_value ?p ?K = passing_normal ?S ?a |- _ =>
-    let S := fresh "S" in
-    let v := fresh "v" in
-    let E := fresh "E" in
-    let Eo := fresh "Eo" in
-    forwards (S&v&Eo&E): @passing_value_out (rm H);
-    simpl_after_redular_lemma
   end;
   dealing_follows;
   other_follows.
@@ -552,7 +572,7 @@ Theorem runs_correct : forall num,
 Proof.
 
   induction num.
-   constructors; try solve [unfolds~ (* Temporary *)]; repeat (repeat intro; (splits || tryfalse)).
+   constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R; introv P; inverts P.
 
    lets [IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo]: (rm IHnum).
    constructors.
@@ -679,33 +699,31 @@ Proof.
    skip.
 
    (* GetOwnprop *)
-   introv. splits.
-    introv E R. unfolds in E. simpls. unfolds in E. unmonad.
-     applys red_spec_object_get_own_prop R0. name_passing_def.
-     asserts (S1&D&E): (exists S1 D, p = passing_normal S1 D).
-       destruct* p. destruct B; false.
-     asserts Co: (forall K o,
-                red_expr S1 C (K D) o ->
-                red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o).
-       introv R'. substs. unmonad. applys~ red_spec_object_get_own_prop_1_default R1.
-       unmonad. sets_eq Ao: (Heap.read_option B0 x). destruct Ao.
-        apply~ red_spec_object_get_own_prop_2_some_data.
-        apply~ red_spec_object_get_own_prop_2_none.
-     destruct B.
-      substs. inverts E. apply* Co.
-      rewrite E in E0. clear E. simpls. apply~ red_spec_object_get_own_prop_args_obj.
-       apply~ Co. destruct D.
-        inverts E0. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
-        unmonad. destruct B; tryfalse. simpls.
-        applys~ red_spec_object_get_own_prop_args_obj_1_attrs R1.
-        unmonad. apply~ RC. destruct B.
-         inverts E0. apply~ red_spec_object_get_own_prop_args_obj_2_undef.
-          apply~ red_spec_object_get_own_prop_args_obj_4.
-         unmonad. forwards~ G: run_object_get_correct Eo. constructors~.
-          applys~ red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a0; tryfalse.
-           inverts E. apply~ red_spec_object_get_own_prop_args_obj_3.
-            apply~ red_spec_object_get_own_prop_args_obj_4.
-    skip. (* TODO *)
+   introv E R. simpls. unfolds in E. unmonad.
+    applys red_spec_object_get_own_prop R. name_passing_def.
+    asserts (S1&D&E): (exists S1 D, p = passing_normal S1 D).
+      destruct* p. destruct B; false.
+    asserts Co: (forall K o,
+               red_expr S1 C (K D) o ->
+               red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o).
+      introv R'. substs. unmonad. applys~ red_spec_object_get_own_prop_1_default R0.
+      unmonad. sets_eq Ao: (Heap.read_option B0 x). destruct Ao.
+       apply~ red_spec_object_get_own_prop_2_some_data.
+       apply~ red_spec_object_get_own_prop_2_none.
+    destruct B.
+     substs. inverts E. apply* Co.
+     rewrite E in E0. clear E. simpls. apply~ red_spec_object_get_own_prop_args_obj.
+      apply~ Co. destruct D.
+       inverts E0. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
+       unmonad. destruct B; tryfalse. simpls.
+       applys~ red_spec_object_get_own_prop_args_obj_1_attrs R0.
+       unmonad. apply~ RC. constructors. destruct B.
+        inverts E0. apply~ red_spec_object_get_own_prop_args_obj_2_undef.
+         apply~ red_spec_object_get_own_prop_args_obj_4.
+        unmonad. forwards~ G: run_object_get_correct Eo. constructors~.
+         applys~ red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a0; tryfalse.
+          inverts E. apply~ red_spec_object_get_own_prop_args_obj_3.
+           apply~ red_spec_object_get_own_prop_args_obj_4.
 
    (* Getprop *)
    introv. splits.
