@@ -397,6 +397,7 @@ Definition resvalue_compare rv1 rv2 :=
 (** Decidable comparison *)
 
 Global Instance resvalue_comparable : Comparable resvalue.
+Proof.
   applys (comparable_beq resvalue_compare). intros x y.
   destruct x; destruct y; simpl; rew_refl; iff;
    tryfalse; auto; try congruence.

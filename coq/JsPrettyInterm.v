@@ -2,7 +2,7 @@ Set Implicit Arguments.
 Require Export JsSyntax JsSyntaxAux JsPreliminary.
 
 (**************************************************************)
-(** ** Implicit Types -- copied from JsPreliminary *)
+(** ** Implicit Types -- copied from JsPreliminary  *)
 
 Implicit Type b : bool.
 Implicit Type n : number.

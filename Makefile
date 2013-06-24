@@ -16,6 +16,9 @@ TLC=tlc
 FLOCQ=flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
+# Define FAST to be non empty for compiling Coq proofs faster
+FAST=
+
 LAMBDAS5=~/Documents/data/LambdaS5/tests/s5
 SPIDERMONKEY=~/Mozilla/Central/Central/js/src/build_release/js
 NODEJS=/usr/bin/nodejs
@@ -34,6 +37,7 @@ TLC_VO=$(TLC_SRC:.v=.vo)
 
 FLOCQ_SRC=$(wildcard $(FLOCQ)/src/*/*.v)
 FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
+
 
 #######################################################
 
@@ -58,13 +62,34 @@ JS_SRC=\
 	coq/JsPreliminaryAux.v \
 	coq/JsInit.v \
 	coq/JsInterpreter.v \
-    coq/JsInterpreterExtraction.v \
+   coq/JsInterpreterExtraction.v \
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
 	coq/JsPrettyRules.v \
 	coq/JsCorrectness.v
 
 JS_VO=$(JS_SRC:.v=.vo)
+
+
+# List for files that can be compiled without proofs in FAST=1 mode.
+
+ifneq ($(FAST),)
+	FAST_SRC=\
+		coq/Shared.v \
+		coq/JsNumber.v \
+		coq/JsSyntax.v \
+		coq/JsSyntaxAux.v \
+		coq/JsSyntaxInfos.v \
+		coq/JsPreliminary.v \
+		coq/JsPreliminaryAux.v \
+		coq/JsInit.v \
+		coq/JsInterpreter.v \
+		coq/JsPrettyInterm.v \
+		coq/JsPrettyIntermAux.v \
+		coq/JsPrettyRules.v
+endif
+
+FAST_VO=$(FAST_SRC:.v=.vo)
 
 
 #######################################################
@@ -110,6 +135,44 @@ init:
 
 
 #######################################################
+# FAST COMPILATION TOOL: coqj
+
+
+# Compile coqj : converts a .v file into a shallow .v file (without proofs)
+
+coqj: coqj.mll
+	ocamllex coqj.mll
+	ocamlopt -o coqj coqj.ml
+
+# Fast compilation of files in $(FAST_SRC)
+
+define FAST_RULE
+
+$(1).vo: .depend coqj
+	@mkdir -p _shallow/$(dir $1)
+	./coqj $(1).v > _shallow/$(1).v
+	$(COQC) -dont-load-proofs -I coq -I $(TLC) _shallow/$(1).v
+	mv _shallow/$(1).vo $(1).vo
+
+endef
+
+$(foreach filebase,$(FAST_SRC:.v=),$(eval $(call FAST_RULE,$(filebase))))
+
+# "make nofast" : Compilation mode to force the verification of all files
+
+nofast: $(FAST_VO:.vo=_full.vo)
+	
+%_full.vo : %.v .depend
+	echo $*
+	cp $*.v $*_full.v
+	$(COQC) -dont-load-proofs -I coq -I $(TLC) $*_full.v
+	rm $*_full.v
+
+
+
+#######################################################
+#######################################################
+
 
 .v.vo : .depend
 	$(COQC) -dont-load-proofs -I coq -I $(TLC) $<
@@ -199,15 +262,20 @@ interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInt
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
 
 mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*.ml}
-mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
+SORTFLAG=-sort
+#TODO: ça marche pas chez moi
+SORTFLAG=
+mlfilessorted = ${shell ocamldep -I interp/src/extract ${SORTFLAG} ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
 mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
 mlfileswithbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreter.cmx||' | sed 's|interp/src/run_js.cmx||'}
 mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|interp/src/run_jsbisect.cmx||'}
 
-interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
-	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
-	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
+# TODO: ça dit "Makefile:259: *** target pattern contains no `%'.  Stop."
+#
+#interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
+#	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
+#	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
 
 
 #######################################################
