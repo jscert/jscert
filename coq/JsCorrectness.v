@@ -753,7 +753,8 @@ Proof.
            forwards~ G: run_object_get_correct Eo. constructors~.
             applys~ red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a.
              apply~ red_spec_object_get_own_prop_args_obj_3.
-              apply~ red_spec_object_get_own_prop_args_obj_4. inverts~ R; tryfalse. inverts~ H0.
+              apply~ red_spec_object_get_own_prop_args_obj_4.
+              inverts~ R; tryfalse. inverts~ H0.
              subst p. inverts R.
            subst p. inverts R. symmetry in H3. rewrite H3 in H0. inverts H0.
             forwards~ G: run_object_get_correct H3. constructors~.
@@ -763,15 +764,17 @@ Proof.
          apply~ RC. rewrite H0 in R. inverts R. constructors.
 
    (* Getprop *)
-   introv. splits.
-    introv E R. unfolds in E. simpls. unfolds in E. unmonad.
-    applys red_spec_object_get_prop R0. destruct B.
-     apply~ red_spec_object_get_prop_1_default. unmonad. apply~ RC. cases_if.
-      substs. unmonad. applys~ red_spec_object_get_prop_2_undef R1. destruct B; tryfalse.
-        destruct p; tryfalse. inverts E0. apply~ red_spec_object_get_prop_3_null.
-       unmonad. apply~ red_spec_object_get_prop_3_not_null.
-      destruct B; tryfalse. inverts E. apply~ red_spec_object_get_prop_2_not_undef.
-    skip. (* TODO *)
+   introv E R. simpls. unfolds in E. unmonad_passing.
+   applys red_spec_object_get_prop R0. destruct x0.
+    apply~ red_spec_object_get_prop_1_default. unmonad_passing.
+     apply~ RC. cases_if.
+      subst x0. constructors. unmonad_passing.
+       applys~ red_spec_object_get_prop_2_undef R1. destruct x0; tryfalse.
+        destruct p0; subst p; inverts R. apply~ red_spec_object_get_prop_3_null.
+        unmonad. apply~ red_spec_object_get_prop_3_not_null.
+      destruct x0; tryfalse. subst p. inverts R. constructors.
+       apply~ red_spec_object_get_prop_2_not_undef.
+     subst p. inverts R. apply~ RC. constructors.
 
    (* IsPrototypeOf *)
    skip.
