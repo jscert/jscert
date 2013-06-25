@@ -62,7 +62,7 @@ JS_SRC=\
 	coq/JsPreliminaryAux.v \
 	coq/JsInit.v \
 	coq/JsInterpreter.v \
-   coq/JsInterpreterExtraction.v \
+  coq/JsInterpreterExtraction.v \
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
 	coq/JsPrettyRules.v \
@@ -161,7 +161,7 @@ $(foreach filebase,$(FAST_SRC:.v=),$(eval $(call FAST_RULE,$(filebase))))
 # "make nofast" : Compilation mode to force the verification of all files
 
 nofast: $(FAST_VO:.vo=_full.vo)
-	
+
 %_full.vo : %.v .depend
 	echo $*
 	cp $*.v $*_full.v
@@ -263,7 +263,7 @@ interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInt
 
 mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*.ml}
 SORTFLAG=-sort
-#TODO: ça marche pas chez moi
+#TODO: Ã§a marche pas chez moi
 SORTFLAG=
 mlfilessorted = ${shell ocamldep -I interp/src/extract ${SORTFLAG} ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
@@ -271,7 +271,7 @@ mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
 mlfileswithbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreter.cmx||' | sed 's|interp/src/run_js.cmx||'}
 mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|interp/src/run_jsbisect.cmx||'}
 
-# TODO: ça dit "Makefile:259: *** target pattern contains no `%'.  Stop."
+# TODO: Ã§a dit "Makefile:259: *** target pattern contains no `%'.  Stop."
 #
 #interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
 #	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
