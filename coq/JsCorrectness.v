@@ -468,6 +468,16 @@ Proof.
   introv RC E. unfolds in E. name_object_method.
   destruct B as [B|]; simpls; tryfalse.
   destruct B.
+  (* applys red_spec_object_has_prop. *)
+  (*   applys* run_object_method_correct. *)
+  (*   apply red_spec_object_has_prop_1_default. *)
+  (*    applys red_spec_object_get_prop. *)
+  (*     applys run_object_method_correct. *)
+  (*    apply passing_defined_out in E. *)
+  (*    cases E. clear Eq E EQB. *)
+  (*    destruct e as [S0 [b0 [He1 He2]]]. *)
+  (*    inverts He2. *)
+  (*    name_object_method. *)
   skip. (* TODO *)
 Qed.
 
@@ -476,11 +486,39 @@ Lemma run_object_get_correct : forall runs,
   run_object_get runs S0 C0 l x = out_ter S R ->
   red_expr S0 C0 (spec_object_get l x) (out_ter S R).
 Proof.
-  skip. (* Old proof:
-  introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
-  forwards OM: run_object_method_correct (rm EQx0).
-  lets [_ _ _ _ _ _ RCo]: RC. forwards: (rm RCo) (rm E).
-  applys~ red_spec_object_get OM. *)
+  introv RC E.
+  unfolds in E.
+  name_object_method.
+  destruct B as [B|]; simpls; tryfalse.
+  forwards OM: run_object_method_correct (rm EQB).
+  applys~ red_spec_object_get (rm OM).
+  lets [_ _ _ _ _ _ _ RCo _ _] : RC.
+  forwards H: (rm RCo) l.
+  unfolds follow_object_get_prop.
+  unfolds follow_spec_passing.
+  destruct B; simpls; tryfalse.
+    sets_eq p: (runs_type_object_get_prop runs S0 C0 l x).
+    symmetry in EQp.
+    apply red_spec_object_get_1_default.
+    applys~ H.
+    destruct p.
+      rewrite EQp. simpls. clear EQp. apply passing_output_normal.
+       destruct f; simpls; inverts E.
+        apply red_spec_object_get_2_undef.
+        destruct a; simpls.
+          inverts H1. applys~ red_spec_object_get_2_data.
+          applys red_spec_object_get_2_accessor.
+           destruct (attributes_accessor_get a).
+             destruct p; inverts H1.
+              apply red_spec_object_get_3_accessor_undef.
+             apply red_spec_object_get_3_accessor_object.
+              lets [_ _ _ RCa _ _ _ _ _ _] : RC.
+              specialize (RCa o nil).
+              unfolds follow_call. unfolds follow_spec.
+              applys~ RCa.
+      rewrite EQp. simpls. clear EQp.
+       rewrite E.
+       apply (passing_normal_abort (spec_object_get_2 l l)).
 Qed.
 
 Lemma env_record_get_binding_value_correct : forall runs,
