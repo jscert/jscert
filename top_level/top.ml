@@ -129,7 +129,9 @@ let command_help =
 "
 List of commands:
 #dump: dump the memory state
+#help: print this list of commands
 #load: load a file and launch the interpreter
+#quit: quit the top-level
 #reset: reset the state to the initial state
 #step: step-by-step mode available
 #unstep: step-by-step mode disable
@@ -148,7 +150,7 @@ let display env = try (match env#eval with
   | JsInterpreter.Coq_result_bottom bot ->  env#next bot) with
       Xml.File_not_found s -> env#clear, "";;
 
-let rec read env = let s = read_line () in scan env s
+let rec read env = scan env (read_line ())
 
 and scan env = function
   | "" -> let (env, str) = display env in Printf.printf "%s\n\n< " str; read env
@@ -159,7 +161,9 @@ and scan env = function
 
 and command env str = Scanf.sscanf str "# %s %s " (fun s s' -> match s with
   | "dump" -> Printf.printf "%s\n\n< " env#dump; read env
+  | "help" -> Printf.printf "%s\n\n< " command_help; read env
   | "load" -> let (env, str) = display (env#load s') in Printf.printf "%s\n\n< " str; read env#clear
+  | "quit" -> print_newline ()
   | "reset" -> print_string "State reinitialised to the initial state\n\n< "; read env#reset
   | "step" -> print_string "Step-by-step mode available\n\n< "; read env#step
   | "unstep" -> print_string "Step-by-step mode disable\n\n< "; read env#unstep
@@ -169,4 +173,4 @@ and command env str = Scanf.sscanf str "# %s %s " (fun s s' -> match s with
 
 let () =
   let env = Environment.create () in
-  print_string "< "; read env;;
+  command env "#help";;

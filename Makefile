@@ -262,20 +262,16 @@ interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInt
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
 
 mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*.ml}
-SORTFLAG=-sort
-#TODO: ça marche pas chez moi
-SORTFLAG=
-mlfilessorted = ${shell ocamldep -I interp/src/extract ${SORTFLAG} ${mlfiles}}
+mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g'}
 mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
 mlfileswithbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreter.cmx||' | sed 's|interp/src/run_js.cmx||'}
 mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|interp/src/run_jsbisect.cmx||'}
 
-# TODO: ça dit "Makefile:259: *** target pattern contains no `%'.  Stop."
-#
-#interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
-#	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
-#	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
+
+interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
+	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
+	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
 
 
 #######################################################
