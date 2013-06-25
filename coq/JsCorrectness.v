@@ -322,6 +322,17 @@ Ltac deal_with_regular_lemma H if_out :=
   lets (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
   [|simpl_after_regular_lemma].
 
+Ltac deal_with_regular_lemma_run H if_out :=
+  let Hnn := fresh "Hnn" in
+  let HE := fresh "HE" in
+  let HS := fresh "HS" in
+  let HR := fresh "HR" in
+  let HM := fresh "HM" in
+  let S' := fresh "S" in
+  let R' := fresh "R" in
+  forwards (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
+  [try solve [ constructors~ ] | | simpl_after_regular_lemma].
+
 Lemma if_ter_out : forall res K S R,
   if_ter res K = out_ter S R ->
   if_regular_lemma res S R (fun S' R' =>
@@ -632,6 +643,8 @@ Ltac unmonad :=
     deal_with_regular_lemma H if_value_out
   | H : if_object ?res ?K = result_out ?o' |- _ =>
     deal_with_regular_lemma H if_object_out
+  | H : if_success_value ?runs ?C ?res ?K = result_out ?o' |- _ =>
+    deal_with_regular_lemma_run H if_success_value_out
   | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
     inverts H
   | H : passing_normal ?S1 ?D1 = passing_normal ?S2 ?D2 |- _ =>
@@ -650,8 +663,9 @@ Ltac unmonad :=
 (** ** Main theorem *)
 
 Ltac abort_expr :=
-  apply~ red_expr_abort;
-   [ try (constructors; absurd_neg)
+  apply red_expr_abort;
+   [ auto*
+   | try (constructors; absurd_neg)
    | try absurd_neg].
 
 
@@ -679,7 +693,7 @@ Proof.
      (* Abort case *)
      inverts HE. false~ Hnn.
      (* Normal case *)
-     skip. (* Needs an intermediate lemma for [init_object]. *)
+     unmonad. skip. (* Needs an intermediate lemma for [init_object]. *)
     (* function *)
     skip.
     (* access *)
@@ -705,7 +719,18 @@ Proof.
       forwards~ RC: IHe (rm HE). applys~ red_expr_delete RC.
       skip.
      (* Void *)
-     skip.
+     (*unmonad.
+      (* Abort case *)
+      forwards~ RC: IHe (rm HE). apply~ red_expr_unary_op. simpl. cases_if~; tryfalse.
+      applys~ red_spec_expr_get_value RC. abort_expr. abort_expr.
+      (* Normal case *)
+      forwards~ RC: IHe (rm HE). inverts HM as HM; simpl_after_regular_lemma. inverts H.
+      apply~ red_expr_unary_op. simpl. cases_if~; tryfalse.
+      applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
+       skip. (* There is an error there:  this should return stuck instead of an exception! *)
+      apply~ red_expr_unary_op. simpl. cases_if~; tryfalse. inverts H.
+      applys~ red_spec_expr_get_value RC. skip. (* There lacks checks there (or the lemmae are not good enough. *)*)
+      skip.
      (* TypeOf *)
      skip.
      (* Post Incr *)
