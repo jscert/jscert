@@ -468,17 +468,25 @@ Proof.
   introv RC E. unfolds in E. name_object_method.
   destruct B as [B|]; simpls; tryfalse.
   destruct B.
-  (* applys red_spec_object_has_prop. *)
-  (*   applys* run_object_method_correct. *)
-  (*   apply red_spec_object_has_prop_1_default. *)
-  (*    applys red_spec_object_get_prop. *)
-  (*     applys run_object_method_correct. *)
-  (*    apply passing_defined_out in E. *)
-  (*    cases E. clear Eq E EQB. *)
-  (*    destruct e as [S0 [b0 [He1 He2]]]. *)
-  (*    inverts He2. *)
-  (*    name_object_method. *)
-  skip. (* TODO *)
+  applys red_spec_object_has_prop.
+    applys* run_object_method_correct.
+    apply red_spec_object_has_prop_1_default.
+     apply passing_defined_out in E.
+     cases E; clear Eq E.
+       destruct e as [S0 [b0 [He1 He2]]].
+        inverts He2.
+        lets [_ _ _ _ _ _ _ RCo _ _] : RC.
+        forwards H: (rm RCo) l.
+        unfolds follow_object_get_prop.
+        unfolds follow_spec_passing.
+         applys~ H.
+         rewrite He1. applys (passing_output_normal spec_object_has_prop_2).
+         applys~ red_spec_object_has_prop_2.
+         rew_refl.
+         cases_if~.
+           rewrite~ isTrue_true.
+           rewrite~ isTrue_false.
+       destruct e as [res [He1 He2]]; tryfalse.
 Qed.
 
 Lemma run_object_get_correct : forall runs,
