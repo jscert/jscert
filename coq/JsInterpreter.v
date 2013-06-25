@@ -149,11 +149,16 @@ Definition if_ter (o : result) (K : state -> res -> result) : result :=
   | _ => o
   end.
 
+Definition if_empty_label S R (K : state -> result) : result :=
+  ifb res_label R = label_empty then K S
+  else
+    impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
+
 Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : result :=
   if_ter o (fun S0 R =>
     match res_type R with
     | restype_normal =>
-        K S0 (res_value (res_overwrite_value_if_empty rv R))
+        if_empty_label S0 R (fun S => K S (res_value (res_overwrite_value_if_empty rv R)))
     | restype_throw => o
     | _ =>
         out_ter S0 (res_overwrite_value_if_empty rv R)
@@ -191,7 +196,8 @@ Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> v
 Definition if_success_or_return (o : result) (K1 : state -> result) (K2 : state -> resvalue -> result) : result :=
   if_ter o (fun S R =>
     match res_type R with
-    | restype_normal => K1 S
+    | restype_normal =>
+      if_empty_label S R K1
     | restype_return => K2 S (res_value R)
     | _ => o
     end).
@@ -199,16 +205,15 @@ Definition if_success_or_return (o : result) (K1 : state -> result) (K2 : state 
 Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
   (K1 : state -> res -> result) (K2 : state -> res -> result) : result :=
   if_ter o (fun S R =>
-    let K :=
-      match res_type R with
-      | restype_break =>
-          if search_label R then K2 else out_ter
-      | restype_continue =>
-          if search_label R then K1 else out_ter
-      | restype_normal => K1
-      | _ => out_ter
-      end in
-    K S R).
+    match res_type R with
+    | restype_break =>
+      (if search_label R then K2 else out_ter) S R
+    | restype_continue =>
+      (if search_label R then K1 else out_ter) S R
+    | restype_normal =>
+      if_empty_label S R (fun S => K1 S R)
+    | _ => out_ter S R
+    end).
 
 Definition if_break (o : result) (K : state -> res -> result) : result :=
   if_ter o (fun S R =>

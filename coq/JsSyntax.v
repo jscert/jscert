@@ -659,8 +659,12 @@ Definition abrupt_res R :=
 
 (** Smart constructors for results *)
 
-Coercion res_ref r := res_intro restype_normal r label_empty.
-Coercion res_val v := res_intro restype_normal v label_empty.
+(* Note:  as there are no more implicit type in this file, those three functions
+   are exactly the same, taking a resvalue as an argument.  I've fixed the problem
+   by annotating the first two, but maybe we should just remove them to avoid
+   ambiguous paths. *)
+Coercion res_ref (r : ref) := res_intro restype_normal r label_empty.
+Coercion res_val (v : value) := res_intro restype_normal v label_empty.
 Coercion res_normal rv := res_intro restype_normal rv label_empty.
 
 Definition res_empty := res_intro restype_normal resvalue_empty label_empty.

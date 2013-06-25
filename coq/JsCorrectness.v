@@ -334,46 +334,38 @@ Qed.
 
 Lemma if_success_out : forall res K S R,
   if_success res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists rt rv rl,
-    R' = res_intro rt rv rl /\
+  if_regular_lemma res S R (fun S' R' => exists rv,
+    R' = res_normal rv /\
     K S' rv = out_ter S R).
 Proof.
   introv H. deal_with_regular_lemma H if_ter_out; substs.
    repeat eexists. left~.
    sets_eq t Et: (res_type R0). repeat eexists.
-   rewrite~ res_overwrite_value_if_empty_empty in HM.
-   destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
-   right. destruct R0. simpls. repeat eexists. auto*.
+    rewrite~ res_overwrite_value_if_empty_empty in HM.
+    destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
+    unfolds in HM. cases_if. right. destruct R0. simpls. substs. repeat eexists. auto*.
 Qed.
 
 Lemma if_value_out : forall res K S R,
   if_value res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists rt v rl,
-    R' = res_intro rt (resvalue_value v) rl /\
+  if_regular_lemma res S R (fun S' R' => exists v,
+    R' = res_val v /\
     K S' v = out_ter S R).
 Proof.
-  introv H. deal_with_regular_lemma H if_ter_out; substs.
+  introv H. deal_with_regular_lemma H if_success_out; substs.
    repeat eexists. left~.
-   sets_eq <- t Et: (res_type R0). repeat eexists.
-   rewrite~ res_overwrite_value_if_empty_empty in HM.
-   destruct t; try solve [ left; inverts HM; rewrite Et; splits~; discriminate ].
-   right. destruct R0. simpls. destruct res_value; tryfalse.
-   repeat eexists. auto*.
+   destruct~ rv; tryfalse. repeat eexists. right. eexists. auto*.
 Qed.
 
 Lemma if_object_out : forall res K S R,
   if_object res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists rt l rl,
-    R' = res_intro rt (resvalue_value (value_object l)) rl /\
+  if_regular_lemma res S R (fun S' R' => exists l,
+    R' = res_val (value_object l) /\
     K S' l = out_ter S R).
 Proof.
-  introv H. deal_with_regular_lemma H if_ter_out; substs.
+  introv H. deal_with_regular_lemma H if_value_out; substs.
    repeat eexists. left~.
-   sets_eq <- t Et: (res_type R0). repeat eexists.
-   rewrite~ res_overwrite_value_if_empty_empty in HM.
-   destruct t; try solve [ left; inverts HM; rewrite Et; splits~; discriminate ].
-   right. destruct R0. simpls. destruct res_value; tryfalse. destruct v; tryfalse.
-   repeat eexists. auto*.
+   destruct~ v; tryfalse. repeat eexists. right. eexists. auto*.
 Qed.
 
 Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
@@ -554,6 +546,27 @@ Proof.
      apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
      applys~ env_record_get_binding_value_correct RC.
+Qed.
+
+Lemma if_success_value_out : forall runs,
+  runs_type_correct runs -> forall res0 K S C R,
+  if_success_value runs C res0 K = out_ter S R ->
+  if_regular_lemma res0 S R (fun S' R' => (exists rv S'' R'',
+    R' = res_normal rv /\
+    red_expr S' C (spec_get_value rv) (out_ter S'' R'') /\
+    (res_type R'' <> restype_normal \/
+      forall v, res_value R'' <> resvalue_value v)) \/ (exists rv rl S'' v,
+    R' = res_intro restype_normal rv rl /\
+    red_expr S' C (spec_get_value rv) (out_ter S'' (v : value)) /\
+    K S'' v = out_ter S R)).
+Proof.
+  introv RC H. deal_with_regular_lemma H if_success_out; substs; repeat eexists.
+   branch~ 1.
+   deal_with_regular_lemma H0 if_success_out; substs.
+    forwards~ GV: ref_get_value_correct HE. branch~ 2. repeat eexists; auto*.
+    forwards~ GV: ref_get_value_correct HE. destruct* rv0;
+      try solve [ branch~ 2; repeat eexists; auto*; right; absurd_neg ].
+     branch~ 3. repeat eexists; auto*.
 Qed.
 
 
@@ -771,6 +784,7 @@ Proof.
    skip.
 
    (* While *)
+   intros ls e t S C v S' res R. simpls. unfolds in R.
    skip.
 
    (* GetOwnprop *)
