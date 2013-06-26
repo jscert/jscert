@@ -41,13 +41,14 @@ progOpts :: Options
 progOpts = Options
            { reportName  = "query" &= help "The name of this report"
            , reportComment = "" &= help "additional comments"
-           , queryType = StdOutLike &= help "Which sort of query should we do? Default=StdOutLike"
+           , queryType = OnlyInteresting &= help "Which sort of query should we do? Default=OnlyInteresting"
            , query = "%Not implemented code%" &= help "The query to perform over stderr"
            , query2 = "%Translation of Javascript syntax does not support%" &= help "Sometimes we want more than one argument in a query"
            , stdOutList = ["%Translation of Javascript syntax does not support%"
                           ,"%Not implemented code%"
                           ,"%Parsing problem with the file%"
                           ,"%Stuck:  this is not implemented yet!%"
+                          ,"%NYI:  this is not implemented yet!%"
                           ]
                           &= help "All the things we want to check from stdout"
            , stdErrList = ["%Fatal error: exception Parser.%"]
