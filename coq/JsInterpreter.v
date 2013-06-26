@@ -778,11 +778,13 @@ Definition env_record_get_binding_value runs S C L x str : result :=
 
 Definition ref_get_value runs S C rv : result :=
   match rv with
-  | resvalue_empty => impossible_with_heap_because S "[ref_get_value] received an empty result."
+  | resvalue_empty =>
+    impossible_with_heap_because S "[ref_get_value] received an empty result."
   | resvalue_value v => out_ter S v
   | resvalue_ref r =>
     match ref_kind_of r with
-    | ref_kind_null => impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
+    | ref_kind_null =>
+      impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
     | ref_kind_undef => run_error S native_error_ref
     | ref_kind_primitive_base | ref_kind_object =>
       match ref_base r with

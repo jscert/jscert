@@ -872,7 +872,14 @@ Proof.
          cases_if in HE; inverts HE.
           do 2 cases_if; apply~ red_stat_while_4_break.
           apply~ red_stat_while_4_abrupt; try absurd_neg.
-          skip. (* TODO *)
+        tests: (Rt = restype_continue).
+         cases_if in HE; inverts HE.
+          forwards~ RCw: IHw (rm H3). do 2 cases_if; applys~ red_stat_while_4_continue RCw.
+          apply~ red_stat_while_4_abrupt; try absurd_neg.
+        tests: (Rt = restype_normal).
+         unfolds in HE. cases_if in HE; tryfalse. forwards~ RCw: IHw (rm HE).
+         do 2 cases_if; apply~ red_stat_while_4_continue.
+        destruct Rt; tryfalse; inverts HE; apply~ red_stat_while_4_abrupt; absurd_neg.
        unmonad. apply~ red_stat_while_2_false.
 
    (* GetOwnprop *)
