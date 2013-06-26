@@ -273,12 +273,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_3 labs e1 t2 rv o1) o ->
       red_stat S C (stat_while_2 labs e1 t2 rv true) o
 
-  | red_stat_while_3_true : forall rv S0 S C labs e1 t2 rv_old R o,
+  | red_stat_while_3 : forall rv S0 S C labs e1 t2 rv_old R o,
       rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) o ->
-      red_stat S0 C (stat_while_3 labs e1 t2 rv_old (out_ter S R)) o 
+      red_stat S0 C (stat_while_3 labs e1 t2 rv_old (out_ter S R)) o
 
-  | red_stat_while_4_break : forall S0 S C labs e1 t2 rv R,
+  | red_stat_while_4_break : forall S C labs e1 t2 rv R,
       (res_type R = restype_break /\ res_label_in R labs) ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S rv)
 

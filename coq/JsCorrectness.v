@@ -342,13 +342,20 @@ Ltac deal_with_regular_lemma_run H if_out :=
 
 Lemma if_ter_out : forall res K S R,
   if_ter res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' =>
-    K S' R' = out_ter S R).
+  exists S' R', res = out_ter S' R' /\ K S' R' = out_ter S R.
 Proof.
   introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
-  destruct res as [o'| | |]; tryfalse. destruct o'; tryfalse. repeat eexists.
+    destruct res as [o'| | |]; tryfalse. destruct o'; tryfalse. repeat eexists.
   subst. do 2 eexists. splits~.
 Qed.
+
+Ltac deal_with_ter H :=
+  let HE := fresh "HE" in
+  let HR := fresh "HR" in
+  let S' := fresh "S" in
+  let R' := fresh "R" in
+  forwards (S'&R'&HR&HE): if_ter_out (rm H);
+  simpl_after_regular_lemma.
 
 Lemma if_success_out : forall res K S R,
   if_success res K = out_ter S R ->
@@ -356,12 +363,11 @@ Lemma if_success_out : forall res K S R,
     R' = res_normal rv /\
     K S' rv = out_ter S R).
 Proof.
-  introv H. deal_with_regular_lemma H if_ter_out; substs.
-   repeat eexists. left~.
-   sets_eq t Et: (res_type R0). repeat eexists.
-    rewrite~ res_overwrite_value_if_empty_empty in HM.
-    destruct t; try solve [ left; inverts HM; rewrite <- Et; splits~; discriminate ].
-    unfolds in HM. cases_if. right. destruct R0. simpls. substs. repeat eexists. auto*.
+  introv H. deal_with_ter H; substs.
+  sets_eq t Et: (res_type R0). repeat eexists.
+  rewrite~ res_overwrite_value_if_empty_empty in HE.
+  destruct t; try solve [ left; inverts HE; rewrite <- Et; splits~; discriminate ].
+  unfolds in HE. cases_if. right. destruct R0. simpls. substs. repeat eexists. auto*.
 Qed.
 
 Lemma if_value_out : forall res K S R,
@@ -654,6 +660,8 @@ Ltac unmonad_passing :=
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac unmonad :=
   try match goal with
+  | H : if_ter ?res ?K = result_out ?o' |- _ =>
+    deal_with_ter H
   | H : if_success ?res ?K = result_out ?o' |- _ =>
     deal_with_regular_lemma H if_success_out
   | H : if_value ?res ?K = result_out ?o' |- _ =>
@@ -682,8 +690,20 @@ Ltac unmonad :=
 Ltac abort_expr :=
   apply red_expr_abort;
    [ auto*
-   | try (constructors; absurd_neg)
-   | try absurd_neg].
+   | try solve [constructors; absurd_neg]
+   | try solve [absurd_neg]].
+
+Ltac abort_stat :=
+  apply red_stat_abort;
+   [ auto*
+   | try solve [constructors; absurd_neg]
+   | try solve [absurd_neg]].
+
+Ltac abort_prog :=
+  apply red_prog_abort;
+   [ auto*
+   | try solve [constructors; absurd_neg]
+   | try solve [absurd_neg]].
 
 
 Theorem runs_correct : forall num,
@@ -832,8 +852,28 @@ Proof.
    skip.
 
    (* While *)
-   intros ls e t S C v S' res R. simpls. unfolds in R.
-   skip.
+   intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
+   unmonad.
+    forwards~ RC: IHe (rm HE). apply~ red_spec_expr_get_value_conv_stat.
+     applys~ red_spec_expr_get_value RC. abort_expr.
+     abort_stat.
+    forwards~ RC: IHe (rm HE). inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
+       applys~ red_spec_expr_get_value_1 H0.
+      abort_stat.
+     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
+       applys~ red_spec_expr_get_value_1 H0.
+      apply~ red_spec_expr_get_value_conv_stat_1. apply* red_spec_to_boolean.
+      apply~ red_spec_expr_get_value_conv_stat_2.
+      cases_if.
+       unmonad. forwards~ RCs: IHs (rm HR). applys~ red_stat_while_2_true RCs.
+        apply~ red_stat_while_3. destruct R as [Rt Rv Rl]; simpls.
+        tests: (Rt = restype_break).
+         cases_if in HE; inverts HE.
+          do 2 cases_if; apply~ red_stat_while_4_break.
+          apply~ red_stat_while_4_abrupt; try absurd_neg.
+          skip. (* TODO *)
+       unmonad. apply~ red_stat_while_2_false.
 
    (* GetOwnprop *)
    introv E R. simpls. unfolds in E. unmonad_passing.
