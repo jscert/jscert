@@ -65,7 +65,8 @@ Inductive passing_output {Te A : Type}
   | passing_output_normal : forall S a o,
     red S C (K a) o ->
     passing_output K red C (passing_normal S a) o
-  | passing_normal_abort : forall o,
+  | passing_output_abort : forall o,
+    abort o ->
     passing_output K red C (passing_abort o) o.
 
 Definition follow_spec_passing {T Te A : Type}
@@ -80,10 +81,11 @@ Definition follow_stat := follow_spec stat_basic red_stat.
 Definition follow_prog := follow_spec prog_basic red_prog.
 Definition follow_elements rv :=
   follow_spec (prog_1 rv) red_prog.
-Definition follow_call l vs :=
-  follow_spec
-    (fun v => spec_call l v vs)
-    red_expr.
+Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
+  forall S C v S' res,
+    run S C v = out_ter S' res ->
+    red_expr S C (spec_call l v vs) (out_ter S' res) /\ 
+    (res_type res = restype_normal -> exists v', res = (v' : value)).
 Definition follow_function_has_instance (_ : state -> object_loc -> value -> result) :=
   True. (* TODO *)
 Definition follow_stat_while ls e t :=
@@ -511,6 +513,54 @@ Lemma run_object_get_correct : forall runs,
   run_object_get runs S0 C0 l x = out_ter S R ->
   red_expr S0 C0 (spec_object_get l x) (out_ter S R) /\
   (res_type R = restype_normal -> exists v, R = (v : value)).
+Proof.
+  introv RC E.
+  unfolds in E.
+  name_object_method.
+  destruct B as [B|]; simpls; tryfalse.
+  forwards OM: run_object_method_correct (rm EQB).
+  lets [_ _ _ _ _ _ _ RCo _ _] : RC.
+  forwards H: (rm RCo) l.
+  unfolds follow_object_get_prop.
+  unfolds follow_spec_passing.
+  destruct B; simpls; tryfalse.
+  sets_eq p: (runs_type_object_get_prop runs S0 C0 l x).
+  splits.
+    applys~ red_spec_object_get (rm OM).
+     destruct p.
+      apply red_spec_object_get_1_default.       
+      applys~ H.
+      rewrite <- EQp. simpls. clear EQp. apply passing_output_normal.
+      destruct f; simpls; inverts E.
+        apply red_spec_object_get_2_undef.
+        destruct a; simpls.
+          inverts H1. applys~ red_spec_object_get_2_data.
+          applys red_spec_object_get_2_accessor.
+           destruct (attributes_accessor_get a).
+             destruct p; inverts H1.
+              apply red_spec_object_get_3_accessor_undef.
+             apply red_spec_object_get_3_accessor_object.
+              lets [_ _ _ RCa _ _ _ _ _ _] : RC.
+              specialize (RCa o nil).
+              unfolds follow_call.
+              applys~ RCa.
+      apply red_spec_object_get_1_default.       
+       applys~ H.
+       rewrite <- EQp. simpls.
+       rewrite E.
+       apply (passing_output_abort (spec_object_get_2 l l)).
+       
+    introv Hrn; destruct p.
+      destruct f; simpls; inverts* E.
+      destruct a; simpls; invert H1.
+        introv _ _; auto*.
+        introv H1; destruct (attributes_accessor_get a).
+          destruct p; inverts* H1.
+          lets [_ _ _ RCa _ _ _ _ _ _] : RC.
+           specialize (RCa o nil).
+           unfolds follow_call. applys~ RCa s C0 l S.
+      simpls.
+
 Admitted. (* OLD:
 Proof.
   introv RC E.
@@ -526,11 +576,10 @@ Proof.
   destruct B; simpls; tryfalse.
     sets_eq p: (runs_type_object_get_prop runs S0 C0 l x).
     symmetry in EQp.
-    apply red_spec_object_get_1_default.
-    applys~ H.
+
+
     destruct p.
-      rewrite EQp. simpls. clear EQp. apply passing_output_normal.
-       destruct f; simpls; inverts E.
+
         apply red_spec_object_get_2_undef.
         destruct a; simpls.
           inverts H1. applys~ red_spec_object_get_2_data.
@@ -545,7 +594,7 @@ Proof.
               applys~ RCa.
       rewrite EQp. simpls. clear EQp.
        rewrite E.
-       apply (passing_normal_abort (spec_object_get_2 l l)).
+       apply (passing_output_abort (spec_object_get_2 l l)).
 Qed. *)
 
 Lemma env_record_get_binding_value_correct : forall runs,
