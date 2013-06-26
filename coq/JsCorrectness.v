@@ -54,7 +54,8 @@ Implicit Type t : stat.
 (** Correctness Properties *)
 
 Definition follow_spec {T Te : Type}
-    (conv : T -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
+    (conv : T -> Te)
+    (red : state -> execution_ctx -> Te -> out -> Prop)
     (run : state -> execution_ctx -> T -> result) := forall S C (e : T) S' res,
   run S C e = out_ter S' res ->
   red S C (conv e) (out_ter S' res).
@@ -69,12 +70,13 @@ Inductive passing_output {Te A : Type}
     passing_output K red C (passing_abort o) o.
 
 Definition follow_spec_passing {T Te A : Type}
-    (conv : T -> (A -> Te) -> Te) (red : state -> execution_ctx -> Te -> out -> Prop)
+    (conv : T -> (A -> Te) -> Te)
+    (red : state -> execution_ctx -> Te -> out -> Prop)
     (run : state -> execution_ctx -> T -> passing A) := forall S C (x : T) (p : passing A),
   run S C x = p -> forall K S' res,
   passing_output K red C p (out_ter S' res) ->
   red S C (conv x K) (out_ter S' res) /\
-  (p = passing_abort (out_ter S' res) -> abort (out_ter S' res)).
+    (p = passing_abort (out_ter S' res) -> abort (out_ter S' res)).
 
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
@@ -214,6 +216,31 @@ Lemma passing_output_trans {Te A : Type} :
   passing_output (K' K) red C p o ->
   passing_output K red C p o.
 Proof. introv I R. inverts R; constructors*. Qed.
+
+Lemma and_impl_left : forall P1 P2 P3 : Prop,
+  (P1 -> P2) ->
+  P1 /\ P3 ->
+  P2 /\ P3.
+Proof. auto*. Qed.
+
+Ltac applys_and_base L :=
+  applys~ and_impl_left; [applys L|].
+
+Tactic Notation "applys_and" constr(E) :=
+  applys_and_base (>> E).
+
+Tactic Notation "applys_and" constr(E) constr(A1) :=
+  applys_and_base (>> E A1).
+
+Tactic Notation "applys_and" constr(E) constr(A1) constr(A2) :=
+  applys_and_base (>> E A1 A2).
+
+Tactic Notation "applys_and" constr(E) constr(A1) constr(A2) constr(A3) :=
+  applys_and_base (>> E A1 A2 A3).
+
+Ltac constructors_and :=
+  let H := fresh in
+  eapply and_impl_left; [ intro H; constructors; exact H |].
 
 
 (**************************************************************)
@@ -633,6 +660,7 @@ Ltac other_follows :=
   try match goal with
   | H : run_object_method ?meth ?S ?l = Some ?z |- _ =>
     let R := fresh "R" in (* Maybe this usage of [fresh] is not very serious... *)
+    try rewrite H in * |- *;
     forwards R: @run_object_method_correct (rm H)
   end.
 
@@ -855,9 +883,11 @@ Proof.
     (* Call Default *)
     skip.
     (* Call Prealloc *)
-    apply~ red_spec_call. applys run_object_method_correct EQB.
-    apply~ red_spec_call_1_prealloc. unmonad.
-    skip.
+    splits.
+     apply~ red_spec_call. applys run_object_method_correct EQB.
+      apply~ red_spec_call_1_prealloc. unmonad.
+      skip.
+     skip.
 
    (* OLD
    (* object_get_builtin *)
@@ -906,52 +936,65 @@ Proof.
 
    (* GetOwnprop *)
    introv E R. simpls. unfolds in E. unmonad_passing.
-    applys red_spec_object_get_own_prop R0. name_passing_def.
+    applys_and red_spec_object_get_own_prop R0. name_passing_def.
     asserts Co: (forall K o,
         passing_output K red_expr C p0 o ->
-        red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o).
-      introv R'. unmonad_passing. applys~ red_spec_object_get_own_prop_1_default R1.
+        red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o /\
+          (p0 = passing_abort o -> abort o)).
+      introv R'. unmonad_passing.
+      applys_and red_spec_object_get_own_prop_1_default R1. reflexivity.
       rewrite <- E in R'. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R'.
-       apply~ red_spec_object_get_own_prop_2_some_data.
-       apply~ red_spec_object_get_own_prop_2_none.
+       splits. apply~ red_spec_object_get_own_prop_2_some_data. absurd_neg.
+       splits. apply~ red_spec_object_get_own_prop_2_none. absurd_neg.
     destruct x0.
-     substs. apply* Co.
-     apply~ red_spec_object_get_own_prop_args_obj. apply~ Co. clear EQp0.
+     inverts E0. apply* Co.
+     applys_and red_spec_object_get_own_prop_args_obj. applys_and Co. clear EQp0.
       unmonad_passing. destruct x0.
-       substs. inverts R. constructors. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
-       rewrite H. constructors. unmonad_passing.
+       substs. inverts R. splits.
+        constructors. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
+        absurd_neg.
+       rewrite H. constructors_and. unmonad_passing.
         destruct x0; simpls; try solve [ substs; inverts R ].
-        applys~ red_spec_object_get_own_prop_args_obj_1_attrs R1.
+        applys_and red_spec_object_get_own_prop_args_obj_1_attrs R1.
         unmonad_passing.
-         apply~ RC. constructors. destruct x0.
-          apply~ red_spec_object_get_own_prop_args_obj_2_undef.
-           apply~ red_spec_object_get_own_prop_args_obj_4. inverts~ R; tryfalse. inverts~ H0.
+         applys_and RC. constructors_and. destruct x0.
+          applys_and red_spec_object_get_own_prop_args_obj_2_undef.
+           applys_and red_spec_object_get_own_prop_args_obj_4.
+           inverts~ R; tryfalse. inverts~ H0. splits~. absurd_neg.
           unmonad_passing.
            forwards~ G: run_object_get_correct Eo. constructors~.
-            applys~ red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a.
-             apply~ red_spec_object_get_own_prop_args_obj_3.
-              apply~ red_spec_object_get_own_prop_args_obj_4.
-              inverts~ R; tryfalse. inverts~ H0.
+            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a.
+             applys_and red_spec_object_get_own_prop_args_obj_3.
+              applys_and red_spec_object_get_own_prop_args_obj_4.
+              inverts~ R; tryfalse. splits. inverts~ H0. absurd_neg.
              subst p. inverts R.
            subst p. inverts R. symmetry in H3. rewrite H3 in H0. inverts H0.
             forwards~ G: run_object_get_correct H3. constructors~.
-            applys~ red_spec_object_get_own_prop_args_obj_2_attrs G.
+            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. splits~.
             apply~ red_expr_abort. absurd_neg.
            subst p. inverts R. false* No.
-         apply~ RC. rewrite H0 in R. inverts R. constructors.
+         applys_and RC. rewrite H0 in R. inverts R. splits. constructors.
+          forwards*: RC K. constructors.
+       substs. inverts R. splits. constructors.
+        forwards*: Co K. constructors.
 
    (* Getprop *)
    introv E R. simpls. unfolds in E. unmonad_passing.
-   applys red_spec_object_get_prop R0. destruct x0.
-    apply~ red_spec_object_get_prop_1_default. unmonad_passing.
-     apply~ RC. cases_if.
-      subst x0. constructors. unmonad_passing.
-       applys~ red_spec_object_get_prop_2_undef R1. destruct x0; tryfalse.
-        destruct p0; subst p; inverts R. apply~ red_spec_object_get_prop_3_null.
-        unmonad. apply~ red_spec_object_get_prop_3_not_null.
-      destruct x0; tryfalse. subst p. inverts R. constructors.
-       apply~ red_spec_object_get_prop_2_not_undef.
-     subst p. inverts R. apply~ RC. constructors.
+   applys_and red_spec_object_get_prop R0. destruct x0.
+    applys_and red_spec_object_get_prop_1_default. unmonad_passing.
+     applys_and RC. cases_if.
+      subst x0. constructors_and. unmonad_passing.
+       applys_and red_spec_object_get_prop_2_undef R1. destruct x0; tryfalse.
+        destruct p0; subst p; inverts R. splits.
+         apply~ red_spec_object_get_prop_3_null.
+         absurd_neg.
+        unmonad. splits.
+         apply~ red_spec_object_get_prop_3_not_null. apply* RC0.
+         apply* RC0.
+      destruct x0; tryfalse. subst p. inverts R. constructors_and.
+       splits. apply~ red_spec_object_get_prop_2_not_undef. absurd_neg.
+     subst p. inverts R. applys_and RC.  splits. constructors.
+      forwards*: RC K. constructors.
 
    (* IsPrototypeOf *)
    skip.
