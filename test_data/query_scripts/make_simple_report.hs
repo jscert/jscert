@@ -120,11 +120,11 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                        -- Not boring arithmetic errors https://gforge.inria.fr/tracker/index.php?func=detail&aid=15848&group_id=4179&atid=13867
                                       -- Alan fixed this one ++ "test_id NOT IN (select test_id from test_group_memberships where group_id = 5) AND "
                                       -- Not tests that use the Number object
-                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
-                                      ++   "(SELECT id from test_groups where description=\"Number object tests\")) AND "
-                                      -- Not tests that use the Number constructor
-                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
-                                      ++   "(SELECT id from test_groups where description=\"Number constructor object tests\")) AND "
+                                      -- ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      -- ++   "(SELECT id from test_groups where description=\"Number object tests\")) AND "
+                                      -- -- Not tests that use the Number constructor
+                                      -- ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      -- ++   "(SELECT id from test_groups where description=\"Number constructor object tests\")) AND "
                                       -- Not tests that use the Boolean constructor
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description=\"Boolean constructor object tests\")) AND "
