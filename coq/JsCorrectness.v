@@ -114,8 +114,6 @@ Record runs_type_correct runs :=
     runs_type_correct_expr : follow_expr (runs_type_expr runs);
     runs_type_correct_stat : follow_stat (runs_type_stat runs);
     runs_type_correct_prog : follow_prog (runs_type_prog runs);
-    (*runs_type_correct_elements : forall rv,
-      follow_elements rv (fun S C => run_elements runs S C rv);*)
     runs_type_correct_call : forall l vs,
       follow_call l vs (fun S C vthis =>
         runs_type_call runs S C l vthis vs);
@@ -279,7 +277,7 @@ Ltac rm_variables :=
   | H : True |- _ => clear H
   end.
 
-Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
+Ltac dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo :=
   repeat first
     [ progress rm_variables
     | unfold_func (>> run_expr_access run_expr_function
@@ -304,9 +302,6 @@ Ltac dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo :=
   | I : run_prog ?num ?S ?C ?p = ?o |- _ =>
     let RC := fresh "RC" in
     forwards~ RC: IHp (rm I)
-  (*| I : run_elements ?num ?S ?C ?rv ?els = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHel (rm I)*)
   | I : runs_type_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
     unfold runs_type_call in I
   | I : run_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
@@ -325,14 +320,13 @@ Ltac dealing_follows :=
   let IHe := findHyp follow_expr in
   let IHs := findHyp follow_stat in
   let IHp := findHyp follow_prog in
-  (*let IHel := findHyp follow_elements in*)
   let IHc := findHyp follow_call in
   let IHhi := findHyp follow_function_has_instance in
   let IHw := findHyp follow_stat_while in
   let IHowp := findHyp follow_object_get_own_prop in
   let IHop := findHyp follow_object_get_prop in
   let IHpo := findHyp follow_object_proto_is_prototype_of in
-  dealing_follows_with IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo.
+  dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo.
 
 
 (**************************************************************)
@@ -753,7 +747,21 @@ Ltac unmonad :=
 
 
 (**************************************************************)
-(** Operations on environments *)
+(** Other Lemmas *)
+
+Lemma run_elements_correct : forall runs,
+  runs_type_correct runs -> forall rv,
+  follow_elements rv (fun S C => run_elements runs S C rv).
+Proof.
+  intros runs [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo] rv S C es S' res R.
+  gen rv S C S' res R. induction es; simpls; introv R.
+   unmonad. prove_correct_res. apply~ red_prog_1_nil.
+   destruct a.
+    (* stat *)
+     skip. (* TODO *)
+    (* func_decl *)
+    forwards (RC&Cr): IHes (rm R). prove_correct_res. apply~ red_prog_1_cons_funcdecl.
+Qed.
 
 
 (**************************************************************)
@@ -785,7 +793,7 @@ Proof.
   induction num.
    constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R; introv P; inverts P.
 
-   lets [IHe IHs IHp (*IHel*) IHc IHhi IHw IHowp IHop IHpo]: (rm IHnum).
+   lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo]: (rm IHnum).
    constructors.
 
    (* run_expr *)
@@ -802,15 +810,15 @@ Proof.
      (* Abort case *)
      inverts HE. false~ Hnn.
      (* Normal case *)
-     unmonad. skip. (* Needs an intermediate lemma for [init_object]. *)
+     unmonad. skip. (* TODO:  Needs an intermediate lemma for [init_object]. *)
     (* function *)
-    skip.
+    skip. (* TODO *)
     (* access *)
-    skip.
+    skip. (* TODO *)
     (* member *)
     forwards~ (?&?): IHe (rm R). prove_correct_res. apply~ red_expr_member.
     (* new *)
-    skip.
+    skip. (* TODO *)
     (* call *)
     unmonad.
      introv R E. forwards~ (_&H): IHe (rm R). apply* H. (* Is that possible to automate this? *)
@@ -818,7 +826,7 @@ Proof.
      forwards~ RC: IHe (rm HE). prove_correct_res. applys~ red_expr_call RC. abort_expr.
      (* Normal case *)
      forwards~ RC: IHe (rm HE). applys_and red_expr_call RC.
-     skip.
+     skip. (* TODO *)
     (* unary_op *)
     destruct~ u; simpls; cases_if; try solve [false~ n].
      (* Delete *)
@@ -835,7 +843,7 @@ Proof.
        destruct r as [[rbv|rbel] rn rs]; simpls.
         skip. (* TODO:  check in the interpreter that the reference base is neither null nor undefined. *)
         applys_and red_expr_delete_1_ref_env_record.
-         skip. (* Needs a lemma [env_record_delete_binding_correct]. *)
+         skip. (* TODO:  Needs a lemma [env_record_delete_binding_correct]. *)
      (* Void *)
      unmonad.
       introv R E. forwards~ (_&H): IHe (rm R). apply* H.
@@ -855,29 +863,29 @@ Proof.
          applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
          apply~ red_expr_unary_op_1. apply~ red_expr_unary_op_void.
      (* TypeOf *)
-     skip.
+     skip. (* TODO *)
      (* Post Incr *)
-     skip.
+     skip. (* TODO *)
      (* Post Decr *)
-     skip.
+     skip. (* TODO *)
      (* Pre Incr *)
-     skip.
+     skip. (* TODO *)
      (* Pre Decr *)
-     skip.
+     skip. (* TODO *)
      (* Add *)
-     skip.
+     skip. (* TODO *)
      (* Neg *)
-     skip.
+     skip. (* TODO *)
      (* Bitwise *)
-     skip.
+     skip. (* TODO *)
      (* Not *)
-     skip.
+     skip. (* TODO *)
     (* binary_op *)
-    skip.
+    skip. (* TODO *)
     (* conditionnal *)
-    skip.
+    skip. (* TODO *)
     (* assign *)
-    skip.
+    skip. (* TODO *)
 
    (* run_stat *)
    intros S C t S' res R. destruct t; simpl in R; dealing_follows.
@@ -893,11 +901,11 @@ Proof.
        prove_correct_res. apply~ red_spec_expr_get_value_1.
        prove_correct_res. apply~ red_spec_expr_get_value_1.
     (* Label *)
-    skip.
+    skip. (* TODO *)
     (* Block *)
-    skip.
+    skip. (* TODO *)
     (* Variable declaration *)
-    skip.
+    skip. (* TODO *)
     (* If *)
     unfolds in R. unmonad.
      introv R E. forwards~ (_&H): IHe (rm R). apply* H.
@@ -926,9 +934,9 @@ Proof.
     (* Do-while *)
     false.
     (* While *)
-    skip.
+    forwards~ (RC&Cr): IHw R. prove_correct_res. apply~ red_stat_while.
     (* With *)
-    skip.
+    skip. (* TODO *)
     (* Throw *)
     unfolds in R. unmonad.
      introv R E. forwards~ (_&H): IHe (rm R). apply* H.
@@ -967,64 +975,33 @@ Proof.
     (* Continue *)
     unmonad. prove_correct_res. apply~ red_stat_continue.
     (* Try *)
-    skip.
+    skip. (* TODO *)
     (* For-in *)
-    skip.
+    skip. (* TODO *)
     (* For-in-var *)
-    skip.
+    skip. (* TODO *)
     (* Debugger *)
     unmonad. prove_correct_res. apply~ res_stat_debugger.
 
    (* run_prog *)
    intros S C p S' res R. destruct p as [str es]. simpls.
-   skip. (* forwards RC: IHel R. apply~ red_prog_prog. *)
-
-   (* OLD
-   (* run_elements *)
-   intros rv S C es S' res R. destruct es; simpls.
-    inverts R. apply~ red_prog_1_nil.
-    destruct e.
-     (* stat *)
-     unmonad.
-      skip. (*
-      (* throw *)
-      applys~ red_prog_1_cons_stat RC.
-       apply~ red_prog_abort. constructors~. absurd_neg.
-       absurd_neg.
-      (* otherwise *)
-      applys~ red_prog_1_cons_stat RC.
-       apply~ red_prog_2. rewrite~ EQrt. discriminate.
-       skip. (* destruct r. simpls. substs. cases_if.
-        substs. unfold res_overwrite_value_if_empty. cases_if. simpls. apply~ red_prog_3. *) *)
-     (* func_decl *)
-     forwards RC: IHel R. apply~ red_prog_1_cons_funcdecl.
-   *)
+   forwards~ (RC&Cr): run_elements_correct R. constructors~.
+   prove_correct_res. apply~ red_prog_prog.
 
    (* run_call *)
    intros l vs S C v S' res R. simpls. unfolds in R. unmonad.
    name_object_method. do 2 (destruct B as [B|]; tryfalse). destruct B; tryfalse.
     (* Call Default *)
-    skip.
+    skip. (* TODO *)
     (* Call Prealloc *)
     splits.
      apply~ red_spec_call. applys run_object_method_correct EQB.
       apply~ red_spec_call_1_prealloc. unmonad.
-      skip.
-     skip.
-
-   (* OLD
-   (* object_get_builtin *)
-   intros v l x S C B S' res R.  destruct~ B; simpls; unmonad.
-    (* Default *)
-    skip. (* Use: red_spec_object_get_1_default. *)
-    (* Function *)
-    false. (* Temporary *)
-    (* Get Args *)
-    false. (* Temporary *)
-   *)
+      skip. (* TODO *)
+     skip. (* TODO *)
 
    (* HasInstance *)
-   skip.
+   skip. (* TODO *)
 
    (* While *)
    intros ls e t S C v S' res R. simpls. unfolds in R. applys_and red_stat_while_1.
@@ -1125,10 +1102,10 @@ Proof.
       forwards*: RC K. constructors.
 
    (* IsPrototypeOf *)
-   skip.
+   skip. (* TODO *)
 
    (* Equal *)
-   skip.
+   skip. (* TODO *)
 
 Qed.
  

@@ -2060,7 +2060,7 @@ Definition run_stat runs S C t : result :=
     result_not_yet_implemented (* TODO *)
 
   | stat_while ls e1 t2 =>
-    run_stat_while runs S C resvalue_empty ls e1 t2
+    runs_type_stat_while runs S C resvalue_empty ls e1 t2
 
   | stat_throw e =>
     run_stat_throw runs S C e
