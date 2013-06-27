@@ -265,7 +265,13 @@ Lemma object_heap_map_is_a_function : forall S l F S' S'',
                                         object_heap_map_properties S l F S' ->
                                         object_heap_map_properties S l F S'' ->
                                         S'=S''.
-Admitted.                       (* TODO GDS Prove this! *)
+Proof.
+  introv. unfold object_heap_map_properties. unfold object_binds.
+  unfold object_write.
+  introv [O1 [P1a P1b]] [O2 [P2a P2b]].
+  generalize (@Heap_binds_func _ _ _ _ _ O1 O2 P1a P2a).
+  introv Eq. substs~.
+Qed.
 
 Definition run_object_rem_property S l x : option state :=
   option_map
