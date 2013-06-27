@@ -134,6 +134,16 @@ Definition type_of v :=
 
 Definition same_value v1 v2 := (v1 = v2).
 
+(**************************************************************)
+(** ** Operations on event lists *)
+
+(** Add an event to the list *)
+
+Definition state_with_new_event S new_event :=
+  match S with
+    | state_intro ob_heap env_heap fresh_locs ev_list =>
+      state_intro ob_heap env_heap fresh_locs (new_event::ev_list)
+  end.
 
 
 (**************************************************************)
@@ -350,7 +360,8 @@ Definition object_set_property S l x A :=
     returns the updated state. *)
 
 Definition object_rem_property S l x S' :=
-  object_heap_map_properties S l (fun P => Heap.rem P x) S'.
+  exists S'', object_heap_map_properties S l (fun P => Heap.rem P x) S''
+              /\ S' = state_with_new_event S'' (delete_event l x).
 
 (** Smart constructor for building a new object with the default 
     behavior of the get method, and the extensible property to true. *)

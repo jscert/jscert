@@ -261,6 +261,31 @@ Proof.
    forwards: @Heap_binds_func B C. typeclass. substs~.
 Qed.
 
+Lemma object_heap_map_is_a_function : forall S l F S' S'',
+                                        object_heap_map_properties S l F S' ->
+                                        object_heap_map_properties S l F S'' ->
+                                        S'=S''.
+Admitted.                       (* TODO GDS Prove this! *)
+
+Definition run_object_rem_property S l x : option state :=
+  option_map
+    (fun S' => state_with_new_event S' (delete_event l x))
+    (pick_option (object_heap_map_properties S l (fun P => Heap.rem P x))).
+
+Global Instance object_rem_property_pickable_option : forall S l x,
+  Pickable_option (object_rem_property S l x).
+Proof.
+  introv. unfold object_rem_property. 
+  applys pickable_option_make (run_object_rem_property S l x).
+   introv E. forwards (S'&P&E'): option_map_some_back (rm E).
+    exists S'. splits~. apply~ @pick_option_correct.
+  introv [S' [S'' [B E]]]. exists S'. unfolds.
+   forwards Ex: ex_intro B. forwards~ (?&P): @pick_option_defined Ex.
+   applys option_map_some_forw P. forwards C: @pick_option_correct P.
+   generalize (@object_heap_map_is_a_function _ _ _ _ _ B C).
+   introv Eq. substs~.
+Qed.   
+
 Global Instance descriptor_contains_dec : forall Desc1 Desc2,
   Decidable (descriptor_contains Desc1 Desc2).
 Proof.
