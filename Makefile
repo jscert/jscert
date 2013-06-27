@@ -45,7 +45,7 @@ INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
 COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 OCAMLOPT=ocamlopt
-INSERT=$(shell cat interp/src/insert)
+
 
 #######################################################
 # MAIN SOURCE FILES
@@ -174,6 +174,13 @@ nofast: $(FAST_VO:.vo=_full.vo)
 #######################################################
 
 
+#######################################################
+# SED INSERTION
+
+REFGETVALUE=$(shell cat interp/src/insert/ref_get_value)
+RUNOBJECTMETHOD=$(shell cat interp/src/insert/run_object_method)
+RUNOBJECTHEAP=$(shell cat interp/src/insert/run_object_heap_set_extensible)
+
 .v.vo : .depend
 	$(COQC) -dont-load-proofs -I coq -I $(TLC) $<
 
@@ -182,9 +189,11 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	mv *.ml interp/src/extract/
 	mv *.mli interp/src/extract/
 	cp interp/src/extract/JsInterpreter.mli interp/src/extract/JsInterpreterBisect.mli
-	sed -e $$'s|(\*\* val object_put_complete :|$(INSERT)|' interp/src/extract/JsInterpreter.ml >  interp/src/extract/JsInterpreter.ml.bak
-	sed -e 's| stuck| (*BISECT-IGNORE*) stuck|g' interp/src/extract/JsInterpreter.ml.bak >  interp/src/extract/JsInterpreterBisect.ml
+	sed -e $$'s|(\*\* val object_put_complete :|$(REFGETVALUE)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
+	sed -e $$'s|(\*\* val run_object_heap_set_extensible :|$(RUNOBJECTMETHOD)|' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
+	sed -e $$'s|type runs_type =|$(RUNOBJECTHEAP)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
 	mv interp/src/extract/JsInterpreter.ml.bak interp/src/extract/JsInterpreter.ml
+	sed -e 's| stuck| (*BISECT-IGNORE*) stuck|g' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreterBisect.ml
 	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
 
