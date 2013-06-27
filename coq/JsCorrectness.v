@@ -880,7 +880,71 @@ Proof.
     skip.
 
    (* run_stat *)
-   skip.
+   intros S C t S' res R. destruct t; simpl in R; dealing_follows.
+    (* Expression *)
+    applys_and red_stat_expr. unmonad.
+     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+     (* Abort case *)
+     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. applys~ red_spec_expr_get_value RC.
+      abort_expr.
+     (* Normal case *)
+     forwards~ (RC&Cr): IHe (rm HE). applys_and red_spec_expr_get_value RC.
+      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+       prove_correct_res. apply~ red_spec_expr_get_value_1.
+       prove_correct_res. apply~ red_spec_expr_get_value_1.
+    (* Label *)
+    skip.
+    (* Block *)
+    skip.
+    (* Variable declaration *)
+    skip.
+    (* If *)
+    unfolds in R. unmonad.
+     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. apply~ red_stat_if.
+      apply~ red_spec_expr_get_value_conv_stat.
+       applys~ red_spec_expr_get_value RC. abort_expr.
+       abort_stat.
+     forwards~ (RC&Cr): IHe (rm HE). applys_and red_stat_if.
+      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+       applys_and red_spec_expr_get_value_conv_stat.
+        applys~ red_spec_expr_get_value RC.
+         applys~ red_spec_expr_get_value_1 H0.
+        prove_correct_res. abort_stat.
+       applys_and red_spec_expr_get_value_conv_stat.
+        applys~ red_spec_expr_get_value RC.
+         applys~ red_spec_expr_get_value_1 H0.
+        applys_and red_spec_expr_get_value_conv_stat_1. apply~ red_spec_to_boolean.
+         applys_and red_spec_expr_get_value_conv_stat_2.
+         cases_if.
+          forwards~ (RCt&Crt): IHs (rm H1).
+           prove_correct_res. apply~ red_stat_if_1_true.
+          destruct o; unmonad.
+           forwards~ (RCt&Crt): IHs (rm H1). prove_correct_res.
+            apply~ red_stat_if_1_false.
+           prove_correct_res. apply~ red_stat_if_1_false_implicit.
+    (* Do-while *)
+    false.
+    (* While *)
+    skip.
+    (* With *)
+    skip.
+    (* Throw *)
+    skip.
+    (* Return *)
+    skip.
+    (* Break *)
+    skip.
+    (* Continue *)
+    skip.
+    (* Try *)
+    skip.
+    (* For-in *)
+    skip.
+    (* For-in-var *)
+    skip.
+    (* Debugger *)
+    unmonad. prove_correct_res. apply~ res_stat_debugger.
 
    (* run_prog *)
    intros S C p S' res R. destruct p as [str es]. simpls.

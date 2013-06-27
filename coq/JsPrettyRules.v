@@ -208,7 +208,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_if_1 false t2 (Some t3)) o
 
   | red_stat_if_1_false_implicit : forall S C t2,
-      red_stat S C (stat_if_1 false t2 None) (out_ter S undef)
+      red_stat S C (stat_if_1 false t2 None) (out_ter S resvalue_empty)
+      (* I've changed this rule, please check. -- Martin. *)
 
   (** Do-while statement (12.6.1)
       -- See also the definition of [abort_intercepted_stat].*)

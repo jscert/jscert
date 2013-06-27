@@ -2039,7 +2039,7 @@ Definition run_stat runs S C t : result :=
   match t with
 
   | stat_expr e =>
-    if_success_value runs C (run_expr runs S C e) out_ter
+    if_success_value runs C (runs_type_expr runs S C e) out_ter
 
   | stat_var_decl xeos =>
     run_var_decl runs S C xeos
