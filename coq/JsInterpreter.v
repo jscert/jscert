@@ -149,16 +149,11 @@ Definition if_ter (o : result) (K : state -> res -> result) : result :=
   | _ => o
   end.
 
-Definition if_empty_label S R (K : state -> result) : result :=
-  ifb res_label R = label_empty then K S
-  else
-    impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
-
 Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : result :=
   if_ter o (fun S0 R =>
     match res_type R with
     | restype_normal =>
-        if_empty_label S0 R (fun S => K S (res_value (res_overwrite_value_if_empty rv R)))
+        K S0 (res_value (res_overwrite_value_if_empty rv R))
     | restype_throw => o
     | _ =>
         out_ter S0 (res_overwrite_value_if_empty rv R)
@@ -197,7 +192,7 @@ Definition if_success_or_return (o : result) (K1 : state -> result) (K2 : state 
   if_ter o (fun S R =>
     match res_type R with
     | restype_normal =>
-      if_empty_label S R K1
+      K1 S
     | restype_return => K2 S (res_value R)
     | _ => o
     end).
@@ -211,7 +206,7 @@ Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
     | restype_continue =>
       (if search_label R then K1 else out_ter) S R
     | restype_normal =>
-      if_empty_label S R (fun S => K1 S R)
+      K1 S R
     | _ => out_ter S R
     end).
 
@@ -967,20 +962,19 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
     | builtin_default_value_default =>
       let gpref := unsome_default preftype_number prefo in
       let lpref := other_preftypes gpref in
-      let gmeth := method_of_preftype gpref in
       let sub S' x K :=
-        if_object (run_object_get runs S' C l x) (fun S1 lfo =>
-          let lf := value_object lfo in
-          match run_callable S1 lf with
+        if_value (run_object_get runs S' C l x) (fun S1 vfo =>
+          match run_callable S1 vfo with
           | Some B =>
-            if_success_value runs C
-              (runs_type_call runs S1 C lfo l nil) (fun S2 v =>
-              match v with
-              | value_prim w => out_ter S2 w
-              | value_object l => K S2
-              end)
+            if_object (out_ter S1 vfo) (fun S2 lfunc =>
+              if_value (runs_type_call runs S2 C lfunc l nil) (fun S3 v =>
+                match v with
+                | value_prim w => out_ter S3 w
+                | value_object l => K S3
+                end))
           | None => K S1
           end) in
+      let gmeth := method_of_preftype gpref in
       sub S gmeth (fun S' =>
         let lmeth := method_of_preftype lpref in
         sub S' lmeth (fun S'' => run_error S'' native_error_type))
@@ -1007,7 +1001,8 @@ Definition to_integer runs S C v : result :=
     match rv1 with
     | prim_number n =>
       out_ter S1 (convert_number_to_integer n)
-    | _ => impossible_with_heap_because S1 "[to_number] failed in [to_integer]."
+    | _ =>
+      impossible_with_heap_because S1 "[to_number] failed in [to_integer]."
     end).
 
 Definition to_int32 runs S C v (K : state -> int -> result) : result :=

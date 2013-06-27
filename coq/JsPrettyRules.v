@@ -2356,10 +2356,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_var_decls_nil : forall o1 L S0 S C bconfig str o, (* Step 8 *)
       red_expr S0 C (spec_binding_inst_var_decls L nil bconfig str) (out_void S)     
       
-  | red_spec_binding_inst_var_decls_cons : forall o1 L S0 S C vd vds bconfig str o, (* Step 8b *)
+  | red_spec_binding_inst_var_decls_cons : forall o1 L S C vd vds bconfig str o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
       red_expr S C (spec_binding_inst_var_decls_1 L vd vds bconfig str o1) o ->
-      red_expr S0 C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o (* I think this [S0] should be removed of this rule, and in the following three. -- Martin. *)
+      red_expr S C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o (* I've change this rule as the previous version was weird, but please check it. -- Martin. *)
 
   | red_spec_binding_inst_var_decls_1_true : forall L S0 S C vd vds bconfig str o, (* Step 8c *)
       red_expr S C (spec_binding_inst_var_decls L vds bconfig str) o ->
