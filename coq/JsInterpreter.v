@@ -1110,17 +1110,15 @@ Definition run_construct_default runs S C l args :=
       let vr := ifb type_of v2 = type_object then v2 else l' in
       out_ter S3 vr)).
 
-Definition run_construct runs S C l args : result :=
-  if_some (run_object_method object_construct_ S l) (fun coo =>
-    if_some coo (fun co =>
-      match co with
-      | construct_default =>
-        run_construct_default runs S C l args
-      | construct_prealloc B =>
-        run_construct_prealloc runs B S C args
-      | construct_after_bind =>
-        impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
-      end)).
+Definition run_construct runs S C co l args : result :=
+  match co with
+  | construct_default =>
+    run_construct_default runs S C l args
+  | construct_prealloc B =>
+    run_construct_prealloc runs B S C args
+  | construct_after_bind =>
+    impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
+  end.
 
 
 (**************************************************************)
@@ -1898,10 +1896,11 @@ Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
     run_list_expr runs S1 C nil e2s (fun S2 args =>
       match v with
       | value_object l =>
-        match run_object_method object_construct_ S l with
-        | None => run_error S2 native_error_type
-        | Some _ => run_construct runs S2 C l args
-        end
+        if_some (run_object_method object_construct_ S2 l) (fun coo =>
+          match coo with
+          | None => run_error S2 native_error_type
+          | Some co => run_construct runs S2 C co l args
+          end)
       | value_prim _ =>
         run_error S2 native_error_type
       end)).
