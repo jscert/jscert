@@ -143,8 +143,8 @@ Definition same_value v1 v2 := (v1 = v2).
 
 Definition state_with_object_heap S new_object_heap :=
    match S with
-   | state_intro old_object_heap env_heap fresh_locs =>
-     state_intro new_object_heap env_heap fresh_locs
+   | state_intro old_object_heap env_heap fresh_locs ev_list =>
+     state_intro new_object_heap env_heap fresh_locs ev_list
    end.
 
 (** Map a function to update the object heap of a state *)
@@ -164,9 +164,9 @@ Definition object_write S l O :=
     to the object [O]. *)
 
 Definition object_alloc S O :=
-   match S with state_intro cells bindings (n:::alloc) =>
+   match S with state_intro cells bindings (n:::alloc) ev_list =>
      let L := object_loc_normal n in
-     (L, object_write (state_intro cells bindings alloc) L O)
+     (L, object_write (state_intro cells bindings alloc ev_list) L O)
    end.
 
 (** [object_binds S l O] asserts that [l] is bound to the object [O]
@@ -794,8 +794,8 @@ Definition mutability_is_mutable mu :=
 
 Definition state_with_env_record_heap S new_env_heap :=
    match S with
-   | state_intro object_heap old_env_heap fresh_locs =>
-     state_intro object_heap new_env_heap fresh_locs
+   | state_intro object_heap old_env_heap fresh_locs ev_list =>
+     state_intro object_heap new_env_heap fresh_locs ev_list
    end.
 
 (** Map a function to update the environment record heap of a state *)
@@ -817,9 +817,9 @@ Definition env_record_write S L E :=
 
 Definition env_record_alloc S E :=
    (* TODO: implem will change; it should use env_record_write. *)
-   match S with state_intro cells bindings (L:::alloc) =>
+   match S with state_intro cells bindings (L:::alloc) ev_list =>
      let bindings' := Heap.write bindings L E in
-     (L, state_intro cells bindings' alloc)
+     (L, state_intro cells bindings' alloc ev_list)
    end.
 
 (** [env_record_binds S L E] asserts that [L] is bound to

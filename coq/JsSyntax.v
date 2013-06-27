@@ -609,6 +609,18 @@ Record object := object_intro {
    (* LATER: match for regular expression matching *)
    }.
 
+(**************************************************************)
+(* A type of "events" that can be used to pin down the semantics of
+for-in. There is one case for each sort of event that can change the
+behaviour of an ongoing enumeration. *)
+
+Inductive event := delete_event: object_loc -> prop_name -> event
+                 | mutateproto_event: object_loc
+                                      -> list (object_loc * prop_name)
+                                      -> list (object_loc * prop_name)
+                                      -> event
+                 | enumchange_event: object_loc -> prop_name -> event.
+
 
 (**************************************************************)
 (** ** Representation of the state *)
@@ -620,7 +632,8 @@ Record object := object_intro {
 Record state := state_intro {
    state_object_heap : Heap.heap object_loc object;
    state_env_record_heap : Heap.heap env_loc env_record;
-   state_fresh_locations : stream nat }.
+   state_fresh_locations : stream nat;
+   state_event_list : list event}.
 
 
 (**************************************************************)

@@ -480,5 +480,6 @@ Definition dummy_fresh_locations := all_locations 1%nat. (* Starting at 1 and no
 Definition state_initial :=
   {| state_object_heap := object_heap_initial;
      state_env_record_heap := env_record_heap_initial;
-     state_fresh_locations := dummy_fresh_locations |}.
+     state_fresh_locations := dummy_fresh_locations;
+     state_event_list := nil |}.
 
