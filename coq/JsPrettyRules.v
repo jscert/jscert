@@ -319,7 +319,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_return_1 o1) o ->
       red_stat S C (stat_return (Some e)) o
 
-  | red_stat_return_some_1 : forall S0 S C v,
+  | red_stat_return_1 : forall S0 S C v,
       red_stat S0 C (stat_return_1 (out_ter S v)) (out_ter S (res_return v))
 
   (** With statement (12.10) *)

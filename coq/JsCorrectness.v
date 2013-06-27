@@ -930,13 +930,42 @@ Proof.
     (* With *)
     skip.
     (* Throw *)
-    skip.
+    unfolds in R. unmonad.
+     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. apply~ red_stat_throw.
+      applys~ red_spec_expr_get_value RC. abort_expr.
+      abort_stat.
+     forwards~ (RC&Cr): IHe (rm HE).
+      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+       applys_and red_stat_throw.
+        applys~ red_spec_expr_get_value RC.
+         applys~ red_spec_expr_get_value_1 H0.
+        prove_correct_res. abort_stat.
+       prove_correct_res. apply~ red_stat_throw.
+        applys~ red_spec_expr_get_value RC.
+         applys~ red_spec_expr_get_value_1 H0.
+        apply~ red_stat_throw_1.
     (* Return *)
-    skip.
+    destruct o; simpls; unmonad.
+     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. apply~ red_stat_return_some.
+      applys~ red_spec_expr_get_value RC. abort_expr.
+      abort_stat.
+     forwards~ (RC&Cr): IHe (rm HE).
+      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+       applys_and red_stat_return_some.
+        applys~ red_spec_expr_get_value RC.
+         applys~ red_spec_expr_get_value_1 H0.
+        prove_correct_res. abort_stat.
+       prove_correct_res. apply~ red_stat_return_some.
+        applys~ red_spec_expr_get_value RC.
+         applys~ red_spec_expr_get_value_1 H0.
+        apply~ red_stat_return_1.
+     prove_correct_res. apply~ red_stat_return_none.
     (* Break *)
-    skip.
+    unmonad. prove_correct_res. apply~ red_stat_break.
     (* Continue *)
-    skip.
+    unmonad. prove_correct_res. apply~ red_stat_continue.
     (* Try *)
     skip.
     (* For-in *)
