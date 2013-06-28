@@ -615,6 +615,7 @@ for-in. There is one case for each sort of event that can change the
 behaviour of an ongoing enumeration. *)
 
 Inductive event := delete_event: object_loc -> prop_name -> event
+                 (* TODO: Add the option of a revealed property *)
                  | mutateproto_event: object_loc
                                       -> list (object_loc * prop_name)
                                       -> list (object_loc * prop_name)
