@@ -1032,6 +1032,7 @@ tests/test262/ch10/10.6/S10.6_A2.js
 tests/test262/ch10/10.6/S10.6_A5_T3.js
 tests/test262/ch10/10.6/S10.6_A4.js
 tests/test262/ch10/10.6/S10.6_A3_T3.js
+tests/test262/ch10/10.1/S10.1.1_A1_T3.js
 tests/test262/ch10/10.1/S10.1.1_A1_T2.js
 tests/test262/ch10/10.1/S10.1.6_A1_T1.js
 tests/test262/ch10/10.1/S10.1.6_A1_T3.js
@@ -1075,14 +1076,12 @@ tests/test262/ch10/10.2/10.2.1/S10.2.1_A4_T2.js
 tests/test262/ch10/10.2/10.2.1/S10.2.1_A5.2_T1.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A2.3_T1.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.2_T1.js
-tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.2_T4.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.3_T3.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.3_T1.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A2.3_T3.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A2.3_T2.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.3_T2.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.3_T4.js
-tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.1_T4.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A2.3_T4.js
 tests/test262/ch10/10.2/10.2.3/S10.2.3_A1.1_T1.js
 tests/test262/ch10/10.5/10.5-1gs.js
@@ -1099,6 +1098,7 @@ tests/test262/ch13/13.2/S13.2.2_A19_T3.js
 tests/test262/ch13/13.2/S13.2.2_A15_T1.js
 tests/test262/ch13/13.2/S13.2.2_A7_T2.js
 tests/test262/ch13/13.2/S13.2.1_A4_T4.js
+tests/test262/ch13/13.2/S13.2.2_A16_T3.js
 tests/test262/ch13/13.2/S13.2_A2_T1.js
 tests/test262/ch13/13.2/S13.2.2_A19_T4.js
 tests/test262/ch13/13.2/S13.2.2_A19_T5.js
@@ -1106,6 +1106,7 @@ tests/test262/ch13/13.2/S13.2_A1_T2.js
 tests/test262/ch13/13.2/S13.2.1_A9.1_T2.js
 tests/test262/ch13/13.2/S13.2_A1_T1.js
 tests/test262/ch13/13.2/S13.2.1_A1_T1.js
+tests/test262/ch13/13.2/S13.2.2_A16_T2.js
 tests/test262/ch13/13.2/S13.2.1_A9.1_T1.js
 tests/test262/ch13/13.2/S13.2.2_A18_T2.js
 tests/test262/ch13/13.2/S13.2.2_A15_T4.js
@@ -1136,6 +1137,7 @@ tests/test262/ch13/13.2/S13.2_A2_T2.js
 tests/test262/ch13/13.2/13.2-19-b-3gs.js
 tests/test262/ch13/13.2/S13.2.1_A9_T2.js
 tests/test262/ch13/13.2/S13.2.1_A4_T1.js
+tests/test262/ch13/13.2/S13.2.2_A16_T1.js
 tests/test262/ch13/13.0/S13_A15_T2.js
 tests/test262/ch13/13.0/S13_A19_T1.js
 tests/test262/ch13/13.0/S13_A3_T1.js

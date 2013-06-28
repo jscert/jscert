@@ -20,6 +20,8 @@ import Database.HDBC(withTransaction)
 import Data.ByteString.Char8(ByteString,readFile,isInfixOf)
 import Text.Regex.PCRE((=~))
 
+magic :: t
+magic = error "woo"
 isMathFile :: ByteString -> Bool
 isMathFile content = ("<< 0" `isInfixOf` content)
                      || (">>> 0" `isInfixOf` content)
@@ -43,6 +45,9 @@ isStringFile = ("String." `isInfixOf`)
 isToNumberTest :: ByteString -> Bool
 isToNumberTest = (" * Operator uses ToNumber" `isInfixOf`)
 
+isWhileTest :: ByteString -> Bool
+isWhileTest content = content =~ ("while *\\("::ByteString)
+
 grouptypes :: String -> (String, ByteString -> Bool)
 grouptypes "arith" = ("Arithmetic error tests", isMathFile)
 grouptypes "number" = ("Number object tests", isNumFile)
@@ -51,6 +56,7 @@ grouptypes "boolconstructor" = ("Boolean constructor object tests", isBoolConstr
 grouptypes "stringconstructor" = ("String constructor object tests", isStringConstructorFile)
 grouptypes "string" = ("String object tests", isStringFile)
 grouptypes "tonumber" = ("ToNumber conversion tests", isToNumberTest)
+grouptypes "while" = ("Tests that use while loops", isWhileTest)
 
 main :: IO ()
 main = do
