@@ -2048,7 +2048,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_get_binding_value_2 x str l o1) o ->
       red_expr S C (spec_env_record_get_binding_value_1 L x str (env_record_object l pt)) o
 
-  | red_spec_env_record_get_binding_value_2_false : forall S0 C x str l S o,
+  | red_spec_env_record_get_binding_value_obj_2_false : forall S0 C x str l S o,
       red_expr S C (spec_error_or_cst str native_error_ref undef) o ->
       red_expr S0 C (spec_env_record_get_binding_value_2 x str l (out_ter S false)) o
 
