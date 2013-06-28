@@ -102,10 +102,13 @@ Definition follow_elements rv :=
 Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
   forall S C v S' res,
     run S C v = out_ter S' res ->
-    red_expr S C (spec_call l v vs) (out_ter S' res) /\ 
-    (res_type res = restype_normal -> exists v', res = (v' : value)).
-Definition follow_function_has_instance (_ : state -> object_loc -> value -> result) :=
-  True. (* TODO *)
+    red_expr S C (spec_call l v vs) (out_ter S' res) /\
+      (res_type res = restype_normal -> exists v', res = (v' : value)).
+Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
+  forall S S0 C l v S' res,
+    run S l v = out_ter S' res ->
+    red_expr S0 C (spec_function_has_instance_1 l (out_ter S v)) (out_ter S' res) /\
+      (res_type res = restype_normal -> exists b, res = (b : bool)).
 Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
@@ -291,7 +294,7 @@ Ltac rm_variables :=
   | H : True |- _ => clear H
   end.
 
-Ltac dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo :=
+Ltac dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq :=
   repeat first
     [ progress rm_variables
     | unfold_func (>> run_expr_access run_expr_function
@@ -340,7 +343,8 @@ Ltac dealing_follows :=
   let IHowp := findHyp follow_object_get_own_prop in
   let IHop := findHyp follow_object_get_prop in
   let IHpo := findHyp follow_object_proto_is_prototype_of in
-  dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo.
+  let IHeq := findHyp follow_equal in
+  dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq.
 
 
 (**************************************************************)
@@ -829,7 +833,7 @@ Proof.
   induction num.
    constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R; introv P; inverts P.
 
-   lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo]: (rm IHnum).
+   lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum).
    constructors.
 
    (* run_expr *)
@@ -1037,6 +1041,17 @@ Proof.
      skip. (* TODO *)
 
    (* HasInstance *)
+   intros S S0 C l v S' res R. simpls. unfolds in R. destruct~ v.
+    forwards~ (R'&A): run_error_correct (rm R). prove_correct_res.
+     apply~ red_spec_function_has_instance_1_prim. destruct~ p; discriminate.
+    applys_and red_spec_function_has_instance_1_object. rewrite_morph_option.
+     simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
+      destruct p; inverts R. prove_correct_res.
+       apply~ red_spec_function_has_instance_3_null.
+      cases_if.
+       substs. inverts R. prove_correct_res. apply~ red_spec_function_has_instance_3_eq.
+       applys_and red_spec_function_has_instance_3_neq n.
+        forwards~: IHhi R.
    skip. (* TODO *)
 
    (* While *)

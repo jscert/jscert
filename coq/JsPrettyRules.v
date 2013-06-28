@@ -3588,7 +3588,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
    | red_spec_function_has_instance_3_null : forall S C lo, (* Step 4b *)
        red_expr S C (spec_function_has_instance_3 lo null) (out_ter S false)
-      
+
    | red_spec_function_has_instance_3_eq : forall S C lo lv, (* Step 4c *)
        lv = lo ->
        red_expr S C (spec_function_has_instance_3 lo lv) (out_ter S true)
