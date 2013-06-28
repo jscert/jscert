@@ -84,19 +84,15 @@ Definition follow_spec_passing {T Te A : Type}
   red S C (conv x K) (out_ter S' R') /\
     (p = passing_abort (out_ter S' R') -> abort (out_ter S' R')).
 
-Inductive follow_spec_inject {A : Type}
+Definition follow_spec_inject {A : Type}
     (conv : A -> value)
     (red : out -> Prop)
-    (run : passing A) : Prop :=
-  | follow_spec_inject_normal : forall S' a,
-    run = passing_normal S' a ->
-    red (out_ter S' (conv a)) ->
-    follow_spec_inject conv red run
-  | follow_spec_inject_abort : forall S R,
+    (run : passing A) : Prop := (forall S a,
+  run = passing_normal S a ->
+  red (out_ter S (conv a))) /\ (forall S R,
     run = passing_abort (out_ter S R) ->
-    red (out_ter S R) ->
-    abort (out_ter S R) ->
-    follow_spec_inject conv red run.
+    red (out_ter S R) /\
+    abort (out_ter S R)).
 
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
@@ -550,26 +546,26 @@ Qed.
 Lemma object_has_prop_correct : forall runs,
   runs_type_correct runs -> forall S C l x (p : passing bool),
   object_has_prop runs S C l x = p ->
-  passing_terminates p ->
   follow_spec_inject (fun b => b) (red_expr S C (spec_object_has_prop l x)) p.
 Proof.
-  introv RC E T. unfolds in E. name_object_method.
+  introv RC E. unfolds in E. name_object_method.
   destruct B as [B|]; simpls.
    forwards~ BC: run_object_method_correct (rm EQB).
     destruct B. forwards [(S'&?&?&E')|(?&Ep&?)]: @passing_defined_out (rm E);
       simpl_after_regular_lemma.
-     inverts E'. apply* @follow_spec_inject_normal.
+     inverts E'. splits; introv Eq; inverts Eq.
       applys red_spec_object_has_prop BC.
       apply red_spec_object_has_prop_1_default. apply~ RC.
       rewrite H. constructors. apply~ red_spec_object_has_prop_2.
        rewrite decide_spec. cases_if~; rew_refl.
         rewrite~ isTrue_true.
         rewrite~ isTrue_false.
-     substs. inverts T. apply RC in Ep. apply~ @follow_spec_inject_abort.
-       applys red_spec_object_has_prop BC.
-        apply red_spec_object_has_prop_1_default. apply Ep.
-        constructors.
-   inverts T; false.
+     substs. splits; introv Eq; inverts Eq. apply RC in Ep. splits.
+      applys red_spec_object_has_prop BC.
+       apply red_spec_object_has_prop_1_default. apply Ep.
+       constructors.
+      applys~ Ep spec_object_has_prop_2. constructors.
+   substs. splits; introv Eq; inverts Eq.
 Qed.
 
 Lemma run_object_get_correct : forall runs,
@@ -649,17 +645,15 @@ Proof.
       forwards~ (RCe&Cre): out_error_or_cst_correct C0 E. prove_correct_res. auto*.
       inverts E. prove_correct_res. apply~ red_spec_returns.
     rewrite_morph_option; simpls.
-     forwards~ HC: object_has_prop_correct (rm EQp0). constructors.
-      inverts HC as Eq; tryfalse.
-      inverts Eq. applys_and red_spec_env_record_get_binding_value_1_object H1. cases_if.
+     forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0).
+      applys_and red_spec_env_record_get_binding_value_1_object HCn. cases_if.
        applys_and red_spec_env_record_get_binding_value_obj_2_true.
         forwards*: run_object_get_correct E.
        applys_and red_spec_env_record_get_binding_value_obj_2_false.
         forwards*: out_error_or_cst_correct E.
-     forwards~ HC: object_has_prop_correct (rm EQp0). inverts E. constructors.
-      inverts HC as Eq; tryfalse.
-      inverts Eq. applys_and red_spec_env_record_get_binding_value_1_object H1.
-      inverts H. applys_and red_expr_abort H2. splits~. absurd_neg. inverts~ H2; absurd_neg.
+     substs. forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0). forwards~ (RH&A): HCa.
+      applys_and red_spec_env_record_get_binding_value_1_object RH.
+      applys_and red_expr_abort A. splits~. absurd_neg. inverts~ A; absurd_neg.
 Qed.
 
 Lemma ref_get_value_correct : forall runs,
@@ -678,7 +672,7 @@ Proof.
          cases_if; first [ applys~ prim_value_get_correct RC | applys~ run_object_get_correct RC ].
        intro Rn. destruct v. destruct p; simpls; tryfalse;
          try solve [ forwards~ (_&?): run_error_correct E; false ]; cases_if; tryfalse.
-        simpls. cases_if. forwards~ (_&?): run_object_get_correct RC E. apply* H.
+        simpls. cases_if. forwards~ (_&?): run_object_get_correct RC E.
     destruct r as [rb rn rs]; destruct rb as [[()|l]|?]; simpls; tryfalse;
       try (false C; first [ solve [left~] | solve [right~] ]); split.
      apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
@@ -1088,9 +1082,9 @@ Proof.
         passing_output K red_expr C p0 o ->
         red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o /\
           (p0 = passing_abort o -> abort o)).
-      introv R'. unmonad_passing.
-      applys_and red_spec_object_get_own_prop_1_default R1.
-      rewrite <- E in R'. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R'.
+      introv R1. unmonad_passing.
+      applys_and red_spec_object_get_own_prop_1_default R2.
+      rewrite <- E in R1. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R1.
        splits. apply~ red_spec_object_get_own_prop_2_some_data. absurd_neg.
        splits. apply~ red_spec_object_get_own_prop_2_none. absurd_neg.
     destruct x0.
