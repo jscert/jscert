@@ -90,6 +90,9 @@ Inductive result :=
 Definition result_void := result.
 
 (* It can be useful to get details on why a stuck is obtained. *)
+(* The cases where [result_impossible] is directly used are the cases
+  where it has been proven impossible to get it under normal condition.
+  See [JsCorrectness.v] for more details. *)
 Definition impossible_because s := result_impossible.
 Definition impossible_with_heap_because S s := result_impossible.
 
@@ -891,7 +894,8 @@ Definition ref_put_value runs S C rv v : result_void :=
       | ref_base_type_env_loc L =>
         env_record_set_mutable_binding runs S C L (ref_name r) v (ref_strict r)
       end
-  | resvalue_empty => impossible_with_heap_because S "[ref_put_value] received an empty result."
+  | resvalue_empty =>
+    impossible_with_heap_because S "[ref_put_value] received an empty result."
   end.
 
 Definition if_success_value runs C (o : result) (K : state -> value -> result) : result :=
@@ -899,8 +903,7 @@ Definition if_success_value runs C (o : result) (K : state -> value -> result) :
     if_success (ref_get_value runs S1 C rv1) (fun S2 rv2 =>
       match rv2 with
       | resvalue_value v => K S2 v
-      | _ =>
-        impossible_with_heap_because S2 "[if_success_value]:  [ref_get_value] didn't returned a value."
+      | _ => result_impossible
       end)).
 
 

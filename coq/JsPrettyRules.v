@@ -1081,16 +1081,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_binary_op_instanceof_non_object : forall S C v1 v2 o,
       type_of v2 <> type_object ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_binary_op_3 binary_op_in v1 v2) o
+      red_expr S C (expr_binary_op_3 binary_op_instanceof v1 v2) o
 
   | red_expr_binary_op_instanceof_non_instance : forall S C v1 l o,
       object_has_instance S l None ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
+      red_expr S C (expr_binary_op_3 binary_op_instanceof v1 (value_object l)) o
 
   | red_expr_binary_op_instanceof_normal : forall S C v1 l o,
       red_expr S C (spec_object_has_instance l v1) o ->
-      red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
+      red_expr S C (expr_binary_op_3 binary_op_instanceof v1 (value_object l)) o
 
   (** Binary op : in (11.8.7) *)
 

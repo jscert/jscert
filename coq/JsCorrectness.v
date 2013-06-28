@@ -975,10 +975,17 @@ Proof.
             applys_and red_expr_binary_op_1.
               applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
              prove_correct_res. abort_expr.
-            destruct v0.
-             forwards~ (RE&A): run_error_correct H2.
-             skip. (* TODO *)
-             skip. (* TODO *)
+            applys_and red_expr_binary_op_1.
+              applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
+            applys_and red_expr_binary_op_2. destruct v0.
+             forwards~ (RE&A): run_error_correct H2. prove_correct_res.
+              apply~ red_expr_binary_op_instanceof_non_object.
+              destruct p; discriminate.
+             rewrite_morph_option; tryfalse. simpls. rewrite_morph_option; simpls.
+              substs. applys_and red_expr_binary_op_instanceof_normal.
+               skip. (* TODO *)
+              substs. forwards~ (RE&A): run_error_correct H2. prove_correct_res.
+               unmonad. applys~ red_expr_binary_op_instanceof_non_instance R.
      (* In *)
      skip. (* TODO *)
      (* Equal *)
@@ -1121,7 +1128,6 @@ Proof.
      skip. (* TODO *)
 
    (* HasInstance *)
-   skip. (*
    intros S C lo lv S' res R. simpls. rewrite_morph_option; tryfalse.
     simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
      destruct p; inverts R. prove_correct_res.
@@ -1129,7 +1135,7 @@ Proof.
      cases_if.
       substs. inverts R. prove_correct_res. apply~ red_spec_function_has_instance_3_eq.
       applys_and red_spec_function_has_instance_3_neq n.
-       forwards*: IHhi R. *)
+       forwards~: IHhi C R.
 
    (* While *)
    intros ls e t S C v S' res R. simpls. unfolds in R. applys_and red_stat_while_1.
