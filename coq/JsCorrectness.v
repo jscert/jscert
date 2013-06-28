@@ -105,9 +105,12 @@ Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
     red_expr S C (spec_call l v vs) (out_ter S' res) /\
       (res_type res = restype_normal -> exists v', res = (v' : value)).
 Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
-  forall S S0 C l v S' res,
-    run S l v = out_ter S' res ->
-    red_expr S0 C (spec_function_has_instance_1 l (out_ter S v)) (out_ter S' res) /\
+  forall S C lo lv S' res,
+    run S lv (lo : object_loc) = out_ter S' res ->
+    (* Note that this function is related to [spec_function_has_instance_2] instead of
+      [spec_function_has_instance_1] as it's much more closer to the specification and
+      thus much easier to prove. *)
+    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' res) /\
       (res_type res = restype_normal -> exists b, res = (b : bool)).
 Definition follow_stat_while ls e t :=
   follow_spec
@@ -921,7 +924,84 @@ Proof.
      (* Not *)
      skip. (* TODO *)
     (* binary_op *)
-    skip. (* TODO *)
+    unfolds in R. destruct~ b; simpls.
+     (* Mult *)
+     skip. (* TODO *)
+     (* Div *)
+     skip. (* TODO *)
+     (* Mod *)
+     skip. (* TODO *)
+     (* Add *)
+     skip. (* TODO *)
+     (* Sub *)
+     skip. (* TODO *)
+     (* Left shift *)
+     skip. (* TODO *)
+     (* Right shift *)
+     skip. (* TODO *)
+     (* Unsigned right shift *)
+     skip. (* TODO *)
+     (* Lesser *)
+     skip. (* TODO *)
+     (* Greater *)
+     skip. (* TODO *)
+     (* Lesser or equal *)
+     skip. (* TODO *)
+     (* Greater or equal *)
+     skip. (* TODO *)
+     (* Instance of *)
+     unmonad. introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+      (* Abort case *)
+      forwards~ (RC&Cr): IHe (rm HE). applys_and red_expr_binary_op.
+       applys~ red_spec_expr_get_value RC. abort_expr.
+       prove_correct_res. abort_expr.
+      (* Normal case *)
+      forwards~ (RC1&Cr1): IHe (rm HE).
+       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+        applys_and red_expr_binary_op.
+         applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
+         prove_correct_res. abort_expr.
+        applys_and red_expr_binary_op.
+          applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
+         unmonad. introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+          (* Abort case *)
+          forwards~ (RC2&Cr2): IHe (rm HE). prove_correct_res.
+           applys~ red_expr_binary_op_1.
+             applys~ red_spec_expr_get_value RC2. abort_expr.
+           abort_expr.
+          (* Normal case *)
+          forwards~ (RC2&Cr2): IHe (rm HE).
+           inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+            applys_and red_expr_binary_op_1.
+              applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
+             prove_correct_res. abort_expr.
+            destruct v0.
+             forwards~ (RE&A): run_error_correct H2.
+             skip. (* TODO *)
+             skip. (* TODO *)
+     (* In *)
+     skip. (* TODO *)
+     (* Equal *)
+     skip. (* TODO *)
+
+     (* Disequal *)
+     skip. (* TODO *)
+     (* Strict equal *)
+     skip. (* TODO *)
+     (* Strict disequal *)
+     skip. (* TODO *)
+     (* Bitwise and *)
+     skip. (* TODO *)
+     (* Bitwise or *)
+     skip. (* TODO *)
+     (* Bitwise xor *)
+     skip. (* TODO *)
+     (* And *)
+     skip. (* TODO *)
+     (* Or *)
+     skip. (* TODO *)
+     (* Comma *)
+     skip. (* TODO *)
     (* conditionnal *)
     skip. (* TODO *)
     (* assign *)
@@ -1041,18 +1121,15 @@ Proof.
      skip. (* TODO *)
 
    (* HasInstance *)
-   intros S S0 C l v S' res R. simpls. unfolds in R. destruct~ v.
-    forwards~ (R'&A): run_error_correct (rm R). prove_correct_res.
-     apply~ red_spec_function_has_instance_1_prim. destruct~ p; discriminate.
-    applys_and red_spec_function_has_instance_1_object. rewrite_morph_option.
-     simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
-      destruct p; inverts R. prove_correct_res.
-       apply~ red_spec_function_has_instance_3_null.
-      cases_if.
-       substs. inverts R. prove_correct_res. apply~ red_spec_function_has_instance_3_eq.
-       applys_and red_spec_function_has_instance_3_neq n.
-        forwards~: IHhi R.
-   skip. (* TODO *)
+   skip. (*
+   intros S C lo lv S' res R. simpls. rewrite_morph_option; tryfalse.
+    simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
+     destruct p; inverts R. prove_correct_res.
+      apply~ red_spec_function_has_instance_3_null.
+     cases_if.
+      substs. inverts R. prove_correct_res. apply~ red_spec_function_has_instance_3_eq.
+      applys_and red_spec_function_has_instance_3_neq n.
+       forwards*: IHhi R. *)
 
    (* While *)
    intros ls e t S C v S' res R. simpls. unfolds in R. applys_and red_stat_while_1.

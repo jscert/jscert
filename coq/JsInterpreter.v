@@ -899,7 +899,8 @@ Definition if_success_value runs C (o : result) (K : state -> value -> result) :
     if_success (ref_get_value runs S1 C rv1) (fun S2 rv2 =>
       match rv2 with
       | resvalue_value v => K S2 v
-      | _ => run_error S2 native_error_ref
+      | _ =>
+        impossible_with_heap_because S2 "[if_success_value]:  [ref_get_value] didn't returned a value."
       end)).
 
 
