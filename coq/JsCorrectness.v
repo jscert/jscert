@@ -79,10 +79,10 @@ Definition follow_spec_passing {T Te A : Type}
     (conv : T -> (A -> Te) -> Te)
     (red : state -> execution_ctx -> Te -> out -> Prop)
     (run : state -> execution_ctx -> T -> passing A) := forall S C (x : T) (p : passing A),
-  run S C x = p -> forall K o,
-  passing_output K red C p o ->
-  red S C (conv x K) o /\
-    (p = passing_abort o -> abort o).
+  run S C x = p -> forall K S' R',
+  passing_output K red C p (out_ter S' R') ->
+  red S C (conv x K) (out_ter S' R') /\
+    (p = passing_abort (out_ter S' R') -> abort (out_ter S' R')).
 
 Inductive follow_spec_inject {A : Type}
     (conv : A -> value)
@@ -92,14 +92,10 @@ Inductive follow_spec_inject {A : Type}
     run = passing_normal S' a ->
     red (out_ter S' (conv a)) ->
     follow_spec_inject conv red run
-  | follow_spec_inject_abort : forall o,
-    run = passing_abort o ->
-    red o ->
-    abort o ->
-    follow_spec_inject conv red run
-  | follow_spec_inject_not_out : forall res,
-    run = passing_abort res ->
-    (forall o, res <> o) ->
+  | follow_spec_inject_abort : forall S R,
+    run = passing_abort (out_ter S R) ->
+    red (out_ter S R) ->
+    abort (out_ter S R) ->
     follow_spec_inject conv red run.
 
 Definition follow_expr := follow_spec expr_basic red_expr.
@@ -354,6 +350,13 @@ Ltac dealing_follows :=
 (**************************************************************)
 (** Monadic Constructors, Lemmae *)
 
+Inductive passing_terminates {A : Type} : passing A -> Prop :=
+  | passing_terminates_normal : forall S a,
+    passing_terminates (passing_normal S a)
+  | passing_terminates_abort : forall S R,
+    abort (out_ter S R) ->
+    passing_terminates (passing_abort (out_ter S R)).
+
 Definition if_regular_lemma (res : result) S0 R0 M :=
   exists S R, res = out_ter S R /\
     ((res_type R <> restype_normal /\ S = S0 /\ R = R0)
@@ -547,9 +550,10 @@ Qed.
 Lemma object_has_prop_correct : forall runs,
   runs_type_correct runs -> forall S C l x (p : passing bool),
   object_has_prop runs S C l x = p ->
+  passing_terminates p ->
   follow_spec_inject (fun b => b) (red_expr S C (spec_object_has_prop l x)) p.
 Proof.
-  introv RC E. unfolds in E. name_object_method.
+  introv RC E T. unfolds in E. name_object_method.
   destruct B as [B|]; simpls.
    forwards~ BC: run_object_method_correct (rm EQB).
     destruct B. forwards [(S'&?&?&E')|(?&Ep&?)]: @passing_defined_out (rm E);
@@ -561,22 +565,18 @@ Proof.
        rewrite decide_spec. cases_if~; rew_refl.
         rewrite~ isTrue_true.
         rewrite~ isTrue_false.
-     substs. destruct x0; try solve [ apply~ @follow_spec_inject_not_out; absurd_neg ].
-      apply RC in Ep. apply~ @follow_spec_inject_abort.
+     substs. inverts T. apply RC in Ep. apply~ @follow_spec_inject_abort.
        applys red_spec_object_has_prop BC.
         apply red_spec_object_has_prop_1_default. apply Ep.
         constructors.
-       applys* Ep spec_object_has_prop_2. constructors.
-   inverts E. apply* @follow_spec_inject_not_out. absurd_neg.
+   inverts T; false.
 Qed.
 
 Lemma run_object_get_correct : forall runs,
-  runs_type_correct runs -> forall S0 C0 l x o,
-  run_object_get runs S0 C0 l x = o ->
-  red_expr S0 C0 (spec_object_get l x) o /\
-    (forall S R,
-      o = out_ter S R ->
-      res_type R = restype_normal -> exists v, R = (v : value)).
+  runs_type_correct runs -> forall S0 C0 l x S R,
+  run_object_get runs S0 C0 l x = out_ter S R ->
+  red_expr S0 C0 (spec_object_get l x) (out_ter S R) /\
+    (res_type R = restype_normal -> exists v, R = (v : value)).
 Proof.
   introv RC E.
   unfolds in E.
@@ -605,7 +605,7 @@ Proof.
               apply red_spec_object_get_3_accessor_undef.
              apply red_spec_object_get_3_accessor_object.
               lets [_ _ _ RCa _ _ _ _ _ _] : RC.
-              specialize (RCa o0 nil).
+              specialize (RCa o nil).
               unfolds follow_call.
               applys~ RCa.
       apply red_spec_object_get_1_default.
@@ -631,7 +631,7 @@ Proof.
        apply (passing_output_abort (spec_object_get_2 l l)).
        substs~.
       inverts~ Hab.
-Qed. *)
+Qed.
 
 Lemma env_record_get_binding_value_correct : forall runs,
   runs_type_correct runs -> forall S0 S C0 L rn rs R,
@@ -649,13 +649,15 @@ Proof.
       forwards~ (RCe&Cre): out_error_or_cst_correct C0 E. prove_correct_res. auto*.
       inverts E. prove_correct_res. apply~ red_spec_returns.
     rewrite_morph_option; simpls.
-     forwards~ HC: object_has_prop_correct (rm EQp0). inverts HC as Eq; tryfalse.
+     forwards~ HC: object_has_prop_correct (rm EQp0). constructors.
+      inverts HC as Eq; tryfalse.
       inverts Eq. applys_and red_spec_env_record_get_binding_value_1_object H1. cases_if.
        applys_and red_spec_env_record_get_binding_value_obj_2_true.
         forwards*: run_object_get_correct E.
        applys_and red_spec_env_record_get_binding_value_obj_2_false.
         forwards*: out_error_or_cst_correct E.
-     forwards~ HC: object_has_prop_correct (rm EQp0). inverts HC as Eq; tryfalse.
+     forwards~ HC: object_has_prop_correct (rm EQp0). inverts E. constructors.
+      inverts HC as Eq; tryfalse.
       inverts Eq. applys_and red_spec_env_record_get_binding_value_1_object H1.
       inverts H. applys_and red_expr_abort H2. splits~. absurd_neg. inverts~ H2; absurd_neg.
 Qed.
