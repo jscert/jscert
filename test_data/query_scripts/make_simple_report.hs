@@ -22,6 +22,7 @@ data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
                | StmtGetSTRsByBatch | StmtGetSTRsByBatchStdOut
                | StdOutLike | StdOutNotLike | StdOutNotLikeEither
                | StdOutErrNotLikeAny | StdErrLike | OnlyInteresting
+               | ByGroup
                               deriving (Data,Typeable,Enum,Eq,Show)
 
 type StdErrPattern = String
@@ -140,7 +141,9 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                       ++ (concat $ intersperse " AND "
                                           ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
                                           ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))
-
+stmts _ _ ByGroup = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where "
+                    ++ "batch_id = ? AND test_id IN (SELECT test_id FROM test_group_memberships WHERE group_id IN "
+                    ++ "(SELECT id FROM test_groups WHERE description=?))"
 
 dbToBatch :: [SqlValue] -> Batch
 dbToBatch res = Batch
@@ -244,6 +247,7 @@ makeQueryArgs StmtGetBatchIDs _ _ _ _ _ = []
 makeQueryArgs GetLatestBatch _ _ _ _ _ = []
 makeQueryArgs StmtGetSTRsByBatchStdOut batchId stdout _ _ _ = [toSql stdout, toSql batchId]
 makeQueryArgs StmtGetSTRsByBatch batchId _ _ _ _ = [toSql batchId]
+makeQueryArgs ByGroup batch querystr1 _ _ _ = [toSql batch, toSql querystr1]
 
 getTestsBySomeQuery :: QueryType -> Int -> String -> String -> [StdOutPattern] -> [StdErrPattern] -> Connection -> IO [SingleTestRun]
 getTestsBySomeQuery querytype batch querystr1 querystr2 outs errs con = do
