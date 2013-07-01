@@ -598,8 +598,8 @@ with ext_stat :=
   | stat_for_in_9 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> res -> ext_stat
 *)
 
-(* Extended statements for 'switch' *)
-
+  (* Extended statements for 'switch' *)
+                                                                           
   | stat_switch_1: out -> switchbody -> ext_stat
   | stat_switch_2: out -> ext_stat
   | stat_switch_nodefault_1: value -> resvalue -> list switchclause -> ext_stat
@@ -609,6 +609,20 @@ with ext_stat :=
   | stat_switch_nodefault_5: resvalue -> list switchclause -> ext_stat
   | stat_switch_nodefault_6: out -> list switchclause -> ext_stat
 
+  | stat_switch_default_1: value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_1: value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_2: out -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_3: bool -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_4: out -> value -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_B_1: value -> resvalue -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_B_2: out -> value -> resvalue -> list stat -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_B_3: bool -> value -> resvalue -> list stat -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_B_4: out -> list stat -> list switchclause -> ext_stat
+
+  | stat_switch_default_5: value -> resvalue -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_6: out -> list switchclause -> ext_stat
+  | stat_switch_default_7: resvalue -> list switchclause -> ext_stat
+  | stat_switch_default_8: out -> list switchclause -> ext_stat
 
   | stat_with_1 : stat -> value -> ext_stat (* The expression have been executed. *)
 
@@ -1159,6 +1173,21 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_switch_nodefault_5 _ _ => None
   | stat_switch_nodefault_6 o _ => Some o
 
+  | stat_switch_default_1 _ _ _ _ _ => None
+  | stat_switch_default_A_1 _ _ _ _ _ => None 
+  | stat_switch_default_A_2 o _ _ _ _ _ _ => Some o
+  | stat_switch_default_A_3 _ _ _ _ _ _ _  => None
+  | stat_switch_default_A_4 o _ _ _ _ => Some o
+  | stat_switch_default_B_1 _ _ _ _ => None
+  | stat_switch_default_B_2 o _ _ _ _ _ => Some o
+  | stat_switch_default_B_3 _ _ _ _ _ _ => None
+  | stat_switch_default_B_4 o _ _ => Some o
+
+  | stat_switch_default_5 _ _ _ _ => None
+  | stat_switch_default_6 o _ => Some o 
+  | stat_switch_default_7 _ _  => None
+  | stat_switch_default_8 o _ => Some o
+
   end.
 
 Definition out_of_ext_prog (p : ext_prog) : option out :=
@@ -1217,14 +1246,17 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
   | abort_intercepted_stat_try_3 : forall S R fo,
       abort_intercepted_stat (stat_try_3 (out_ter S R) fo)
 
-(* Daniele: uncomment when switch is done
-  | abort_intercepted_stat_switch_1 : forall lab rv S R,
+  (* Daniele: not sure about this *)
+  | abort_intercepted_stat_switch_2 : forall lab rv S R,
       R = res_intro restype_break rv lab ->
       abort_intercepted_stat (stat_switch_2 (out_ter S R))
-  | abort_intercepted_stat_switch_nodefault_6 : forall lab rv S R,
+  | abort_intercepted_stat_switch_nodefault_6 : forall S lab rv S R scs,
       R = res_intro restype_break rv lab ->
-      abort_intercepted_stat (stat_switch_nodefault_6 (out_ter rv) scs)
-*)
+      abort_intercepted_stat (stat_switch_nodefault_6 (out_ter S rv) scs)
+  | abort_intercepted_stat_switch_default_8 : forall S lab rv S R scs,
+      R = res_intro restype_break rv lab ->
+      abort_intercepted_stat (stat_switch_default_8 (out_ter S rv) scs)
+
 .
 
 Inductive abort_intercepted_expr : ext_expr -> Prop :=
