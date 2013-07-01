@@ -487,7 +487,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_nodefault_3 true v rv ts scs) o 
 
   | red_stat_switch_nodefault_4: forall S C v rv scs o, 
-      red_stat S C (stat_switch_nodefault_1 v v scs) o ->
+      (*red_stat S C (stat_switch_nodefault_1 v v scs) o ->*)
+      red_stat S C (stat_switch_nodefault_5 v scs) o ->
       red_stat S C (stat_switch_nodefault_4 (out_ter S v) scs) o
 
   | red_stat_switch_nodefault_5_nil: forall S C rv, 
@@ -548,14 +549,14 @@ FOR DANIELE: for the version of switch that has a default case, use similar tech
       red_expr S C (stat_switch_default_A_3 true v rv ts scs ts1 scs2) o ->
 
   | red_stat_switch_default_A_4 :
-      red_stat S C (stat_switch_default_7 rv ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_1 v v scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_4 (out_ter rv) scs ts1 scs2) o
 
 
 
 (* Search B *)
   | red_stat_switch_default_B_1_nil : 
-    red_stat S C (stat_switch_default rv ts1 nil) o ->
+    red_stat S C (stat_switch_default_5 rv ts1 nil) o ->
     red_stat S C (stat_switch_default_B_1 v rv ts1 nil) o
 
   | red_stat_switch_default_B_1_cons : 
@@ -578,7 +579,7 @@ FOR DANIELE: for the version of switch that has a default case, use similar tech
       red_expr S C (stat_switch_default_B_3 true v rv ts ts1 scs) o ->
 
   | red_stat_switch_default_B_4 :
-      red_stat S C (stat_switch_default_7 rv ts1 scs) o ->
+      red_stat S C (stat_switch_default_B_1 rv ts1 scs) o ->
       red_stat S C (stat_switch_default_B_4 (out_ter rv) ts1 scs) o
 
 (* Default *)
@@ -595,20 +596,20 @@ FOR DANIELE: for the version of switch that has a default case, use similar tech
 (* END *)
 
  | red_stat_switch_default_7_nil :
-      red_stat S C (stat_switch_default_7 rv nil)  (out_ter S (res_normal v)) ->
+      red_stat S C (stat_switch_default_7 rv nil)  (out_ter S rv) ->
 
   | red_stat_switch_default_7_cons :
-      red_stat S C (stat_block (t::ts)) o1 -> (* not sure *) 
+      red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_default_8 o1 scs) o ->
-      red_stat S C (stat_switch_default_7 rv ((switchclause_intro e (t::ts))::scs)) o
+      red_stat S C (stat_switch_default_7 rv ((switchclause_intro e ts)::scs)) o
 
-  | red_stat_switch_nodefault_8_not_empty :
+  | red_stat_switch_default_8_not_empty :
       red_stat S C (stat_switch_default_7 rv scs) o ->
       red_stat S C (stat_switch_default_8 (out_ter rv) scs) o
 
-  | red_stat_switch_nodefault_8_abrupt :
-      true = abrupt_res rv -> (* not sure *)
-      red_stat S C (stat_switch_default_8 (out_ter rv) scs) (out_ter S (res_intro (res_type rv) v (res_label rv)))
+  | red_stat_switch_default_8_abrupt :
+      ~res_is_normal R ->
+      red_stat S C (stat_switch_default_8 (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
 *)
 
 (**************************************************************)
