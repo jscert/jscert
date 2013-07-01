@@ -53,18 +53,12 @@ Implicit Type t : stat.
 (**************************************************************)
 (** Correctness Properties *)
 
-Definition correct_res (o : result) := forall S res,
-  o = out_ter S res ->
-  res_type res = restype_normal ->
-  res_label res = label_empty.
-
 Definition follow_spec {T Te : Type}
     (conv : T -> Te)
     (red : state -> execution_ctx -> Te -> out -> Prop)
     (run : state -> execution_ctx -> T -> result) := forall S C (e : T) S' res,
   run S C e = out_ter S' res ->
-  red S C (conv e) (out_ter S' res) /\
-    correct_res (out_ter S' res).
+  red S C (conv e) (out_ter S' res).
 
 Inductive passing_output {Te A : Type}
     (K : A -> Te) (red : state -> execution_ctx -> Te -> out -> Prop) C
@@ -204,6 +198,24 @@ Lemma res_overwrite_value_if_empty_empty : forall R,
   res_overwrite_value_if_empty resvalue_empty R = R.
 Proof. introv. unfolds. cases_if~. destruct R; simpls; inverts~ e. Qed.
 
+Lemma res_type_res_overwrite_value_if_empty : forall rv R,
+  res_type R = res_type (res_overwrite_value_if_empty rv R).
+Proof.
+  introv. destruct R. unfold res_overwrite_value_if_empty. simpl.
+  cases_if; reflexivity.
+Qed.
+
+Lemma res_label_res_overwrite_value_if_empty : forall rv R,
+  res_label R = res_label (res_overwrite_value_if_empty rv R).
+Proof.
+  introv. destruct R. unfold res_overwrite_value_if_empty. simpl.
+  cases_if; reflexivity.
+Qed.
+
+Lemma res_overwrite_value_if_empty_resvalue : forall rv1 rv2, exists (rv3 : resvalue),
+  (rv3 : res) = res_overwrite_value_if_empty rv1 rv2 /\ (rv3 = rv1 \/ rv3 = rv2).
+Proof. introv. unfolds res_overwrite_value_if_empty. cases_if*. Qed.
+
 Lemma or_idempotent : forall A : Prop, A \/ A -> A.
 (* This probably already exists, but I didn't found it. *)
 Proof. introv [?|?]; auto. Qed.
@@ -223,13 +235,6 @@ Proof.
    introv I. destruct* num. simpl. rewrite <- IHA.
     unfolds. repeat rewrite~ get_nth_cons.
     rewrite length_cons in I. nat_math.
-Qed.
-
-Lemma res_type_res_overwrite_value_if_empty : forall rv R,
-  res_type R = res_type (res_overwrite_value_if_empty rv R).
-Proof.
-  introv. destruct R. unfold res_overwrite_value_if_empty. simpl.
-  cases_if; reflexivity.
 Qed.
 
 Lemma passing_output_trans {Te A : Type} :
@@ -375,14 +380,6 @@ Ltac simpl_after_regular_lemma :=
            inverts~ H
          end.
 
-Ltac deal_with_correct_res :=
-  let E := fresh "E" in
-  let N := fresh "N" in
-  solve [ introv E N; inverts E; substs~; false ] || auto*.
-
-Ltac prove_correct_res :=
-  splits; [|deal_with_correct_res].
-
 Ltac deal_with_regular_lemma H if_out :=
   let Hnn := fresh "Hnn" in
   let HE := fresh "HE" in
@@ -392,7 +389,7 @@ Ltac deal_with_regular_lemma H if_out :=
   let S' := fresh "S" in
   let R' := fresh "R" in
   lets (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
-  [deal_with_correct_res | | simpl_after_regular_lemma].
+  [| simpl_after_regular_lemma].
 
 Ltac deal_with_regular_lemma_run H if_out :=
   let Hnn := fresh "Hnn" in
@@ -403,7 +400,7 @@ Ltac deal_with_regular_lemma_run H if_out :=
   let S' := fresh "S" in
   let R' := fresh "R" in
   forwards (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
-  [ auto; try solve [ constructors~ ] | deal_with_correct_res | | simpl_after_regular_lemma].
+  [ auto; try solve [ constructors~ ] | | simpl_after_regular_lemma].
 
 Lemma if_ter_out : forall res K S R,
   if_ter res K = out_ter S R ->
@@ -422,53 +419,66 @@ Ltac deal_with_ter H :=
   forwards (S'&R'&HR&HE): if_ter_out (rm H);
   simpl_after_regular_lemma.
 
+Lemma if_empty_label_out : forall K S0 S R0 R,
+  if_empty_label S0 R0 K = out_ter S R ->
+    res_label R0 = label_empty /\
+    K tt = out_ter S R.
+Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
+
 Lemma if_success_out : forall res K S R,
-  correct_res res ->
   if_success res K = out_ter S R ->
   if_regular_lemma res S R (fun S' R' => exists rv,
     R' = res_normal rv /\
     K S' rv = out_ter S R).
 Proof.
-  introv Cr H. deal_with_ter H; substs.
+  introv H. deal_with_ter H; substs.
   sets_eq t Et: (res_type R0). repeat eexists.
   rewrite~ res_overwrite_value_if_empty_empty in HE.
   destruct t; try solve [ left; inverts HE; rewrite <- Et; splits~; discriminate ].
-  symmetry in Et. forwards~: Cr Et.
+  forwards~ (E1&E2): if_empty_label_out (rm HE).
   right. destruct R0. simpls. substs. repeat eexists. auto*.
 Qed.
 
 Lemma if_value_out : forall res K S R,
-  correct_res res ->
   if_value res K = out_ter S R ->
   if_regular_lemma res S R (fun S' R' => exists v,
     R' = res_val v /\
     K S' v = out_ter S R).
 Proof.
-  introv Cr H. deal_with_regular_lemma H if_success_out; substs.
+  introv H. deal_with_regular_lemma H if_success_out; substs.
    repeat eexists. left~.
    destruct~ rv; tryfalse. repeat eexists. right. eexists. auto*.
 Qed.
 
 Lemma if_object_out : forall res K S R,
-  correct_res res ->
   if_object res K = out_ter S R ->
   if_regular_lemma res S R (fun S' R' => exists l,
     R' = res_val (value_object l) /\
     K S' l = out_ter S R).
 Proof.
-  introv Cr H. deal_with_regular_lemma H if_value_out; substs.
+  introv H. deal_with_regular_lemma H if_value_out; substs.
    repeat eexists. left~.
    destruct~ v; tryfalse. repeat eexists. right. eexists. auto*.
 Qed.
 
+Lemma if_string_out : forall res K S R,
+  if_string res K = out_ter S R ->
+  if_regular_lemma res S R (fun S' R' => exists s,
+    R' = res_val (prim_string s) /\
+    K S' s = out_ter S R).
+Proof.
+  introv H. deal_with_regular_lemma H if_value_out; substs.
+   repeat eexists. left~.
+   destruct~ v; tryfalse. destruct~ p; tryfalse. repeat eexists. right. eexists. auto*.
+Qed.
+
 Lemma if_not_throw_out : forall res K S R,
-  correct_res res ->
   if_not_throw res K = out_ter S R ->
   exists S0 R0, res = out_ter S0 R0 /\
     ((res_type R0 = restype_throw /\ S = S0 /\ R = R0) \/
      (res_type R0 <> restype_throw /\ K S0 R0 = out_ter S R)).
 Proof.
-  introv Cr H. deal_with_ter H. substs. destruct R0 as [rt rv rl]; simpls.
+  introv H. deal_with_ter H. substs. destruct R0 as [rt rv rl]; simpls.
   tests: (rt = restype_throw).
    repeat eexists. left. inverts~ HE.
    destruct rt; tryfalse; repeat eexists; right; inverts~ HE.
@@ -533,8 +543,6 @@ Lemma run_error_correct : forall S ne S' R',
     res_type R' <> restype_normal.
 Proof.
   introv E. deal_with_regular_lemma E if_object_out; substs.
-    introv R E. unfolds in R. unfold object_alloc in R. destruct S as [SH SEH [l SF]].
-     cases_if*. inverts~ R.
   unfolds build_error. destruct S as [E L [l S]]. simpls. cases_if; tryfalse.
    inverts HE. false~ Hnn.
   unfolds build_error. destruct S as [E L [l' S]]. simpls.
@@ -550,9 +558,8 @@ Lemma out_error_or_cst_correct : forall S C str ne v S' R',
     (res_type R' = restype_normal -> R' = v).
 Proof.
   introv E. unfolds in E. cases_if.
-   applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E.
-    prove_correct_res. auto*.
-   inverts E. prove_correct_res. apply~ red_spec_error_or_cst_false.
+   applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E. splits*.
+   inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
 
 Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l (z : Z),
@@ -662,8 +669,8 @@ Proof.
      rewrite <- Heap.binds_equiv_read_option in EQx0. destruct p.
      applys_and red_spec_env_record_get_binding_value_1_decl EQx0.
      do 2 cases_if; tryfalse.
-      forwards~ (RCe&Cre): out_error_or_cst_correct C0 E. prove_correct_res. auto*.
-      inverts E. prove_correct_res. apply~ red_spec_returns.
+      forwards~ (RCe&Cre): out_error_or_cst_correct C0 E. splits*.
+      inverts E. splits*. apply~ red_spec_returns.
     rewrite_morph_option; simpls.
      forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0).
       applys_and red_spec_env_record_get_binding_value_1_object HCn. cases_if.
@@ -704,7 +711,6 @@ Qed.
 
 Lemma if_success_value_out : forall runs,
   runs_type_correct runs -> forall res0 K S C R,
-  correct_res res0 ->
   if_success_value runs C res0 K = out_ter S R ->
   if_regular_lemma res0 S R (fun S' R' => (exists rv S'' R'',
     R' = res_normal rv /\
@@ -715,10 +721,9 @@ Lemma if_success_value_out : forall runs,
     red_expr S' C (spec_get_value rv) (out_ter S'' (v : value)) /\
     K S'' v = out_ter S R)).
 Proof.
-  introv RC Cr H. deal_with_regular_lemma H if_success_out; substs; repeat eexists.
+  introv RC H. deal_with_regular_lemma H if_success_out; substs; repeat eexists.
    branch~ 1.
    deal_with_regular_lemma H0 if_success_out; substs.
-    introv E N. forwards~ (_&V): ref_get_value_correct E. destruct (V N). substs~.
     forwards~ (GV&GVC): ref_get_value_correct HE. branch 2. repeat eexists; auto*.
     forwards~ (GV&GVC): ref_get_value_correct HE. branch 3.
      forwards~ (v&Ev): GVC. inverts Ev. repeat eexists; auto*.
@@ -790,6 +795,8 @@ Ltac unmonad :=
     deal_with_regular_lemma H if_value_out
   | H : if_object ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma H if_object_out
+  | H : if_string ?res ?K = result_out ?o |- _ =>
+    deal_with_regular_lemma H if_string_out
   | H : if_success_value ?runs ?C ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma_run H if_success_value_out
   | H : if_not_throw ?res ?K = result_out ?o |- _ =>
@@ -802,7 +809,7 @@ Ltac unmonad :=
     let D := fresh "D" in
     let HE := fresh "HE" in
     forwards (S&R&E&[(T&ES&ER)|(D&HE)]): if_not_throw_out (rm H);
-    [ deal_with_correct_res | | simpl_after_regular_lemma ]
+    [| simpl_after_regular_lemma ]
   | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
     inverts H
   | H : passing_normal ?S1 ?D1 = passing_normal ?S2 ?D2 |- _ =>
@@ -840,38 +847,30 @@ Lemma run_elements_correct : forall runs,
 Proof.
   intros runs [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo] rv S C es S' res R.
   gen rv S C S' res R. induction es; simpls; introv R.
-   unmonad. prove_correct_res. apply~ red_prog_1_nil.
+   unmonad. apply~ red_prog_1_nil.
    destruct a.
     (* stat *)
     unmonad.
-     introv R E. forwards~ (_&H): IHs (rm R). apply* H.
      (* Throw case *)
-     forwards~ (RC&?): IHs (rm E). prove_correct_res.
-     applys~ red_prog_1_cons_stat RC. abort_prog.
+     forwards~ RC: IHs (rm E). applys~ red_prog_1_cons_stat RC. abort_prog.
      (* Other cases *)
-     forwards~ (RC&Cr): IHs (rm E).
-     applys_and red_prog_1_cons_stat RC. applys_and red_prog_2.
+     forwards~ RC: IHs (rm E). applys~ red_prog_1_cons_stat RC. apply~ red_prog_2.
      rewrite <- res_type_res_overwrite_value_if_empty in HE.
      tests N: (res_type R0 = restype_normal).
-      rewrite N in HE. forwards~ (RCes&?): IHes HE. prove_correct_res.
-       asserts (rv'&Erv'): (exists (rv' : resvalue),
-         res_overwrite_value_if_empty rv R0 = rv').
-         destruct R0 as [rt0 rv0 rl0]. unfold res_overwrite_value_if_empty.
-         cases_if; repeat progress (substs; simpls);
-          forwards~: Cr; simpls; substs; eexists; reflexivity.
-       rewrite Erv' in *. applys~ red_prog_3.
-       rewrite res_overwrite_value_if_empty_empty in RCes. apply* RCes.
+      rewrite N in HE. forwards~ (E1&E2): if_empty_label_out (rm HE).
+       rewrite <- res_label_res_overwrite_value_if_empty in E1.
+       destruct R0 as [rt0 rv0 rl0]. simpls. substs. fold (res_normal rv0) in *.
+       forwards~ (rv'&Erv'&?): res_overwrite_value_if_empty_resvalue.
+       rewrite <- Erv' in *. applys~ red_prog_3.
+       rewrite res_overwrite_value_if_empty_empty in E2. forwards~: IHes E2.
       rewrite res_overwrite_value_if_empty_empty in *.
        asserts H: (out_ter S0 (res_overwrite_value_if_empty rv R0) = out_ter S' res).
          destruct R0 as [rt0 rv0 rl0]. destruct rt0; simpls; tryfalse; inverts~ HE.
        clear HE. inverts H. destruct R0 as [rt0 rv0 rl0]. simpls.
-       unfold res_overwrite_value_if_empty in *. cases_if; simpls; substs; splits.
-        abort_prog. constructors. intro H. unfolds in H. simpls. false.
-        introv H ?. inverts H. simpls. false.
-        abort_prog. constructors. intro H. unfolds in H. simpls. false.
-        introv H ?. inverts H. simpls. false.
+       unfold res_overwrite_value_if_empty in *. cases_if; simpls; substs;
+        abort_prog; constructors; intro H; unfolds in H; simpls; false.
     (* func_decl *)
-    forwards (RC&Cr): IHes (rm R). prove_correct_res. apply~ red_prog_1_cons_funcdecl.
+    forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
 Qed.
 
 
@@ -891,12 +890,12 @@ Proof.
    (* run_expr *)
    intros S C e S' res R. destruct e; simpl in R; dealing_follows.
     (* this *)
-    unmonad. prove_correct_res. apply~ red_expr_this.
+    unmonad. apply~ red_expr_this.
     (* identifier *)
-    applys_and red_expr_identifier.
+    apply~ red_expr_identifier.
     skip. (* FIXME:  [spec_identifier_resolution] needs rules! *)
     (* literal *)
-    unmonad. prove_correct_res. apply~ red_expr_literal.
+    unmonad. apply~ red_expr_literal.
     (* object *)
     unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
      (* Abort case *)
@@ -906,52 +905,76 @@ Proof.
     (* function *)
     skip. (* TODO *)
     (* access *)
-    skip. (* TODO *)
+    unmonad.
+     (* Abort case *)
+     forwards~ RC: IHe (rm HE). apply~ red_expr_access.
+      applys~ red_spec_expr_get_value RC. abort_expr. abort_expr.
+     (* Normal case *)
+     forwards~ RC: IHe (rm HE).
+      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+       apply~ red_expr_access.
+         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
+        abort_expr.
+       apply~ red_expr_access.
+         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
+        unmonad.
+         forwards~ RC': IHe (rm HE). apply~ red_expr_access_1.
+          applys~ red_spec_expr_get_value RC'. abort_expr. abort_expr.
+         forwards~ RC': IHe (rm HE).
+          inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+           apply~ red_expr_access_1.
+             applys~ red_spec_expr_get_value RC'. applys~ red_spec_expr_get_value_1 H1.
+            abort_expr.
+           apply~ red_expr_access_1.
+             applys~ red_spec_expr_get_value RC'. applys~ red_spec_expr_get_value_1 H1.
+            cases_if.
+             forwards~ (RCer&?): run_error_correct H2.
+              applys~ red_expr_access_2.
+                applys~ red_spec_check_object_coercible_undef_or_null.
+              abort_expr.
+             apply~ red_expr_access_2. applys~ red_spec_check_object_coercible_return n.
+              skip. (* TODO *)
     (* member *)
-    forwards~ (?&?): IHe (rm R). prove_correct_res. apply~ red_expr_member.
+    forwards~ ?: IHe (rm R). apply~ red_expr_member.
     (* new *)
     skip. (* TODO *)
     (* call *)
     unmonad.
-     introv R E. forwards~ (_&H): IHe (rm R). apply* H. (* Is that possible to automate this? *)
      (* Abort case *)
-     forwards~ RC: IHe (rm HE). prove_correct_res. applys~ red_expr_call RC. abort_expr.
+     forwards~ RC: IHe (rm HE). applys~ red_expr_call RC. abort_expr.
      (* Normal case *)
-     forwards~ RC: IHe (rm HE). applys_and red_expr_call RC.
+     forwards~ RC: IHe (rm HE). applys~ red_expr_call RC.
      skip. (* TODO *)
     (* unary_op *)
     destruct~ u; simpls; cases_if; try solve [false~ n].
      (* Delete *)
      unmonad.
-      introv R E. forwards~ (_&H): IHe (rm R). apply* H.
       (* Abort case *)
-      forwards~ RC: IHe (rm HE). prove_correct_res. applys~ red_expr_delete RC. abort_expr.
+      forwards~ RC: IHe (rm HE). applys~ red_expr_delete RC. abort_expr.
       (* Normal case *)
-      forwards~ RC: IHe (rm HE). applys_and red_expr_delete RC.
-      destruct rv; try solve [ inverts H0; applys_and red_expr_delete_1_not_ref;
-        try prove_correct_res; absurd_neg ].
+      forwards~ RC: IHe (rm HE). applys~ red_expr_delete RC.
+      destruct rv; try solve [ inverts H0; apply~ red_expr_delete_1_not_ref; absurd_neg ].
       cases_if.
-       inverts H0. prove_correct_res. apply* red_expr_delete_1_ref_unresolvable.
+       inverts H0. apply* red_expr_delete_1_ref_unresolvable.
        destruct r as [[rbv|rbel] rn rs]; simpls.
         skip. (* TODO:  check in the interpreter that the reference base is neither null nor undefined. *)
-        applys_and red_expr_delete_1_ref_env_record.
+        apply~ red_expr_delete_1_ref_env_record. reflexivity.
          skip. (* TODO:  Needs a lemma [env_record_delete_binding_correct]. *)
      (* Void *)
      unmonad.
-      introv R E. forwards~ (_&H): IHe (rm R). apply* H.
       (* Abort case *)
-      forwards~ RC: IHe (rm HE). applys_and red_expr_unary_op.
+      forwards~ RC: IHe (rm HE). apply~ red_expr_unary_op.
        simpl. cases_if~; tryfalse.
        applys~ red_spec_expr_get_value RC. abort_expr.
-       prove_correct_res. abort_expr.
+       abort_expr.
       (* Normal case *)
-      forwards~ (RC&Cr): IHe (rm HE).
+      forwards~ RC: IHe (rm HE).
        inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-        applys_and red_expr_unary_op.
+        apply~ red_expr_unary_op.
          simpl. cases_if~; tryfalse.
          applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
-         prove_correct_res. abort_expr.
-        prove_correct_res. apply~ red_expr_unary_op. simpl. cases_if~; tryfalse.
+         abort_expr.
+        apply~ red_expr_unary_op. simpl. cases_if~; tryfalse.
          applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
          apply~ red_expr_unary_op_1. apply~ red_expr_unary_op_void.
      (* TypeOf *)
@@ -999,41 +1022,41 @@ Proof.
      (* Greater or equal *)
      skip. (* TODO *)
      (* Instance of *)
-     unmonad. introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+     unmonad.
       (* Abort case *)
-      forwards~ (RC&Cr): IHe (rm HE). applys_and red_expr_binary_op.
+      forwards~ RC: IHe (rm HE). apply~ red_expr_binary_op.
        applys~ red_spec_expr_get_value RC. abort_expr.
-       prove_correct_res. abort_expr.
+       abort_expr.
       (* Normal case *)
-      forwards~ (RC1&Cr1): IHe (rm HE).
+      forwards~ RC1: IHe (rm HE).
        inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-        applys_and red_expr_binary_op.
+        apply~ red_expr_binary_op.
          applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
-         prove_correct_res. abort_expr.
-        applys_and red_expr_binary_op.
+         abort_expr.
+        apply~ red_expr_binary_op.
           applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
-         unmonad. introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+         unmonad.
           (* Abort case *)
-          forwards~ (RC2&Cr2): IHe (rm HE). prove_correct_res.
+          forwards~ RC2: IHe (rm HE).
            applys~ red_expr_binary_op_1.
              applys~ red_spec_expr_get_value RC2. abort_expr.
            abort_expr.
           (* Normal case *)
-          forwards~ (RC2&Cr2): IHe (rm HE).
+          forwards~ RC2: IHe (rm HE).
            inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-            applys_and red_expr_binary_op_1.
+            apply~ red_expr_binary_op_1.
               applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
-             prove_correct_res. abort_expr.
-            applys_and red_expr_binary_op_1.
+             abort_expr.
+            apply~ red_expr_binary_op_1.
               applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
-            applys_and red_expr_binary_op_2. destruct v0.
-             forwards~ (RE&A): run_error_correct H2. prove_correct_res.
+            apply~ red_expr_binary_op_2. destruct v0.
+             forwards~ (RE&A): run_error_correct H2.
               apply~ red_expr_binary_op_instanceof_non_object.
               destruct p; discriminate.
              rewrite_morph_option; tryfalse. simpls. rewrite_morph_option; simpls.
-              substs. applys_and red_expr_binary_op_instanceof_normal.
+              substs. apply~ red_expr_binary_op_instanceof_normal.
                skip. (* TODO *)
-              substs. forwards~ (RE&A): run_error_correct H2. prove_correct_res.
+              substs. forwards~ (RE&A): run_error_correct H2.
                unmonad. applys~ red_expr_binary_op_instanceof_non_instance R.
      (* In *)
      skip. (* TODO *)
@@ -1066,16 +1089,14 @@ Proof.
    (* run_stat *)
    intros S C t S' res R. destruct t; simpl in R; dealing_follows.
     (* Expression *)
-    applys_and red_stat_expr. unmonad.
-     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+    apply~ red_stat_expr. unmonad.
      (* Abort case *)
-     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. applys~ red_spec_expr_get_value RC.
+     forwards~ RC: IHe (rm HE). applys~ red_spec_expr_get_value RC.
       abort_expr.
      (* Normal case *)
-     forwards~ (RC&Cr): IHe (rm HE). applys_and red_spec_expr_get_value RC.
-      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-       prove_correct_res. apply~ red_spec_expr_get_value_1.
-       prove_correct_res. apply~ red_spec_expr_get_value_1.
+     forwards~ RC: IHe (rm HE). applys~ red_spec_expr_get_value RC.
+      inverts HM as HM; simpl_after_regular_lemma; rm_variables;
+       apply~ red_spec_expr_get_value_1.
     (* Label *)
     skip. (* TODO *)
     (* Block *)
@@ -1084,72 +1105,69 @@ Proof.
     skip. (* TODO *)
     (* If *)
     unfolds in R. unmonad.
-     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
-     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. apply~ red_stat_if.
+     forwards~ RC: IHe (rm HE). apply~ red_stat_if.
       apply~ red_spec_expr_get_value_conv_stat.
        applys~ red_spec_expr_get_value RC. abort_expr.
        abort_stat.
-     forwards~ (RC&Cr): IHe (rm HE). applys_and red_stat_if.
+     forwards~ RC: IHe (rm HE). apply~ red_stat_if.
       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-       applys_and red_spec_expr_get_value_conv_stat.
+       apply~ red_spec_expr_get_value_conv_stat.
         applys~ red_spec_expr_get_value RC.
          applys~ red_spec_expr_get_value_1 H0.
-        prove_correct_res. abort_stat.
-       applys_and red_spec_expr_get_value_conv_stat.
+        abort_stat.
+       apply~ red_spec_expr_get_value_conv_stat.
         applys~ red_spec_expr_get_value RC.
          applys~ red_spec_expr_get_value_1 H0.
-        applys_and red_spec_expr_get_value_conv_stat_1. apply~ red_spec_to_boolean.
-         applys_and red_spec_expr_get_value_conv_stat_2.
+        apply~ red_spec_expr_get_value_conv_stat_1. apply~ red_spec_to_boolean.
+         apply~ red_spec_expr_get_value_conv_stat_2.
          cases_if.
-          forwards~ (RCt&Crt): IHs (rm H1).
-           prove_correct_res. apply~ red_stat_if_1_true.
+          forwards~ RCt: IHs (rm H1).
+           apply~ red_stat_if_1_true.
           destruct o; unmonad.
-           forwards~ (RCt&Crt): IHs (rm H1). prove_correct_res.
+           forwards~ RCt: IHs (rm H1).
             apply~ red_stat_if_1_false.
-           prove_correct_res. apply~ red_stat_if_1_false_implicit.
+           apply~ red_stat_if_1_false_implicit.
     (* Do-while *)
     false.
     (* While *)
-    forwards~ (RC&Cr): IHw R. prove_correct_res. apply~ red_stat_while.
+    forwards~ RC: IHw R. apply~ red_stat_while.
     (* With *)
     skip. (* TODO *)
     (* Throw *)
     unfolds in R. unmonad.
-     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
-     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. apply~ red_stat_throw.
+     forwards~ RC: IHe (rm HE). apply~ red_stat_throw.
       applys~ red_spec_expr_get_value RC. abort_expr.
       abort_stat.
-     forwards~ (RC&Cr): IHe (rm HE).
+     forwards~ RC: IHe (rm HE).
       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-       applys_and red_stat_throw.
+       apply~ red_stat_throw.
         applys~ red_spec_expr_get_value RC.
          applys~ red_spec_expr_get_value_1 H0.
-        prove_correct_res. abort_stat.
-       prove_correct_res. apply~ red_stat_throw.
+        abort_stat.
+       apply~ red_stat_throw.
         applys~ red_spec_expr_get_value RC.
          applys~ red_spec_expr_get_value_1 H0.
         apply~ red_stat_throw_1.
     (* Return *)
     destruct o; simpls; unmonad.
-     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
-     forwards~ (RC&Cr): IHe (rm HE). prove_correct_res. apply~ red_stat_return_some.
+     forwards~ RC: IHe (rm HE). apply~ red_stat_return_some.
       applys~ red_spec_expr_get_value RC. abort_expr.
       abort_stat.
-     forwards~ (RC&Cr): IHe (rm HE).
+     forwards~ RC: IHe (rm HE).
       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-       applys_and red_stat_return_some.
+       apply~ red_stat_return_some.
         applys~ red_spec_expr_get_value RC.
          applys~ red_spec_expr_get_value_1 H0.
-        prove_correct_res. abort_stat.
-       prove_correct_res. apply~ red_stat_return_some.
+        abort_stat.
+       apply~ red_stat_return_some.
         applys~ red_spec_expr_get_value RC.
          applys~ red_spec_expr_get_value_1 H0.
         apply~ red_stat_return_1.
-     prove_correct_res. apply~ red_stat_return_none.
+     apply~ red_stat_return_none.
     (* Break *)
-    unmonad. prove_correct_res. apply~ red_stat_break.
+    unmonad. apply~ red_stat_break.
     (* Continue *)
-    unmonad. prove_correct_res. apply~ red_stat_continue.
+    unmonad. apply~ red_stat_continue.
     (* Try *)
     skip. (* TODO *)
     (* For-in *)
@@ -1157,14 +1175,13 @@ Proof.
     (* For-in-var *)
     skip. (* TODO *)
     (* Debugger *)
-    unmonad. prove_correct_res. apply~ res_stat_debugger.
+    unmonad. apply~ res_stat_debugger.
     (* switch *)
     skip. (* TODO *)
 
    (* run_prog *)
    intros S C p S' res R. destruct p as [str es]. simpls.
-   forwards~ (RC&Cr): run_elements_correct R. constructors~.
-   prove_correct_res. apply~ red_prog_prog.
+   forwards~ RC: run_elements_correct R. constructors~. apply~ red_prog_prog.
 
    (* run_call *)
    intros l vs S C v S' res R. simpls. unfolds in R. unmonad.
@@ -1181,48 +1198,47 @@ Proof.
    (* HasInstance *)
    intros S C lo lv S' res R. simpls. rewrite_morph_option; tryfalse.
     simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
-     destruct p; inverts R. prove_correct_res.
+     destruct p; inverts R. splits*.
       apply~ red_spec_function_has_instance_3_null.
      cases_if.
-      substs. inverts R. prove_correct_res. apply~ red_spec_function_has_instance_3_eq.
+      substs. inverts R. splits*. apply~ red_spec_function_has_instance_3_eq.
       applys_and red_spec_function_has_instance_3_neq n.
        forwards~: IHhi C R.
 
    (* While *)
-   intros ls e t S C v S' res R. simpls. unfolds in R. applys_and red_stat_while_1.
+   intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
    unmonad.
-    introv R E. forwards~ (_&H): IHe (rm R). apply* H.
-    forwards~ (RC&Cr): IHe (rm HE). prove_correct_res.
+    forwards~ RC: IHe (rm HE).
      apply~ red_spec_expr_get_value_conv_stat.
       applys~ red_spec_expr_get_value RC. abort_expr.
       abort_stat.
-    forwards~ (RC&Cr): IHe (rm HE).
+    forwards~ RC: IHe (rm HE).
      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-     prove_correct_res. apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
+     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
        applys~ red_spec_expr_get_value_1 H0.
       abort_stat.
-     applys_and red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
+     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
        applys~ red_spec_expr_get_value_1 H0.
-      applys_and red_spec_expr_get_value_conv_stat_1. apply* red_spec_to_boolean.
-      applys_and red_spec_expr_get_value_conv_stat_2.
+      apply~ red_spec_expr_get_value_conv_stat_1. apply* red_spec_to_boolean.
+      apply~ red_spec_expr_get_value_conv_stat_2.
       cases_if.
-       unmonad. forwards~ (RCs&Crs): IHs (rm HR). applys_and red_stat_while_2_true RCs.
-        applys_and red_stat_while_3. destruct R as [Rt Rv Rl]; simpls.
+       unmonad. forwards~ RCs: IHs (rm HR). applys~ red_stat_while_2_true RCs.
+        apply~ red_stat_while_3. destruct R as [Rt Rv Rl]; simpls.
         tests: (Rt = restype_break).
-         cases_if in HE; inverts HE; prove_correct_res.
+         cases_if in HE; inverts HE.
           do 2 cases_if; apply~ red_stat_while_4_break.
           apply~ red_stat_while_4_abrupt; try absurd_neg.
         tests: (Rt = restype_continue).
          cases_if in HE; inverts HE.
-          rewrite H3. forwards~ (RCw&Rcw): IHw (rm H3). prove_correct_res.
+          forwards~ RCw: IHw (rm H3).
            do 2 cases_if; applys~ red_stat_while_4_continue RCw.
-          prove_correct_res. apply~ red_stat_while_4_abrupt; try absurd_neg.
+          apply~ red_stat_while_4_abrupt; try absurd_neg.
         tests: (Rt = restype_normal).
-         unfolds in HE. forwards~ (RCw&Rcw): IHw (rm HE). prove_correct_res.
+         forwards~ (E1&E2): if_empty_label_out (rm HE). simpls. substs.
+         forwards~ RCw: IHw (rm E2).
          do 2 cases_if; apply~ red_stat_while_4_continue.
-        destruct Rt; tryfalse; inverts HE; prove_correct_res;
-          apply~ red_stat_while_4_abrupt; absurd_neg.
-       unmonad. prove_correct_res. apply~ red_stat_while_2_false.
+        destruct Rt; tryfalse; inverts HE; apply~ red_stat_while_4_abrupt; absurd_neg.
+       unmonad. apply~ red_stat_while_2_false.
 
    (* GetOwnprop *)
    introv E R. simpls. unfolds in E. unmonad_passing.
