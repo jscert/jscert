@@ -52,6 +52,10 @@ Implicit Type c : call.
 Implicit Type cstr : construct.
 Implicit Type xs : list prop_name.
 
+(** Useful for switch *)
+Implicit Type sb : switchbody.
+Implicit Type sc : switchclause.
+(*Implicit Type scs : list switchclause.*)
 
 (**************************************************************)
 (** ** Reduction rules for global code (??) *)
@@ -435,83 +439,78 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 (** Switch statement (12.11) 
 
   FOR DANIELE: move all the section above to the right place *)
-(*  TODO: 
-      -implicit types for switchbody ('sb'), switchclause ('sc')
-       and switchclauses ('scs')? 
-      - not sure about the return types
-*)
-(*
-| red_stat_switch : (* step 1 *)
+
+| red_stat_switch : forall S C e o o1 sb,
     red_expr S C (spec_expr_get_value e) o1 ->
-    red_expr S C (stat_switch_1 o1 sb) o ->
+    red_stat S C (stat_switch_1 o1 sb) o ->
     red_stat S C (stat_switch e sb) o
 
-| red_stat_switch_1_nodefault : (* step 2 *)
+| red_stat_switch_1_nodefault : forall S S0 C v o o1 scs, 
     red_stat S C (stat_switch_nodefault_1 v resvalue_empty scs) o1 ->
-    red_expr S C (stat_switch_2 o1) o ->
+    red_stat S C (stat_switch_2 o1) o ->
     red_stat S C (stat_switch_1 (out_ter S0 v) (switchbody_nodefault scs)) o
 
   (* | red_stat_switch_default : LATER *)
 
-| red_stat_switch_2_break: : (* step 3 *)
+| red_stat_switch_2_break: forall S S0 C R rv lab labs,  (* step 3 *)
     R = res_intro restype_break rv lab ->
-    (* FOR DANIELE: you're missing a premise that says lab in the current label set (see while loops for how to do it) *)
+    (* Daniele: problem here. The spec says "If R.type is break and R.target is in the current label set, return (normal, R.value, empty)."
+                I don't understand/know where I can find the 'current label set'. I see that e.g. in 'while' this 'labs' is part of the args, but 
+                it seems it is not the case here... *)
+    (*res_label_in R labs ->*)
     red_stat S0 C (stat_switch_2 (out_ter S R)) (out_ter S (res_normal rv))
 
-| red_stat_switch_2_normal : (* step 4 *)
+| red_stat_switch_2_normal: forall S0 S C rv, (* step 4 *)
     red_stat S0 C (stat_switch_2 (out_ter S rv)) (out_ter S rv)
 
-(*---*)
-
-| red_stat_switch_nodefault_1_nil : 
+| red_stat_switch_nodefault_1_nil: forall S C v rv o, 
     red_stat S C (stat_switch_nodefault_5 rv nil) o ->
     red_stat S C (stat_switch_nodefault_1 v rv nil) o
 
-  | red_stat_switch_nodefault_1_cons :
+  | red_stat_switch_nodefault_1_cons: forall S C e v rv ts scs o o1, 
       red_expr S C (spec_expr_get_value e) o1 ->
-      red_expr S C (stat_switch_nodefault_2 o1 v rv ts scs) o ->
+      red_stat S C (stat_switch_nodefault_2 o1 v rv ts scs) o ->
       red_stat S C (stat_switch_nodefault_1 v rv ((switchclause_intro e ts)::scs)) o
 
-  | red_stat_switch_nodefault_2 : 
+  | red_stat_switch_nodefault_2: forall S C S0 b v v1 rv ts scs o, 
       b = (strict_equality_test v1 v) ->
-      red_expr S C (stat_switch_nodefault_3 b v rv ts scs) o ->
+      red_stat S C (stat_switch_nodefault_3 b v rv ts scs) o ->
       red_stat S C (stat_switch_nodefault_2 (out_ter S0 v1) v rv ts scs) o
 
-  | red_stat_switch_nodefault_3_false : 
+  | red_stat_switch_nodefault_3_false: forall S C v rv scs ts o,  
       red_stat S C (stat_switch_nodefault_1 v rv scs) o ->
-      red_expr S C (stat_switch_nodefault_3 false v rv ts scs) o ->
+      red_stat S C (stat_switch_nodefault_3 false v rv ts scs) o 
 
-  | red_stat_switch_nodefault_3_true : 
-      red_stat S C (stat_block ts) o1 -> (* Daniele: not sure if I should use block here.. ? --> FOR DANIELE i think it's ok, but you should check with sergio/gareth/martin *)
+  | red_stat_switch_nodefault_3_true: forall S C ts o o1 scs v rv,  
+      red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_nodefault_4 o1 scs) o ->
-      red_expr S C (stat_switch_nodefault_3 true v rv ts scs) o ->
+      red_stat S C (stat_switch_nodefault_3 true v rv ts scs) o 
 
-  | red_stat_switch_nodefault_4 :
-      red_stat S C (stat_switch_nodefault_5 rv scs) o -> (* FOR DANIELE: this is wrong, you're supposed to go back to step 1. *)
-      red_stat S C (stat_switch_nodefault_4 (out_ter rv) scs) o
+  | red_stat_switch_nodefault_4: forall S C v rv scs o, 
+      red_stat S C (stat_switch_nodefault_1 v v scs) o ->
+      red_stat S C (stat_switch_nodefault_4 (out_ter S v) scs) o
 
-  | red_stat_switch_nodefault_5_nil :
-      (* FOR DANIELE: confusion between v and rv: you want to return "(out_ter S rv)" *)
-      red_stat S C (stat_switch_nodefault_5 rv nil)  (out_ter S (res_normal v)) ->
+  | red_stat_switch_nodefault_5_nil: forall S C rv, 
+      red_stat S C (stat_switch_nodefault_5 rv nil)  (out_ter S rv)
 
-  | red_stat_switch_nodefault_5_cons :
-      red_stat S C (stat_block (t::ts)) o1 -> (* not sure  FOR DANIELE: I don't understand why you impose the block to be of the form "t::ts"; I think it should simply be "ts". (By the syntax invariant, we might know that "ts" is not empty, but we don't need to impose it here) *) 
+  | red_stat_switch_nodefault_5_cons: forall S C ts o o1 scs rv e, 
+      red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_nodefault_6 o1 scs) o ->
-      red_stat S C (stat_switch_nodefault_5 rv ((switchclause_intro e (t::ts))::scs)) o
+      red_stat S C (stat_switch_nodefault_5 rv (switchclause_intro e ts::scs)) o
 
-  | red_stat_switch_nodefault_6_not_empty :
+  | red_stat_switch_nodefault_6_not_empty: forall S C rv scs o, 
       red_stat S C (stat_switch_nodefault_5 rv scs) o ->
-      red_stat S C (stat_switch_nodefault_6 (out_ter rv) scs) o
+      red_stat S C (stat_switch_nodefault_6 (out_ter S rv) scs) o
 
-  | red_stat_switch_nodefault_6_abrupt :
-      true = abrupt_res rv -> (* not sure -- FOR DANIELE: This is incorrect, you should be using R instead of rv, and write a premise "~ res_is_normal R", and then return the behavior "res_overwrite_value_if_empty rv R" *)
-      red_stat S C (stat_switch_nodefault_6 (out_ter rv) scs) (out_ter S (res_intro (res_type rv) v (res_label rv)))
+  | red_stat_switch_nodefault_6_abrupt: forall S C R scs rv, 
+      ~res_is_normal R ->
+      red_stat S C (stat_switch_nodefault_6 (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
 
 (*
 FOR DANIELE: for the version of switch that has a default case, use similar techniques...
 *)
 
-*)
+
 
 (*
 

@@ -1109,6 +1109,8 @@ Proof.
     skip. (* TODO *)
     (* Debugger *)
     unmonad. prove_correct_res. apply~ res_stat_debugger.
+    (* switch *)
+    skip. (* TODO *)
 
    (* run_prog *)
    intros S C p S' res R. destruct p as [str es]. simpls.

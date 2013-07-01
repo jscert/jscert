@@ -163,7 +163,7 @@ with stat :=
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
   | stat_debugger : stat
-(*  | stat_switch : expr -> switchbody -> stat 
+  | stat_switch : expr -> switchbody -> stat 
 
 with switchbody := 
   | switchbody_nodefault : list switchclause -> switchbody
@@ -171,7 +171,7 @@ with switchbody :=
 
 with switchclause :=
   | switchclause_intro : expr -> list stat -> switchclause
-*)
+
 (** Grammar of programs *)
 
 with prog :=

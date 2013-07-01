@@ -598,6 +598,18 @@ with ext_stat :=
   | stat_for_in_9 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> res -> ext_stat
 *)
 
+(* Extended statements for 'switch' *)
+
+  | stat_switch_1: out -> switchbody -> ext_stat
+  | stat_switch_2: out -> ext_stat
+  | stat_switch_nodefault_1: value -> resvalue -> list switchclause -> ext_stat
+  | stat_switch_nodefault_2: out -> value -> resvalue -> list stat -> list switchclause -> ext_stat
+  | stat_switch_nodefault_3: bool -> value -> resvalue -> list stat -> list switchclause -> ext_stat
+  | stat_switch_nodefault_4: out -> list switchclause -> ext_stat
+  | stat_switch_nodefault_5: resvalue -> list switchclause -> ext_stat
+  | stat_switch_nodefault_6: out -> list switchclause -> ext_stat
+
+
   | stat_with_1 : stat -> value -> ext_stat (* The expression have been executed. *)
 
   | stat_throw_1 : out -> ext_stat (* The expression have been executed. *)
@@ -1137,6 +1149,16 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | spec_expr_get_value_conv_stat _ _ _ => None
   | spec_expr_get_value_conv_stat_1 o _ _ => Some o
   | spec_expr_get_value_conv_stat_2 o _ => Some o
+
+  | stat_switch_1 o _ => Some o
+  | stat_switch_2 o => Some o
+  | stat_switch_nodefault_1 _ _ _=> None
+  | stat_switch_nodefault_2 o _ _ _ _  => Some o
+  | stat_switch_nodefault_3 _ _ _ _ _ => None
+  | stat_switch_nodefault_4 o _ => Some o
+  | stat_switch_nodefault_5 _ _ => None
+  | stat_switch_nodefault_6 o _ => Some o
+
   end.
 
 Definition out_of_ext_prog (p : ext_prog) : option out :=
@@ -1194,7 +1216,8 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
   | abort_intercepted_stat_try_3 : forall S R fo,
       abort_intercepted_stat (stat_try_3 (out_ter S R) fo)
-(* Daniele: uncomment when switch statement is done
+
+(* Daniele: uncomment when switch is done
   | abort_intercepted_stat_switch_1 : forall lab rv S R,
       R = res_intro restype_break rv lab ->
       abort_intercepted_stat (stat_switch_2 (out_ter S R))

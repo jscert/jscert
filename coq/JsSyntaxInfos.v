@@ -79,7 +79,7 @@ with add_infos_stat str labs t :=
     | stat_for_in _ e1 e2 t => stat_for_in (label_set_add_empty labs) (fe e1) (fe e2) (f t)
     | stat_for_in_var _ str eo e t => stat_for_in_var (label_set_add_empty labs) str (feo eo) (fe e) (f t)
     | stat_debugger => stat_debugger
-    (*| stat_switch e ts => stat_switch e ts*) (* Daniele: I don't know what to do here. *)
+    | stat_switch e ts => stat_switch e ts (* Daniele: I don't know what to do here. *)
   end
 
 (** Propagate through programs *)

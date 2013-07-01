@@ -2090,6 +2090,9 @@ Definition run_stat runs S C t : result :=
   | stat_debugger =>
     out_ter S res_empty
 
+  | stat_switch _ _  =>
+    result_not_yet_implemented (* TODO *)
+
   end.
 
 (**************************************************************)
