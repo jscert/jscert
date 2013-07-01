@@ -175,8 +175,7 @@ Definition if_not_throw (o : result) (K : state -> res -> result) : result :=
   if_ter o (fun S0 R =>
     match res_type R with
     | restype_throw => o
-    | _ =>
-        K S0 R
+    | _ => K S0 R
     end).
 
 Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> value -> result) : result :=
@@ -2103,7 +2102,7 @@ Fixpoint run_elements runs S C rv (els : list element) {struct els} : result :=
   | nil => out_ter S rv
 
   | element_stat t :: els' =>
-    if_not_throw (run_stat runs S C t) (fun S1 R1 =>
+    if_not_throw (runs_type_stat runs S C t) (fun S1 R1 =>
       let R2 := res_overwrite_value_if_empty rv R1 in
       if_success (out_ter S1 R2) (fun S2 rv2 => (* TODO:  wait for the specification to be updated. *)
         run_elements runs S2 C rv2 els'))
