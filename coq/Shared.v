@@ -771,3 +771,13 @@ Lemma option_map_some_forw : forall (A B : Type) (f : A -> B) ao (a : A) (b : B)
   option_map f ao = Some b.
 Proof. introv E1 E2. substs. fequals. Qed.
 
+Lemma option_apply_some_back : forall (A B : Type) (f : A -> option B) ao (b : B),
+                                 LibOption.apply f ao = Some b ->
+                                 exists a, ao = Some a /\ f a = Some b.
+Proof.  introv E. destruct~ ao. exists a. splits~. inverts~ E. Qed.
+
+Lemma option_apply_some_forw : forall (A B : Type) (f : A -> option B) ao (a:A) (b:B),
+  ao = Some a ->
+  f a = Some b ->
+  LibOption.apply f ao = Some b.
+Proof. introv E1 E2. substs. unfold apply. apply E2. Qed.
