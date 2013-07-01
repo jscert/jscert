@@ -127,6 +127,11 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 (**************************************************************)
 (** Monadic Constructors *)
 
+Definition if_empty_label S R (K : unit -> result) : result :=
+  ifb res_label R = label_empty then K tt
+  else
+    impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
+
 Definition if_bool_option (A : Type) (d : A) (bo : option bool) (K1 : unit -> A) (K2 : unit -> A) : A :=
   match bo with
   | None => d
@@ -156,7 +161,8 @@ Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : 
   if_ter o (fun S0 R =>
     match res_type R with
     | restype_normal =>
-        K S0 (res_value (res_overwrite_value_if_empty rv R))
+      if_empty_label S0 R (fun _ =>
+        K S0 (res_value (res_overwrite_value_if_empty rv R)))
     | restype_throw => o
     | _ =>
         out_ter S0 (res_overwrite_value_if_empty rv R)
@@ -194,7 +200,7 @@ Definition if_success_or_return (o : result) (K1 : state -> result) (K2 : state 
   if_ter o (fun S R =>
     match res_type R with
     | restype_normal =>
-      K1 S
+      if_empty_label S R (fun _ => K1 S)
     | restype_return => K2 S (res_value R)
     | _ => o
     end).
@@ -208,7 +214,7 @@ Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
     | restype_continue =>
       (if search_label R then K1 else out_ter) S R
     | restype_normal =>
-      K1 S R
+      if_empty_label S R (fun _ => K1 S R)
     | _ => out_ter S R
     end).
 
@@ -1840,14 +1846,15 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
           | restype_throw =>
             out_ter S2 (res_throw (res_value R))
           | restype_normal =>
-            match res_value R with
-            | resvalue_value v =>
-              out_ter S2 v
-            | resvalue_empty =>
-              out_ter S2 undef
-            | resvalue_ref r =>
-              impossible_with_heap_because S2 "Reference found in the result of an `eval' in [run_eval]."
-            end
+            if_empty_label S2 R (fun _ =>
+              match res_value R with
+              | resvalue_value v =>
+                out_ter S2 v
+              | resvalue_empty =>
+                out_ter S2 undef
+              | resvalue_ref r =>
+                impossible_with_heap_because S2 "Reference found in the result of an `eval' in [run_eval]."
+              end)
           | _ => impossible_with_heap_because S2 "Forbidden result type returned by an `eval' in [run_eval]."
           end))
     end
