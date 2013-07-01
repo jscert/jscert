@@ -745,12 +745,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_access_3 v1 o1 v2) o ->
       red_expr S0 C (expr_access_2 v1 (out_ter S v2)) o
 
-  | red_expr_ext_expr_access_3 : forall S0 S C v1 v2 o1 o,
+  | red_expr_access_3 : forall S0 S C v1 v2 o1 o,
       red_expr S C (spec_to_string v2) o1 ->
       red_expr S C (expr_access_4 v1 o1) o ->
       red_expr S0 C (expr_access_3 v1 (out_void S) v2) o
 
-  | red_expr_ext_expr_access_4 : forall S0 S C v1 x r,
+  | red_expr_access_4 : forall S0 S C v1 x r,
      r = ref_create_value v1 x (execution_ctx_strict C) ->
      red_expr S0 C (expr_access_4 v1 (out_ter S x)) (out_ter S r)
 
@@ -1736,12 +1736,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C K o ->
       red_expr S0 C (spec_object_default_value_sub_2 l (out_ter S v) K) o
 
-  | red_spec_object_default_value_sub_2_callable : forall S C lfunc l v K o B o1,
+  | red_spec_object_default_value_sub_2_callable : forall S0 S C lfunc l v K o B o1,
       callable S v (Some B) ->
       v = value_object lfunc ->
       red_expr S C (spec_call lfunc l nil) o1 ->
       red_expr S C (spec_object_default_value_sub_3 o1 K) o ->
-      red_expr S C (spec_object_default_value_sub_2 l (out_ter S v) K) o
+      red_expr S0 C (spec_object_default_value_sub_2 l (out_ter S v) K) o
       (* Note: the spec does not mention a call [getValue] on the result of the [[call]] *)
 
   | red_spec_object_default_value_sub_3_prim : forall S0 S C K w,

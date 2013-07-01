@@ -472,6 +472,17 @@ Proof.
    destruct~ v; tryfalse. destruct~ p; tryfalse. repeat eexists. right. eexists. auto*.
 Qed.
 
+Lemma if_success_primitive_out : forall res K S R,
+  if_success_primitive res K = out_ter S R ->
+  if_regular_lemma res S R (fun S' R' => exists p,
+    R' = res_val (p : prim) /\
+    K S' p = out_ter S R).
+Proof.
+  introv H. deal_with_regular_lemma H if_value_out; substs.
+   repeat eexists. left~.
+   destruct~ v; tryfalse. repeat eexists. right. eexists. auto*.
+Qed.
+
 Lemma if_not_throw_out : forall res K S R,
   if_not_throw res K = out_ter S R ->
   exists S0 R0, res = out_ter S0 R0 /\
@@ -729,6 +740,115 @@ Proof.
      forwards~ (v&Ev): GVC. inverts Ev. repeat eexists; auto*.
 Qed.
 
+Lemma run_callable_correct : forall S v co,
+  run_callable S v = Some co ->
+  callable S v co.
+Proof.
+  introv E. destruct v; simpls~.
+   inverts~ E.
+   rewrite_morph_option; simpls; tryfalse.
+    exists o0. splits~. forwards~: @pick_option_correct EQx. inverts~ E.
+Qed.
+
+Lemma object_default_value_correct : forall runs,
+  runs_type_correct runs -> forall S S' R' C l pref,
+  object_default_value runs S C l pref = out_ter S' R' ->
+  red_expr S C (spec_object_default_value l pref) (out_ter S' R').
+Proof.
+  introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
+  forwards~ OM: run_object_method_correct (rm EQx).
+  applys~ red_spec_object_default_value OM. destruct~ b.
+   apply~ red_spec_object_default_value_1_default.
+    apply~ red_spec_object_default_value_2.
+    deal_with_regular_lemma E if_value_out; substs.
+     forwards~ (E&_): run_object_get_correct RC (rm HE).
+      applys~ red_spec_object_default_value_sub_1 E.
+      apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+     forwards~ (E&?): run_object_get_correct RC (rm HE).
+      applys~ red_spec_object_default_value_sub_1 E.
+      rewrite_morph_option; simpls; tryfalse.
+      forwards~ RCa: run_callable_correct (rm EQx). destruct o.
+       forwards~ (E1&E2): if_empty_label_out (rm H0).
+        rewrite res_overwrite_value_if_empty_empty in E2. destruct v; simpls; tryfalse.
+        deal_with_regular_lemma E2 if_value_out; substs.
+         apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
+          apply* RCa. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+         apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
+          apply* RCa. destruct v.
+           inverts H1. apply~ red_spec_object_default_value_sub_3_prim.
+           apply~ red_spec_object_default_value_sub_3_object.
+            apply~ red_spec_object_default_value_3.
+            (* This part is a big copy-paste of the previous *)
+            deal_with_regular_lemma H1 if_value_out; substs.
+             forwards~ (E0&_): run_object_get_correct RC (rm HE0).
+              applys~ red_spec_object_default_value_sub_1 E0.
+              apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+             forwards~ (E0&?): run_object_get_correct RC (rm HE0).
+              applys~ red_spec_object_default_value_sub_1 E0.
+              rewrite_morph_option; simpls; tryfalse.
+              forwards~ RCa0: run_callable_correct (rm EQx). destruct o1.
+               forwards~ (E3&E4): if_empty_label_out (rm H1).
+                rewrite res_overwrite_value_if_empty_empty in E4.
+                destruct v; simpls; tryfalse.
+                deal_with_regular_lemma E4 if_value_out; substs.
+                 apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
+                  apply* RCa0. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+                 apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
+                  apply* RCa0. destruct v.
+                   inverts H4. apply~ red_spec_object_default_value_sub_3_prim.
+                   apply~ red_spec_object_default_value_sub_3_object.
+                     forwards~ (?&?): run_error_correct (rm H4).
+                     apply~ red_spec_object_default_value_4.
+               forwards~ (?&?): run_error_correct (rm H1).
+                apply~ red_spec_object_default_value_sub_2_not_callable.
+                 apply~ red_spec_object_default_value_4.
+       apply~ red_spec_object_default_value_sub_2_not_callable.
+        (* This part is a big copy-paste of the previous *)
+        apply~ red_spec_object_default_value_3.
+        deal_with_regular_lemma H0 if_value_out; substs.
+         forwards~ (E0&_): run_object_get_correct RC (rm HE).
+          applys~ red_spec_object_default_value_sub_1 E0.
+          apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+         forwards~ (E0&?): run_object_get_correct RC (rm HE).
+          applys~ red_spec_object_default_value_sub_1 E0.
+          rewrite_morph_option; simpls; tryfalse.
+          forwards~ RCa0: run_callable_correct (rm EQx). destruct o.
+           forwards~ (E3&E4): if_empty_label_out (rm H1).
+            rewrite res_overwrite_value_if_empty_empty in E4.
+            destruct v0; simpls; tryfalse.
+            deal_with_regular_lemma E4 if_value_out; substs.
+             apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
+              apply* RCa0. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+             apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
+              apply* RCa0. destruct v0.
+               inverts H2. apply~ red_spec_object_default_value_sub_3_prim.
+               apply~ red_spec_object_default_value_sub_3_object.
+                 forwards~ (?&?): run_error_correct (rm H2).
+                 apply~ red_spec_object_default_value_4.
+           forwards~ (?&?): run_error_correct (rm H1).
+            apply~ red_spec_object_default_value_sub_2_not_callable.
+             apply~ red_spec_object_default_value_4.
+Qed.
+
+Lemma to_string_correct : forall runs,
+  runs_type_correct runs -> forall S S' R' C v,
+  to_string runs S C v = out_ter S' R' ->
+  red_expr S C (spec_to_string v) (out_ter S' R') /\
+    (res_type R' = restype_normal -> exists (s : string), R' = s).
+Proof.
+  introv RC E. destruct v; simpls.
+   inverts E. splits*. apply~ red_spec_to_string_prim.
+   deal_with_regular_lemma E if_success_primitive_out; substs.
+    forwards~ DV: object_default_value_correct HE.
+     splits; [| intros; false ]. apply~ red_spec_to_string_object.
+       applys~ red_spec_to_primitive_pref_object DV.
+     apply~ red_expr_abort. constructors*. absurd_neg.
+    forwards~ DV: object_default_value_correct HE.
+     applys_and red_spec_to_string_object.
+      applys~ red_spec_to_primitive_pref_object DV.
+     splits*. apply~ red_spec_to_string_1.
+Qed.
+
 
 (**************************************************************)
 (** Monadic Constructors, Tactics *)
@@ -933,7 +1053,11 @@ Proof.
                 applys~ red_spec_check_object_coercible_undef_or_null.
               abort_expr.
              apply~ red_expr_access_2. applys~ red_spec_check_object_coercible_return n.
-              skip. (* TODO *)
+              unmonad.
+               forwards~ (TS&?): to_string_correct (rm HE). constructors~.
+                applys~ red_expr_access_3 TS. abort_expr.
+               forwards~ (TS&?): to_string_correct (rm HE). constructors~.
+                applys~ red_expr_access_3 TS. apply~ red_expr_access_4.
     (* member *)
     forwards~ ?: IHe (rm R). apply~ red_expr_member.
     (* new *)

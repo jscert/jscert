@@ -973,16 +973,17 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
       let lpref := other_preftypes gpref in
       let sub S' x K :=
         if_value (run_object_get runs S' C l x) (fun S1 vfo =>
-          match run_callable S1 vfo with
-          | Some B =>
-            if_object (out_ter S1 vfo) (fun S2 lfunc =>
-              if_value (runs_type_call runs S2 C lfunc l nil) (fun S3 v =>
-                match v with
-                | value_prim w => out_ter S3 w
-                | value_object l => K S3
-                end))
-          | None => K S1
-          end) in
+          if_some (run_callable S1 vfo) (fun co =>
+            match co with
+            | Some B =>
+              if_object (out_ter S1 vfo) (fun S2 lfunc =>
+                if_value (runs_type_call runs S2 C lfunc l nil) (fun S3 v =>
+                  match v with
+                  | value_prim w => out_ter S3 w
+                  | value_object l => K S3
+                  end))
+            | None => K S1
+            end)) in
       let gmeth := method_of_preftype gpref in
       sub S gmeth (fun S' =>
         let lmeth := method_of_preftype lpref in
