@@ -461,6 +461,18 @@ Proof.
    destruct~ v; tryfalse. repeat eexists. right. eexists. auto*.
 Qed.
 
+Lemma if_string_out : forall res K S R,
+  correct_res res ->
+  if_string res K = out_ter S R ->
+  if_regular_lemma res S R (fun S' R' => exists s,
+    R' = res_val (prim_string s) /\
+    K S' s = out_ter S R).
+Proof.
+  introv Cr H. deal_with_regular_lemma H if_value_out; substs.
+   repeat eexists. left~.
+   destruct~ v; tryfalse. destruct~ p; tryfalse. repeat eexists. right. eexists. auto*.
+Qed.
+
 Lemma if_not_throw_out : forall res K S R,
   correct_res res ->
   if_not_throw res K = out_ter S R ->
@@ -790,6 +802,8 @@ Ltac unmonad :=
     deal_with_regular_lemma H if_value_out
   | H : if_object ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma H if_object_out
+  | H : if_string ?res ?K = result_out ?o |- _ =>
+    deal_with_regular_lemma H if_string_out
   | H : if_success_value ?runs ?C ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma_run H if_success_value_out
   | H : if_not_throw ?res ?K = result_out ?o |- _ =>
@@ -906,7 +920,37 @@ Proof.
     (* function *)
     skip. (* TODO *)
     (* access *)
-    skip. (* TODO *)
+    unmonad.
+     introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+     (* Abort case *)
+     forwards~ (RC&?): IHe (rm HE). prove_correct_res. apply~ red_expr_access.
+      applys~ red_spec_expr_get_value RC. abort_expr. abort_expr.
+     (* Normal case *)
+     forwards~ (RC&Cr): IHe (rm HE).
+      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+       prove_correct_res. apply~ red_expr_access.
+         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
+        abort_expr.
+       applys_and red_expr_access.
+         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
+        unmonad.
+         introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+         forwards~ (RC'&?): IHe (rm HE). prove_correct_res. apply~ red_expr_access_1.
+          applys~ red_spec_expr_get_value RC'. abort_expr. abort_expr.
+         forwards~ (RC'&Cr'): IHe (rm HE).
+          inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+           prove_correct_res. apply~ red_expr_access_1.
+             applys~ red_spec_expr_get_value RC'. applys~ red_spec_expr_get_value_1 H1.
+            abort_expr.
+           applys_and red_expr_access_1.
+             applys~ red_spec_expr_get_value RC'. applys~ red_spec_expr_get_value_1 H1.
+            cases_if.
+             forwards~ (RCer&?): run_error_correct H2. prove_correct_res.
+              applys~ red_expr_access_2.
+                applys~ red_spec_check_object_coercible_undef_or_null.
+              abort_expr.
+             applys_and red_expr_access_2. apply~ red_spec_check_object_coercible_return.
+              skip. (* TODO *)
     (* member *)
     forwards~ (?&?): IHe (rm R). prove_correct_res. apply~ red_expr_member.
     (* new *)

@@ -1375,7 +1375,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_check_object_coercible_undef_or_null : forall S C v o,
       v = prim_undef \/ v = prim_null ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (spec_to_object v) o
+      red_expr S C (spec_check_object_coercible v) o
 
   | red_spec_check_object_coercible_return : forall S C v,
       ~ (v = prim_undef \/ v = prim_null) ->

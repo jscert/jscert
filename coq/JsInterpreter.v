@@ -1769,7 +1769,7 @@ Definition run_expr_access runs S C e1 e2 : result :=
   if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
     if_success_value runs C (runs_type_expr runs S1 C e2) (fun S2 v2 =>
       ifb v1 = prim_undef \/ v1 = prim_null then
-        run_error S2 native_error_ref
+        run_error S2 native_error_type
       else
         if_string (to_string runs S2 C v2) (fun S3 x =>
           out_ter S3 (ref_create_value v1 x (execution_ctx_strict C))))).
@@ -2246,7 +2246,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_method object_extensible_ S l) (fun ext =>
               out_ter S (neg ext))
           | x :: xs' =>
-             result_passing (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
+            result_passing (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
               let check_configurable A :=
                 if attributes_configurable A then
                   out_ter S0 false : result
