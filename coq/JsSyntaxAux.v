@@ -132,37 +132,187 @@ Definition object_for_args_object O paramsmap get getownproperty defineownproper
 (**************************************************************)
 (** ** Type [builtin] *)
 
-(* TODO
+(** mathop *)
 
-  (** Inhabitant *)
+Global Instance mathop_inhab : Inhab mathop.
+Proof. apply (prove_Inhab mathop_abs). Qed.
 
-  Global Instance builtin_inhab : Inhab builtin.
-  Proof. apply (prove_Inhab builtin_global). Qed.
+Definition mathop_compare m1 m2 :=
+  match m1, m2 with
+  | mathop_abs, mathop_abs => true
+  end.
 
-  (** Boolean comparison *)
+Global Instance mathop_comparable : Comparable mathop.
+Proof.
+  applys (comparable_beq mathop_compare). introv.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+
+(** native_error *)
+
+Global Instance native_error_inhab : Inhab native_error.
+Proof. apply (prove_Inhab native_error_eval). Qed.
+
+Definition native_error_compare ne1 ne2 :=
+  match ne1, ne2 with
+  | native_error_eval, native_error_eval => true
+  | native_error_range, native_error_range => true
+  | native_error_ref, native_error_ref => true
+  | native_error_syntax, native_error_syntax => true
+  | native_error_type, native_error_type => true
+  | _, _ => false
+  end.
+
+Global Instance native_error_comparable : Comparable native_error.
+Proof.
+  applys (comparable_beq native_error_compare). introv.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+
+
+(** prealloc *)
+
+Global Instance prealloc_inhab : Inhab prealloc.
+Proof. apply (prove_Inhab prealloc_global). Qed.
 
   (* LATER: use a plugin to generate definition *)
   (* TODO: extract to ocaml primitive comparison *)
-  Definition builtin_compare bl1 bl2 :=
-    match bl1, bl2 with
-    | builtin_global, builtin_global => true
-    | builtin_range_error, builtin_range_error => true
-    | builtin_ref_error, builtin_ref_error => true
-    | builtin_syntax_error, builtin_syntax_error => true
-    | builtin_type_error, builtin_type_error => true
-    | _, _ => false (* Note that this is not always the case. *)
-    end.
-  (*
-  Parameter builtin_compare : builtin -> builtin -> bool.
-  *)
-*)
 
-(** Decidable comparison *)
+Definition prealloc_compare bl1 bl2 :=
+  match bl1, bl2 with
+  | prealloc_global, prealloc_global => true
+  | prealloc_global_eval, prealloc_global_eval => true
+  | prealloc_global_is_finite, prealloc_global_is_finite => true
+  | prealloc_global_is_nan, prealloc_global_is_nan => true
+  | prealloc_global_parse_float, prealloc_global_parse_float => true
+  | prealloc_global_parse_int, prealloc_global_parse_int => true
+  | prealloc_object, prealloc_object => true
+  | prealloc_object_get_proto_of, prealloc_object_get_proto_of => true
+  | prealloc_object_get_own_prop_descriptor , prealloc_object_get_own_prop_descriptor  => true
+  | prealloc_object_get_own_prop_name, prealloc_object_get_own_prop_name => true
+  | prealloc_object_create, prealloc_object_create => true
+  | prealloc_object_define_prop, prealloc_object_define_prop => true
+  | prealloc_object_define_properties, prealloc_object_define_properties => true
+  | prealloc_object_seal, prealloc_object_seal => true
+  | prealloc_object_freeze, prealloc_object_freeze => true
+  | prealloc_object_prevent_extensions, prealloc_object_prevent_extensions => true
+  | prealloc_object_is_sealed, prealloc_object_is_sealed => true
+  | prealloc_object_is_frozen, prealloc_object_is_frozen => true
+  | prealloc_object_is_extensible, prealloc_object_is_extensible => true
+  | prealloc_object_keys, prealloc_object_keys => true
+  | prealloc_object_keys_call, prealloc_object_keys_call => true
+  | prealloc_object_proto, prealloc_object_proto => true
+  | prealloc_object_proto_to_string, prealloc_object_proto_to_string => true
+  | prealloc_object_proto_value_of, prealloc_object_proto_value_of => true
+  | prealloc_object_proto_has_own_prop, prealloc_object_proto_has_own_prop => true
+  | prealloc_object_proto_is_prototype_of, prealloc_object_proto_is_prototype_of => true
+  | prealloc_object_proto_prop_is_enumerable, prealloc_object_proto_prop_is_enumerable => true
+  | prealloc_function, prealloc_function => true
+  | prealloc_function_proto, prealloc_function_proto => true
+  | prealloc_function_proto_to_string, prealloc_function_proto_to_string => true
+  | prealloc_function_proto_apply, prealloc_function_proto_apply => true
+  | prealloc_function_proto_bind, prealloc_function_proto_bind => true
+  | prealloc_bool, prealloc_bool => true
+  | prealloc_bool_proto, prealloc_bool_proto => true
+  | prealloc_bool_proto_to_string, prealloc_bool_proto_to_string => true
+  | prealloc_bool_proto_value_of, prealloc_bool_proto_value_of => true
+  | prealloc_number, prealloc_number => true
+  | prealloc_number_proto, prealloc_number_proto => true
+  | prealloc_number_proto_to_string, prealloc_number_proto_to_string => true
+  | prealloc_number_proto_value_of, prealloc_number_proto_value_of => true
+  | prealloc_number_proto_to_fixed, prealloc_number_proto_to_fixed => true
+  | prealloc_number_proto_to_exponential, prealloc_number_proto_to_exponential => true
+  | prealloc_number_proto_to_precision, prealloc_number_proto_to_precision => true
+  | prealloc_array, prealloc_array => true
+  | prealloc_array_is_array, prealloc_array_is_array => true
+  | prealloc_array_proto, prealloc_array_proto => true
+  | prealloc_array_proto_to_string, prealloc_array_proto_to_string => true
+  | prealloc_string, prealloc_string => true
+  | prealloc_string_proto, prealloc_string_proto => true
+  | prealloc_string_proto_to_string, prealloc_string_proto_to_string => true
+  | prealloc_string_proto_value_of, prealloc_string_proto_value_of => true
+  | prealloc_string_proto_char_at, prealloc_string_proto_char_at => true
+  | prealloc_string_proto_char_code_at, prealloc_string_proto_char_code_at => true
+  | prealloc_math, prealloc_math => true
+  | prealloc_mathop m1, prealloc_mathop m2 => decide (m1 = m2)
+  | prealloc_error, prealloc_error => true
+  | prealloc_error_proto, prealloc_error_proto => true
+  | prealloc_native_error ne1, prealloc_native_error ne2 => decide (ne1 = ne2)
+  | prealloc_native_error_proto ne1, prealloc_native_error_proto ne2 => decide (ne1 = ne2)
+  | prealloc_error_proto_to_string, prealloc_error_proto_to_string => true
+  | prealloc_throw_type_error, prealloc_throw_type_error => true
+  | _,_ => false
+  end.
+
+(* This is ugly but if I put a ';' after the destruct x everything is too slow *)
 
 Global Instance prealloc_comparable : Comparable prealloc.
 Proof.
-  (* applys (comparable_beq prealloc_compare). --TODO *)
-  skip.
+  applys (comparable_beq prealloc_compare). intros x y.
+  destruct x.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct m; destruct m0; simpls.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
+  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
+  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
+  destruct y; simpls; rew_refl; iff~; tryfalse.
 Qed.
 
 
@@ -285,11 +435,44 @@ Qed.
 
 Global Instance ref_inhab : Inhab ref.
 Proof.
-  (* apply (prove_Inhab (reference_intro )).
-  ---TODO
-  *) skip.
+  apply (prove_Inhab
+           (ref_intro
+                (ref_base_type_value (value_prim prim_undef))
+                EmptyString
+                false)).
 Qed.
 
+Definition ref_base_type_compare rb1 rb2 : bool :=
+  match rb1, rb2 with
+  | ref_base_type_value v1, ref_base_type_value v2 => decide (v1 = v2)
+  | ref_base_type_env_loc l1, ref_base_type_env_loc l2 => decide (l1 = l2)
+  | _, _ => false
+  end.
+
+Global Instance ref_base_type_comparable : Comparable ref_base_type.
+Proof.
+  apply (comparable_beq ref_base_type_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff;
+   tryfalse; auto; try congruence.
+Qed.
+
+Definition ref_compare r1 r2 : bool :=
+  decide (ref_base r1 = ref_base r2 /\
+          ref_name r1 = ref_name r2 /\
+          ref_strict r1 = ref_strict r2).
+
+Global Instance ref_comparable : Comparable ref.
+Proof.
+  apply (comparable_beq ref_compare). intros x y.
+  destruct x.
+  destruct y.
+  unfolds ref_compare.
+  simpl.
+  rew_refl.
+  iff.
+  destruct H as [H1 [H2 H3]]. substs~.
+  inverts~ H.
+Qed.
 
 (**************************************************************)
 (** ** Type [env_record] *)
@@ -306,8 +489,16 @@ Proof. apply (prove_Inhab (env_record_decl Heap.empty)). Qed.
 (** Inhabitants **)
 
 Global Instance state_inhab : Inhab state.
-Admitted.
-
+Proof.
+  apply (prove_Inhab
+           (state_intro
+              Heap.empty
+              Heap.empty
+              (LibStream.const 0)
+              nil
+           )
+        ).
+Qed.
 
 (**************************************************************)
 (** ** Type [type] *)
@@ -390,7 +581,7 @@ Definition resvalue_compare rv1 rv2 :=
   | resvalue_value v1, resvalue_value v2 =>
     decide (v1 = v2)
   | resvalue_ref r1, resvalue_ref r2 =>
-    arbitrary (* TODO *)
+    decide (r1 = r2)
   | _, _ => false
   end.
 
@@ -401,7 +592,6 @@ Proof.
   applys (comparable_beq resvalue_compare). intros x y.
   destruct x; destruct y; simpl; rew_refl; iff;
    tryfalse; auto; try congruence.
-  skip. skip. (* There lacks a case in the boolean function. *)
 Qed.
 
 

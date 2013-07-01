@@ -79,10 +79,20 @@ Definition follow_spec_passing {T Te A : Type}
     (conv : T -> (A -> Te) -> Te)
     (red : state -> execution_ctx -> Te -> out -> Prop)
     (run : state -> execution_ctx -> T -> passing A) := forall S C (x : T) (p : passing A),
-  run S C x = p -> forall K S' res,
-  passing_output K red C p (out_ter S' res) ->
-  red S C (conv x K) (out_ter S' res) /\
-    (p = passing_abort (out_ter S' res) -> abort (out_ter S' res)).
+  run S C x = p -> forall K S' R',
+  passing_output K red C p (out_ter S' R') ->
+  red S C (conv x K) (out_ter S' R') /\
+    (p = passing_abort (out_ter S' R') -> abort (out_ter S' R')).
+
+Definition follow_spec_inject {A : Type}
+    (conv : A -> value)
+    (red : out -> Prop)
+    (run : passing A) : Prop := (forall S a,
+  run = passing_normal S a ->
+  red (out_ter S (conv a))) /\ (forall S R,
+    run = passing_abort (out_ter S R) ->
+    red (out_ter S R) /\
+    abort (out_ter S R)).
 
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
@@ -92,10 +102,16 @@ Definition follow_elements rv :=
 Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
   forall S C v S' res,
     run S C v = out_ter S' res ->
-    red_expr S C (spec_call l v vs) (out_ter S' res) /\ 
-    (res_type res = restype_normal -> exists v', res = (v' : value)).
-Definition follow_function_has_instance (_ : state -> object_loc -> value -> result) :=
-  True. (* TODO *)
+    red_expr S C (spec_call l v vs) (out_ter S' res) /\
+      (res_type res = restype_normal -> exists v', res = (v' : value)).
+Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
+  forall S C lo lv S' res,
+    run S lv (lo : object_loc) = out_ter S' res ->
+    (* Note that this function is related to [spec_function_has_instance_2] instead of
+      [spec_function_has_instance_1] as it's much more closer to the specification and
+      thus much easier to prove. *)
+    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' res) /\
+      (res_type res = restype_normal -> exists b, res = (b : bool)).
 Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
@@ -153,10 +169,14 @@ Ltac rewrite_morph_option :=
     let xn := fresh "x" in
     sets_eq <- xn: x;
     destruct xn
-  | H : appcontext [ if_some ?op ?f ] |- _ =>
+  | H : appcontext [ if_some ?op ?K ] |- _ =>
     let xn := fresh "x" in
     sets_eq <- xn: op;
     destruct xn
+  | H : appcontext [ result_passing ?p ?K ] |- _ =>
+    let pn := fresh "p" in
+    sets_eq <- pn: p;
+    destruct pn
   end.
 
 Ltac name_object_method :=
@@ -228,7 +248,7 @@ Lemma and_impl_left : forall P1 P2 P3 : Prop,
 Proof. auto*. Qed.
 
 Ltac applys_and_base L :=
-  applys~ and_impl_left; [applys L|]; try reflexivity.
+  applys~ and_impl_left; [applys~ L|]; try reflexivity.
 
 Tactic Notation "applys_and" constr(E) :=
   applys_and_base (>> E).
@@ -277,7 +297,7 @@ Ltac rm_variables :=
   | H : True |- _ => clear H
   end.
 
-Ltac dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo :=
+Ltac dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq :=
   repeat first
     [ progress rm_variables
     | unfold_func (>> run_expr_access run_expr_function
@@ -326,11 +346,19 @@ Ltac dealing_follows :=
   let IHowp := findHyp follow_object_get_own_prop in
   let IHop := findHyp follow_object_get_prop in
   let IHpo := findHyp follow_object_proto_is_prototype_of in
-  dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo.
+  let IHeq := findHyp follow_equal in
+  dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq.
 
 
 (**************************************************************)
 (** Monadic Constructors, Lemmae *)
+
+Inductive passing_terminates {A : Type} : passing A -> Prop :=
+  | passing_terminates_normal : forall S a,
+    passing_terminates (passing_normal S a)
+  | passing_terminates_abort : forall S R,
+    abort (out_ter S R) ->
+    passing_terminates (passing_abort (out_ter S R)).
 
 Definition if_regular_lemma (res : result) S0 R0 M :=
   exists S R, res = out_ter S R /\
@@ -433,6 +461,19 @@ Proof.
    destruct~ v; tryfalse. repeat eexists. right. eexists. auto*.
 Qed.
 
+Lemma if_not_throw_out : forall res K S R,
+  correct_res res ->
+  if_not_throw res K = out_ter S R ->
+  exists S0 R0, res = out_ter S0 R0 /\
+    ((res_type R0 = restype_throw /\ S = S0 /\ R = R0) \/
+     (res_type R0 <> restype_throw /\ K S0 R0 = out_ter S R)).
+Proof.
+  introv Cr H. deal_with_ter H. substs. destruct R0 as [rt rv rl]; simpls.
+  tests: (rt = restype_throw).
+   repeat eexists. left. inverts~ HE.
+   destruct rt; tryfalse; repeat eexists; right; inverts~ HE.
+Qed.
+
 Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
   passing_def bo K = p ->
   (exists b, bo = Some b /\ K b = p) \/
@@ -489,7 +530,7 @@ Qed.
 Lemma run_error_correct : forall S ne S' R',
   run_error S ne = out_ter S' R' ->
   (forall C, red_expr S C (spec_error ne) (out_ter S' R')) /\
-  res_type R' <> restype_normal.
+    res_type R' <> restype_normal.
 Proof.
   introv E. deal_with_regular_lemma E if_object_out; substs.
     introv R E. unfolds in R. unfold object_alloc in R. destruct S as [SH SEH [l SF]].
@@ -505,11 +546,13 @@ Qed.
 
 Lemma out_error_or_cst_correct : forall S C str ne v S' R',
   out_error_or_cst S str (ne : native_error) v = out_ter S' R' ->
-  red_expr S C (spec_error_or_cst str ne v) (out_ter S' R').
+  red_expr S C (spec_error_or_cst str ne v) (out_ter S' R') /\
+    (res_type R' = restype_normal -> R' = v).
 Proof.
   introv E. unfolds in E. cases_if.
-   apply~ red_spec_error_or_cst_true. apply~ run_error_correct.
-   inverts E. apply~ red_spec_error_or_cst_false.
+   applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E.
+    prove_correct_res. auto*.
+   inverts E. prove_correct_res. apply~ red_spec_error_or_cst_false.
 Qed.
 
 Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l (z : Z),
@@ -521,40 +564,35 @@ Proof.
 Qed.
 
 Lemma object_has_prop_correct : forall runs,
-  runs_type_correct runs -> forall S S1 C l x b,
-  object_has_prop runs S C l x = passing_normal S1 b ->
-  red_expr S C (spec_object_has_prop l x) (out_ter S1 b).
+  runs_type_correct runs -> forall S C l x (p : passing bool),
+  object_has_prop runs S C l x = p ->
+  follow_spec_inject (fun b => b) (red_expr S C (spec_object_has_prop l x)) p.
 Proof.
   introv RC E. unfolds in E. name_object_method.
-  destruct B as [B|]; simpls; tryfalse.
-  destruct B.
-  applys red_spec_object_has_prop.
-    applys* run_object_method_correct.
-    apply red_spec_object_has_prop_1_default.
-     apply passing_defined_out in E.
-     cases E; clear Eq E.
-       destruct e as [S0 [b0 [He1 He2]]].
-        inverts He2.
-        lets [_ _ _ _ _ _ _ RCo _ _] : RC.
-        forwards H: (rm RCo) l.
-        unfolds follow_object_get_prop.
-        unfolds follow_spec_passing.
-         applys~ H.
-         rewrite He1.
-         applys~ (passing_output_normal spec_object_has_prop_2).
-         applys~ red_spec_object_has_prop_2.
-         rew_refl.
-         cases_if~.
-           rewrite~ isTrue_true.
-           rewrite~ isTrue_false.
-       destruct e as [res [He1 He2]]; tryfalse.
+  destruct B as [B|]; simpls.
+   forwards~ BC: run_object_method_correct (rm EQB).
+    destruct B. forwards [(S'&?&?&E')|(?&Ep&?)]: @passing_defined_out (rm E);
+      simpl_after_regular_lemma.
+     inverts E'. splits; introv Eq; inverts Eq.
+      applys red_spec_object_has_prop BC.
+      apply red_spec_object_has_prop_1_default. apply~ RC.
+      rewrite H. constructors. apply~ red_spec_object_has_prop_2.
+       rewrite decide_spec. cases_if~; rew_refl.
+        rewrite~ isTrue_true.
+        rewrite~ isTrue_false.
+     substs. splits; introv Eq; inverts Eq. apply RC in Ep. splits.
+      applys red_spec_object_has_prop BC.
+       apply red_spec_object_has_prop_1_default. apply Ep.
+       constructors.
+      applys~ Ep spec_object_has_prop_2. constructors.
+   substs. splits; introv Eq; inverts Eq.
 Qed.
 
 Lemma run_object_get_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 l x S R,
   run_object_get runs S0 C0 l x = out_ter S R ->
   red_expr S0 C0 (spec_object_get l x) (out_ter S R) /\
-  (res_type R = restype_normal -> exists v, R = (v : value)).
+    (res_type R = restype_normal -> exists v, R = (v : value)).
 Proof.
   introv RC E.
   unfolds in E.
@@ -617,8 +655,26 @@ Lemma env_record_get_binding_value_correct : forall runs,
   red_expr S0 C0 (spec_env_record_get_binding_value L rn rs) (out_ter S R) /\
     (res_type R = restype_normal -> exists v, R = (v : value)).
 Proof.
-  introv RC E.
-Admitted. (* TODO *)
+  introv RC E. do 2 unfolds in E. rewrite_morph_option; simpls; tryfalse.
+  rewrite <- Heap.binds_equiv_read_option in EQx.
+   applys_and red_spec_env_record_get_binding_value EQx. destruct e; simpls.
+    rewrite_morph_option; tryfalse. simpls.
+     rewrite <- Heap.binds_equiv_read_option in EQx0. destruct p.
+     applys_and red_spec_env_record_get_binding_value_1_decl EQx0.
+     do 2 cases_if; tryfalse.
+      forwards~ (RCe&Cre): out_error_or_cst_correct C0 E. prove_correct_res. auto*.
+      inverts E. prove_correct_res. apply~ red_spec_returns.
+    rewrite_morph_option; simpls.
+     forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0).
+      applys_and red_spec_env_record_get_binding_value_1_object HCn. cases_if.
+       applys_and red_spec_env_record_get_binding_value_obj_2_true.
+        forwards*: run_object_get_correct E.
+       applys_and red_spec_env_record_get_binding_value_obj_2_false.
+        forwards*: out_error_or_cst_correct E.
+     substs. forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0). forwards~ (RH&A): HCa.
+      applys_and red_spec_env_record_get_binding_value_1_object RH.
+      applys_and red_expr_abort A. splits~. absurd_neg. inverts~ A; absurd_neg.
+Qed.
 
 Lemma ref_get_value_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 rv S R,
@@ -726,16 +782,27 @@ Ltac unmonad_passing :=
 (* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
 Ltac unmonad :=
   try match goal with
-  | H : if_ter ?res ?K = result_out ?o' |- _ =>
+  | H : if_ter ?res ?K = result_out ?o |- _ =>
     deal_with_ter H
-  | H : if_success ?res ?K = result_out ?o' |- _ =>
+  | H : if_success ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma H if_success_out
-  | H : if_value ?res ?K = result_out ?o' |- _ =>
+  | H : if_value ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma H if_value_out
-  | H : if_object ?res ?K = result_out ?o' |- _ =>
+  | H : if_object ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma H if_object_out
-  | H : if_success_value ?runs ?C ?res ?K = result_out ?o' |- _ =>
+  | H : if_success_value ?runs ?C ?res ?K = result_out ?o |- _ =>
     deal_with_regular_lemma_run H if_success_value_out
+  | H : if_not_throw ?res ?K = result_out ?o |- _ =>
+    let S := fresh "S" in
+    let R := fresh "R" in
+    let E := fresh "E" in
+    let T := fresh "T" in
+    let ES := fresh "ES" in
+    let ER := fresh "ER" in
+    let D := fresh "D" in
+    let HE := fresh "HE" in
+    forwards (S&R&E&[(T&ES&ER)|(D&HE)]): if_not_throw_out (rm H);
+    [ deal_with_correct_res | | simpl_after_regular_lemma ]
   | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
     inverts H
   | H : passing_normal ?S1 ?D1 = passing_normal ?S2 ?D2 |- _ =>
@@ -744,28 +811,6 @@ Ltac unmonad :=
   end;
   dealing_follows;
   other_follows.
-
-
-(**************************************************************)
-(** Other Lemmas *)
-
-Lemma run_elements_correct : forall runs,
-  runs_type_correct runs -> forall rv,
-  follow_elements rv (fun S C => run_elements runs S C rv).
-Proof.
-  intros runs [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo] rv S C es S' res R.
-  gen rv S C S' res R. induction es; simpls; introv R.
-   unmonad. prove_correct_res. apply~ red_prog_1_nil.
-   destruct a.
-    (* stat *)
-     skip. (* TODO *)
-    (* func_decl *)
-    forwards (RC&Cr): IHes (rm R). prove_correct_res. apply~ red_prog_1_cons_funcdecl.
-Qed.
-
-
-(**************************************************************)
-(** ** Main theorem *)
 
 Ltac abort_expr :=
   apply red_expr_abort;
@@ -786,6 +831,53 @@ Ltac abort_prog :=
    | try solve [absurd_neg]].
 
 
+(**************************************************************)
+(** Other Lemmas *)
+
+Lemma run_elements_correct : forall runs,
+  runs_type_correct runs -> forall rv,
+  follow_elements rv (fun S C => run_elements runs S C rv).
+Proof.
+  intros runs [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo] rv S C es S' res R.
+  gen rv S C S' res R. induction es; simpls; introv R.
+   unmonad. prove_correct_res. apply~ red_prog_1_nil.
+   destruct a.
+    (* stat *)
+    unmonad.
+     introv R E. forwards~ (_&H): IHs (rm R). apply* H.
+     (* Throw case *)
+     forwards~ (RC&?): IHs (rm E). prove_correct_res.
+     applys~ red_prog_1_cons_stat RC. abort_prog.
+     (* Other cases *)
+     forwards~ (RC&Cr): IHs (rm E).
+     applys_and red_prog_1_cons_stat RC. applys_and red_prog_2.
+     rewrite <- res_type_res_overwrite_value_if_empty in HE.
+     tests N: (res_type R0 = restype_normal).
+      rewrite N in HE. forwards~ (RCes&?): IHes HE. prove_correct_res.
+       asserts (rv'&Erv'): (exists (rv' : resvalue),
+         res_overwrite_value_if_empty rv R0 = rv').
+         destruct R0 as [rt0 rv0 rl0]. unfold res_overwrite_value_if_empty.
+         cases_if; repeat progress (substs; simpls);
+          forwards~: Cr; simpls; substs; eexists; reflexivity.
+       rewrite Erv' in *. applys~ red_prog_3.
+       rewrite res_overwrite_value_if_empty_empty in RCes. apply* RCes.
+      rewrite res_overwrite_value_if_empty_empty in *.
+       asserts H: (out_ter S0 (res_overwrite_value_if_empty rv R0) = out_ter S' res).
+         destruct R0 as [rt0 rv0 rl0]. destruct rt0; simpls; tryfalse; inverts~ HE.
+       clear HE. inverts H. destruct R0 as [rt0 rv0 rl0]. simpls.
+       unfold res_overwrite_value_if_empty in *. cases_if; simpls; substs; splits.
+        abort_prog. constructors. intro H. unfolds in H. simpls. false.
+        introv H ?. inverts H. simpls. false.
+        abort_prog. constructors. intro H. unfolds in H. simpls. false.
+        introv H ?. inverts H. simpls. false.
+    (* func_decl *)
+    forwards (RC&Cr): IHes (rm R). prove_correct_res. apply~ red_prog_1_cons_funcdecl.
+Qed.
+
+
+(**************************************************************)
+(** ** Main theorem *)
+
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).
 Proof.
@@ -793,7 +885,7 @@ Proof.
   induction num.
    constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R; introv P; inverts P.
 
-   lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo]: (rm IHnum).
+   lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum).
    constructors.
 
    (* run_expr *)
@@ -881,7 +973,91 @@ Proof.
      (* Not *)
      skip. (* TODO *)
     (* binary_op *)
-    skip. (* TODO *)
+    unfolds in R. destruct~ b; simpls.
+     (* Mult *)
+     skip. (* TODO *)
+     (* Div *)
+     skip. (* TODO *)
+     (* Mod *)
+     skip. (* TODO *)
+     (* Add *)
+     skip. (* TODO *)
+     (* Sub *)
+     skip. (* TODO *)
+     (* Left shift *)
+     skip. (* TODO *)
+     (* Right shift *)
+     skip. (* TODO *)
+     (* Unsigned right shift *)
+     skip. (* TODO *)
+     (* Lesser *)
+     skip. (* TODO *)
+     (* Greater *)
+     skip. (* TODO *)
+     (* Lesser or equal *)
+     skip. (* TODO *)
+     (* Greater or equal *)
+     skip. (* TODO *)
+     (* Instance of *)
+     unmonad. introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+      (* Abort case *)
+      forwards~ (RC&Cr): IHe (rm HE). applys_and red_expr_binary_op.
+       applys~ red_spec_expr_get_value RC. abort_expr.
+       prove_correct_res. abort_expr.
+      (* Normal case *)
+      forwards~ (RC1&Cr1): IHe (rm HE).
+       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+        applys_and red_expr_binary_op.
+         applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
+         prove_correct_res. abort_expr.
+        applys_and red_expr_binary_op.
+          applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
+         unmonad. introv R E. forwards~ (_&H): IHe (rm R). apply* H.
+          (* Abort case *)
+          forwards~ (RC2&Cr2): IHe (rm HE). prove_correct_res.
+           applys~ red_expr_binary_op_1.
+             applys~ red_spec_expr_get_value RC2. abort_expr.
+           abort_expr.
+          (* Normal case *)
+          forwards~ (RC2&Cr2): IHe (rm HE).
+           inverts HM as HM; simpl_after_regular_lemma; rm_variables.
+            applys_and red_expr_binary_op_1.
+              applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
+             prove_correct_res. abort_expr.
+            applys_and red_expr_binary_op_1.
+              applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
+            applys_and red_expr_binary_op_2. destruct v0.
+             forwards~ (RE&A): run_error_correct H2. prove_correct_res.
+              apply~ red_expr_binary_op_instanceof_non_object.
+              destruct p; discriminate.
+             rewrite_morph_option; tryfalse. simpls. rewrite_morph_option; simpls.
+              substs. applys_and red_expr_binary_op_instanceof_normal.
+               skip. (* TODO *)
+              substs. forwards~ (RE&A): run_error_correct H2. prove_correct_res.
+               unmonad. applys~ red_expr_binary_op_instanceof_non_instance R.
+     (* In *)
+     skip. (* TODO *)
+     (* Equal *)
+     skip. (* TODO *)
+
+     (* Disequal *)
+     skip. (* TODO *)
+     (* Strict equal *)
+     skip. (* TODO *)
+     (* Strict disequal *)
+     skip. (* TODO *)
+     (* Bitwise and *)
+     skip. (* TODO *)
+     (* Bitwise or *)
+     skip. (* TODO *)
+     (* Bitwise xor *)
+     skip. (* TODO *)
+     (* And *)
+     skip. (* TODO *)
+     (* Or *)
+     skip. (* TODO *)
+     (* Comma *)
+     skip. (* TODO *)
     (* conditionnal *)
     skip. (* TODO *)
     (* assign *)
@@ -1001,7 +1177,14 @@ Proof.
      skip. (* TODO *)
 
    (* HasInstance *)
-   skip. (* TODO *)
+   intros S C lo lv S' res R. simpls. rewrite_morph_option; tryfalse.
+    simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
+     destruct p; inverts R. prove_correct_res.
+      apply~ red_spec_function_has_instance_3_null.
+     cases_if.
+      substs. inverts R. prove_correct_res. apply~ red_spec_function_has_instance_3_eq.
+      applys_and red_spec_function_has_instance_3_neq n.
+       forwards~: IHhi C R.
 
    (* While *)
    intros ls e t S C v S' res R. simpls. unfolds in R. applys_and red_stat_while_1.
@@ -1046,9 +1229,9 @@ Proof.
         passing_output K red_expr C p0 o ->
         red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o /\
           (p0 = passing_abort o -> abort o)).
-      introv R'. unmonad_passing.
-      applys_and red_spec_object_get_own_prop_1_default R1.
-      rewrite <- E in R'. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R'.
+      introv R1. unmonad_passing.
+      applys_and red_spec_object_get_own_prop_1_default R2.
+      rewrite <- E in R1. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R1.
        splits. apply~ red_spec_object_get_own_prop_2_some_data. absurd_neg.
        splits. apply~ red_spec_object_get_own_prop_2_none. absurd_neg.
     destruct x0.

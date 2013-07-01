@@ -1081,16 +1081,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_binary_op_instanceof_non_object : forall S C v1 v2 o,
       type_of v2 <> type_object ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_binary_op_3 binary_op_in v1 v2) o
+      red_expr S C (expr_binary_op_3 binary_op_instanceof v1 v2) o
 
   | red_expr_binary_op_instanceof_non_instance : forall S C v1 l o,
       object_has_instance S l None ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
+      red_expr S C (expr_binary_op_3 binary_op_instanceof v1 (value_object l)) o
 
   | red_expr_binary_op_instanceof_normal : forall S C v1 l o,
       red_expr S C (spec_object_has_instance l v1) o ->
-      red_expr S C (expr_binary_op_3 binary_op_in v1 (value_object l)) o
+      red_expr S C (expr_binary_op_3 binary_op_instanceof v1 (value_object l)) o
 
   (** Binary op : in (11.8.7) *)
 
@@ -2048,7 +2048,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_get_binding_value_2 x str l o1) o ->
       red_expr S C (spec_env_record_get_binding_value_1 L x str (env_record_object l pt)) o
 
-  | red_spec_env_record_get_binding_value_2_false : forall S0 C x str l S o,
+  | red_spec_env_record_get_binding_value_obj_2_false : forall S0 C x str l S o,
       red_expr S C (spec_error_or_cst str native_error_ref undef) o ->
       red_expr S0 C (spec_env_record_get_binding_value_2 x str l (out_ter S false)) o
 
@@ -3588,7 +3588,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
    | red_spec_function_has_instance_3_null : forall S C lo, (* Step 4b *)
        red_expr S C (spec_function_has_instance_3 lo null) (out_ter S false)
-      
+
    | red_spec_function_has_instance_3_eq : forall S C lo lv, (* Step 4c *)
        lv = lo ->
        red_expr S C (spec_function_has_instance_3 lo lv) (out_ter S true)

@@ -90,6 +90,9 @@ Inductive result :=
 Definition result_void := result.
 
 (* It can be useful to get details on why a stuck is obtained. *)
+(* The cases where [result_impossible] is directly used are the cases
+  where it has been proven impossible to get it under normal condition.
+  See [JsCorrectness.v] for more details. *)
 Definition impossible_because s := result_impossible.
 Definition impossible_with_heap_because S s := result_impossible.
 
@@ -172,8 +175,7 @@ Definition if_not_throw (o : result) (K : state -> res -> result) : result :=
   if_ter o (fun S0 R =>
     match res_type R with
     | restype_throw => o
-    | _ =>
-        K S0 R
+    | _ => K S0 R
     end).
 
 Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> value -> result) : result :=
@@ -891,7 +893,8 @@ Definition ref_put_value runs S C rv v : result_void :=
       | ref_base_type_env_loc L =>
         env_record_set_mutable_binding runs S C L (ref_name r) v (ref_strict r)
       end
-  | resvalue_empty => impossible_with_heap_because S "[ref_put_value] received an empty result."
+  | resvalue_empty =>
+    impossible_with_heap_because S "[ref_put_value] received an empty result."
   end.
 
 Definition if_success_value runs C (o : result) (K : state -> value -> result) : result :=
@@ -899,7 +902,7 @@ Definition if_success_value runs C (o : result) (K : state -> value -> result) :
     if_success (ref_get_value runs S1 C rv1) (fun S2 rv2 =>
       match rv2 with
       | resvalue_value v => K S2 v
-      | _ => run_error S2 native_error_ref
+      | _ => result_impossible
       end)).
 
 
@@ -2096,7 +2099,7 @@ Fixpoint run_elements runs S C rv (els : list element) {struct els} : result :=
   | nil => out_ter S rv
 
   | element_stat t :: els' =>
-    if_not_throw (run_stat runs S C t) (fun S1 R1 =>
+    if_not_throw (runs_type_stat runs S C t) (fun S1 R1 =>
       let R2 := res_overwrite_value_if_empty rv R1 in
       if_success (out_ter S1 R2) (fun S2 rv2 => (* TODO:  wait for the specification to be updated. *)
         run_elements runs S2 C rv2 els'))
