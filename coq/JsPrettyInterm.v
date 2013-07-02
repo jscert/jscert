@@ -499,6 +499,12 @@ Inductive ext_expr :=
   | spec_call_object_define_properties_X_1:  object_loc -> object_loc -> prop_name -> list prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_define_properties_X_2: object_loc -> object_loc -> prop_name -> list prop_name -> list prop_name -> bool -> ext_expr
 
+  | spec_call_object_create_1: value -> list value -> ext_expr
+  | spec_call_object_create_2: out -> object_loc -> list value -> ext_expr
+  | spec_call_object_create_3: object_loc -> list value -> ext_expr
+  | spec_call_object_create_4: object_loc -> value -> ext_expr
+  | spec_call_object_create_5: object_loc -> ext_expr
+
   | spec_call_object_seal_1 : value -> ext_expr
   | spec_call_object_seal_2 : object_loc -> list prop_name -> ext_expr
   | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
@@ -1086,6 +1092,12 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_define_properties_X _ _ _ _ => None
   | spec_call_object_define_properties_X_1 _ _ _ _ _ _ => None
   | spec_call_object_define_properties_X_2  _ _ _ _ _ _ => None
+
+  | spec_call_object_create_1 _ _ => None
+  | spec_call_object_create_2 o _ _ => Some o
+  | spec_call_object_create_3 _ _ => None
+  | spec_call_object_create_4 _ _ => None
+  | spec_call_object_create_5 _ => None
 
   | spec_call_object_seal_1 _ => None
   | spec_call_object_seal_2 _ _ => None

@@ -235,7 +235,7 @@ Inductive prealloc :=
   | prealloc_object_get_proto_of      (* location to getPrototypeOf function object *)
   | prealloc_object_get_own_prop_descriptor 
   | prealloc_object_get_own_prop_name  (* LATER: support *)
-  | prealloc_object_create  (* LATER: support *)
+  | prealloc_object_create
   | prealloc_object_define_prop
   | prealloc_object_define_properties
   | prealloc_object_seal

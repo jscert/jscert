@@ -3186,7 +3186,60 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
    
   (* LATER: getOwnPropertyNames (requires Array) *)
 
-  (* TODO: create (easy) *)
+
+  (** Object.create (returns object) (15.2.3.5) *)
+
+  (* Daniele: here I get just the first arg, which is mandatory. I'll check the other one later. 
+     not sure if this is the right way of doing it. *)
+  | red_spec_call_object_object_create : forall S C vo o args, (* step 0 *)
+      arguments_from args (vo::nil) ->
+      red_expr S C (spec_call_object_create_1 vo args) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_create args) o
+
+  | red_spec_call_object_object_create_1_not_object : forall S C vo o args, (* step 1 *)
+      type_of vo <> type_object ->
+      red_expr S C (spec_error native_error_type) o ->
+      red_expr S C (spec_call_object_create_1 vo args) o
+
+  | red_spec_call_object_object_create_1_object : forall S C l lp o o1 args, (* step 2 *)
+      red_expr S C (spec_construct_prealloc prealloc_object nil) o1 -> 
+      red_expr S C (spec_call_object_create_2 o1 lp args) o ->
+      red_expr S C (spec_call_object_create_1 lp args) o
+
+  (* Daniele: in the following rule I have to explicitly declare the type of lp as object_loc 
+     otherways I get type error. *) 
+  | red_spec_call_object_object_create_2 : forall S S0 l (lp:object_loc) C o args, (* step 3 *)
+      object_set_property S l "prototype" (attributes_data_intro lp true false true) S0 ->
+      red_expr S0 C (spec_call_object_create_3 l args) o ->
+      red_expr S C (spec_call_object_create_2 (out_ter S l) lp args) o 
+
+  (* Daniele: and here I get the other optional argument, using arguments_from once again... *)  
+  | red_spec_call_object_object_create_3_some : forall S C l vp o args, (* step 4 *)
+      arguments_from args (vp::nil) ->
+      red_expr S C (spec_call_object_create_4 l vp) o->
+      red_expr S C (spec_call_object_create_3 l args) o 
+
+  | red_spec_call_object_object_create_3_none : forall S C l o,
+      red_expr S C (spec_call_object_create_5 l) o ->
+      red_expr S C (spec_call_object_create_3 l nil) o 
+
+  | red_spec_call_object_object_create_4_not_undef : forall S C l vp o (*args*),
+      ~(vp = undef) ->
+      (* Daniele: the following line give type error. What's wrong? It looks ok to me... *)
+      (*red_expr S C (spec_call_prealloc prealloc_object_define_properties (l::vp::nil)) o ->*)
+      red_expr S C (spec_call_object_create_4 l vp) o
+
+  | red_spec_call_object_object_create_4_undef : forall S C l o,
+      red_expr S C (spec_call_object_create_5 l) o ->
+      red_expr S C (spec_call_object_create_4 l undef) o
+
+  | red_spec_call_object_object_create_5 : forall S C l, (* step 5 *)
+      red_expr S C (spec_call_object_create_5 l) (out_ter S l)
+
+
+
+
+
 
   (** Object.defineProperty (returns object) (15.2.3.6) *)
 
