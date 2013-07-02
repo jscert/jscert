@@ -966,13 +966,55 @@ Definition element_funcdecl (el : element) : list funcdecl :=
 Definition prog_funcdecl (p : prog) : list funcdecl :=
   LibList.concat (LibList.map element_funcdecl (prog_elements p)).
 
+(* We follow the spec according to Sections 10.5 and 10.1.
+   10.5 tells us to fetch every variable declaration in the code.
+   10.1 tells us not to step inside function bodies. *)
+
 Fixpoint stat_vardecl (t : stat) : list string :=
   match t with
-  | stat_var_decl nes => LibList.map fst nes
+  | stat_expr _ => nil
+  | stat_label _ s => stat_vardecl s
   | stat_block ts => LibList.concat (List.map stat_vardecl ts) (* Note: use List instead of LibList for fixpoint to be accepted *)
-  (* TODO: stat_vardecl : stat_for_in_var *)
-  | _ => nil
+  | stat_var_decl nes => LibList.map fst nes
+  | stat_if e s1 s2o => (stat_vardecl s1) ++
+                        (LibOption.unsome_default 
+                           nil
+                           (LibOption.map stat_vardecl s2o))
+  | stat_do_while _ s _ => stat_vardecl s
+  | stat_while _ _ s => stat_vardecl s
+  | stat_with _ s => stat_vardecl s
+  | stat_throw _ => nil
+  | stat_return _ => nil
+  | stat_break _ => nil
+  | stat_continue _ => nil
+  | stat_try s sco sfo => (stat_vardecl s) ++
+                          (LibOption.unsome_default 
+                             nil
+                             (LibOption.map 
+                                (fun x => stat_vardecl (snd x)) sco)) ++
+                          (LibOption.unsome_default 
+                             nil
+                             (LibOption.map stat_vardecl sfo))
+  | stat_for_in _ _ _ s => stat_vardecl s
+  | stat_for_in_var _ _ _ _ s => stat_vardecl s
+  | stat_debugger => nil
+  | stat_switch _ sb => switchbody_vardecl sb
+  end
+
+with switchbody_vardecl (sb : switchbody) : list string :=
+  match sb with
+  | switchbody_nodefault scl => LibList.concat (List.map switchclause_vardecl scl)
+  | switchbody_withdefault scl1 sl scl2 =>
+    (LibList.concat (List.map switchclause_vardecl scl1)) ++
+    (LibList.concat (List.map stat_vardecl sl)) ++
+    (LibList.concat (List.map switchclause_vardecl scl2))
+  end
+
+with switchclause_vardecl (sc : switchclause) : list string :=
+  match sc with
+  | switchclause_intro _ sl => LibList.concat (List.map stat_vardecl sl)
   end.
+
 
 Definition element_vardecl (el : element) : list string :=
   match el with
