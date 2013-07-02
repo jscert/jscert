@@ -3234,27 +3234,44 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_properties_2 o1 l) o ->
       red_expr S C (spec_call_object_define_properties_1 l vp) o
 
-  (* Daniele: there is a difference from the spec here. While the spec says we should get the 
-     list of all the enumerable own properties, here we get the list of all the properties 
-     (enumerable or not), and we make the check later while iterating the list. *)
-
-  | red_spec_call_object_object_define_properties_2 : forall S C l l1 xs o o1, (* steps 3, 4 *)
+  | red_spec_call_object_object_define_properties_2 : forall S C l l1 xs o o1, (* step 3 *) 
       object_properties_keys_as_list S l1 xs ->
-      red_expr S C (spec_call_object_define_properties_3 l l1 xs nil) o ->
+      red_expr S C (spec_call_object_define_properties_X l l1 xs nil) o ->
       red_expr S C (spec_call_object_define_properties_2 (out_ter S l1) l) o
 
+ (* Daniele: here we filter the list. I called this rules 'X' in order to avoid renaming everything. I'll do later.  *)  
+  | red_spec_call_object_object_define_properties_X_cons : forall S C x xs xsfiltered l l1 xs o o1, (* step 3 ... *)
+      red_expr S C (spec_object_get_own_prop l1 x (spec_call_object_define_properties_X_1 l l1 x xs xsfiltered)) o ->  
+      red_expr S C (spec_call_object_define_properties_X l l1 (x::xs) xsfiltered) o 
+
+  | red_spec_call_object_object_define_properties_X_1: forall S C A l l1 b x xs xsfiltered o, (* step 3 ... *)
+      b = attributes_enumerable A ->
+      red_expr S C (spec_call_object_define_properties_X_2 l l1 x xs xsfiltered b) o ->
+      red_expr S C (spec_call_object_define_properties_X_1 l l1 x xs xsfiltered A) o 
+
+  | red_spec_call_object_object_define_properties_X_2_enumerable: forall S C A l l1 b x xs xsfiltered o, (* step 3 ... *)
+      red_expr S C (spec_call_object_define_properties_X l l1 xs (x::xsfiltered)) o ->
+      red_expr S C (spec_call_object_define_properties_X_2 l l1 x xs xsfiltered true) o 
+
+  | red_spec_call_object_object_define_properties_X_2_not_enumerable: forall S C A l l1 b x xs xsfiltered o, (* step 3 ... *)
+      red_expr S C (spec_call_object_define_properties_X l l1 xs xsfiltered) o ->
+      red_expr S C (spec_call_object_define_properties_X_2 l l1 x xs xsfiltered false) o 
+
+  | red_spec_call_object_object_define_properties_X_nil : forall S C l l1 xsfiltered o o1, (* step 4 *)
+      red_expr S C (spec_call_object_define_properties_3 l l1 xsfiltered nil) o -> 
+      red_expr S C (spec_call_object_define_properties_X l l1 nil xsfiltered) o 
+(* --- *)
+
+  (* Here we do exactly what the spec says, starting with the list already filtered *)
   | red_spec_call_object_define_properties_3_cons : forall S C l l1 x xs Descs o, (* step 5, cons*)
-      red_expr S C (spec_object_get_own_prop l1 x (spec_call_object_define_properties_4 l l1 x xs Descs)) o ->
+      red_expr S C (spec_call_object_define_properties_6 l l1 x xs Descs) o ->
       red_expr S C (spec_call_object_define_properties_3 l l1 (x::xs) Descs) o
 
   | red_spec_call_object_define_properties_3_nil : forall S C l l1 Descs o, (* step 5, nil *)
       red_expr S C (spec_call_object_define_properties_9 l Descs) o ->
       red_expr S C (spec_call_object_define_properties_3 l l1 nil Descs) o
 
-  (* Daniele: here we check, for each element of the property list, wether it is enumerable or not, 
-     and we proceed with the next steps only if it is. Otherwise, we just skip the element, and 
-     continue processing the rest of the list  *)
-
+  (* Daniele: old, remove if safe
   | red_spec_call_object_define_properties_4 : forall S C l l1 x xs A b o Descs, 
       b = attributes_enumerable A ->
       red_expr S C (spec_call_object_define_properties_5 l l1 x xs Descs b) o ->
@@ -3267,7 +3284,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_define_properties_5_not_enumerable : forall S C l l1 x xs Descs o, 
       red_expr S C (spec_call_object_define_properties_3 l l1 xs Descs) o ->
       red_expr S C (spec_call_object_define_properties_5 l l1 x xs Descs false) o
-  (* --- *)
+  *)
 
   | red_spec_call_object_define_properties_6: forall S C l l1 x xs Descs o o1, (* step 5.a *)
       red_expr S C (spec_object_get l1 x) o1 -> 
@@ -3294,6 +3311,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_define_properties_9_nil: forall S C l, (* step 7 *)
       red_expr S C (spec_call_object_define_properties_9 l nil) (out_ter S l)
  
+
 
   (** Seal (returns Object) (15.2.3.8) *)
 
