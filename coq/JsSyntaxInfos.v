@@ -60,7 +60,8 @@ with add_infos_stat str labs t :=
   let fo := opt f in
   let fe := add_infos_exp str in
   let feo := opt fe in
-  match t with 
+  let fsb := add_infos_switchbody str in
+  match t with
     | stat_expr e => stat_expr (fe e)
     | stat_label l t => stat_label l (add_infos_stat str (label_set_add l labs) t)
     | stat_block ts => stat_block (List.map f ts)
@@ -79,9 +80,23 @@ with add_infos_stat str labs t :=
     | stat_for_in _ e1 e2 t => stat_for_in (label_set_add_empty labs) (fe e1) (fe e2) (f t)
     | stat_for_in_var _ str eo e t => stat_for_in_var (label_set_add_empty labs) str (feo eo) (fe e) (f t)
     | stat_debugger => stat_debugger
-    | stat_switch e ts => stat_switch e ts (* Daniele: I don't know what to do here. *)
+    | stat_switch e ts => stat_switch (fe e) (fsb ts)
   end
 
+(** Propagate through switch *)
+
+with add_infos_switchbody str ts :=
+  let fe := add_infos_exp str in
+  let fs := add_infos_stat str label_set_empty in
+  let f sc :=
+    match sc with
+    | switchclause_intro e l => switchclause_intro (fe e) (List.map fs l)
+    end in
+  match ts with
+  | switchbody_nodefault l => switchbody_nodefault (List.map f l)
+  | switchbody_withdefault l1 s l2 =>
+    switchbody_withdefault (List.map f l1) (List.map fs s) (List.map f l2)
+  end
 (** Propagate through programs *)
 
 with add_infos_prog str p :=
