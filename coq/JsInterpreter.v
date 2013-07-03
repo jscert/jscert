@@ -132,18 +132,6 @@ Definition if_empty_label S R (K : unit -> result) : result :=
   else
     impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
 
-Definition if_bool_option (A : Type) (d : A) (bo : option bool) (K1 : unit -> A) (K2 : unit -> A) : A :=
-  match bo with
-  | None => d
-  | Some b =>
-    if b then K1 tt else K2 tt
-  end.
-
-Definition if_bool_option_result bo K1 K2 :=
-  if_bool_option
-    (fun _ => impossible_because "[if_bool_option_result] called with [None].")
-    bo (fun _ => K1) (fun _ => K2) tt.
-
 Definition if_some {A : Type} (op : option A) (K : A -> result) : result :=
   match op with
   | None => impossible_because "[if_some] called with [None]."
@@ -239,29 +227,13 @@ Definition if_bool (o : result) (K : state -> bool -> result) : result :=
     | _ => impossible_with_heap_because S "[if_bool] called with non-boolean value."
     end).
 
-Definition if_success_bool (o : result) (K1 K2 : state -> result) : result :=
-  if_bool o (fun S b =>
-    let K := if b then K1 else K2 in
-    K S).
-
 Definition if_success_primitive (o : result) (K : state -> prim -> result) : result :=
   if_value o (fun S v =>
     match v with
     | value_prim w => K S w
-    | value_object _ => impossible_with_heap_because S "[if_success_primitive] didn't get a primitive."
+    | value_object _ =>
+      impossible_with_heap_because S "[if_success_primitive] didn't get a primitive."
     end).
-
-Definition if_defined {B : Type} (op : option B) (K : B -> result) : result :=
-  match op with
-  | None => impossible_because "Undefined value in [if_defined]."
-  | Some a => K a
-  end.
-
-Definition if_defined_else {B C : Type} (op : option B) (K : B -> C) (K' : unit -> C) : C :=
-  match op with
-  | None => K' tt
-  | Some a => K a
-  end.
 
 Definition if_object (o : result) (K : state -> object_loc -> result) : result :=
   if_value o (fun S v =>
@@ -357,7 +329,11 @@ Definition result_passing {A : Type} (p : passing A)
     (K : state -> A -> result) : result :=
   match p with
   | passing_normal S0 a => K S0 a
-  | passing_abort r => r
+  | passing_abort r =>
+    if_success r (fun S0 rv =>
+      ifb res_type rv = restype_normal then
+        impossible_with_heap_because S0 "[result_passing] received an aborting value with normal type."
+      else r)
   end.
 
 End InterpreterEliminations.
@@ -903,13 +879,17 @@ Definition ref_put_value runs S C rv v : result_void :=
     impossible_with_heap_because S "[ref_put_value] received an empty result."
   end.
 
+Definition if_get_value_success_value runs S C rv (K : state -> value -> result) : result :=
+  if_success (ref_get_value runs S C rv) (fun S' rv' =>
+    match rv' with
+    | resvalue_value v => K S' v
+    | _ =>
+      impossible_with_heap_because S' "[if_get_value_success_value] did not received a value."
+    end).
+
 Definition if_success_value runs C (o : result) (K : state -> value -> result) : result :=
-  if_success o (fun S1 rv1 =>
-    if_success (ref_get_value runs S1 C rv1) (fun S2 rv2 =>
-      match rv2 with
-      | resvalue_value v => K S2 v
-      | _ => result_impossible
-      end)).
+  if_success o (fun S rv =>
+    if_get_value_success_value runs S C rv K).
 
 
 Definition env_record_create_mutable_binding runs S C L x (deletable_opt : option bool) : result_void :=
@@ -1619,7 +1599,7 @@ Definition run_typeof_value S v :=
 Definition run_unary_op runs S C (op : unary_op) e : result :=
   ifb prepost_unary_op op then
     if_success (runs_type_expr runs S C e) (fun S1 rv1 =>
-      if_success_value runs C (out_ter S1 rv1) (fun S2 v2 =>
+      if_get_value_success_value runs S1 C rv1 (fun S2 v2 =>
         if_number (to_number runs S2 C v2) (fun S3 n1 =>
           if_some (run_prepost_op op) (fun po =>
             let '(number_op, is_pre) := po in
@@ -1656,7 +1636,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
           ifb ref_is_unresolvable r then
             out_ter S1 "undefined"
           else
-            if_success_value runs C (out_ter S1 r) (fun S2 v =>
+            if_get_value_success_value runs S1 C r (fun S2 v =>
               out_ter S2 (run_typeof_value S2 v))
         | resvalue_empty => impossible_with_heap_because S1 "Empty result for a `typeof' in [run_unary_op]."
         end)
@@ -1696,7 +1676,7 @@ Section Interpreter.
 
 Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
   let create_new_function_in S0 args bd :=
-  creating_function_object runs S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
+    creating_function_object runs S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
   match pds with
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
@@ -1794,7 +1774,7 @@ Definition run_expr_assign runs S C (opo : option binary_op) e1 e2 : result :=
     | None =>
       if_success_value runs C (runs_type_expr runs S1 C e2) follow
     | Some op =>
-      if_success_value runs C (out_ter S1 rv1) (fun S2 v1 =>
+      if_get_value_success_value runs S1 C rv1 (fun S2 v1 =>
         if_success_value runs C (runs_type_expr runs S2 C e2) (fun S3 v2 =>
           if_success (run_binary_op runs S3 C op v1 v2) follow))
     end).
@@ -1871,7 +1851,7 @@ Definition is_syntactic_eval e :=
 Definition run_expr_call runs S C e1 e2s : result :=
   let is_eval_direct := is_syntactic_eval e1 in
   if_success (runs_type_expr runs S C e1) (fun S1 rv =>
-    if_success_value runs C (out_ter S1 rv) (fun S2 f =>
+    if_get_value_success_value runs S1 C rv (fun S2 f =>
       run_list_expr runs S2 C nil e2s (fun S3 vs =>
         match f with
         | value_object l =>
