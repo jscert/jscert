@@ -167,7 +167,7 @@ Ltac rewrite_morph_option :=
     let xn := fresh "x" in
     sets_eq <- xn: op;
     destruct xn
-  | H : appcontext [ result_passing ?p ?K ] |- _ =>
+  | H : appcontext [ result_passing ?p ?K ] |- _ => (* I don't think it's a good idea to left it there. *)
     let pn := fresh "p" in
     sets_eq <- pn: p;
     destruct pn
@@ -189,6 +189,8 @@ Ltac name_passing_def :=
     let p := fresh "p" in
     sets_eq <- p: (passing_def o K)
   end.
+
+Hint Constructors abort.
 
 
 (**************************************************************)
@@ -519,7 +521,7 @@ Lemma passing_success_out : forall (A : Type) res K (p : passing A),
 Proof.
   introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
   destruct~ o.
-   branch 3. eexists. splits~. constructors.
+   branch 3. eexists. splits~.
   destruct r as [T R L]. destruct~ T; try solve [ branch 3;
     eexists; splits~; constructors; absurd_neg ]. simpls.
   cases_if.
@@ -539,7 +541,7 @@ Lemma passing_value_out : forall (A : Type) res K (p : passing A),
 Proof.
   introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
   destruct~ o.
-   branch 3. eexists. splits~. constructors.
+   branch 3. eexists. splits~.
   destruct r as [T R L]. destruct~ T; try solve [ branch 3;
     eexists; splits~; constructors; absurd_neg ]. simpls.
   cases_if; destruct R; subst; try (
@@ -645,8 +647,9 @@ Proof.
       apply red_spec_object_get_1_default.
        applys~ H.
        rewrite <- EQp. simpls.
-       rewrite E.
-       apply (passing_output_abort (spec_object_get_2 l l)).
+       deal_with_regular_lemma E if_success_out; substs.
+        apply (passing_output_abort (spec_object_get_2 l l)).
+        cases_if; false.
     introv Hrn; destruct p.
       destruct f; simpls; inverts* E.
       destruct a; simpls; invert H1.
@@ -660,10 +663,8 @@ Proof.
        false.
        asserts Hab : (abort (out_ter S R)).
        symmetry in EQp.
-       applys~ H EQp  (spec_object_get_2 l l).
-       rewrite E.
-       apply (passing_output_abort (spec_object_get_2 l l)).
-       substs~.
+       deal_with_regular_lemma E if_success_out; substs; tryfalse.
+       cases_if; false.
       inverts~ Hab.
 Qed.
 
@@ -689,9 +690,11 @@ Proof.
         forwards*: run_object_get_correct E.
        applys_and red_spec_env_record_get_binding_value_obj_2_false.
         forwards*: out_error_or_cst_correct E.
-     substs. forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0). forwards~ (RH&A): HCa.
-      applys_and red_spec_env_record_get_binding_value_1_object RH.
-      applys_and red_expr_abort A. splits~. absurd_neg. inverts~ A; absurd_neg.
+     deal_with_regular_lemma E if_success_out; substs; tryfalse.
+      forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0). forwards~ (RH&A): HCa.
+       applys_and red_spec_env_record_get_binding_value_1_object RH.
+       applys_and red_expr_abort A. splits~. absurd_neg. inverts~ A; absurd_neg.
+      cases_if; false.
 Qed.
 
 Lemma ref_get_value_correct : forall runs,
@@ -763,7 +766,7 @@ Proof.
     deal_with_regular_lemma E if_value_out; substs.
      forwards~ (E&_): run_object_get_correct RC (rm HE).
       applys~ red_spec_object_default_value_sub_1 E.
-      apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+      apply~ red_expr_abort. absurd_neg.
      forwards~ (E&?): run_object_get_correct RC (rm HE).
       applys~ red_spec_object_default_value_sub_1 E.
       rewrite_morph_option; simpls; tryfalse.
@@ -772,7 +775,7 @@ Proof.
         rewrite res_overwrite_value_if_empty_empty in E2. destruct v; simpls; tryfalse.
         deal_with_regular_lemma E2 if_value_out; substs.
          apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-          apply* RCa. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+          apply* RCa. apply~ red_expr_abort. absurd_neg.
          apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
           apply* RCa. destruct v.
            inverts H1. apply~ red_spec_object_default_value_sub_3_prim.
@@ -782,7 +785,7 @@ Proof.
             deal_with_regular_lemma H1 if_value_out; substs.
              forwards~ (E0&_): run_object_get_correct RC (rm HE0).
               applys~ red_spec_object_default_value_sub_1 E0.
-              apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+              apply~ red_expr_abort. absurd_neg.
              forwards~ (E0&?): run_object_get_correct RC (rm HE0).
               applys~ red_spec_object_default_value_sub_1 E0.
               rewrite_morph_option; simpls; tryfalse.
@@ -792,7 +795,7 @@ Proof.
                 destruct v; simpls; tryfalse.
                 deal_with_regular_lemma E4 if_value_out; substs.
                  apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-                  apply* RCa0. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+                  apply* RCa0. apply~ red_expr_abort. absurd_neg.
                  apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
                   apply* RCa0. destruct v.
                    inverts H4. apply~ red_spec_object_default_value_sub_3_prim.
@@ -808,7 +811,7 @@ Proof.
         deal_with_regular_lemma H0 if_value_out; substs.
          forwards~ (E0&_): run_object_get_correct RC (rm HE).
           applys~ red_spec_object_default_value_sub_1 E0.
-          apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+          apply~ red_expr_abort. absurd_neg.
          forwards~ (E0&?): run_object_get_correct RC (rm HE).
           applys~ red_spec_object_default_value_sub_1 E0.
           rewrite_morph_option; simpls; tryfalse.
@@ -818,7 +821,7 @@ Proof.
             destruct v0; simpls; tryfalse.
             deal_with_regular_lemma E4 if_value_out; substs.
              apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-              apply* RCa0. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+              apply* RCa0. apply~ red_expr_abort. absurd_neg.
              apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
               apply* RCa0. destruct v0.
                inverts H2. apply~ red_spec_object_default_value_sub_3_prim.
@@ -842,7 +845,7 @@ Proof.
     forwards~ DV: object_default_value_correct HE.
      splits; [| intros; false ]. apply~ red_spec_to_string_object.
        applys~ red_spec_to_primitive_pref_object DV.
-     apply~ red_expr_abort. constructors*. absurd_neg.
+     apply~ red_expr_abort. absurd_neg.
     forwards~ DV: object_default_value_correct HE.
      applys_and red_spec_to_string_object.
       applys~ red_spec_to_primitive_pref_object DV.
