@@ -273,24 +273,56 @@ Proof.
   introv Eq. substs~.
 Qed.
 
+Lemma make_delete_event_is_a_function : forall S l x ev ev',
+                                          make_delete_event S l x ev ->
+                                          make_delete_event S l x ev' ->
+                                          ev=ev'.
+Proof.
+  Admitted.                     (* TODO GDS Prove this *)
+
+Global Instance make_delete_event_pickable_option : forall S l x,
+  Pickable_option (make_delete_event S l x).
+Proof.
+  Admitted.                     (* TODO GDS Prove this *)
+
 Definition run_object_rem_property S l x : option state :=
-  option_map
-    (fun S' => state_with_new_event S' (delete_event l x))
+  LibOption.apply
+    (fun S' => option_map (state_with_new_event S')
+                          (pick_option (make_delete_event S' l x)))
     (pick_option (object_heap_map_properties S l (fun P => Heap.rem P x))).
 
 Global Instance object_rem_property_pickable_option : forall S l x,
   Pickable_option (object_rem_property S l x).
 Proof.
-  introv. unfold object_rem_property. 
+  introv. unfold object_rem_property.
   applys pickable_option_make (run_object_rem_property S l x).
-   introv E. forwards (S'&P&E'): option_map_some_back (rm E).
-    exists S'. splits~. apply~ @pick_option_correct.
-  introv [S' [S'' [B E]]]. exists S'. unfolds.
-   forwards Ex: ex_intro B. forwards~ (?&P): @pick_option_defined Ex.
-   applys option_map_some_forw P. forwards C: @pick_option_correct P.
-   generalize (@object_heap_map_is_a_function _ _ _ _ _ B C).
-   introv Eq. substs~.
-Qed.   
+   introv E. 
+   forwards (S'&P&E'): option_apply_some_back (rm E).
+   forwards (ev&A&B): option_map_some_back (rm E').
+    exists S' ev. splits~. apply~ @pick_option_correct.
+   apply~ @pick_option_correct.
+  introv (S' & S'' & ev & P). destructs P. exists S'. unfolds.
+  forwards Ex: ex_intro H.
+  forwards~ (?&P): @pick_option_defined Ex. applys option_apply_some_forw P.
+  forwards~ (?&P2): @pick_option_correct P. destructs P2.
+  destruct H. destructs H. 
+  (* Now by H and H2 I should have x1=x2, and thence by H4 and H3 that S''=x0.  *)
+  assert (x1=x2). unfolds object_binds.
+   generalize (@Heap_binds_func _ _ _ _ _ x2 x1 H H2). auto.
+                          
+  assert (S''=x0). substs~.
+  forwards ExMDE: ex_intro H0.
+  forwards~ (?&MDE): @pick_option_defined (ExMDE). 
+  assert (x3=ev).
+   apply pick_option_correct in MDE.
+   apply make_delete_event_is_a_function with S'' l x.
+    apply MDE.
+   apply H0.
+  substs.
+  applys option_map_some_forw.
+   apply MDE.
+  trivial.
+Qed.
 
 Global Instance descriptor_contains_dec : forall Desc1 Desc2,
   Decidable (descriptor_contains Desc1 Desc2).
