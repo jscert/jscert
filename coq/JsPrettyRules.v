@@ -3209,23 +3209,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Daniele: in the following rule I have to explicitly declare the type of lp as object_loc 
      otherways I get type error. *) 
   | red_spec_call_object_object_create_2 : forall S S0 l (lp:object_loc) C o args, (* step 3 *)
-      object_set_property S l "prototype" (attributes_data_intro lp true false true) S0 ->
+      object_set_property S l "prototype" (attributes_data_intro lp true false true) S0 -> (* The specification said `the [[Prototype]] internal property'.  This is I'm afraid the explicit one. I think I would inlined there the rule [red_spec_call_object_new_1_null_or_undef] (merging steps 2 and 3), replacing the [prealloc_object_proto] in it by this [lp], it seems to be much simpler than trying to change the implicit prototype field of an object. *)
       red_expr S0 C (spec_call_object_create_3 l args) o ->
       red_expr S C (spec_call_object_create_2 (out_ter S l) lp args) o 
 
   (* Daniele: and here I get the other optional argument, using arguments_from once again... *)  
   | red_spec_call_object_object_create_3_some : forall S C l vp o args, (* step 4 *)
-      arguments_from args (vp::nil) ->
+      arguments_from args (vp::nil) -> (* As you didn't changed [args], you can here be sure that [vp = vo], which is not what you want.  I think you wanted to write [arguments_from args _::vp::nil)], which is not really natural:  I think we can take the optional argument directly in the rule [red_spec_call_object_object_create], it would be clearer (I think). *)
       red_expr S C (spec_call_object_create_4 l vp) o->
       red_expr S C (spec_call_object_create_3 l args) o 
 
   | red_spec_call_object_object_create_3_none : forall S C l o,
       red_expr S C (spec_call_object_create_5 l) o ->
-      red_expr S C (spec_call_object_create_3 l nil) o 
+      red_expr S C (spec_call_object_create_3 l nil) o (* [arguments_from] completes empty lists with as many [undef] you want:  this clause is ambiguous with the previous one. *)
 
   | red_spec_call_object_object_create_4_not_undef : forall S C l vp o (*args*),
       ~(vp = undef) ->
-      (* Daniele: the following line give type error. What's wrong? It looks ok to me... *)
+      (* Daniele: the following line give type error. What's wrong? It looks ok to me... *) (* I think this is due to the way coercions are handled in Coq:  just replace [l] by [value_object l] in the following line and it should work fine (I hope). *)
       (*red_expr S C (spec_call_prealloc prealloc_object_define_properties (l::vp::nil)) o ->*)
       red_expr S C (spec_call_object_create_4 l vp) o
 
