@@ -627,7 +627,7 @@ with ext_stat :=
   | stat_switch_nodefault_3: bool -> value -> resvalue -> list stat -> list switchclause -> ext_stat
   | stat_switch_nodefault_4: out -> list switchclause -> ext_stat
   | stat_switch_nodefault_5: resvalue -> list switchclause -> ext_stat
-  | stat_switch_nodefault_6: out -> list switchclause -> ext_stat
+  | stat_switch_nodefault_6: resvalue -> out -> list switchclause -> ext_stat
 
   | stat_switch_default_1: value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_1: value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
@@ -1212,7 +1212,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_switch_nodefault_3 _ _ _ _ _ => None
   | stat_switch_nodefault_4 o _ => Some o
   | stat_switch_nodefault_5 _ _ => None
-  | stat_switch_nodefault_6 o _ => Some o
+  | stat_switch_nodefault_6 _ o _ => Some o
 
   | stat_switch_default_1 _ _ _ _ _ => None
   | stat_switch_default_A_1 _ _ _ _ _ => None 
@@ -1286,18 +1286,18 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
   | abort_intercepted_stat_try_3 : forall S R fo,
       abort_intercepted_stat (stat_try_3 (out_ter S R) fo)
-
-  (* Daniele: not sure about this *)
-  | abort_intercepted_stat_switch_2 : forall lab rv S R,
-      R = res_intro restype_break rv lab ->
+  | abort_intercepted_stat_switch_2 : forall S R,
+      res_type R = restype_break ->
+      (* FOR_DANIELE: need to add a premise
+         res_label_in R labs ->
+         once you've added labs to stat_switch_2 *)
       abort_intercepted_stat (stat_switch_2 (out_ter S R))
-  | abort_intercepted_stat_switch_nodefault_6 : forall S lab rv S R scs,
-      R = res_intro restype_break rv lab ->
-      abort_intercepted_stat (stat_switch_nodefault_6 (out_ter S rv) scs)
-  | abort_intercepted_stat_switch_default_8 : forall S lab rv S R scs,
-      R = res_intro restype_break rv lab ->
-      abort_intercepted_stat (stat_switch_default_8 (out_ter S rv) scs)
-
+  | abort_intercepted_stat_switch_nodefault_6 : forall S rv R scs,
+      ~ res_is_normal R ->
+      abort_intercepted_stat (stat_switch_nodefault_6 rv (out_ter S R) scs)
+  | abort_intercepted_stat_switch_default_8 : forall S R scs,
+      ~ res_is_normal R ->
+      abort_intercepted_stat (stat_switch_default_8 (out_ter S R) scs)
 .
 
 Inductive abort_intercepted_expr : ext_expr -> Prop :=

@@ -340,160 +340,168 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_with_1 t2 l) o
 
   (** Switch statement (12.11) *)
-
+(*!!!ARTHUR!!!*)
   | red_stat_switch : forall S C e o o1 sb,
       red_expr S C (spec_expr_get_value e) o1 ->
       red_stat S C (stat_switch_1 o1 sb) o ->
       red_stat S C (stat_switch e sb) o
 
-  | red_stat_switch_1_nodefault : forall S S0 C v o o1 scs, 
-      red_stat S C (stat_switch_nodefault_1 v resvalue_empty scs) o1 ->
+  | red_stat_switch_1_nodefault : forall S S0 C vi o o1 scs, 
+      red_stat S C (stat_switch_nodefault_1 vi resvalue_empty scs) o1 ->
       red_stat S C (stat_switch_2 o1) o ->
-      red_stat S C (stat_switch_1 (out_ter S0 v) (switchbody_nodefault scs)) o
+      red_stat S C (stat_switch_1 (out_ter S0 vi) (switchbody_nodefault scs)) o
 
-(* case 1 - no default *)
-  | red_stat_switch_1_default: forall S S0 C o o1 v scs1 scs2 ts1, 
-      red_stat S C (stat_switch_default_1 v resvalue_empty scs1 ts1 scs2) o1 ->
+  | red_stat_switch_1_default: forall S S0 C o o1 vi scs1 scs2 ts1, 
+      red_stat S C (stat_switch_default_1 vi resvalue_empty scs1 ts1 scs2) o1 ->
       red_stat S C (stat_switch_2 o1) o ->
-      red_stat S C (stat_switch_1 (out_ter S0 v) (switchbody_withdefault scs1 ts1 scs2)) o
+      red_stat S C (stat_switch_1 (out_ter S0 vi) (switchbody_withdefault scs1 ts1 scs2)) o
 
-  | red_stat_switch_2_break: forall S S0 C R rv lab labs,  (* step 3 *)
+  | red_stat_switch_2_break : forall S S0 C R rv lab labs,  (* step 3 *)
       R = res_intro restype_break rv lab ->
       (* Daniele: problem here. The spec says "If R.type is break and R.target is in the current label set, return (normal, R.value, empty)."
                 I don't understand/know where I can find the 'current label set'. I see that e.g. in 'while' this 'labs' is part of the args, but 
                 it seems it is not the case here... *)
       (*res_label_in R labs ->*)
+      (* FOR_DANIELE: yes, good point, you'll need to add "lab" as an extra argument 
+         to "stat_switch", and also to stat_switch_1 and stat_switch_2 *)
       red_stat S0 C (stat_switch_2 (out_ter S R)) (out_ter S (res_normal rv))
 
-  | red_stat_switch_2_normal: forall S0 S C rv, (* step 4 *)
+  | red_stat_switch_2_normal : forall S0 S C rv, (* step 4 *)
       red_stat S0 C (stat_switch_2 (out_ter S rv)) (out_ter S rv)
 
-  | red_stat_switch_nodefault_1_nil: forall S C v rv o, 
+  (** -- Switch without default case *)
+
+  | red_stat_switch_nodefault_1_nil : forall S C vi rv o, 
       red_stat S C (stat_switch_nodefault_5 rv nil) o ->
-      red_stat S C (stat_switch_nodefault_1 v rv nil) o
+      red_stat S C (stat_switch_nodefault_1 vi rv nil) o
 
-  | red_stat_switch_nodefault_1_cons: forall S C e v rv ts scs o o1, 
+  | red_stat_switch_nodefault_1_cons : forall S C e vi rv ts scs o o1, 
       red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_nodefault_2 o1 v rv ts scs) o ->
-      red_stat S C (stat_switch_nodefault_1 v rv ((switchclause_intro e ts)::scs)) o
+      red_stat S C (stat_switch_nodefault_2 o1 vi rv ts scs) o ->
+      red_stat S C (stat_switch_nodefault_1 vi rv ((switchclause_intro e ts)::scs)) o
 
-  | red_stat_switch_nodefault_2: forall S C S0 b v v1 rv ts scs o, 
-      b = (strict_equality_test v1 v) ->
-      red_stat S C (stat_switch_nodefault_3 b v rv ts scs) o ->
-      red_stat S C (stat_switch_nodefault_2 (out_ter S0 v1) v rv ts scs) o
+  | red_stat_switch_nodefault_2 : forall S0 S C b vi v1 rv ts scs o, 
+      b = (strict_equality_test v1 vi) ->
+      red_stat S C (stat_switch_nodefault_3 b vi rv ts scs) o ->
+      red_stat S0 C (stat_switch_nodefault_2 (out_ter S v1) vi rv ts scs) o
 
-  | red_stat_switch_nodefault_3_false: forall S C v rv scs ts o,  
-      red_stat S C (stat_switch_nodefault_1 v rv scs) o ->
-      red_stat S C (stat_switch_nodefault_3 false v rv ts scs) o 
+  | red_stat_switch_nodefault_3_false : forall S C vi rv scs ts o,  
+      red_stat S C (stat_switch_nodefault_1 vi rv scs) o ->
+      red_stat S C (stat_switch_nodefault_3 false vi rv ts scs) o 
 
-  | red_stat_switch_nodefault_3_true: forall S C ts o o1 scs v rv,  
+  | red_stat_switch_nodefault_3_true : forall S C ts o o1 scs vi rv,  
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_nodefault_4 o1 scs) o ->
-      red_stat S C (stat_switch_nodefault_3 true v rv ts scs) o 
+      red_stat S C (stat_switch_nodefault_3 true vi rv ts scs) o 
 
-  | red_stat_switch_nodefault_4: forall S C v rv scs o, 
-      (*red_stat S C (stat_switch_nodefault_1 v v scs) o ->*)
-      red_stat S C (stat_switch_nodefault_5 v scs) o ->
-      red_stat S C (stat_switch_nodefault_4 (out_ter S v) scs) o
-
-  | red_stat_switch_nodefault_5_nil: forall S C rv, 
-      red_stat S C (stat_switch_nodefault_5 rv nil)  (out_ter S rv)
-
-  | red_stat_switch_nodefault_5_cons: forall S C ts o o1 scs rv e, 
-      red_stat S C (stat_block ts) o1 ->
-      red_stat S C (stat_switch_nodefault_6 o1 scs) o ->
-      red_stat S C (stat_switch_nodefault_5 rv (switchclause_intro e ts::scs)) o
-
-  | red_stat_switch_nodefault_6_not_empty: forall S C rv scs o, 
+  | red_stat_switch_nodefault_4 : forall S C rv scs o, 
       red_stat S C (stat_switch_nodefault_5 rv scs) o ->
-      red_stat S C (stat_switch_nodefault_6 (out_ter S rv) scs) o
+      red_stat S C (stat_switch_nodefault_4 (out_ter S rv) scs) o
 
-  | red_stat_switch_nodefault_6_abrupt: forall S C R scs rv, 
-      ~res_is_normal R ->
-      red_stat S C (stat_switch_nodefault_6 (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
+  | red_stat_switch_nodefault_5_nil : forall S C rv, 
+      red_stat S C (stat_switch_nodefault_5 rv nil) (out_ter S rv)
 
-(* case 2 - default *)
-
-  (* Search A *)
-  | red_stat_switch_default_A_1_nil: forall S C v rv ts1 scs2 o,  
-    red_stat S C (stat_switch_default_B_1 v rv ts1 scs2) o ->
-    red_stat S C (stat_switch_default_A_1 v rv nil ts1 scs2) o
-
-  | red_stat_switch_default_A_1_cons: forall S C e o o1 v rv ts ts1 scs scs2,  
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_default_A_2 o1 v rv ts scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_1 v rv ((switchclause_intro e ts)::scs) ts1 scs2) o
-
-  | red_stat_switch_default_A_2: forall S S0 C b v v1 rv ts scs ts1 scs2 o,  
-      b = (strict_equality_test v1 v) ->
-      red_stat S C (stat_switch_default_A_3 b v rv ts scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_2 (out_ter S0 v1) v rv ts scs ts1 scs2) o
-
-  | red_stat_switch_default_A_3_false: forall S C v rv scs ts ts1 scs2 o,  
-      red_stat S C (stat_switch_default_A_1 v rv scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 false v rv ts scs ts1 scs2) o 
-
-  | red_stat_switch_default_A_3_true: forall S C o1 rv ts scs ts1 scs2 o v,  
+  | red_stat_switch_nodefault_5_cons : forall S C ts o o1 scs rv e, 
       red_stat S C (stat_block ts) o1 ->
-      red_stat S C (stat_switch_default_A_4 o1 v scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 true v rv ts scs ts1 scs2) o
+      red_stat S C (stat_switch_nodefault_6 rv o1 scs) o ->
+      red_stat S C (stat_switch_nodefault_5 rv ((switchclause_intro e ts)::scs)) o
 
-  | red_stat_switch_default_A_4: forall S C v rv scs scs2 ts1 o, 
-      red_stat S C (stat_switch_default_5 v rv ts1 scs) o ->
-      red_stat S C (stat_switch_default_A_4 (out_ter S rv) v scs ts1 scs2) o
+  | red_stat_switch_nodefault_6_normal : forall S C R rv rv' scs o, 
+      rv' = (If (res_value R <> resvalue_empty) then (res_value R) else rv) ->
+      red_stat S C (stat_switch_nodefault_5 rv' scs) o ->
+      red_stat S C (stat_switch_nodefault_6 rv (out_ter S rv) scs) o
 
-  (* Search B *)
-  | red_stat_switch_default_B_1_nil: forall S C v rv ts1 o, 
-    red_stat S C (stat_switch_default_5 v rv ts1 nil) o ->
-    red_stat S C (stat_switch_default_B_1 v rv ts1 nil) o
+  | red_stat_switch_nodefault_6_abrupt : forall S C R R' scs rv, 
+      ~ res_is_normal R ->
+      R' = (res_overwrite_value_if_empty rv R) ->
+      red_stat S C (stat_switch_nodefault_6 rv (out_ter S R) scs) (out_ter S R')
 
-  | red_stat_switch_default_B_1_cons: forall S C e o o1 v rv ts ts1 scs,
+  (** -- Switch with default case *)
+
+  (** ----- Switch with default case: search A *)
+
+  | red_stat_switch_default_A_1_nil : forall S C vi rv ts1 scs2 o,  
+      red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_1 vi rv nil ts1 scs2) o
+
+  | red_stat_switch_default_A_1_cons : forall S C e o o1 vi rv ts ts1 scs scs2,  
       red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_default_B_2 o1 v rv ts ts1 scs) o ->
-      red_stat S C (stat_switch_default_B_1 v rv ts1 ((switchclause_intro e ts)::scs)) o
+      red_stat S C (stat_switch_default_A_2 o1 vi rv ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_1 vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
-  | red_stat_switch_default_B_2: forall S S0 C b v v1 rv ts scs ts1 o,
-      b = (strict_equality_test v1 v) ->
-      red_stat S C (stat_switch_default_B_3 b v rv ts ts1 scs) o ->
-      red_stat S C (stat_switch_default_B_2 (out_ter S0 v1) v rv ts ts1 scs) o
+  | red_stat_switch_default_A_2 : forall S0 S C b vi v1 rv ts scs ts1 scs2 o,  
+      b = (strict_equality_test v1 vi) ->
+      red_stat S C (stat_switch_default_A_3 b vi rv ts scs ts1 scs2) o ->
+      red_stat S0 C (stat_switch_default_A_2 (out_ter S v1) vi rv ts scs ts1 scs2) o
 
-  | red_stat_switch_default_B_3_false: forall S C v rv scs ts ts1 o,
-      red_stat S C (stat_switch_default_B_1 v rv ts1 scs) o ->
-      red_stat S C (stat_switch_default_B_3 false v rv ts ts1 scs) o 
+  | red_stat_switch_default_A_3_false : forall S C vi rv scs ts ts1 scs2 o,  
+      red_stat S C (stat_switch_default_A_1 vi rv scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_3 false vi rv ts scs ts1 scs2) o 
 
-  | red_stat_switch_nodefault_B_3_true: forall S C o1 rv ts scs ts1 o v,
+  | red_stat_switch_default_A_3_true : forall S C o1 rv ts scs ts1 scs2 o vi,  
+      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_switch_default_A_4 o1 vi scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_3 true vi rv ts scs ts1 scs2) o
+
+  | red_stat_switch_default_A_4 : forall S C vi rv scs scs2 ts1 o, 
+      red_stat S C (stat_switch_default_5 vi rv ts1 scs) o ->
+      red_stat S C (stat_switch_default_A_4 (out_ter S rv) vi scs ts1 scs2) o
+
+  (** ----- Switch with default case: search B *)
+
+  | red_stat_switch_default_B_1_nil : forall S C vi rv ts1 o, 
+      red_stat S C (stat_switch_default_5 vi rv ts1 nil) o ->
+      red_stat S C (stat_switch_default_B_1 vi rv ts1 nil) o
+
+  | red_stat_switch_default_B_1_cons : forall S C e o o1 vi rv ts ts1 scs,
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_stat S C (stat_switch_default_B_2 o1 vi rv ts ts1 scs) o ->
+      red_stat S C (stat_switch_default_B_1 vi rv ts1 ((switchclause_intro e ts)::scs)) o
+
+  | red_stat_switch_default_B_2 : forall S S0 C b vi v1 rv ts scs ts1 o,
+      b = (strict_equality_test v1 vi) ->
+      red_stat S C (stat_switch_default_B_3 b vi rv ts ts1 scs) o ->
+      red_stat S C (stat_switch_default_B_2 (out_ter S0 v1) vi rv ts ts1 scs) o
+
+  | red_stat_switch_default_B_3_false : forall S C vi rv scs ts ts1 o,
+      red_stat S C (stat_switch_default_B_1 vi rv ts1 scs) o ->
+      red_stat S C (stat_switch_default_B_3 false vi rv ts ts1 scs) o 
+
+  | red_stat_switch_nodefault_B_3_true : forall S C o1 rv ts scs ts1 o vi,
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_default_B_4 o1 ts1 scs) o ->
-      red_stat S C (stat_switch_default_B_3 true v rv ts ts1 scs) o 
+      red_stat S C (stat_switch_default_B_3 true vi rv ts ts1 scs) o 
 
-  | red_stat_switch_default_B_4: forall S C v rv scs ts1 o,
+  | red_stat_switch_default_B_4 : forall S C rv scs ts1 o,
       red_stat S C (stat_switch_default_7 rv scs) o ->
       red_stat S C (stat_switch_default_B_4 (out_ter S rv) ts1 scs) o
 
-  (* Default *)
-  | red_stat_switch_default_5: forall S C o o1 ts v rv scs,  
+  (** ----- Switch with default case: default *)
+
+  | red_stat_switch_default_5 : forall S C o o1 ts vi rv scs,  
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_default_6 o1 scs) o ->
-      red_stat S C (stat_switch_default_5 v rv ts scs) o 
+      red_stat S C (stat_switch_default_5 vi rv ts scs) o 
 
-  | red_stat_switch_default_6: forall S C o rv scs, 
+  | red_stat_switch_default_6 : forall S C o rv scs, 
       red_stat S C (stat_switch_default_7 rv scs) o ->
       red_stat S C (stat_switch_default_6 (out_ter S rv) scs) o
-   
-  (* end *)
- | red_stat_switch_default_7_nil: forall S C rv, 
+ 
+  (** ----- Switch with default case: end *)
+
+  | red_stat_switch_default_7_nil : forall S C rv, 
       red_stat S C (stat_switch_default_7 rv nil)  (out_ter S rv)
 
-  | red_stat_switch_default_7_cons: forall S C ts rv o o1 scs e, 
+  | red_stat_switch_default_7_cons : forall S C ts rv o o1 scs e, 
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_default_8 o1 scs) o ->
       red_stat S C (stat_switch_default_7 rv ((switchclause_intro e ts)::scs)) o
 
-  | red_stat_switch_default_8_not_empty: forall S C rv scs o, 
+  | red_stat_switch_default_8_not_empty : forall S C rv scs o, 
       red_stat S C (stat_switch_default_7 rv scs) o ->
       red_stat S C (stat_switch_default_8 (out_ter S rv) scs) o
 
-  | red_stat_switch_default_8_abrupt: forall S C R scs rv, 
+  | red_stat_switch_default_8_abrupt : forall S C R scs rv, 
       ~res_is_normal R ->
       red_stat S C (stat_switch_default_8 (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
 
@@ -3187,6 +3195,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* LATER: getOwnPropertyNames (requires Array) *)
 
 
+(* !!!ARTHUR!!! Object.define.properties and Object.create are done, but there are actually 2  small problems with Object.create, 
+*)
   (** Object.create (returns object) (15.2.3.5) *)
 
   (* Daniele: here I get just the first arg, which is mandatory. I'll check the other one later. 
@@ -3271,6 +3281,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_call_object_define_prop_4 l (out_void S)) (out_ter S l)
 
    (** Object.defineProperties (returns object) (15.2.3.7) *)
+
+(*!!!ARTHUR!!!*)
 
   | red_spec_call_object_object_define_properties : forall S C vo vp o args, (* step 0 *)
       arguments_from args (vo::vp::nil) ->
