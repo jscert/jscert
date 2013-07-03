@@ -8,9 +8,9 @@ Implicit Type n : number.
 Implicit Type k : int.
 Implicit Type s : string.
 Implicit Type i : literal.
-Implicit Type l : object_loc.
+Implicit Type l lp : object_loc.
 Implicit Type w : prim.
-Implicit Type v : value.
+Implicit Type v vi vp : value.
 Implicit Type r : ref.
 (*Implicit Type B : builtin.*)
 Implicit Type T : type.
@@ -3195,61 +3195,38 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* LATER: getOwnPropertyNames (requires Array) *)
 
 
-(* !!!ARTHUR!!! Object.define.properties and Object.create are done, but there are actually 2  small problems with Object.create, 
-*)
   (** Object.create (returns object) (15.2.3.5) *)
 
-  (* Daniele: here I get just the first arg, which is mandatory. I'll check the other one later. 
-     not sure if this is the right way of doing it. *)
-  | red_spec_call_object_object_create : forall S C vo o args, (* step 0 *)
-      arguments_from args (vo::nil) ->
-      red_expr S C (spec_call_object_create_1 vo args) o ->
+  | red_spec_call_object_object_create : forall S C vo vp args o, (* step 0 *)
+      arguments_from args (vo::vp::nil) ->
+      red_expr S C (spec_call_object_create_1 vo vp) o ->
       red_expr S C (spec_call_prealloc prealloc_object_create args) o
 
-  | red_spec_call_object_object_create_1_not_object : forall S C vo o args, (* step 1 *)
+  | red_spec_call_object_object_create_1_not_object : forall S C vo vp o, (* step 1 *)
       type_of vo <> type_object ->
+      type_of vo <> type_null ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (spec_call_object_create_1 vo args) o
+      red_expr S C (spec_call_object_create_1 vo vp) o
 
-  | red_spec_call_object_object_create_1_object : forall S C l lp o o1 args, (* step 2 *)
+  | red_spec_call_object_object_create_1_object : forall S C l vo vp o o1, (* step 2 *)
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 -> 
-      red_expr S C (spec_call_object_create_2 o1 lp args) o ->
-      red_expr S C (spec_call_object_create_1 lp args) o
+      red_expr S C (spec_call_object_create_2 o1 vo vp) o ->
+      red_expr S C (spec_call_object_create_1 vo vp) o
 
-  (* Daniele: in the following rule I have to explicitly declare the type of lp as object_loc 
-     otherways I get type error. *) 
-  | red_spec_call_object_object_create_2 : forall S S0 l (lp:object_loc) C o args, (* step 3 *)
-      object_set_property S l "prototype" (attributes_data_intro lp true false true) S0 -> (* The specification said `the [[Prototype]] internal property'.  This is I'm afraid the explicit one. I think I would inlined there the rule [red_spec_call_object_new_1_null_or_undef] (merging steps 2 and 3), replacing the [prealloc_object_proto] in it by this [lp], it seems to be much simpler than trying to change the implicit prototype field of an object. *)
-      red_expr S0 C (spec_call_object_create_3 l args) o ->
-      red_expr S C (spec_call_object_create_2 (out_ter S l) lp args) o 
+  | red_spec_call_object_object_create_2 : forall S S0 C l O O' S' vo vp o, (* step 3 *)
+      object_binds S l O ->
+      O' = object_set_proto O vo ->
+      S' = object_write S l O' ->
+      red_expr S' C (spec_call_object_create_3 l vp) o ->
+      red_expr S0 C (spec_call_object_create_2 (out_ter S l) vo vp) o 
 
-  (* Daniele: and here I get the other optional argument, using arguments_from once again... *)  
-  | red_spec_call_object_object_create_3_some : forall S C l vp o args, (* step 4 *)
-      arguments_from args (vp::nil) -> (* As you didn't changed [args], you can here be sure that [vp = vo], which is not what you want.  I think you wanted to write [arguments_from args _::vp::nil)], which is not really natural:  I think we can take the optional argument directly in the rule [red_spec_call_object_object_create], it would be clearer (I think). *)
-      red_expr S C (spec_call_object_create_4 l vp) o->
-      red_expr S C (spec_call_object_create_3 l args) o 
+  | red_spec_call_object_object_create_3_def : forall S C l vp o, (* step 4 (implicity covering step 5) *)
+      vp <> undef ->
+      red_expr S C (spec_call_object_define_props_1 l vp) o ->
+      red_expr S C (spec_call_object_create_3 l vp) o 
 
-  | red_spec_call_object_object_create_3_none : forall S C l o,
-      red_expr S C (spec_call_object_create_5 l) o ->
-      red_expr S C (spec_call_object_create_3 l nil) o (* [arguments_from] completes empty lists with as many [undef] you want:  this clause is ambiguous with the previous one. *)
-
-  | red_spec_call_object_object_create_4_not_undef : forall S C l vp o (*args*),
-      ~(vp = undef) ->
-      (* Daniele: the following line give type error. What's wrong? It looks ok to me... *) (* I think this is due to the way coercions are handled in Coq:  just replace [l] by [value_object l] in the following line and it should work fine (I hope). *)
-      (*red_expr S C (spec_call_prealloc prealloc_object_define_properties (l::vp::nil)) o ->*)
-      red_expr S C (spec_call_object_create_4 l vp) o
-
-  | red_spec_call_object_object_create_4_undef : forall S C l o,
-      red_expr S C (spec_call_object_create_5 l) o ->
-      red_expr S C (spec_call_object_create_4 l undef) o
-
-  | red_spec_call_object_object_create_5 : forall S C l, (* step 5 *)
-      red_expr S C (spec_call_object_create_5 l) (out_ter S l)
-
-
-
-
-
+  | red_spec_call_object_object_create_3_undef : forall S C l, (* step 5 *)
+      red_expr S C (spec_call_object_create_3 l undef) (out_ter S l)
 
   (** Object.defineProperty (returns object) (15.2.3.6) *)
 
@@ -3280,103 +3257,59 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_object_define_prop_4 : forall S0 S C l, (* Step 5 *)
       red_expr S0 C (spec_call_object_define_prop_4 l (out_void S)) (out_ter S l)
 
-   (** Object.defineProperties (returns object) (15.2.3.7) *)
+  (** Object.defineProperties (returns object) (15.2.3.7) *)
 
-(*!!!ARTHUR!!!*)
+(* FOR_DANIELE: please perform the renaming of the intermediate forms as you suggested;
+ also, please rename prealloc_object_define_properties into prealloc_object_define_props *)
 
-  | red_spec_call_object_object_define_properties : forall S C vo vp o args, (* step 0 *)
+  | red_spec_call_object_object_define_props : forall S C vo vp o args, (* step 0 *)
       arguments_from args (vo::vp::nil) ->
-      red_expr S C (spec_call_object_define_properties_1 vo vp) o ->
+      red_expr S C (spec_call_object_define_props_1 vo vp) o ->
       red_expr S C (spec_call_prealloc prealloc_object_define_properties args) o
  
-  | red_spec_call_object_object_define_properties_1_not_object : forall S C vo vp o, (* step 1 *)
+  | red_spec_call_object_object_define_props_1_not_object : forall S C vo vp o, (* step 1 *)
       type_of vo <> type_object ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (spec_call_object_define_properties_1 vo vp) o
+      red_expr S C (spec_call_object_define_props_1 vo vp) o
 
-  | red_spec_call_object_object_define_properties_1_object : forall S C l vp o o1, (* step 2 *)
+  | red_spec_call_object_object_define_props_1_object : forall S C l vp o o1, (* step 2 *)
       red_expr S C (spec_to_object vp) o1 ->
-      red_expr S C (spec_call_object_define_properties_2 o1 l) o ->
-      red_expr S C (spec_call_object_define_properties_1 l vp) o
+      red_expr S C (spec_call_object_define_props_2 o1 l) o ->
+      red_expr S C (spec_call_object_define_props_1 l vp) o
 
-  | red_spec_call_object_object_define_properties_2 : forall S C l l1 xs o o1, (* step 3 *) 
-      object_properties_keys_as_list S l1 xs ->
-      red_expr S C (spec_call_object_define_properties_X l l1 xs nil) o ->
-      red_expr S C (spec_call_object_define_properties_2 (out_ter S l1) l) o
+  | red_spec_call_object_object_define_props_2 : forall S0 S C l lp xs o o1, (* step 3 and 4 *) 
+      object_properties_enumerable_keys_as_list S lp xs ->
+      red_expr S C (spec_call_object_define_props_6 l lp xs nil) o ->
+      red_expr S0 C (spec_call_object_define_props_2 (out_ter S lp) l) o
 
- (* Daniele: here we filter the list. I called this rules 'X' in order to avoid renaming everything. I'll do later.  *)  
-  | red_spec_call_object_object_define_properties_X_cons : forall S C x xs xsfiltered l l1 xs o o1, (* step 3 ... *)
-      red_expr S C (spec_object_get_own_prop l1 x (spec_call_object_define_properties_X_1 l l1 x xs xsfiltered)) o ->  
-      red_expr S C (spec_call_object_define_properties_X l l1 (x::xs) xsfiltered) o 
+  | red_spec_call_object_define_props_6_nil : forall S C l lp Descs o, (* step 5 (end loop) *)
+      red_expr S C (spec_call_object_define_props_9 l Descs) o ->
+      red_expr S C (spec_call_object_define_props_6 l lp nil Descs) o
 
-  | red_spec_call_object_object_define_properties_X_1: forall S C A l l1 b x xs xsfiltered o, (* step 3 ... *)
-      b = attributes_enumerable A ->
-      red_expr S C (spec_call_object_define_properties_X_2 l l1 x xs xsfiltered b) o ->
-      red_expr S C (spec_call_object_define_properties_X_1 l l1 x xs xsfiltered A) o 
+  | red_spec_call_object_define_props_6_cons : forall S C l lp x xs Descs o o1, (* step 5 and 5.a *)
+      red_expr S C (spec_object_get lp x) o1 -> 
+      red_expr S C (spec_call_object_define_props_7 o1 l lp x xs Descs) o ->
+      red_expr S C (spec_call_object_define_props_6 l lp (x::xs) Descs) o
 
-  | red_spec_call_object_object_define_properties_X_2_enumerable: forall S C A l l1 b x xs xsfiltered o, (* step 3 ... *)
-      red_expr S C (spec_call_object_define_properties_X l l1 xs (x::xsfiltered)) o ->
-      red_expr S C (spec_call_object_define_properties_X_2 l l1 x xs xsfiltered true) o 
+  | red_spec_call_object_define_props_7 : forall S0 S C v l lp o o1 x xs Descs, (* step 5.b *)
+      red_expr S C (spec_to_descriptor v (spec_call_object_define_props_8 l lp x xs Descs)) o1 -> 
+      red_expr S0 C (spec_call_object_define_props_7 (out_ter S v) l lp x xs Descs) o
 
-  | red_spec_call_object_object_define_properties_X_2_not_enumerable: forall S C A l l1 b x xs xsfiltered o, (* step 3 ... *)
-      red_expr S C (spec_call_object_define_properties_X l l1 xs xsfiltered) o ->
-      red_expr S C (spec_call_object_define_properties_X_2 l l1 x xs xsfiltered false) o 
+  | red_spec_call_object_define_props_8 : forall S C A l lp o o1 x xs Descs, (* step 5.c *)
+      red_expr S C (spec_call_object_define_props_6 l lp xs (Descs++(x,A)::nil)) o ->
+      red_expr S C (spec_call_object_define_props_8 l lp x xs Descs A) o
 
-  | red_spec_call_object_object_define_properties_X_nil : forall S C l l1 xsfiltered o o1, (* step 4 *)
-      red_expr S C (spec_call_object_define_properties_3 l l1 xsfiltered nil) o -> 
-      red_expr S C (spec_call_object_define_properties_X l l1 nil xsfiltered) o 
-(* --- *)
-
-  (* Here we do exactly what the spec says, starting with the list already filtered *)
-  | red_spec_call_object_define_properties_3_cons : forall S C l l1 x xs Descs o, (* step 5, cons*)
-      red_expr S C (spec_call_object_define_properties_6 l l1 x xs Descs) o ->
-      red_expr S C (spec_call_object_define_properties_3 l l1 (x::xs) Descs) o
-
-  | red_spec_call_object_define_properties_3_nil : forall S C l l1 Descs o, (* step 5, nil *)
-      red_expr S C (spec_call_object_define_properties_9 l Descs) o ->
-      red_expr S C (spec_call_object_define_properties_3 l l1 nil Descs) o
-
-  (* Daniele: old, remove if safe
-  | red_spec_call_object_define_properties_4 : forall S C l l1 x xs A b o Descs, 
-      b = attributes_enumerable A ->
-      red_expr S C (spec_call_object_define_properties_5 l l1 x xs Descs b) o ->
-      red_expr S C (spec_call_object_define_properties_4 l l1 x xs Descs A) o
-
-  | red_spec_call_object_define_properties_5_enumerable : forall S C l l1 x xs A b o Descs, 
-      red_expr S C (spec_call_object_define_properties_6 l l1 x xs Descs) o ->
-      red_expr S C (spec_call_object_define_properties_5 l l1 x xs Descs true) o
-
-  | red_spec_call_object_define_properties_5_not_enumerable : forall S C l l1 x xs Descs o, 
-      red_expr S C (spec_call_object_define_properties_3 l l1 xs Descs) o ->
-      red_expr S C (spec_call_object_define_properties_5 l l1 x xs Descs false) o
-  *)
-
-  | red_spec_call_object_define_properties_6: forall S C l l1 x xs Descs o o1, (* step 5.a *)
-      red_expr S C (spec_object_get l1 x) o1 -> 
-      red_expr S C (spec_call_object_define_properties_7 o1 l l1 x xs Descs) o ->
-      red_expr S C (spec_call_object_define_properties_6 l l1 x xs Descs) o
-
-  | red_spec_call_object_define_properties_7: forall S C v l l1 o o1 x xs Descs, (* step 5.b *)
-      red_expr S C (spec_to_descriptor v (spec_call_object_define_properties_8 l l1 x xs Descs)) o1 -> 
-      red_expr S C (spec_call_object_define_properties_7 (out_ter S v) l l1 x xs Descs) o
-
-  | red_spec_call_object_define_properties_8: forall S C A l l1 o o1 x xs Descs, (* step 5.c *)
-      red_expr S C (spec_call_object_define_properties_3 l l1 xs ((x,A)::Descs)) o ->
-      red_expr S C (spec_call_object_define_properties_8 l l1 x xs Descs A) o
-
-  | red_spec_call_object_define_properties_9_cons: forall S C l x A Descs o , (* step 6 *)
-      red_expr S C (spec_call_object_define_properties_10 l (x, A) Descs) o ->
-      red_expr S C (spec_call_object_define_properties_9 l ((x, A)::Descs)) o
-  
-  | red_spec_call_object_define_properties_10: forall S C A l x A o1 o Descs, (* steps 6.a, 6.b, 6.c *)
+  | red_spec_call_object_define_props_9_cons : forall S C l x A Descs o1 o , (* step 6 *)
      red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A) throw_true) o1 ->
-     red_expr S C (spec_call_object_define_properties_9 l Descs) o ->
-     red_expr S C (spec_call_object_define_properties_10 l (x, A) Descs) o
+     red_expr S C (spec_call_object_define_props_10 o1 l Descs) o ->
+     red_expr S C (spec_call_object_define_props_9 l ((x,A)::Descs)) o
 
-  | red_spec_call_object_define_properties_9_nil: forall S C l, (* step 7 *)
-      red_expr S C (spec_call_object_define_properties_9 l nil) (out_ter S l)
- 
+  | red_spec_call_object_define_props_10 : forall S0 S C l Descs b o, (* step 6 (end loop) *)
+     red_expr S C (spec_call_object_define_props_9 l Descs) o ->
+     red_expr S0 C (spec_call_object_define_props_10 (out_ter S b) l Descs) o  
 
+  | red_spec_call_object_define_props_9_nil : forall S C l, (* step 7 *)
+      red_expr S C (spec_call_object_define_props_9 l nil) (out_ter S l)
 
   (** Seal (returns Object) (15.2.3.8) *)
 
