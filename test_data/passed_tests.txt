@@ -820,12 +820,15 @@ tests/test262/ch12/12.6/12.6.3/S12.6.3_A8.1_T1.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A6_T3.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A6_T4.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A4_T1.js
+tests/test262/ch12/12.6/12.6.2/S12.6.2_A4_T3.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A5.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A6_T1.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A1.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A15.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A14_T2.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A6_T2.js
+tests/test262/ch12/12.6/12.6.2/S12.6.2_A4_T2.js
+tests/test262/ch12/12.6/12.6.2/S12.6.2_A4_T4.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A14_T1.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A2.js
 tests/test262/ch12/12.6/12.6.2/S12.6.2_A3.js
@@ -894,6 +897,7 @@ tests/test262/ch12/12.10/S12.10_A3.8_T2.js
 tests/test262/ch12/12.10/S12.10_A3.2_T3.js
 tests/test262/ch12/12.10/S12.10_A3.11_T2.js
 tests/test262/ch12/12.10/S12.10_A3.7_T5.js
+tests/test262/ch12/12.10/S12.10_A1.6_T3.js
 tests/test262/ch12/12.10/S12.10_A3.12_T5.js
 tests/test262/ch12/12.10/S12.10_A1.8_T5.js
 tests/test262/ch12/12.10/S12.10_A3.6_T1.js
@@ -924,6 +928,7 @@ tests/test262/ch12/12.10/S12.10_A3.12_T2.js
 tests/test262/ch12/12.10/S12.10_A3.7_T4.js
 tests/test262/ch12/12.10/S12.10_A1.7_T5.js
 tests/test262/ch12/12.10/S12.10_A3.7_T3.js
+tests/test262/ch12/12.10/S12.10_A1.1_T3.js
 tests/test262/ch12/12.10/S12.10_A3.11_T4.js
 tests/test262/ch12/12.10/S12.10_A3.1_T3.js
 tests/test262/ch12/12.10/12.10.1/12.10.1-11gs.js
@@ -993,6 +998,7 @@ tests/test262/ch12/12.8/S12.8_A8_T2.js
 tests/test262/ch12/12.8/S12.8_A5_T2.js
 tests/test262/ch12/12.8/S12.8_A1_T4.js
 tests/test262/ch12/12.8/S12.8_A8_T1.js
+tests/test262/ch12/12.2/S12.2_A6_T1.js
 tests/test262/ch12/12.2/S12.2_A8_T5.js
 tests/test262/ch12/12.2/S12.2_A3.js
 tests/test262/ch12/12.2/S12.2_A8_T6.js
@@ -1007,6 +1013,7 @@ tests/test262/ch12/12.2/S12.2_A8_T8.js
 tests/test262/ch12/12.2/S12.2_A4.js
 tests/test262/ch12/12.2/S12.2_A8_T3.js
 tests/test262/ch12/12.2/S12.2_A8_T4.js
+tests/test262/ch12/12.2/S12.2_A6_T2.js
 tests/test262/ch12/12.7/S12.7_A5_T3.js
 tests/test262/ch12/12.7/S12.7_A8_T2.js
 tests/test262/ch12/12.7/S12.7_A1_T3.js
@@ -1022,6 +1029,7 @@ tests/test262/ch14/14.1/14.1-5gs.js
 tests/test262/ch14/14.0/S14_A5_T1.js
 tests/test262/ch14/14.0/S14_A5_T2.js
 tests/test262/ch14/14.0/S14_A2.js
+tests/test262/ch14/14.0/S14_A1.js
 tests/test262/ch14/14.0/S14_A3.js
 tests/test262/ch10/10.6/S10.6_A3_T4.js
 tests/test262/ch10/10.6/10.6-2gs.js
@@ -1401,6 +1409,7 @@ tests/test262/ch15/15.3/15.3.4/15.3.4.2/S15.3.4.2_A16.js
 tests/test262/ch15/15.3/15.3.4/15.3.4.2/S15.3.4.2_A6.js
 tests/test262/ch15/15.3/15.3.4/15.3.4.2/S15.3.4.2_A14.js
 tests/test262/ch15/15.3/15.3.4/S15.3.4_A3_T2.js
+tests/test262/ch15/15.3/15.3.4/S15.3.4_A2_T3.js
 tests/test262/ch15/15.3/15.3.4/S15.3.4_A2_T2.js
 tests/test262/ch15/15.3/15.3.4/15.3.4.5/S15.3.4.5_A15.js
 tests/test262/ch15/15.3/15.3.4/15.3.4.5/S15.3.4.5_A13.js
