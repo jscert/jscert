@@ -359,6 +359,7 @@ Definition object_set_property S l x A :=
 searching the prototype chain of l in S for a field named x will be
 res. If it finds it, we get Some result, otherwise None *)
 
+(* Daniele: moved to JSPrettyRules
 Inductive search_proto_chain : state -> object_loc -> prop_name -> option object_loc -> Prop :=
   | search_proto_chain_found : forall S l x,
                                  object_has_property S l x ->
@@ -372,24 +373,26 @@ Inductive search_proto_chain : state -> object_loc -> prop_name -> option object
                                      object_proto S l (value_object l') ->
                                      search_proto_chain S l' x res ->
                                      search_proto_chain S l x res).
+*)
 
 (** [make_delete_event S l x ev] constructs a delete_event "ev" which
 records the deletion of the property (l,x) in the state S. *)
 
+(* Daniele: moved to JSPrettyRules
 Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop :=
   | make_delete_event_intro : forall S l x res ev,
                                 search_proto_chain S l x res ->
                                 ev = delete_event l x res ->
                                 make_delete_event S l x ev.
+*)
 
 (** [object_rem_property S l x A] removes from the object stored
     at address [l] in [S] the property named [x]; The operation
     returns the updated state. *)
 
 Definition object_rem_property S l x S' :=
-  exists S'' ev, object_heap_map_properties S l (fun P => Heap.rem P x) S''
-              /\ make_delete_event S'' l x ev
-              /\ S' = state_with_new_event S'' ev.
+  object_heap_map_properties S l (fun P => Heap.rem P x) S'.
+  
 
 (** Smart constructor for building a new object with the default 
     behavior of the get method, and the extensible property to true. *)

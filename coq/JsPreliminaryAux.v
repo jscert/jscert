@@ -2,6 +2,7 @@ Set Implicit Arguments.
 Require Import Shared.
 Require Export JsSyntax JsSyntaxAux JsPreliminary.
 
+
 (**************************************************************)
 (** ** Implicit Types *)
 
@@ -261,6 +262,7 @@ Proof.
    forwards: @Heap_binds_func B C. typeclass. substs~.
 Qed.
 
+(*
 Lemma object_heap_map_is_a_function : forall S l F S' S'',
                                         object_heap_map_properties S l F S' ->
                                         object_heap_map_properties S l F S'' ->
@@ -272,28 +274,104 @@ Proof.
   generalize (@Heap_binds_func _ _ _ _ _ O1 O2 P1a P2a).
   introv Eq. substs~.
 Qed.
+*)
 
+(* Daniele: auxiliary lemma for proving make_delete_event_is_a_function. 
+   TODO: I guess style is not the best. *)
+
+(*
+Lemma search_proto_chain_is_a_function : forall S l x res res',  
+                                           search_proto_chain S l x res ->
+                                           search_proto_chain S l x res' ->
+                                           res = res'.
+Proof.
+  intros S l x res res' H1 H2. 
+  induction H1. 
+    (* Base case: found *)
+    destruct H2. 
+      (* found *)
+      auto. 
+      (* not found *)
+      false. 
+      (* Inductive *)
+      false.
+    (* Base case: not found *)
+    destruct H2. 
+      (* found *)
+      false. 
+      (* not found *)
+      auto.
+      (* inductive *)
+      destruct H2. destruct H0. destruct H0. destruct H2.
+       unfold object_binds in H2, H0. forwards: Heap_binds_func H0 H2.
+          typeclass.
+       false.
+    (* Inductive case *)
+    destruct H2.
+      (* found *)
+      false.
+      (* not found *)      
+      destruct H0. destruct H3. destruct H0. destruct H3.
+      unfold object_binds in H0, H3. forwards: Heap_binds_func H0 H3.
+        typeclass.
+        subst.
+        false.
+      (* inductive *)
+      destruct H0. destruct H3. destruct H0. destruct H3.
+      unfold object_binds in H0, H3. forwards: Heap_binds_func H0 H3.
+        typeclass.
+        subst.
+        rewrite H6 in H5. inverts H5. apply IHsearch_proto_chain. auto.
+Qed.
+*)
+
+(*
 Lemma make_delete_event_is_a_function : forall S l x ev ev',
                                           make_delete_event S l x ev ->
                                           make_delete_event S l x ev' ->
                                           ev=ev'.
 Proof.
-  Admitted.                     (* TODO GDS Prove this *)
+  intros S l x ev ev' H1 H2. 
+  destruct H1 as [S l x res ev P1 E1].
+  destruct H2 as [S' l' x' res' ev' P2 E2]. 
+  forwards: search_proto_chain_is_a_function P1 P2.
+  subst. trivial.
+Qed.
+*)
 
+(* Daniele: remove
+Fixpoint run_search_proto_chain S l x : option object_loc := 
+  match (decide (object_has_property S l x)) with 
+    | true => Some l
+    | false => match (pick_option (object_proto S l)) with 
+      | Some prim_null => None
+      | Some (value_object l') => run_search_proto_chain S l' x
+      | _ => None
+    end
+end.
+*) 
+
+(*
 Global Instance make_delete_event_pickable_option : forall S l x,
   Pickable_option (make_delete_event S l x).
 Proof.
-  Admitted.                     (* TODO GDS Prove this *)
+  Admitted.
+*)
 
+
+(* Daniele: remove
 Definition run_object_rem_property S l x : option state :=
   LibOption.apply
     (fun S' => option_map (state_with_new_event S')
                           (pick_option (make_delete_event S' l x)))
     (pick_option (object_heap_map_properties S l (fun P => Heap.rem P x))).
+*)
 
+(* Daniele: remove
 Global Instance object_rem_property_pickable_option : forall S l x,
   Pickable_option (object_rem_property S l x).
 Proof.
+
   introv. unfold object_rem_property.
   applys pickable_option_make (run_object_rem_property S l x).
    introv E. 
@@ -323,6 +401,7 @@ Proof.
    apply MDE.
   trivial.
 Qed.
+*)
 
 Global Instance descriptor_contains_dec : forall Desc1 Desc2,
   Decidable (descriptor_contains Desc1 Desc2).
