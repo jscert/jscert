@@ -265,7 +265,7 @@ Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
       impossible_with_heap_because S "[if_primitive] called on an object."
     end).
 
-Definition if_def {A B : Type} (o : option B) (d : A) (K : B -> A) : A :=
+Definition if_some_or_default {A B : Type} (o : option B) (d : A) (K : B -> A) : A :=
   morph_option d K o.
 
 Definition convert_option_attributes : option attributes -> option full_descriptor :=
@@ -286,7 +286,7 @@ Global Instance passing_inhab : forall (A : Type),
 Proof. introv. apply prove_Inhab. apply passing_abort. exact result_impossible. Qed.
 
 Definition passing_def {A B : Type} (bo : option B) (K : B -> passing A) : passing A :=
-  if_def bo
+  if_some_or_default bo
     (fun _ => passing_abort (impossible_because "[passing_defined] failed."))
     (fun (b : B) _ => K b) tt.
 
@@ -467,7 +467,7 @@ Definition run_object_get_own_prop runs S C l x : passing full_descriptor :=
     let default S' :=
       passing_def (run_object_method object_properties_ S' l) (fun P =>
         passing_normal S' (
-          if_def (convert_option_attributes (Heap.read_option P x))
+          if_some_or_default (convert_option_attributes (Heap.read_option P x))
             (full_descriptor_undef) id))
     in match B with
       | builtin_get_own_prop_default =>
@@ -647,9 +647,9 @@ Definition run_value_viewable_as_prim s S v : option (option prim) :=
   match v with
   | value_prim w => Some (Some w)
   | value_object l =>
-      if_def (run_object_method object_class_ S l)
+      if_some_or_default (run_object_method object_class_ S l)
         None (fun s =>
-          if_def (run_object_method object_prim_value_ S l)
+          if_some_or_default (run_object_method object_prim_value_ S l)
             None (fun wo => Some (
               match wo with
               | Some (value_prim w) => Some w
@@ -722,7 +722,7 @@ Definition env_record_delete_binding runs S C L x : result :=
     end).
 
 Definition env_record_implicit_this_value S L : option value :=
-  if_def (pick_option (env_record_binds S L))
+  if_some_or_default (pick_option (env_record_binds S L))
     None (fun E => Some (
       match E with
       | env_record_decl Ed => undef

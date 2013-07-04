@@ -95,18 +95,18 @@ Definition follow_prog := follow_spec prog_basic red_prog.
 Definition follow_elements rv :=
   follow_spec (prog_1 rv) red_prog.
 Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
-  forall S C v S' res,
-    run S C v = out_ter S' res ->
-    red_expr S C (spec_call l v vs) (out_ter S' res) /\
-      (res_type res = restype_normal -> exists v', res = (v' : value)).
+  forall S C v S' R,
+    run S C v = out_ter S' R ->
+    red_expr S C (spec_call l v vs) (out_ter S' R) /\
+      (res_is_normal R -> exists v', R = res_val v').
 Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
-  forall S C lo lv S' res,
-    run S lv (lo : object_loc) = out_ter S' res ->
+  forall S C lo lv S' R,
+    run S lv (lo : object_loc) = out_ter S' R ->
     (* Note that this function is related to [spec_function_has_instance_2] instead of
       [spec_function_has_instance_1] as it's much more closer to the specification and
       thus much easier to prove. *)
-    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' res) /\
-      (res_type res = restype_normal -> exists b, res = (b : bool)).
+    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' R) /\
+      (res_is_normal R -> exists b, R = prim_bool b).
 Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
@@ -176,8 +176,8 @@ Proof.
   cases_if; reflexivity.
 Qed.
 
-Lemma res_overwrite_value_if_empty_resvalue : forall rv1 rv2, exists (rv3 : resvalue),
-  (rv3 : res) = res_overwrite_value_if_empty rv1 rv2 /\ (rv3 = rv1 \/ rv3 = rv2).
+Lemma res_overwrite_value_if_empty_resvalue : forall rv1 rv2, exists rv3,
+  res_normal rv3 = res_overwrite_value_if_empty rv1 rv2 /\ (rv3 = rv1 \/ rv3 = rv2).
 Proof. introv. unfolds res_overwrite_value_if_empty. cases_if*. Qed.
 
 Lemma or_idempotent : forall A : Prop, A \/ A -> A.
@@ -210,7 +210,6 @@ Lemma passing_output_trans {Te A : Type} :
   passing_output K red C p o.
 Proof. introv I R. inverts R; constructors*. Qed.
 
-(* FIXME:  Do we really need those tactics? *)
 Lemma and_impl_left : forall P1 P2 P3 : Prop,
   (P1 -> P2) ->
   P1 /\ P3 ->
@@ -238,31 +237,6 @@ Ltac constructors_and :=
 
 
 (**************************************************************)
-(** Unfolding Tactics *)
-
-(* FIXME:  Do we really need those tactics? *)
-Ltac unfold_func vs0 :=
-  match vs0 with (@boxer ?T ?t) :: ?vs =>
-    let t := constr:(t : T) in
-    first
-      [ match goal with
-        | I : context [ t ] |- _ => unfolds in I
-        end | unfold_func vs ]
-  end.
-
-Ltac rm_variables :=
-  repeat match goal with
-  | I : ?x = ?y |- _ =>
-    match type of x with
-    | passing ?a => idtac (* Given the form of the invariant, substitute may not be that a good idea. *)
-    | _ => subst x || subst y
-    end
-  | H : ~ False |- _ => clear H (* Some tactics may yield this. *)
-  | H : True |- _ => clear H
-  end.
-
-
-(**************************************************************)
 (** Monadic Constructors, Lemmas *)
 
 Inductive passing_terminates {A : Type} : passing A -> Prop :=
@@ -272,30 +246,8 @@ Inductive passing_terminates {A : Type} : passing A -> Prop :=
     abort (out_ter S R) ->
     passing_terminates (passing_abort (out_ter S R)).
 
-(* TODO:  To be removed? *)
-Definition if_regular_lemma (res : result) S0 R0 M :=
-  exists S R, res = out_ter S R /\
-    ((res_type R <> restype_normal /\ S = S0 /\ R = R0)
-      \/ M S R).
 
-(*
-Definition if_ter_post o1 K o :=
-     (o = o1 /\ o = out_div)
-  \/ (exists S R, o1 = out_ter S R /\ K S R = (o : result)).
-
-Lemma if_ter_out : forall res K o,
-  if_ter res K = o ->
-  exists (o1 : out), res = o1 /\
-  if_ter_post o1 K o.
-Proof.
-  introv H. destruct res as [o1 | | | ]; simpls; tryfalse.
-  exists o1. splits~. unfolds. destruct o1 as [|S R].
-   inverts* H.
-   jauto.
-Qed.
-*)
-
-(* To be sorted *)
+(* To be sorted *) (* FIXME:  Reread from here *)
 
 (* generic *)
 
@@ -303,8 +255,6 @@ Lemma if_some_out : forall (A : Type) (oa : option A) K o,
   if_some oa K = o ->
   exists (a:A), oa = Some a /\ K a = o.
 Proof. introv E. destruct* oa; tryfalse. Qed.
-
-Definition (* TODO:  Rename this in the interpreter *) if_some_or_default {A : Type} := @if_def A.
 
 Lemma if_some_or_default_out : forall (A : Type) (oa : option A) d K b,
   if_some_or_default oa d K = b ->
@@ -338,7 +288,7 @@ Definition isout W (Pred:out->Prop) :=
 
 Definition if_ter_post K o o1 :=
      (o1 = out_div /\ o = o1)
-  \/ (exists S R, o1 = out_ter S R /\ K S R = result_out o). (* TODO:  Remove the type annotations everywhere. *)
+  \/ (exists S R, o1 = out_ter S R /\ K S R = result_out o).
 
 Lemma if_ter_out : forall W K o,
   if_ter W K = o ->
@@ -506,7 +456,7 @@ Qed.
 Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
   passing_def bo K = p ->
   (exists b, bo = Some b /\ K b = p) \/
-  (exists res, bo = None /\ p = passing_abort res /\ forall o, (o : result) <> res).
+  (exists res, bo = None /\ p = passing_abort res /\ forall o, result_out o <> res).
 Proof. introv E. destruct* bo. right. eexists. splits*. discriminate. Qed.
 
 Lemma passing_defined_out : forall (A B : Type) (p : passing B) K (pr : passing A),
@@ -519,7 +469,7 @@ Lemma passing_success_out : forall (A : Type) res K (p : passing A),
   passing_success res K = p ->
   (exists S0 rv, res = out_ter S0 (rv : resvalue) /\
                  K S0 rv = p) \/
-  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, (o : result) <> res') /\
+  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, result_out o <> res') /\
                       res = out_ter S0 (res_intro restype_normal rv ls) /\
                       ls <> label_empty) \/
   (exists o, res = result_out o /\ p = passing_abort res /\ abort o) \/
@@ -539,7 +489,7 @@ Lemma passing_value_out : forall (A : Type) res K (p : passing A),
   passing_value res K = p ->
   (exists S0 v, res = out_ter S0 (v : value) /\
                  K S0 v = p) \/
-  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, (o : result) <> res') /\
+  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, result_out o <> res') /\
                       res = out_ter S0 (res_intro restype_normal rv ls) /\
                       (ls <> label_empty \/ forall v, rv <> v)) \/
   (exists o, res = result_out o /\ p = passing_abort res /\ abort o) \/
@@ -849,7 +799,7 @@ Qed. *)
 Lemma out_error_or_cst_correct : forall S C str ne v S' R',
   out_error_or_cst S str (ne : native_error) v = out_ter S' R' ->
   red_expr S C (spec_error_or_cst str ne v) (out_ter S' R') /\
-    (res_type R' = restype_normal -> R' = v).
+    (res_is_normal R' -> R' = v).
 Proof.
   introv E. unfolds in E. cases_if.
    applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E. splits*.
@@ -893,7 +843,7 @@ Lemma run_object_get_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 l x S R,
   run_object_get runs S0 C0 l x = out_ter S R ->
   red_expr S0 C0 (spec_object_get l x) (out_ter S R) /\
-    (res_type R = restype_normal -> exists v, R = (v : value)).
+    (res_is_normal R -> exists v, R = res_val v).
 Admitted. (* OLD
   introv RC E.
   unfolds in E.
@@ -953,7 +903,7 @@ Lemma env_record_get_binding_value_correct : forall runs,
   runs_type_correct runs -> forall S0 S C0 L rn rs R,
   env_record_get_binding_value runs S0 C0 L rn rs = out_ter S R ->
   red_expr S0 C0 (spec_env_record_get_binding_value L rn rs) (out_ter S R) /\
-    (res_type R = restype_normal -> exists v, R = (v : value)).
+    (res_is_normal R -> exists v, R = res_val v).
 Admitted. (* OLD
   introv RC E. do 2 unfolds in E. rewrite_morph_option; simpls; tryfalse.
   rewrite <- Heap.binds_equiv_read_option in EQx.
@@ -982,7 +932,7 @@ Lemma ref_get_value_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 rv S R,
   ref_get_value runs S0 C0 rv = out_ter S R ->
   red_expr S0 C0 (spec_get_value rv) (out_ter S R) /\
-    (res_type R = restype_normal -> exists v, R = (v : value)).
+    (res_is_normal R -> exists v, R = res_val v).
 Proof.
   introv RC E. destruct rv; tryfalse.
    inverts E. splits. apply~ red_spec_ref_get_value_value. intros. auto*.
@@ -1119,7 +1069,7 @@ Lemma to_string_correct : forall runs,
   runs_type_correct runs -> forall S S' R' C v,
   to_string runs S C v = out_ter S' R' ->
   red_expr S C (spec_to_string v) (out_ter S' R') /\
-    (res_type R' = restype_normal -> exists (s : string), R' = s).
+    (res_is_normal R' -> exists s, R' = prim_string s).
 Admitted. (* OLD
   introv RC E. destruct v; simpls.
    inverts E. splits*. apply~ red_spec_to_string_prim.
@@ -1224,7 +1174,7 @@ Theorem runs_correct : forall num,
 Proof.
 
   induction num.
-   constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R; introv P; inverts P.
+   constructors; try solve [unfolds~ (* Temporary *)]; introv H; inverts H; introv P; inverts P.
 
    (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
    constructors.
@@ -1290,7 +1240,10 @@ Ltac run_hyp_select_proj H ::=
       applys red_expr_access_2.
         applys* red_spec_check_object_coercible_return.
        run' red_expr_access_3. applys* red_expr_access_4.
-   
+
+Admitted.
+
+(* OLD:
 
    (* run_expr *)
    intros S C e S' res R. destruct e; simpl in R; dealing_follows.
@@ -1711,6 +1664,4 @@ Ltac run_hyp_select_proj H ::=
    (* Equal *)
    skip. (* TODO *)
 
-Admitted. (* Existential variables left because of the tactic transition. *)
-
-
+*)
