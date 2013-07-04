@@ -1924,16 +1924,26 @@ Definition run_stat_if runs S C e1 t2 to : result :=
         out_ter S1 resvalue_empty
       end).
 
-Definition run_stat_while runs S C rv ls e1 t2 : result :=
+Definition run_stat_while runs S C rv labs e1 t2 : result :=
   run_expr_get_value runs S C e1 (fun S1 v1 =>
     if convert_value_to_boolean v1 then
-      if_ter (runs_type_stat runs S1 C t2) (fun S2 R2 =>
-        let rvR := res_value R2 in
-        let rv' := ifb rvR = resvalue_empty then rv else rvR in
-        if_normal_continue_or_break (out_ter S2 R2)
-          (fun R => res_label_in R ls) (fun S3 R3 =>
-          runs_type_stat_while runs S3 C rv' ls e1 t2) (fun S3 R3 =>
-          out_ter S3 rv'))
+      if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
+        let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+        let loop tt := runs_type_stat_while runs S2 C rv' labs e1 t2 in
+        ifb (  decide (res_type R <> restype_continue) (* todo: notation pour decide *)
+             || ! res_label_in R labs) then (
+           ifb decide (res_type R = restype_break) && res_label_in R labs then (
+              out_ter S2 res_empty
+           ) else (
+              ifb (res_type R <> restype_normal) then (
+                out_ter S2 R
+              ) else (
+                loop tt
+              )
+           )
+        ) else (
+           loop tt
+        ))
     else out_ter S1 rv).
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=

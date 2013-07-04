@@ -591,6 +591,8 @@ with ext_stat :=
   | stat_while_2 : label_set -> expr -> stat -> resvalue -> value -> ext_stat
   | stat_while_3 : label_set -> expr -> stat -> resvalue -> out -> ext_stat
   | stat_while_4 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
+  | stat_while_5 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
+  | stat_while_6 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
 
   | stat_do_while_1 : label_set -> stat ->  expr -> resvalue -> ext_stat
   | stat_do_while_2 : label_set -> stat ->  expr -> resvalue -> out -> ext_stat
@@ -1165,6 +1167,8 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_while_2 _ _ _ _ _ => None
   | stat_while_3 _ _ _ _ o => Some o
   | stat_while_4 _ _ _ _ _ => None
+  | stat_while_5 _ _ _ _ _ => None
+  | stat_while_6 _ _ _ _ _ => None
 
   | stat_do_while_1 _ _  expr _ => None
   | stat_do_while_2 _ _  expr _ o => Some o
