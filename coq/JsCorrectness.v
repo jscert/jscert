@@ -602,6 +602,17 @@ Ltac run_ifres_select H :=
   | context [ if_number ] => constr:(if_number_out)
   end.
 
+Definition run_expr_get_value_post K o o1 :=
+  (eqabort o1 o \/
+    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
+      K S1 v1 = result_out o).
+
+Axiom run_expr_get_value_correct : forall runs,
+  runs_type_correct runs -> forall S C e K o,
+  run_expr_get_value runs S C e K = o -> exists o1,
+    red_expr S C (spec_expr_get_value e) o1 /\
+      run_expr_get_value_post K o o1.
+
 (* [run_hyp H] exploits the induction hypothesis
    on [runs_type_correct] to the hypothesis [H] *)
 
@@ -610,16 +621,18 @@ Ltac run_hyp_select_proj H :=
   | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
   | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
   | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
+  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
   (* TODO: Complete. *)
   end.
 
 Ltac run_hyp_select_ind tt :=
   match goal with IH: runs_type_correct _ |- _ => constr:(IH) end.
 
-Tactic Notation "run_hyp" hyp(H) "as" ident(R) :=
+Tactic Notation "run_hyp" hyp(H) "as" simple_intropattern(R) :=
+  let T := fresh in rename H into T;
   let IH := run_hyp_select_ind tt in
-  let Proj := run_hyp_select_proj H in
-  lets R: Proj IH (rm H).
+  let Proj := run_hyp_select_proj T in
+  lets R: Proj IH (rm T).
 
 Tactic Notation "run_hyp" hyp(H) :=
   let T := fresh in rename H into T;
@@ -701,33 +714,6 @@ Ltac run_post_core :=
 
 Tactic Notation "run_post" :=
   run_post_core.
-
-(* TODO:  Move *)
-Definition if_success_value_post C K o o1 := (* TODO:  Rename everywhere this function to [if_convert_value]. *)
-  eqabort o1 o \/ 
-  exists S1 rv1, o1 = out_ter S1 (res_normal rv1) /\
-    exists o2, red_expr S1 C (spec_get_value rv1) o2 /\
-      (eqabort o2 o \/
-        exists S2, exists (v2 : value), o2 = out_ter S2 v2 /\
-          K S2 v2 = result_out o).
-
-Axiom if_success_value_out : forall runs,
-  runs_type_correct runs -> forall C W K o,
-  if_success_value runs C W K = o ->
-  isout W (if_success_value_post C K o).
-
-(* TODO:  Move forwards *)
-Ltac run_post_extra ::=
-  match goal with
-  | H: if_success_value_post _ _ _ _ |- _ =>
-    let Er := fresh "Er" in let Ab := fresh "Ab" in
-    let S := fresh "S" in let S1 := fresh "S" in let S2 := fresh "S" in
-    let O1 := fresh "O1" in let O2 := fresh "O2" in
-    let o1 := fresh "o1" in let o2 := fresh "o2" in
-    let rv1 := fresh "rv1" in let v2 := fresh "v2" in
-    let R2 := fresh "R" in
-    destruct H as [(Er&Ab)|(S1&rv1&O1&O2&R2&[(Er&Ab)|(S2&v2&O2&H)])]
-  end.
 
 (** [run_inv] simplifies equalities in goals
     by performing inversions on equalities. *)
@@ -841,7 +827,7 @@ Tactic Notation "runs" "*" :=
 Lemma run_error_correct : forall S ne S' R',
   run_error S ne = out_ter S' R' ->
   (forall C, red_expr S C (spec_error ne) (out_ter S' R')) /\
-    res_type R' <> restype_normal.
+    ~ res_is_normal R'.
 Admitted. (* OLD
   introv E. deal_with_regular_lemma E if_object_out; substs.
   unfolds build_error. destruct S as [E L [l S]]. simpls. cases_if; tryfalse.
@@ -1011,6 +997,7 @@ Proof.
      intros. forwards~ (_&?): env_record_get_binding_value_correct E.
 Qed.
 
+(*
 Lemma if_success_value_out : forall runs,
   runs_type_correct runs -> forall res0 K S C R,
   if_success_value runs C res0 K = out_ter S R ->
@@ -1235,11 +1222,67 @@ Proof.
    (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
    constructors.
 
-   skip. 
-   intros S C t S' res R. simpl in R. unfolds in R. destruct t.
-   Focus 5.
-    (* If *)
+   intros S C e S' res R. simpl in R. unfolds in R. destruct e.
+   Focus 6.
+
+Definition if_string_to_string_post K o o1 :=
+  (eqabort o1 o \/
+    exists S, exists (s : string), o1 = out_ter S s /\
+      K S s = result_out o).
+
+Axiom if_string_to_string_correct : forall runs,
+  runs_type_correct runs -> forall S C v K o,
+  if_string (to_string runs S C v) K = o -> exists o1,
+    red_expr S C (spec_to_string v) o1 /\
+      if_string_to_string_post K o o1.
+
+Ltac run_post_extra ::=
+  let Er := fresh "Er" in
+  let Ab := fresh "Ab" in
+  match goal with
+  | H: run_expr_get_value_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let v1 := fresh "v" in
+    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  | H: if_string_to_string_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let s := fresh "s" in
+    destruct H as [(Er&Ab)|(S1&s&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  end.
+
+Tactic Notation "run'" constr(Red) :=
+  match goal with H: _ = result_out _ |- _ =>
+    let T := fresh in rename H into T;
+    let o1 := fresh "o1" in let R1 := fresh "R1" in
+    run_hyp T as (o1&R1&R); applys Red (rm R1);
+    let o := run_get_current_out tt in
+    try (run_check_current_out o; run_post; run_inv)
+  end.
+
+Ltac run_hyp_select_proj H ::=
+  match type of H with
+  | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
+  | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
+  | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
+  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
+  | if_string (to_string _ _ _ _) _ = _ => constr:(if_string_to_string_correct)
+  (* TODO: Complete. *)
+  end.
+
+    (* Access *)
     unfolds in R.
+    run' red_expr_access. run' red_expr_access_1. cases_if.
+      lets (R2&N): run_error_correct R. specializes R2 C.
+       applys red_expr_access_2.
+         applys* red_spec_check_object_coercible_undef_or_null.
+       abort_expr.
+      applys red_expr_access_2.
+        applys* red_spec_check_object_coercible_return.
+       run' red_expr_access_3. applys* red_expr_access_4.
    
 
    (* run_expr *)

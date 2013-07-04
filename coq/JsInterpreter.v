@@ -887,9 +887,9 @@ Definition if_get_value_success_value runs S C rv (K : state -> value -> result)
       impossible_with_heap_because S' "[if_get_value_success_value] did not received a value."
     end).
 
-Definition if_success_value runs C (o : result) (K : state -> value -> result) : result :=
-  if_success o (fun S rv =>
-    if_get_value_success_value runs S C rv K).
+Definition run_expr_get_value runs S C e (K : state -> value -> result) : result :=
+  if_success (runs_type_expr runs S C e) (fun S0 rv =>
+    if_get_value_success_value runs S0 C rv K).
 
 
 Definition env_record_create_mutable_binding runs S C L x (deletable_opt : option bool) : result_void :=
@@ -1642,7 +1642,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
         end)
 
     | _ => (* Regular operators *)
-      if_success_value runs C (runs_type_expr runs S C e) (fun S1 v =>
+      run_expr_get_value runs S C e (fun S1 v =>
         match op with
 
         | unary_op_void => out_ter S1 undef
@@ -1686,7 +1686,7 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
         init_object runs S2 C l pds') in
     match pb with
     | propbody_val e0 =>
-      if_success_value runs C (runs_type_expr runs S C e0) (fun S1 v0 =>
+      run_expr_get_value runs S C e0 (fun S1 v0 =>
         let A := attributes_data_intro v0 true true true in
         follows S1 A)
     | propbody_get bd =>
@@ -1710,7 +1710,7 @@ Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
     match eo with
     | None => follow S
     | Some e =>
-      if_success_value runs C (runs_type_expr runs S C e) (fun S1 v =>
+      run_expr_get_value runs S C e (fun S1 v =>
         result_passing (identifier_res runs S1 C x) (fun S2 ir =>
           if_void (ref_put_value runs S2 C ir v) (fun S3 =>
             follow S3)))
@@ -1722,7 +1722,7 @@ Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr)
   match es with
   | nil => K S1 (rev vs)
   | e :: es' =>
-    if_success_value runs C (runs_type_expr runs S1 C e) (fun S2 v =>
+    run_expr_get_value runs S1 C e (fun S2 v =>
       run_list_expr runs S2 C (v :: vs) es' K)
   end.
 
@@ -1741,20 +1741,20 @@ Fixpoint run_block runs S C rv ts : result :=
 Definition run_expr_binary_op runs S C op e1 e2 : result :=
   match is_lazy_op op with
   | None =>
-    if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
-      if_success_value runs C (runs_type_expr runs S1 C e2) (fun S2 v2 =>
+    run_expr_get_value runs S C e1 (fun S1 v1 =>
+      run_expr_get_value runs S1 C e2 (fun S2 v2 =>
         run_binary_op runs S2 C op v1 v2))
   | Some b_ret =>
-    if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
+    run_expr_get_value runs S C e1 (fun S1 v1 =>
       let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then out_ter S1 v1
       else
-        if_success_value runs C (runs_type_expr runs S1 C e2) out_ter)
+        run_expr_get_value runs S1 C e2 out_ter)
   end.
 
 Definition run_expr_access runs S C e1 e2 : result :=
-  if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
-    if_success_value runs C (runs_type_expr runs S1 C e2) (fun S2 v2 =>
+  run_expr_get_value runs S C e1 (fun S1 v1 =>
+    run_expr_get_value runs S1 C e2 (fun S2 v2 =>
       ifb v1 = prim_undef \/ v1 = prim_null then
         run_error S2 native_error_type
       else
@@ -1772,10 +1772,10 @@ Definition run_expr_assign runs S C (opo : option binary_op) e1 e2 : result :=
       end in
     match opo with
     | None =>
-      if_success_value runs C (runs_type_expr runs S1 C e2) follow
+      run_expr_get_value runs S1 C e2 follow
     | Some op =>
       if_get_value_success_value runs S1 C rv1 (fun S2 v1 =>
-        if_success_value runs C (runs_type_expr runs S2 C e2) (fun S3 v2 =>
+        run_expr_get_value runs S2 C e2 (fun S3 v2 =>
           if_success (run_binary_op runs S3 C op v1 v2) follow))
     end).
 
@@ -1877,13 +1877,13 @@ Definition run_expr_call runs S C e1 e2s : result :=
         end))).
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
-  if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
+  run_expr_get_value runs S C e1 (fun S1 v1 =>
     let b := convert_value_to_boolean v1 in
     let e := if b then e2 else e3 in
-    if_success_value runs C (runs_type_expr runs S1 C e) out_ter).
+    run_expr_get_value runs S1 C e out_ter).
 
 Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
-  if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v =>
+  run_expr_get_value runs S C e1 (fun S1 v =>
     run_list_expr runs S1 C nil e2s (fun S2 args =>
       match v with
       | value_object l =>
@@ -1905,7 +1905,7 @@ Definition run_stat_label runs S C lab t : result :=
       (ifb res_label R1 = lab then res_value R1 else R1)).
 
 Definition run_stat_with runs S C e1 t2 : result :=
-  if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
+  run_expr_get_value runs S C e1 (fun S1 v1 =>
     if_object (to_object S1 v1) (fun S2 l =>
       let lex := execution_ctx_lexical_env C in
       let '(lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
@@ -1913,7 +1913,7 @@ Definition run_stat_with runs S C e1 t2 : result :=
       runs_type_stat runs S3 C' t2)).
 
 Definition run_stat_if runs S C e1 t2 to : result :=
-  if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
+  run_expr_get_value runs S C e1 (fun S1 v1 =>
     if (convert_value_to_boolean v1) then
       runs_type_stat runs S1 C t2
     else
@@ -1925,7 +1925,7 @@ Definition run_stat_if runs S C e1 t2 to : result :=
       end).
 
 Definition run_stat_while runs S C rv ls e1 t2 : result :=
-  if_success_value runs C (runs_type_expr runs S C e1) (fun S1 v1 =>
+  run_expr_get_value runs S C e1 (fun S1 v1 =>
     if convert_value_to_boolean v1 then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R2 =>
         let rvR := res_value R2 in
@@ -1963,7 +1963,7 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
     end).
 
 Definition run_stat_throw runs S C e : result :=
-  if_success_value runs C (runs_type_expr runs S C e) (fun S1 v1 =>
+  run_expr_get_value runs S C e (fun S1 v1 =>
     out_ter S1 (res_throw v1)).
 
 Definition run_stat_return runs S C eo : result :=
@@ -1971,7 +1971,7 @@ Definition run_stat_return runs S C eo : result :=
   | None =>
     out_ter S (res_return undef)
   | Some e =>
-    if_success_value runs C (runs_type_expr runs S C e) (fun S1 v1 =>
+    run_expr_get_value runs S C e (fun S1 v1 =>
       out_ter S1 (res_return v1))
   end.
 
@@ -2030,7 +2030,7 @@ Definition run_stat runs S C t : result :=
   match t with
 
   | stat_expr e =>
-    if_success_value runs C (runs_type_expr runs S C e) out_ter
+    run_expr_get_value runs S C e out_ter
 
   | stat_var_decl xeos =>
     run_var_decl runs S C xeos
