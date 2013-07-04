@@ -668,7 +668,9 @@ Tactic Notation "run_step" constr(Red) constr(o1) constr(R1) :=
 (** [run_post] decomposes the conclusion of the "out"
     lemma *)
 
-Tactic Notation "run_post" :=
+Ltac run_post_extra := fail.
+
+Ltac run_post_core :=
   let Er := fresh "Er" in
   let Ab := fresh "Ab" in
   let S := fresh "S" in
@@ -694,6 +696,37 @@ Tactic Notation "run_post" :=
     let s := fresh "s" in go H s
   | H: if_number_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
+  | |- _ => run_post_extra
+  end.
+
+Tactic Notation "run_post" :=
+  run_post_core.
+
+(* TODO:  Move *)
+Definition if_success_value_post C K o o1 := (* TODO:  Rename everywhere this function to [if_convert_value]. *)
+  eqabort o1 o \/ 
+  exists S1 rv1, o1 = out_ter S1 (res_normal rv1) /\
+    exists o2, red_expr S1 C (spec_get_value rv1) o2 /\
+      (eqabort o2 o \/
+        exists S2, exists (v2 : value), o2 = out_ter S2 v2 /\
+          K S2 v2 = result_out o).
+
+Axiom if_success_value_out : forall runs,
+  runs_type_correct runs -> forall C W K o,
+  if_success_value runs C W K = o ->
+  isout W (if_success_value_post C K o).
+
+(* TODO:  Move forwards *)
+Ltac run_post_extra ::=
+  match goal with
+  | H: if_success_value_post _ _ _ _ |- _ =>
+    let Er := fresh "Er" in let Ab := fresh "Ab" in
+    let S := fresh "S" in let S1 := fresh "S" in let S2 := fresh "S" in
+    let O1 := fresh "O1" in let O2 := fresh "O2" in
+    let o1 := fresh "o1" in let o2 := fresh "o2" in
+    let rv1 := fresh "rv1" in let v2 := fresh "v2" in
+    let R2 := fresh "R" in
+    destruct H as [(Er&Ab)|(S1&rv1&O1&O2&R2&[(Er&Ab)|(S2&v2&O2&H)])]
   end.
 
 (** [run_inv] simplifies equalities in goals
@@ -989,7 +1022,7 @@ Lemma if_success_value_out : forall runs,
     R' = res_normal rv /\
     red_expr S' C (spec_get_value rv) (out_ter S'' (v : value)) /\
     K S'' v = out_ter S R)).
-Admitted. (* OLD
+Admitted. *) (* OLD
   introv RC H. deal_with_regular_lemma H if_success_out; substs; repeat eexists.
    branch~ 1.
    deal_with_regular_lemma H0 if_success_out; substs.
@@ -1163,7 +1196,7 @@ Ltac unmonad_passing :=
 Lemma run_elements_correct : forall runs,
   runs_type_correct runs -> forall rv,
   follow_elements rv (fun S C => run_elements runs S C rv).
-Proof.
+Admitted. (* OLD
   intros runs [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo] rv S C es S' res R.
   gen rv S C S' res R. induction es; simpls; introv R.
    unmonad. apply~ red_prog_1_nil.
@@ -1190,7 +1223,7 @@ Proof.
         abort_prog; constructors; intro H; unfolds in H; simpls; false.
     (* func_decl *)
     forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
-Qed.
+Qed. *)
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).
@@ -1199,8 +1232,15 @@ Proof.
   induction num.
    constructors; try solve [unfolds~ (* Temporary *)]; introv R; inverts R; introv P; inverts P.
 
-   lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum).
+   (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
    constructors.
+
+   skip. 
+   intros S C t S' res R. simpl in R. unfolds in R. destruct t.
+   Focus 5.
+    (* If *)
+    unfolds in R.
+   
 
    (* run_expr *)
    intros S C e S' res R. destruct e; simpl in R; dealing_follows.
