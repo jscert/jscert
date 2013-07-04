@@ -407,7 +407,6 @@ Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop 
 Definition object_rem_property S l x S' :=
   object_heap_map_properties S l (fun P => Heap.rem P x) S'.
   
-
 (** Smart constructor for building a new object with the default 
     behavior of the get method, and the extensible property to true. *)
 

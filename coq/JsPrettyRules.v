@@ -60,6 +60,32 @@ Implicit Type sc : switchclause.
 (**************************************************************)
 (** ** Reduction rules for global code (??) *)
 
+Inductive search_proto_chain : state -> object_loc -> prop_name -> option object_loc -> Prop :=
+  | search_proto_chain_found : forall S l x,
+                                 object_has_property S l x ->
+                                 search_proto_chain S l x (Some l)
+  | search_proto_chain_not_found : forall S l x,
+                                     not (object_has_property S l x) ->
+                                     object_proto S l prim_null ->
+                                     search_proto_chain S l x None
+  | search_proto_chain_inductive : forall S l x v l' res,
+                                     (not (object_has_property S l x) ->
+                                     object_proto S l (value_object l') ->
+                                     search_proto_chain S l' x res ->
+                                     search_proto_chain S l x res).
+
+
+(** [make_delete_event S l x ev] constructs a delete_event "ev" which
+records the deletion of the property (l,x) in the state S. *)
+
+Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop :=
+  | make_delete_event_intro : forall S l x res ev,
+                                search_proto_chain S l x res ->
+                                ev = delete_event l x res ->
+                                make_delete_event S l x ev.
+
+
+
 Inductive red_javascript : prog -> out -> Prop :=
 
   | red_javascript_intro : forall S S' C p p' o,
@@ -1708,10 +1734,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_delete_2_undef : forall S C l x throw, (* Step 2 *)
       red_expr S C (spec_object_delete_2 l x throw full_descriptor_undef) (out_ter S true)
 
-  | red_spec_object_delete_2_some_configurable : forall S C l x throw A S' o, (* Step 3 *)
+  (* Daniele: adding delete_events *)
+  | red_spec_object_delete_2_some_configurable : forall S C l x throw A S' o ev, (* Step 3 *)
       attributes_configurable A = true ->
       object_rem_property S l x S' ->
-      red_expr S C (spec_object_delete_2 l x throw (full_descriptor_some A)) (out_ter S' true)
+      make_delete_event S' l x ev ->
+      red_expr S C (spec_object_delete_2 l x throw (full_descriptor_some A)) (out_ter (state_with_new_event S' ev) true)
 
   | red_spec_object_delete_3_some_non_configurable : forall S C l x throw A o, (* Steps 4 and 5 *)
       attributes_configurable A = false ->
@@ -3971,8 +3999,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       arguments_from args (v::nil) ->
       red_expr S C (spec_build_error (prealloc_native_error_proto ne) v) o ->
       red_expr S C (spec_construct_prealloc (prealloc_native_error ne) args) o 
+.
 
-. 
 
 (*******************************************************************************)
 (*******************************************************************************)
