@@ -616,13 +616,20 @@ Axiom run_expr_get_value_correct : forall runs,
 (* [run_hyp H] exploits the induction hypothesis
    on [runs_type_correct] to the hypothesis [H] *)
 
+Ltac run_hyp_expr_get_value H := fail.
+
 Ltac run_hyp_select_proj H :=
   match type of H with
   | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
   | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
   | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
-  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
+  | _ => first [ run_hyp_expr_get_value H ]
   (* TODO: Complete. *)
+  end.
+
+Ltac run_hyp_expr_get_value H ::=
+  match type of H with
+  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
   end.
 
 Ltac run_hyp_select_ind tt :=
