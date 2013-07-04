@@ -455,7 +455,7 @@ Proof.
 Qed.
 
 
-(* The following lines are just a test with typeclasses. *)
+(* The following lines are just a test with typeclasses. *) (* It's a `test', but it's on the path of the interpreter!  So please don't remove it. *)
 (**************************************************************)
 (** ** LATER: move to LibReflect *)
 

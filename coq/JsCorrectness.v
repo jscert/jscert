@@ -151,50 +151,11 @@ Ltac absurd_neg :=
   let H := fresh in
   introv H; inverts H; tryfalse.
 
-Ltac findHyp t :=
-  match goal with
-  | H : appcontext [ t ] |- _ => H
-  | _ => fail "Unable to find an hypothesis for " t
-  end.
-
-Ltac rewrite_morph_option :=
-  match goal with
-  | H : appcontext [ morph_option ?d ?f ?x ] |- _ =>
-    let xn := fresh "x" in
-    sets_eq <- xn: x;
-    destruct xn
-  | H : appcontext [ if_some ?op ?K ] |- _ =>
-    let xn := fresh "x" in
-    sets_eq <- xn: op;
-    destruct xn
-  | H : appcontext [ result_passing ?p ?K ] |- _ => (* I don't think it's a good idea to left it there. *)
-    let pn := fresh "p" in
-    sets_eq <- pn: p;
-    destruct pn
-  end.
-
-Ltac name_object_method :=
-  match goal with
-  | |- appcontext [ run_object_method ?meth ?S ?l ] =>
-    let B := fresh "B" in
-    sets_eq <- B: (run_object_method meth S l)
-  | H : appcontext [ run_object_method ?meth ?S ?l ] |- _ =>
-    let B := fresh "B" in
-    sets_eq <- B: (run_object_method meth S l)
-  end.
-
-Ltac name_passing_def :=
-  match goal with
-  | H : appcontext [ passing_def ?o ?K ] |- _ =>
-    let p := fresh "p" in
-    sets_eq <- p: (passing_def o K)
-  end.
-
 Hint Constructors abort.
 
 
 (**************************************************************)
-(** General Lemmae *)
+(** General Lemmas *)
 
 Lemma res_overwrite_value_if_empty_empty : forall R,
   res_overwrite_value_if_empty resvalue_empty R = R.
@@ -248,6 +209,7 @@ Lemma passing_output_trans {Te A : Type} :
   passing_output K red C p o.
 Proof. introv I R. inverts R; constructors*. Qed.
 
+(* FIXME:  Do we really need those tactics? *)
 Lemma and_impl_left : forall P1 P2 P3 : Prop,
   (P1 -> P2) ->
   P1 /\ P3 ->
@@ -277,6 +239,7 @@ Ltac constructors_and :=
 (**************************************************************)
 (** Unfolding Tactics *)
 
+(* FIXME:  Do we really need those tactics? *)
 Ltac unfold_func vs0 :=
   match vs0 with (@boxer ?T ?t) :: ?vs =>
     let t := constr:(t : T) in
@@ -286,75 +249,16 @@ Ltac unfold_func vs0 :=
         end | unfold_func vs ]
   end.
 
-Ltac fold_runs_type := (* Does not work. *)
-  match goal with
-  | H : appcontext [ let (runs_type_expr, _, _, _, _, _, _, _, _, _) := ?r in
-                     runs_type_expr ] |- _ =>
-    fold (runs_type_expr r) in H
-  end.
-
 Ltac rm_variables :=
   repeat match goal with
   | I : ?x = ?y |- _ =>
     match type of x with
-    | passing ?a => idtac (* Given the form of the invariant, this may not be that a good idea. *)
+    | passing ?a => idtac (* Given the form of the invariant, substitute may not be that a good idea. *)
     | _ => subst x || subst y
     end
   | H : ~ False |- _ => clear H (* Some tactics may yield this. *)
   | H : True |- _ => clear H
   end.
-
-Ltac dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq :=
-  repeat first
-    [ progress rm_variables
-    | unfold_func (>> run_expr_access run_expr_function
-                      run_expr_new run_expr_call
-                      run_unary_op run_binary_op
-                      run_expr_conditionnal run_expr_assign
-                      entering_func_code)
-    | fold_runs_type ];
-  repeat match goal with
-  | I : runs_type_expr ?runs ?S ?C ?e = ?o |- _ =>
-    unfold runs_type_expr in I
-  | I : run_expr ?num ?S ?C ?e = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHe (rm I)
-  | I : runs_type_stat ?runs ?S ?C ?t = ?o |- _ =>
-    unfold runs_type_stat in I
-  | I : run_stat ?num ?S ?C ?t = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHs (rm I)
-  | I : runs_type_prog ?runs ?S ?C ?p = ?o |- _ =>
-    unfold runs_type_prog in I
-  | I : run_prog ?num ?S ?C ?p = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHp (rm I)
-  | I : runs_type_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
-    unfold runs_type_call in I
-  | I : run_call ?runs ?S ?C ?l ?v ?vs = ?o |- _ =>
-    let RC := fresh "RC" in
-    forwards~ RC: IHc (rm I)
-  | I : runs_type_object_get_own_prop ?runs ?S ?C ?l ?x = ?p |- _ =>
-    let RC := fresh "RC" in
-    lets~ RC: IHowp (rm I)
-  | I : runs_type_object_get_prop ?runs ?S ?C ?l ?x = ?p |- _ =>
-    let RC := fresh "RC" in
-    lets~ RC: IHop (rm I)
-  (* TODO:  Complete. *)
-  end.
-
-Ltac dealing_follows :=
-  let IHe := findHyp follow_expr in
-  let IHs := findHyp follow_stat in
-  let IHp := findHyp follow_prog in
-  let IHc := findHyp follow_call in
-  let IHhi := findHyp follow_function_has_instance in
-  let IHw := findHyp follow_stat_while in
-  let IHowp := findHyp follow_object_get_own_prop in
-  let IHop := findHyp follow_object_get_prop in
-  let IHpo := findHyp follow_object_proto_is_prototype_of in
-  let IHeq := findHyp follow_equal in
-  dealing_follows_with IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq.
 
 
 (**************************************************************)
@@ -372,39 +276,6 @@ Definition if_regular_lemma (res : result) S0 R0 M :=
     ((res_type R <> restype_normal /\ S = S0 /\ R = R0)
       \/ M S R).
 
-Ltac simpl_after_regular_lemma :=
-  repeat match goal with
-         | HM : exists x, _ |- _ =>
-           let x := fresh x in destruct HM as [x HM]
-         end; intuit;
-  repeat match goal with
-         | H : result_out (out_ter ?S1 ?R1) = result_out (out_ter ?S2 ?R2) |- _ =>
-           inverts~ H
-         end.
-
-Ltac deal_with_regular_lemma H if_out :=
-  let Hnn := fresh "Hnn" in
-  let HE := fresh "HE" in
-  let HS := fresh "HS" in
-  let HR := fresh "HR" in
-  let HM := fresh "HM" in
-  let S' := fresh "S" in
-  let R' := fresh "R" in
-  lets (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
-  [| simpl_after_regular_lemma].
-
-Ltac deal_with_regular_lemma_run H if_out :=
-  let Hnn := fresh "Hnn" in
-  let HE := fresh "HE" in
-  let HS := fresh "HS" in
-  let HR := fresh "HR" in
-  let HM := fresh "HM" in
-  let S' := fresh "S" in
-  let R' := fresh "R" in
-  forwards (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
-  [ auto; try solve [ constructors~ ] | | simpl_after_regular_lemma].
-
-(* New monads *)
 Definition if_ter_post o1 K o :=
      (o = o1 /\ o = out_div)
   \/ (exists S R, o1 = out_ter S R /\ K S R = (o : result)).
@@ -424,25 +295,8 @@ Lemma if_some_out : forall (A : Type) (op : option A) K o,
   if_some op K = o ->
   exists a, op = Some a /\ K a = o.
 Proof. introv E. destruct* op; tryfalse. Qed.
-(* End of new monads *)
 
-Lemma if_ter_out_old : forall res K S R, (* Old lemma to be removed once everything works. *)
-  if_ter res K = out_ter S R ->
-  exists S' R', res = out_ter S' R' /\ K S' R' = out_ter S R.
-Proof.
-  introv H. asserts (S0&R0&E): (exists S R, res = out_ter S R).
-    destruct res as [o'| | |]; tryfalse. destruct o'; tryfalse. repeat eexists.
-  subst. do 2 eexists. splits~.
-Qed.
-
-Ltac deal_with_ter H :=
-  let HE := fresh "HE" in
-  let HR := fresh "HR" in
-  let S' := fresh "S" in
-  let R' := fresh "R" in
-  forwards (S'&R'&HR&HE): if_ter_out_old (rm H);
-  simpl_after_regular_lemma.
-
+(* Old monadic lemmas
 Lemma if_empty_label_out : forall K S0 S R0 R,
   if_empty_label S0 R0 K = out_ter S R ->
     res_label R0 = label_empty /\
@@ -518,7 +372,9 @@ Proof.
    repeat eexists. left. inverts~ HE.
    destruct rt; tryfalse; repeat eexists; right; inverts~ HE.
 Qed.
+*)
 
+(* FIXME:  What do we do with the passing, then? *)
 Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
   passing_def bo K = p ->
   (exists b, bo = Some b /\ K b = p) \/
@@ -797,7 +653,7 @@ Lemma run_error_correct : forall S ne S' R',
   run_error S ne = out_ter S' R' ->
   (forall C, red_expr S C (spec_error ne) (out_ter S' R')) /\
     res_type R' <> restype_normal.
-Proof.
+Admitted. (* OLD
   introv E. deal_with_regular_lemma E if_object_out; substs.
   unfolds build_error. destruct S as [E L [l S]]. simpls. cases_if; tryfalse.
    inverts HE. false~ Hnn.
@@ -806,7 +662,7 @@ Proof.
    apply~ red_spec_build_error. reflexivity.
    cases_if. inverts HE.
    apply~ red_spec_build_error_1_no_msg.
-Qed.
+Qed. *)
 
 Lemma out_error_or_cst_correct : forall S C str ne v S' R',
   out_error_or_cst S str (ne : native_error) v = out_ter S' R' ->
@@ -830,7 +686,7 @@ Lemma object_has_prop_correct : forall runs,
   runs_type_correct runs -> forall S C l x (p : passing bool),
   object_has_prop runs S C l x = p ->
   follow_spec_inject (fun b => b) (red_expr S C (spec_object_has_prop l x)) p.
-Proof.
+Admitted. (* OLD
   introv RC E. unfolds in E. name_object_method.
   destruct B as [B|]; simpls.
    forwards~ BC: run_object_method_correct (rm EQB).
@@ -849,14 +705,14 @@ Proof.
        constructors.
       applys~ Ep spec_object_has_prop_2. constructors.
    substs. splits; introv Eq; inverts Eq.
-Qed.
+Qed. *)
 
 Lemma run_object_get_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 l x S R,
   run_object_get runs S0 C0 l x = out_ter S R ->
   red_expr S0 C0 (spec_object_get l x) (out_ter S R) /\
     (res_type R = restype_normal -> exists v, R = (v : value)).
-Proof.
+Admitted. (* OLD
   introv RC E.
   unfolds in E.
   name_object_method.
@@ -909,14 +765,14 @@ Proof.
        deal_with_regular_lemma E if_success_out; substs; tryfalse.
        cases_if; false.
       inverts~ Hab.
-Qed.
+Qed. *)
 
 Lemma env_record_get_binding_value_correct : forall runs,
   runs_type_correct runs -> forall S0 S C0 L rn rs R,
   env_record_get_binding_value runs S0 C0 L rn rs = out_ter S R ->
   red_expr S0 C0 (spec_env_record_get_binding_value L rn rs) (out_ter S R) /\
     (res_type R = restype_normal -> exists v, R = (v : value)).
-Proof.
+Admitted. (* OLD
   introv RC E. do 2 unfolds in E. rewrite_morph_option; simpls; tryfalse.
   rewrite <- Heap.binds_equiv_read_option in EQx.
    applys_and red_spec_env_record_get_binding_value EQx. destruct e; simpls.
@@ -938,7 +794,7 @@ Proof.
        applys_and red_spec_env_record_get_binding_value_1_object RH.
        applys_and red_expr_abort A. splits~. absurd_neg.
       cases_if; false.
-Qed.
+Qed. *)
 
 Lemma ref_get_value_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 rv S R,
@@ -977,30 +833,30 @@ Lemma if_success_value_out : forall runs,
     R' = res_normal rv /\
     red_expr S' C (spec_get_value rv) (out_ter S'' (v : value)) /\
     K S'' v = out_ter S R)).
-Proof.
+Admitted. (* OLD
   introv RC H. deal_with_regular_lemma H if_success_out; substs; repeat eexists.
    branch~ 1.
    deal_with_regular_lemma H0 if_success_out; substs.
     forwards~ (GV&GVC): ref_get_value_correct HE. branch 2. repeat eexists; auto*.
     forwards~ (GV&GVC): ref_get_value_correct HE. branch 3.
      forwards~ (v&Ev): GVC. inverts Ev. repeat eexists; auto*.
-Qed.
+Qed. *)
 
 Lemma run_callable_correct : forall S v co,
   run_callable S v = Some co ->
   callable S v co.
-Proof.
+Admitted. (* OLD
   introv E. destruct v; simpls~.
    inverts~ E.
    rewrite_morph_option; simpls; tryfalse.
     exists o0. splits~. forwards~: @pick_option_correct EQx. inverts~ E.
-Qed.
+Qed. *)
 
 Lemma object_default_value_correct : forall runs,
   runs_type_correct runs -> forall S S' R' C l pref,
   object_default_value runs S C l pref = out_ter S' R' ->
   red_expr S C (spec_object_default_value l pref) (out_ter S' R').
-Proof.
+Admitted. (* OLD
   introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
   forwards~ OM: run_object_method_correct (rm EQx).
   applys~ red_spec_object_default_value OM. destruct~ b.
@@ -1074,14 +930,14 @@ Proof.
            forwards~ (?&?): run_error_correct (rm H1).
             apply~ red_spec_object_default_value_sub_2_not_callable.
              apply~ red_spec_object_default_value_4.
-Qed.
+Qed. *)
 
 Lemma to_string_correct : forall runs,
   runs_type_correct runs -> forall S S' R' C v,
   to_string runs S C v = out_ter S' R' ->
   red_expr S C (spec_to_string v) (out_ter S' R') /\
     (res_type R' = restype_normal -> exists (s : string), R' = s).
-Proof.
+Admitted. (* OLD
   introv RC E. destruct v; simpls.
    inverts E. splits*. apply~ red_spec_to_string_prim.
    deal_with_regular_lemma E if_success_primitive_out; substs.
@@ -1093,20 +949,13 @@ Proof.
      applys_and red_spec_to_string_object.
       applys~ red_spec_to_primitive_pref_object DV.
      splits*. apply~ red_spec_to_string_1.
-Qed.
+Qed. *)
 
 
 (**************************************************************)
 (** Monadic Constructors, Tactics *)
 
-Ltac other_follows :=
-  try match goal with
-  | H : run_object_method ?meth ?S ?l = Some ?z |- _ =>
-    let R := fresh "R" in (* Maybe this usage of [fresh] is not very serious... *)
-    try rewrite H in * |- *;
-    forwards R: @run_object_method_correct (rm H)
-  end.
-
+(* OLD
 Ltac unmonad_passing :=
   let Ep := fresh "Ep" in
   let No := fresh "No" in
@@ -1149,41 +998,7 @@ Ltac unmonad_passing :=
   end;
   dealing_follows;
   other_follows.
-
-(* Unfold monadic cnstructors.  The continuation is called on all aborting cases. *)
-Ltac unmonad :=
-  try match goal with
-  | H : if_ter ?res ?K = result_out ?o |- _ =>
-    deal_with_ter H
-  | H : if_success ?res ?K = result_out ?o |- _ =>
-    deal_with_regular_lemma H if_success_out
-  | H : if_value ?res ?K = result_out ?o |- _ =>
-    deal_with_regular_lemma H if_value_out
-  | H : if_object ?res ?K = result_out ?o |- _ =>
-    deal_with_regular_lemma H if_object_out
-  | H : if_string ?res ?K = result_out ?o |- _ =>
-    deal_with_regular_lemma H if_string_out
-  | H : if_success_value ?runs ?C ?res ?K = result_out ?o |- _ =>
-    deal_with_regular_lemma_run H if_success_value_out
-  | H : if_not_throw ?res ?K = result_out ?o |- _ =>
-    let S := fresh "S" in
-    let R := fresh "R" in
-    let E := fresh "E" in
-    let T := fresh "T" in
-    let ES := fresh "ES" in
-    let ER := fresh "ER" in
-    let D := fresh "D" in
-    let HE := fresh "HE" in
-    forwards (S&R&E&[(T&ES&ER)|(D&HE)]): if_not_throw_out (rm H);
-    [| simpl_after_regular_lemma ]
-  | H : result_out (out_ter ?S1 ?res1) = result_out (out_ter ?S2 ?res2) |- _ =>
-    inverts H
-  | H : passing_normal ?S1 ?D1 = passing_normal ?S2 ?D2 |- _ =>
-    inverts H
-  (* TODO:  Complete. *)
-  end;
-  dealing_follows;
-  other_follows.
+*)
 
 
 (**************************************************************)
