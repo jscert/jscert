@@ -44,6 +44,7 @@ Implicit Type O : object.
 Implicit Type S : state.
 Implicit Type C : execution_ctx.
 Implicit Type P : object_properties_type.
+Implicit Type W : result.
 
 Implicit Type e : expr.
 Implicit Type p : prog.
@@ -262,7 +263,7 @@ Ltac rm_variables :=
 
 
 (**************************************************************)
-(** Monadic Constructors, Lemmae *)
+(** Monadic Constructors, Lemmas *)
 
 Inductive passing_terminates {A : Type} : passing A -> Prop :=
   | passing_terminates_normal : forall S a,
@@ -271,11 +272,13 @@ Inductive passing_terminates {A : Type} : passing A -> Prop :=
     abort (out_ter S R) ->
     passing_terminates (passing_abort (out_ter S R)).
 
+(* TODO:  To be removed? *)
 Definition if_regular_lemma (res : result) S0 R0 M :=
   exists S R, res = out_ter S R /\
     ((res_type R <> restype_normal /\ S = S0 /\ R = R0)
       \/ M S R).
 
+(*
 Definition if_ter_post o1 K o :=
      (o = o1 /\ o = out_div)
   \/ (exists S R, o1 = out_ter S R /\ K S R = (o : result)).
@@ -290,11 +293,136 @@ Proof.
    inverts* H.
    jauto.
 Qed.
+*)
 
-Lemma if_some_out : forall (A : Type) (op : option A) K o,
-  if_some op K = o ->
-  exists a, op = Some a /\ K a = o.
-Proof. introv E. destruct* op; tryfalse. Qed.
+(* To be sorted *)
+
+(* generic *)
+
+Lemma if_some_out : forall (A : Type) (oa : option A) K o,
+  if_some oa K = o ->
+  exists (a:A), oa = Some a /\ K a = o.
+Proof. introv E. destruct* oa; tryfalse. Qed.
+
+Definition (* TODO:  Rename this in the interpreter *) if_some_or_default {A : Type} := @if_def A.
+
+Lemma if_some_or_default_out : forall (A : Type) (oa : option A) d K b,
+  if_some_or_default oa d K = b ->
+     (oa = None /\ d = b)
+  \/ (exists a, oa = Some a /\ K a = b).
+Proof. introv E. destruct* oa; tryfalse. Qed.
+
+Lemma if_empty_label_out : forall K S R o,
+  if_empty_label S R K = o ->
+  res_label R = label_empty /\ K tt = o.
+Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
+
+
+(* --shared defs *)
+
+
+(** [eqabort o1 o] assert that [o1] and [o] are equal
+    and satisfy the [abort] predicate. *)
+
+Definition eqabort o1 o :=
+  o = o1 /\ abort o.
+
+(** [isout W Pred] asserts that [W] is in fact
+    an outcome that satisfies [Pred]. *)
+
+Definition isout W (Pred:out->Prop) :=
+  exists o1, W = result_out o1 /\ Pred o1.
+
+
+(* results *)
+
+Definition if_ter_post K o o1 :=
+     (o1 = out_div /\ o = o1)
+  \/ (exists S R, o1 = out_ter S R /\ K S R = result_out o). (* TODO:  Remove the type annotations everywhere. *)
+
+Lemma if_ter_out : forall W K o,
+  if_ter W K = o ->
+  isout W (if_ter_post K o).
+Proof.
+  introv H. destruct W as [o1 | | | ]; simpls; tryfalse.
+  exists o1. splits~. unfolds. destruct o1 as [|S R].
+   inverts* H.
+   jauto.
+Qed.
+
+Definition if_success_post K o o1 :=
+  eqabort o1 o \/ 
+  exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = result_out o.
+
+Lemma if_success_out : forall W K o,
+  if_success W K = o ->
+  isout W (if_success_post K o).
+Admitted.
+
+(* with unfolding:
+Lemma if_success_out : forall W K o,
+  if_success W K = o ->
+  exists o1, W = result_out o1 /\ 
+   (   (o = o1 /\ abort o) 
+    \/ (exists S rv, o1 = out_ter S rv /\ K S rv = o)).
+*)
+
+Definition if_value_post K o o1 :=
+  eqabort o1 o \/ 
+  exists S v, o1 = out_ter S (res_val v) /\ K S v = result_out o.
+
+Lemma if_value_out : forall W K o,
+  if_value W K = o ->
+  isout W (if_value_post K o).
+Admitted.
+
+Definition if_void_post K o o1 :=
+  eqabort o1 o \/ 
+  exists S, o1 = out_void S /\ K S = result_out o.
+
+Lemma if_void_out : forall W K o,
+  if_void W K = o ->
+  isout W (if_void_post K o).
+Admitted.
+
+(* results+deconstruction (we don't factorize the defs below for readability) *)
+
+Definition if_object_post K o o1 :=
+  eqabort o1 o \/ 
+  exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = result_out o.
+
+Lemma if_object_out : forall W K o,
+  if_object W K = o ->
+  isout W (if_object_post K o).
+Admitted.
+
+Definition if_bool_post K o o1 :=
+  eqabort o1 o \/ 
+  exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = result_out o.
+
+Lemma if_bool_out : forall W K o,
+  if_bool W K = o ->
+  isout W (if_bool_post K o).
+Admitted.
+
+Definition if_string_post K o o1 :=
+  eqabort o1 o \/ 
+  exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = result_out o.
+
+Lemma if_string_out : forall W K o,
+  if_string W K = o ->
+  isout W (if_string_post K o).
+Admitted.
+
+Definition if_number_post K o o1 :=
+  eqabort o1 o \/ 
+  exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = result_out o.
+
+Lemma if_number_out : forall W K o,
+  if_number W K = o ->
+  isout W (if_number_post K o).
+Admitted.
+
 
 (* Old monadic lemmas
 Lemma if_empty_label_out : forall K S0 S R0 R,
@@ -465,7 +593,13 @@ Tactic Notation "abort_prog" :=
 Ltac run_ifres_select H :=
   match type of H with
   | context [ if_ter ] => constr:(if_ter_out)
-  (* LATER: Complete. *)
+  | context [ if_success ] => constr:(if_success_out)
+  | context [ if_value ] => constr:(if_value_out)
+  | context [ if_void ] => constr:(if_void_out)
+  | context [ if_object ] => constr:(if_object_out)
+  | context [ if_bool ] => constr:(if_bool_out)
+  | context [ if_string ] => constr:(if_string_out)
+  | context [ if_number ] => constr:(if_number_out)
   end.
 
 (* [run_hyp H] exploits the induction hypothesis
@@ -497,7 +631,7 @@ Tactic Notation "run_hyp" hyp(H) :=
 
 Ltac run_pre_forward H o1 O1 K :=
   let L := run_ifres_select H in
-  lets (o1&O1&K): L (rm H).
+  lets (o1&O1&K): L (rm H). (* To deconstruct [isout]. *)
 
 Ltac run_pre_core H o1 R1 K :=
   let O1 := fresh "O1" in
@@ -538,14 +672,28 @@ Tactic Notation "run_post" :=
   let Er := fresh "Er" in
   let Ab := fresh "Ab" in
   let S := fresh "S" in
-  let R := fresh "R" in
   let O1 := fresh "O1" in
-  let subst_or_clear O1 :=
-    first [ subst_hyp O1 | (*clear O1*) idtac ] in
+  let go H X :=
+    destruct H as [(Er&Ab)|(S&X&O1&H)];
+    [ try subst_hyp Er | try subst_hyp O1 ] in
   match goal with
   | H: if_ter_post _ _ _ |- _ =>
-    destruct H as [(Er&Ab)|(S&R&O1&H)];
-    [ try subst_hyp Er | ]
+    let R := fresh "R" in go H R
+  | H: if_success_post _ _ _ |- _ =>
+    let rv := fresh "rv" in go H rv
+  | H: if_value_post _ _ _ |- _ =>
+    let v := fresh "v" in go H v
+  | H: if_void_post _ _ _ |- _ =>
+    destruct H as [(Er&Ab)|(S&O1&H)];
+    [ try subst_hyp Er | try subst_hyp O1 ]
+  | H: if_object_post _ _ _ |- _ =>
+    let l := fresh "l" in go H l
+  | H: if_bool_post _ _ _ |- _ =>
+    let b := fresh "b" in go H b
+  | H: if_string_post _ _ _ |- _ =>
+    let s := fresh "s" in go H s
+  | H: if_number_post _ _ _ |- _ =>
+    let m := fresh "m" in go H m
   end.
 
 (** [run_inv] simplifies equalities in goals
@@ -558,6 +706,8 @@ Ltac run_inv :=
   | H: result_out _ = result_out _ |- _ => inverts H
   | H: out_ter ?S ?R = out_ter ?S ?R |- _ => clear H
   | H: out_ter _ _ = out_ter _ _ |- _ => inverts H
+  | H: res_intro ?t ?v ?l = res_intro ?t ?v ?l |- _ => clear H
+  | H: res_intro _ _ _ = res_intro _ _ _ |- _ => inverts H
   end.
 
 (** [runs_inv] is the same as [run_inv] followed by subst. *)
@@ -603,8 +753,14 @@ Ltac run_if_core H K :=
   let E := fresh "E" in
   match type of H with
   | context [ if_some ] =>
-     let n := fresh "n" in
-     lets (n&E&K): if_some_out (rm H)
+     let x := fresh "x" in
+     lets (x&E&K): if_some_out (rm H)
+  | context [ if_some_or_default ] =>
+     let x := fresh "x" in
+     let E1 := fresh "E" in let E2 := fresh "E" in
+     lets [(E1&E2)|(n&E&K)]: if_some_or_default_out (rm H)
+  | context [ if_empty_label ] =>
+     lets (E&K): if_empty_label_out (rm H)
   end.
 
 Tactic Notation "run_if" constr(H) "as" ident(K) :=
@@ -1002,7 +1158,7 @@ Ltac unmonad_passing :=
 
 
 (**************************************************************)
-(** Other Lemmas *)
+(** ** Main theorem *)
 
 Lemma run_elements_correct : forall runs,
   runs_type_correct runs -> forall rv,
@@ -1035,10 +1191,6 @@ Proof.
     (* func_decl *)
     forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
 Qed.
-
-
-(**************************************************************)
-(** ** Main theorem *)
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).
