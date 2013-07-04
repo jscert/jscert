@@ -1551,7 +1551,7 @@ Proof.
       applys_and red_spec_function_has_instance_3_neq n.
        forwards~: IHhi C R.
 
-   (* While *)
+   (* While 
    intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
    unmonad.
     forwards~ RC: IHe (rm HE).
@@ -1584,7 +1584,8 @@ Proof.
          do 2 cases_if; apply~ red_stat_while_4_continue.
         destruct Rt; tryfalse; inverts HE; apply~ red_stat_while_4_abrupt; absurd_neg.
        unmonad. apply~ red_stat_while_2_false.
-
+   *)
+   skip.
    (* GetOwnprop *)
    introv E R. simpls. unfolds in E. unmonad_passing.
     applys_and red_spec_object_get_own_prop R0. name_passing_def.

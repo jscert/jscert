@@ -216,7 +216,10 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       (* I've changed this rule, please check. -- Martin. *)
 
   (** Do-while statement (12.6.1)
-      -- See also the definition of [abort_intercepted_stat].*)
+      -- See also the definition of [abort_intercepted_stat].
+      
+      !!!ARTHUR TODO!!! needs to be changed like while loops
+      *)
 
   | red_stat_do_while : forall S C labs t1 e2 o,
       red_stat S C (stat_do_while_1 labs t1 e2 resvalue_empty) o ->
@@ -278,26 +281,47 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_3 labs e1 t2 rv o1) o ->
       red_stat S C (stat_while_2 labs e1 t2 rv true) o
 
-  | red_stat_while_3 : forall rv S0 S C labs e1 t2 rv_old R o,
-      rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
-      red_stat S C (stat_while_4 labs e1 t2 rv R) o ->
-      red_stat S0 C (stat_while_3 labs e1 t2 rv_old (out_ter S R)) o
+  | red_stat_while_3 : forall rv S0 S C labs e1 t2 rv' R o,
+      rv' = (If res_value R <> resvalue_empty then res_value R else rv) ->
+      red_stat S C (stat_while_4 labs e1 t2 rv' R) o ->
+      red_stat S0 C (stat_while_3 labs e1 t2 rv (out_ter S R)) o
 
-  | red_stat_while_4_break : forall S C labs e1 t2 rv R,
-      (res_type R = restype_break /\ res_label_in R labs) ->
-      red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S rv)
-
-  | red_stat_while_4_abrupt : forall S0 S C labs e1 t2 rv R,
-      abrupt_res R -> 
-      ~ (res_type R = restype_break /\ res_label_in R labs) ->
-      ~ (res_type R = restype_continue /\ res_label_in R labs) ->
-      red_stat S C (stat_while_4 labs e1 t2 rv R) (out_ter S R)
-
-  | red_stat_while_4_continue : forall S0 S C labs e1 t2 rv R o,
-      (   (res_type R = restype_continue /\ res_label_in R labs)
-        \/ res_type R = restype_normal) ->
-      red_stat S C (stat_while_1 labs e1 t2 rv) o ->      
+  | red_stat_while_4_continue : forall S C labs e1 t2 rv R o,
+      res_type R = restype_continue /\ res_label_in R labs ->
+      red_stat S C (stat_while_1 labs e1 t2 rv) o ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) o
+
+  | red_stat_while_4_not_continue : forall S C labs e1 t2 rv R o,
+      ~ (res_type R = restype_continue /\ res_label_in R labs) ->
+      red_stat S C (stat_while_5 labs e1 t2 rv R) o ->
+      red_stat S C (stat_while_4 labs e1 t2 rv R) o
+
+  | red_stat_while_5_break : forall S C labs e1 t2 rv R,
+      res_type R = restype_break /\ res_label_in R labs ->
+      red_stat S C (stat_while_5 labs e1 t2 rv R) (out_ter S res_empty)
+
+  | red_stat_while_5_not_break : forall S C labs e1 t2 rv R o,
+      ~ (res_type R = restype_break /\ res_label_in R labs) ->
+      red_stat S C (stat_while_6 labs e1 t2 rv R) o ->
+      red_stat S C (stat_while_5 labs e1 t2 rv R) o
+
+  | red_stat_while_6_abort : forall S C labs e1 t2 rv R,
+      res_type R <> restype_normal ->
+      red_stat S C (stat_while_6 labs e1 t2 rv R) (out_ter S R)
+
+  | red_stat_while_6_normal : forall S C labs e1 t2 rv R o,
+      res_type R = restype_normal ->
+      red_stat S C (stat_while_1 labs e1 t2 rv) o ->
+      red_stat S C (stat_while_6 labs e1 t2 rv R) o
+
+
+  (* Implicitly captured by the generic abort rule:
+
+  | red_stat_while_3_abort : forall rv S0 S C labs e1 t2 rv' R,
+      res_type R <> restype_normal ->
+      red_stat S0 C (stat_while_3 labs e1 t2 rv (out_ter S R)) (out_ter S R)
+
+  *)
 
   (** For statement: LATER (12.6.3) *)
 
