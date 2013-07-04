@@ -296,6 +296,20 @@ Definition object_properties S l P :=
 Definition object_properties_keys_as_list S l xs :=
   exists P, object_properties S l P /\ heap_keys_as_list P xs.
 
+(** [object_properties_enumerable_keys_as_list S l xs] asserts that [xs]
+    is the list of enumerable property names associated to the object
+    stored at address [l] in [S] (the list can be in any order). *)
+
+Definition object_properties_enumerable_keys_as_list S l xs :=
+  (* !!!
+  
+   !!! 
+  
+   !!!!
+   
+   !!!  TODO: fix the definition to the real thing *)
+  exists P, object_properties S l P /\ heap_keys_as_list P xs.
+
 (** Map a function [F] on the properties field of an object,
     and returns the updated object. *)
 

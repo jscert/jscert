@@ -167,7 +167,7 @@ Ltac rewrite_morph_option :=
     let xn := fresh "x" in
     sets_eq <- xn: op;
     destruct xn
-  | H : appcontext [ result_passing ?p ?K ] |- _ =>
+  | H : appcontext [ result_passing ?p ?K ] |- _ => (* I don't think it's a good idea to left it there. *)
     let pn := fresh "p" in
     sets_eq <- pn: p;
     destruct pn
@@ -189,6 +189,8 @@ Ltac name_passing_def :=
     let p := fresh "p" in
     sets_eq <- p: (passing_def o K)
   end.
+
+Hint Constructors abort.
 
 
 (**************************************************************)
@@ -402,7 +404,29 @@ Ltac deal_with_regular_lemma_run H if_out :=
   forwards (S'&R'&HE&[(Hnn&HS&HR)|HM]): if_out (rm H);
   [ auto; try solve [ constructors~ ] | | simpl_after_regular_lemma].
 
-Lemma if_ter_out : forall res K S R,
+(* New monads *)
+Definition if_ter_post o1 K o :=
+     (o = o1 /\ o = out_div)
+  \/ (exists S R, o1 = out_ter S R /\ K S R = (o : result)).
+
+Lemma if_ter_out : forall res K o,
+  if_ter res K = o ->
+  exists (o1 : out), res = o1 /\
+  if_ter_post o1 K o.
+Proof.
+  introv H. destruct res as [o1 | | | ]; simpls; tryfalse.
+  exists o1. splits~. unfolds. destruct o1 as [|S R].
+   inverts* H.
+   jauto.
+Qed.
+
+Lemma if_some_out : forall (A : Type) (op : option A) K o,
+  if_some op K = o ->
+  exists a, op = Some a /\ K a = o.
+Proof. introv E. destruct* op; tryfalse. Qed.
+(* End of new monads *)
+
+Lemma if_ter_out_old : forall res K S R, (* Old lemma to be removed once everything works. *)
   if_ter res K = out_ter S R ->
   exists S' R', res = out_ter S' R' /\ K S' R' = out_ter S R.
 Proof.
@@ -416,7 +440,7 @@ Ltac deal_with_ter H :=
   let HR := fresh "HR" in
   let S' := fresh "S" in
   let R' := fresh "R" in
-  forwards (S'&R'&HR&HE): if_ter_out (rm H);
+  forwards (S'&R'&HR&HE): if_ter_out_old (rm H);
   simpl_after_regular_lemma.
 
 Lemma if_empty_label_out : forall K S0 S R0 R,
@@ -519,7 +543,7 @@ Lemma passing_success_out : forall (A : Type) res K (p : passing A),
 Proof.
   introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
   destruct~ o.
-   branch 3. eexists. splits~. constructors.
+   branch 3. eexists. splits~.
   destruct r as [T R L]. destruct~ T; try solve [ branch 3;
     eexists; splits~; constructors; absurd_neg ]. simpls.
   cases_if.
@@ -539,7 +563,7 @@ Lemma passing_value_out : forall (A : Type) res K (p : passing A),
 Proof.
   introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
   destruct~ o.
-   branch 3. eexists. splits~. constructors.
+   branch 3. eexists. splits~.
   destruct r as [T R L]. destruct~ T; try solve [ branch 3;
     eexists; splits~; constructors; absurd_neg ]. simpls.
   cases_if; destruct R; subst; try (
@@ -547,6 +571,227 @@ Proof.
     [ discriminate | solve [left*] || solve [try right; discriminate] ]).
   branch 1. repeat eexists.
 Qed.
+
+
+(************************************************************)
+(* ** Correctness tactics *)
+
+(** [prove_not_intercept] proves a goal of
+    the form "~ abort_intercepted_* _" *)
+
+Ltac prove_not_intercept :=
+let H := fresh in intros H; try solve [ inversion H; false~ ].
+
+Hint Extern 1 (~ abort_intercepted_expr _) => prove_not_intercept.
+Hint Extern 1 (~ abort_intercepted_stat _) => prove_not_intercept.
+Hint Extern 1 (~ abort_intercepted_prog _) => prove_not_intercept.
+
+Ltac prove_abort :=
+  solve [ first [
+    assumption | constructor; absurd_neg
+  ]].
+
+Ltac abort_tactic L :=
+  apply L;
+  [ simpl; congruence
+  | try prove_abort
+  | try prove_not_intercept ].
+
+Tactic Notation "abort_expr" :=
+    abort_tactic red_expr_abort.
+Tactic Notation "abort_stat" :=
+    abort_tactic red_stat_abort.
+Tactic Notation "abort_prog" :=
+    abort_tactic red_prog_abort.
+
+(** [run_ifres_select] selects the appropriate "out" lemma *)
+
+Ltac run_ifres_select H :=
+  match type of H with
+  | context [ if_ter ] => constr:(if_ter_out)
+  (* LATER: Complete. *)
+  end.
+
+(* [run_hyp H] exploits the induction hypothesis
+   on [runs_type_correct] to the hypothesis [H] *)
+
+Ltac run_hyp_select_proj H :=
+  match type of H with
+  | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
+  | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
+  | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
+  (* TODO: Complete. *)
+  end.
+
+Ltac run_hyp_select_ind tt :=
+  match goal with IH: runs_type_correct _ |- _ => constr:(IH) end.
+
+Tactic Notation "run_hyp" hyp(H) "as" ident(R) :=
+  let IH := run_hyp_select_ind tt in
+  let Proj := run_hyp_select_proj H in
+  lets R: Proj IH (rm H).
+
+Tactic Notation "run_hyp" hyp(H) :=
+  let T := fresh in rename H into T;
+  run_hyp T as H.
+
+(* [run_pre] exploits the "out" lemma and
+   the induction hypothesis, forwarding the
+   lemma given by [run_ifres_select] and running [run_hyp] *)
+
+Ltac run_pre_forward H o1 O1 K :=
+  let L := run_ifres_select H in
+  lets (o1&O1&K): L (rm H).
+
+Ltac run_pre_core H o1 R1 K :=
+  let O1 := fresh "O1" in
+  run_pre_forward H o1 O1 K;
+  try run_hyp O1 as R1.
+
+Tactic Notation "run_pre" hyp(H) "as" ident(o1) ident(R1) ident(K) :=
+  let T := fresh in rename H into T;
+  run_pre_core T o1 R1 K.
+
+Tactic Notation "run_pre" "as" ident(o1) ident(R1) :=
+  match goal with H: _ = result_out _ |- _ =>
+    let T := fresh in rename H into T;
+    run_pre_core T o1 R1 H end.
+
+Tactic Notation "run_pre" "as" ident(o1) :=
+  let R1 := fresh "R1" o1 in
+  run_pre as o1 R1.
+
+Tactic Notation "run_pre" :=
+  let o1 := fresh "o1" in let R1 := fresh "R1" in
+  run_pre as o1 R1.
+
+(** [run_step Red o1 R1] applys a reduction rule on a given
+    [o1] or reduction reaching [o1]. *)
+
+Tactic Notation "run_step" constr(Red) constr(o1orR1) :=
+  applys Red o1orR1.
+
+Tactic Notation "run_step" constr(Red) constr(o1) constr(R1) :=
+  first [ applys Red (rm R1)
+        | applys Red o1 ].
+
+(** [run_post] decomposes the conclusion of the "out"
+    lemma *)
+
+Tactic Notation "run_post" :=
+  let Er := fresh "Er" in
+  let Ab := fresh "Ab" in
+  let S := fresh "S" in
+  let R := fresh "R" in
+  let O1 := fresh "O1" in
+  let subst_or_clear O1 :=
+    first [ subst_hyp O1 | (*clear O1*) idtac ] in
+  match goal with
+  | H: if_ter_post _ _ _ |- _ =>
+    destruct H as [(Er&Ab)|(S&R&O1&H)];
+    [ try subst_hyp Er | ]
+  end.
+
+(** [run_inv] simplifies equalities in goals
+    by performing inversions on equalities. *)
+
+Ltac run_inv :=
+  repeat
+  match goal with
+  | H: result_out ?o = result_out ?o |- _ => clear H
+  | H: result_out _ = result_out _ |- _ => inverts H
+  | H: out_ter ?S ?R = out_ter ?S ?R |- _ => clear H
+  | H: out_ter _ _ = out_ter _ _ |- _ => inverts H
+  end.
+
+(** [runs_inv] is the same as [run_inv] followed by subst. *)
+
+Ltac runs_inv :=
+  run_inv; subst.
+
+(** Auxiliary tactics to select/check the current "out" *)
+
+Ltac run_get_current_out tt :=
+  match goal with
+  | |- red_expr _ _ _ ?o => o
+  | |- red_stat _ _ _ ?o => o
+  | |- red_prog _ _ _ ?o => o
+  (* TODO:  Complete *)
+  end.
+
+Ltac run_check_current_out o :=
+  match goal with
+  | |- red_expr _ _ _ o => idtac
+  | |- red_stat _ _ _ o => idtac
+  | |- red_prog _ _ _ o => idtac
+  (* TODO:  Complete *)
+  end.
+
+(** [run_ifres L] combines [run_pre], [run_step L] and calls
+    [run_post] on the main reduction subgoal, followed
+    with a cleanup using [run_inv] *)
+
+Ltac run_ifres Red :=
+  let o1 := fresh "o1" in let R1 := fresh "R1" in
+  run_pre as o1 R1;
+  let o := run_get_current_out tt in
+  run_step Red o1 R1;
+  try (run_check_current_out o; run_post);
+  run_inv.
+
+(** [run_if] is intended for simplyfing simple monads
+    that do not match over a result, then run
+    [run_inv] to clean up the goal. *)
+
+Ltac run_if_core H K :=
+  let E := fresh "E" in
+  match type of H with
+  | context [ if_some ] =>
+     let n := fresh "n" in
+     lets (n&E&K): if_some_out (rm H)
+  end.
+
+Tactic Notation "run_if" constr(H) "as" ident(K) :=
+  run_if_core H K;
+  run_inv.
+
+Tactic Notation "run_if" :=
+  match goal with H: _ = result_out _ |- _ =>
+    let T := fresh in rename H into T;
+    run_if T as H
+  end.
+
+(** [run Red] is the same as [run_ifres Red].
+    [run] without arguments is the same as [run_if].
+    [runs] is same as [run] followed with [subst]. *)
+
+Tactic Notation "run" constr(Red) :=
+  run_ifres Red.
+
+Tactic Notation "run" "*" constr(Red) :=
+  run Red; auto*.
+
+Tactic Notation "runs" constr(Red) :=
+  run Red; subst.
+
+Tactic Notation "runs" "*" constr(Red) :=
+  run Red; subst; auto*.
+
+Tactic Notation "run" :=
+  run_if.
+
+Tactic Notation "run" "*" :=
+  run; auto*.
+
+Tactic Notation "runs" :=
+  run; subst.
+
+Tactic Notation "runs" "*" :=
+  runs; auto*.
+
+
+(************************************************************)
+(* ** Correctness Lemmas *)
 
 Lemma run_error_correct : forall S ne S' R',
   run_error S ne = out_ter S' R' ->
@@ -626,7 +871,7 @@ Proof.
   splits.
     applys~ red_spec_object_get (rm OM).
      destruct p.
-      apply red_spec_object_get_1_default.       
+      apply red_spec_object_get_1_default.
       applys~ H.
       rewrite <- EQp. simpls. clear EQp. apply passing_output_normal.
       destruct f; simpls; inverts E.
@@ -645,8 +890,9 @@ Proof.
       apply red_spec_object_get_1_default.
        applys~ H.
        rewrite <- EQp. simpls.
-       rewrite E.
-       apply (passing_output_abort (spec_object_get_2 l l)).
+       deal_with_regular_lemma E if_success_out; substs.
+        apply (passing_output_abort (spec_object_get_2 l l)).
+        cases_if; false.
     introv Hrn; destruct p.
       destruct f; simpls; inverts* E.
       destruct a; simpls; invert H1.
@@ -660,10 +906,8 @@ Proof.
        false.
        asserts Hab : (abort (out_ter S R)).
        symmetry in EQp.
-       applys~ H EQp  (spec_object_get_2 l l).
-       rewrite E.
-       apply (passing_output_abort (spec_object_get_2 l l)).
-       substs~.
+       deal_with_regular_lemma E if_success_out; substs; tryfalse.
+       cases_if; false.
       inverts~ Hab.
 Qed.
 
@@ -689,9 +933,11 @@ Proof.
         forwards*: run_object_get_correct E.
        applys_and red_spec_env_record_get_binding_value_obj_2_false.
         forwards*: out_error_or_cst_correct E.
-     substs. forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0). forwards~ (RH&A): HCa.
-      applys_and red_spec_env_record_get_binding_value_1_object RH.
-      applys_and red_expr_abort A. splits~. absurd_neg. inverts~ A; absurd_neg.
+     deal_with_regular_lemma E if_success_out; substs; tryfalse.
+      forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0). forwards~ (RH&A): HCa.
+       applys_and red_spec_env_record_get_binding_value_1_object RH.
+       applys_and red_expr_abort A. splits~. absurd_neg.
+      cases_if; false.
 Qed.
 
 Lemma ref_get_value_correct : forall runs,
@@ -763,7 +1009,7 @@ Proof.
     deal_with_regular_lemma E if_value_out; substs.
      forwards~ (E&_): run_object_get_correct RC (rm HE).
       applys~ red_spec_object_default_value_sub_1 E.
-      apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+      apply~ red_expr_abort.
      forwards~ (E&?): run_object_get_correct RC (rm HE).
       applys~ red_spec_object_default_value_sub_1 E.
       rewrite_morph_option; simpls; tryfalse.
@@ -772,7 +1018,7 @@ Proof.
         rewrite res_overwrite_value_if_empty_empty in E2. destruct v; simpls; tryfalse.
         deal_with_regular_lemma E2 if_value_out; substs.
          apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-          apply* RCa. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+          apply* RCa. apply~ red_expr_abort.
          apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
           apply* RCa. destruct v.
            inverts H1. apply~ red_spec_object_default_value_sub_3_prim.
@@ -782,7 +1028,7 @@ Proof.
             deal_with_regular_lemma H1 if_value_out; substs.
              forwards~ (E0&_): run_object_get_correct RC (rm HE0).
               applys~ red_spec_object_default_value_sub_1 E0.
-              apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+              apply~ red_expr_abort.
              forwards~ (E0&?): run_object_get_correct RC (rm HE0).
               applys~ red_spec_object_default_value_sub_1 E0.
               rewrite_morph_option; simpls; tryfalse.
@@ -792,7 +1038,7 @@ Proof.
                 destruct v; simpls; tryfalse.
                 deal_with_regular_lemma E4 if_value_out; substs.
                  apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-                  apply* RCa0. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+                  apply* RCa0. apply~ red_expr_abort.
                  apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
                   apply* RCa0. destruct v.
                    inverts H4. apply~ red_spec_object_default_value_sub_3_prim.
@@ -808,7 +1054,7 @@ Proof.
         deal_with_regular_lemma H0 if_value_out; substs.
          forwards~ (E0&_): run_object_get_correct RC (rm HE).
           applys~ red_spec_object_default_value_sub_1 E0.
-          apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+          apply~ red_expr_abort.
          forwards~ (E0&?): run_object_get_correct RC (rm HE).
           applys~ red_spec_object_default_value_sub_1 E0.
           rewrite_morph_option; simpls; tryfalse.
@@ -818,7 +1064,7 @@ Proof.
             destruct v0; simpls; tryfalse.
             deal_with_regular_lemma E4 if_value_out; substs.
              apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-              apply* RCa0. apply~ red_expr_abort. constructors. absurd_neg. absurd_neg.
+              apply* RCa0. apply~ red_expr_abort.
              apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
               apply* RCa0. destruct v0.
                inverts H2. apply~ red_spec_object_default_value_sub_3_prim.
@@ -842,7 +1088,7 @@ Proof.
     forwards~ DV: object_default_value_correct HE.
      splits; [| intros; false ]. apply~ red_spec_to_string_object.
        applys~ red_spec_to_primitive_pref_object DV.
-     apply~ red_expr_abort. constructors*. absurd_neg.
+     apply~ red_expr_abort.
     forwards~ DV: object_default_value_correct HE.
      applys_and red_spec_to_string_object.
       applys~ red_spec_to_primitive_pref_object DV.
@@ -939,24 +1185,6 @@ Ltac unmonad :=
   dealing_follows;
   other_follows.
 
-Ltac abort_expr :=
-  apply red_expr_abort;
-   [ auto*
-   | try solve [constructors; absurd_neg]
-   | try solve [absurd_neg]].
-
-Ltac abort_stat :=
-  apply red_stat_abort;
-   [ auto*
-   | try solve [constructors; absurd_neg]
-   | try solve [absurd_neg]].
-
-Ltac abort_prog :=
-  apply red_prog_abort;
-   [ auto*
-   | try solve [constructors; absurd_neg]
-   | try solve [absurd_neg]].
-
 
 (**************************************************************)
 (** Other Lemmas *)
@@ -1028,7 +1256,7 @@ Proof.
     unmonad.
      (* Abort case *)
      forwards~ RC: IHe (rm HE). apply~ red_expr_access.
-      applys~ red_spec_expr_get_value RC. abort_expr. abort_expr.
+      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr], two times *)
      (* Normal case *)
      forwards~ RC: IHe (rm HE).
       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
@@ -1039,7 +1267,7 @@ Proof.
          applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
         unmonad.
          forwards~ RC': IHe (rm HE). apply~ red_expr_access_1.
-          applys~ red_spec_expr_get_value RC'. abort_expr. abort_expr.
+          applys~ red_spec_expr_get_value RC'. skip. skip. (* Old [abort_expr], two times *)
          forwards~ RC': IHe (rm HE).
           inverts HM as HM; simpl_after_regular_lemma; rm_variables.
            apply~ red_expr_access_1.
@@ -1089,8 +1317,7 @@ Proof.
       (* Abort case *)
       forwards~ RC: IHe (rm HE). apply~ red_expr_unary_op.
        simpl. cases_if~; tryfalse.
-       applys~ red_spec_expr_get_value RC. abort_expr.
-       abort_expr.
+       applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr], two times *)
       (* Normal case *)
       forwards~ RC: IHe (rm HE).
        inverts HM as HM; simpl_after_regular_lemma; rm_variables.
@@ -1149,8 +1376,7 @@ Proof.
      unmonad.
       (* Abort case *)
       forwards~ RC: IHe (rm HE). apply~ red_expr_binary_op.
-       applys~ red_spec_expr_get_value RC. abort_expr.
-       abort_expr.
+       applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr], two times *)
       (* Normal case *)
       forwards~ RC1: IHe (rm HE).
        inverts HM as HM; simpl_after_regular_lemma; rm_variables.
@@ -1163,8 +1389,7 @@ Proof.
           (* Abort case *)
           forwards~ RC2: IHe (rm HE).
            applys~ red_expr_binary_op_1.
-             applys~ red_spec_expr_get_value RC2. abort_expr.
-           abort_expr.
+             applys~ red_spec_expr_get_value RC2. skip. skip. (* Old [abort_expr], two times *)
           (* Normal case *)
           forwards~ RC2: IHe (rm HE).
            inverts HM as HM; simpl_after_regular_lemma; rm_variables.
@@ -1231,8 +1456,7 @@ Proof.
     unfolds in R. unmonad.
      forwards~ RC: IHe (rm HE). apply~ red_stat_if.
       apply~ red_spec_expr_get_value_conv_stat.
-       applys~ red_spec_expr_get_value RC. abort_expr.
-       abort_stat.
+       applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
      forwards~ RC: IHe (rm HE). apply~ red_stat_if.
       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
        apply~ red_spec_expr_get_value_conv_stat.
@@ -1260,8 +1484,7 @@ Proof.
     (* Throw *)
     unfolds in R. unmonad.
      forwards~ RC: IHe (rm HE). apply~ red_stat_throw.
-      applys~ red_spec_expr_get_value RC. abort_expr.
-      abort_stat.
+      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
      forwards~ RC: IHe (rm HE).
       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
        apply~ red_stat_throw.
@@ -1275,8 +1498,7 @@ Proof.
     (* Return *)
     destruct o; simpls; unmonad.
      forwards~ RC: IHe (rm HE). apply~ red_stat_return_some.
-      applys~ red_spec_expr_get_value RC. abort_expr.
-      abort_stat.
+      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
      forwards~ RC: IHe (rm HE).
       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
        apply~ red_stat_return_some.
@@ -1334,8 +1556,7 @@ Proof.
    unmonad.
     forwards~ RC: IHe (rm HE).
      apply~ red_spec_expr_get_value_conv_stat.
-      applys~ red_spec_expr_get_value RC. abort_expr.
-      abort_stat.
+      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
     forwards~ RC: IHe (rm HE).
      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
      apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
@@ -1401,7 +1622,7 @@ Proof.
            subst p. inverts R. symmetry in H3. rewrite H3 in H0. inverts H0.
             forwards~ G: run_object_get_correct H3. constructors~.
             applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. splits~.
-            apply~ red_expr_abort. absurd_neg.
+            apply~ red_expr_abort.
            subst p. inverts R. false* No.
          applys_and RC. rewrite H0 in R. inverts R. splits. constructors.
           forwards*: RC K. constructors.
@@ -1432,6 +1653,6 @@ Proof.
    (* Equal *)
    skip. (* TODO *)
 
-Qed.
- 
+Admitted. (* Existential variables left because of the tactic transition. *)
+
 
