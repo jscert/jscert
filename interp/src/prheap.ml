@@ -363,7 +363,7 @@ let dump_stat_step = function
   | Coq_stat_for_in _ -> "Stat_for_in"
   | Coq_stat_for_in_var _ -> "Stat_for_in_var"
   | Coq_stat_debugger -> "Stat_debugger"
-  | Coq_stat_switch (_, _) -> "Stat_switch"
+  | Coq_stat_switch (_, _, _) -> "Stat_switch"
 
 let dump_prog_step = function
   | Coq_prog_intro (b, es) ->
