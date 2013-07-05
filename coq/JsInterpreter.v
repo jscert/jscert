@@ -227,14 +227,6 @@ Definition if_bool (o : result) (K : state -> bool -> result) : result :=
     | _ => impossible_with_heap_because S "[if_bool] called with non-boolean value."
     end).
 
-Definition if_success_primitive (o : result) (K : state -> prim -> result) : result :=
-  if_value o (fun S v =>
-    match v with
-    | value_prim w => K S w
-    | value_object _ =>
-      impossible_with_heap_because S "[if_success_primitive] didn't get a primitive."
-    end).
-
 Definition if_object (o : result) (K : state -> object_loc -> result) : result :=
   if_value o (fun S v =>
     match v with
@@ -982,7 +974,7 @@ Definition to_number runs S C v : result :=
   | value_prim w =>
     out_ter S (convert_prim_to_number w)
   | value_object l =>
-    if_success_primitive (to_primitive runs S C l (Some preftype_number)) (fun S1 w =>
+    if_primitive (to_primitive runs S C l (Some preftype_number)) (fun S1 w =>
       out_ter S1 (convert_prim_to_number w))
   end.
 
@@ -1008,7 +1000,7 @@ Definition to_string runs S C v : result :=
   | value_prim w =>
     out_ter S (convert_prim_to_string w)
   | value_object l =>
-    if_success_primitive (to_primitive runs S C l (Some preftype_string)) (fun S1 w =>
+    if_primitive (to_primitive runs S C l (Some preftype_string)) (fun S1 w =>
       out_ter S1 (convert_prim_to_string w))
   end.
 
@@ -1930,12 +1922,12 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
         let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
         let loop tt := runs_type_stat_while runs S2 C rv' labs e1 t2 in
-        ifb (  decide (res_type R <> restype_continue) (* todo: notation pour decide *)
-             || ! res_label_in R labs) then (
-           ifb decide (res_type R = restype_break) && res_label_in R labs then (
+        ifb res_type R <> restype_continue
+             \/ ~ res_label_in R labs then (
+           ifb res_type R = restype_break /\ res_label_in R labs then (
               out_ter S2 rv'
            ) else (
-              ifb (res_type R <> restype_normal) then (
+              ifb res_type R <> restype_normal then (
                 out_ter S2 R
               ) else (
                 loop tt
