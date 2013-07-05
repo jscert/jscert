@@ -289,6 +289,10 @@ let prstate skip s =
 	"\tHeap:\n" ^ prheap skip (state_object_heap s) ^
 	"\n\tEnv. Record:\n" ^ prenv_record (state_env_record_heap s)
 
+let formatterstate formatter state =
+  Format.fprintf formatter "%s" (prstate false state)
+  
+
 let prrestype = function
   | Coq_restype_normal -> "normal"
   | Coq_restype_break -> "break"

@@ -44,7 +44,7 @@ val prenv_record :
   string
 
 val prstate : bool (* skip init *) -> JsSyntax.state -> string
-
+val formatterstate : Format.formatter -> JsSyntax.state -> unit
 val prrestype : JsSyntax.restype -> string
 
 val dump_expr_step : JsSyntax.expr -> string

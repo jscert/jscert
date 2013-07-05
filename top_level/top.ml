@@ -90,7 +90,8 @@ struct
     step = env.step
   };;
   
-  let dump state = Prheap.prheap true state.JsSyntax.state_object_heap;;
+  let dump state = (*Prheap.prheap true state.JsSyntax.state_object_heap*)
+    Prheap.prstate true state;;
   
   let translate_file file = Translate_syntax.coq_syntax_from_file file;;
   let translate_string str = Translate_syntax.coq_syntax_from_string str;;
@@ -143,12 +144,15 @@ let print res =
 let display env = try (match env#eval with
   | JsInterpreter.Coq_result_out out -> begin match out with
       | JsSyntax.Coq_out_div ->  env#clear, "Diverge"
-      | JsSyntax.Coq_out_ter (state, res) -> env#update state, print res
+      | JsSyntax.Coq_out_ter (state, res) -> 
+          print_endline (Prheap.prstate false state);
+          env#update state, print res
     end
   | JsInterpreter.Coq_result_not_yet_implemented -> env#clear, "Not yet implemented"
   | JsInterpreter.Coq_result_impossible ->  env#clear, "Impossible"
   | JsInterpreter.Coq_result_bottom bot ->  env#next bot) with
-      Xml.File_not_found s -> env#clear, "";;
+    | Xml.File_not_found s -> env#clear, "Xml: File not found..."
+    | Parser.InvalidArgument -> env#clear, "Parser: Invalid Argument...";;
 
 let rec read env = scan env (read_line ())
 
@@ -173,4 +177,7 @@ and command env str = Scanf.sscanf str "# %s %s " (fun s s' -> match s with
 
 let () =
   let env = Environment.create () in
-  command env "#help";;
+  command env "#help"
+(*
+  let (env, str) = display (env#load "test.js") in Printf.printf "%s\n\n< " str
+*);;
