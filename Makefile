@@ -193,7 +193,7 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	sed -e $$'s|(\*\* val run_object_heap_set_extensible :|$(RUNOBJECTMETHOD)|' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
 	sed -e $$'s|type runs_type =|$(RUNOBJECTHEAP)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
 	mv interp/src/extract/JsInterpreter.ml.bak interp/src/extract/JsInterpreter.ml
-	sed -e 's| stuck| (*BISECT-IGNORE*) stuck|g' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreterBisect.ml
+	sed -e 's| impossible| (*BISECT-IGNORE*) impossible|g' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreterBisect.ml
 	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
 
