@@ -1006,7 +1006,7 @@ Fixpoint stat_vardecl (t : stat) : list string :=
   | stat_for_in _ _ _ s => stat_vardecl s
   | stat_for_in_var _ _ _ _ s => stat_vardecl s
   | stat_debugger => nil
-  | stat_switch _ sb => switchbody_vardecl sb
+  | stat_switch _ _ sb => switchbody_vardecl sb
   end
 
 with switchbody_vardecl (sb : switchbody) : list string :=

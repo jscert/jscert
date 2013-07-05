@@ -58,7 +58,10 @@ Implicit Type sc : switchclause.
 (*Implicit Type scs : list switchclause.*)
 
 (**************************************************************)
-(** ** Reduction rules for global code (??) *)
+(** ** Rules for delete_events. *)
+
+(** [search_proto_chain S l x] returns the location l' of the first object 
+    in the prototype chain of l which contains property x. *)
 
 Inductive search_proto_chain : state -> object_loc -> prop_name -> option object_loc -> Prop :=
   | search_proto_chain_found : forall S l x,
@@ -84,7 +87,12 @@ Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop 
                                 ev = delete_event l x res ->
                                 make_delete_event S l x ev.
 
+(**************************************************************)
+(** ** Auxiliary definitions for the semantics of for-in. *)
 
+
+(**************************************************************)
+(** ** Reduction rules for global code (??) *)
 
 Inductive red_javascript : prog -> out -> Prop :=
 
@@ -391,33 +399,36 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Switch statement (12.11) *)
 (*!!!ARTHUR!!!*)
-  | red_stat_switch : forall S C e o o1 sb,
+  | red_stat_switch : forall S C e o o1 sb labs,
       red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_1 o1 sb) o ->
-      red_stat S C (stat_switch e sb) o
+      red_stat S C (stat_switch_1 o1 labs sb) o ->
+      red_stat S C (stat_switch labs e sb) o
 
-  | red_stat_switch_1_nodefault : forall S S0 C vi o o1 scs, 
+  | red_stat_switch_1_nodefault : forall S S0 C vi o o1 scs labs, 
       red_stat S C (stat_switch_nodefault_1 vi resvalue_empty scs) o1 ->
-      red_stat S C (stat_switch_2 o1) o ->
-      red_stat S C (stat_switch_1 (out_ter S0 vi) (switchbody_nodefault scs)) o
+      red_stat S C (stat_switch_2 o1 labs) o ->
+      red_stat S C (stat_switch_1 (out_ter S0 vi) labs (switchbody_nodefault scs)) o
 
-  | red_stat_switch_1_default: forall S S0 C o o1 vi scs1 scs2 ts1, 
+  | red_stat_switch_1_default: forall S S0 C o o1 vi scs1 scs2 ts1 labs, 
       red_stat S C (stat_switch_default_1 vi resvalue_empty scs1 ts1 scs2) o1 ->
-      red_stat S C (stat_switch_2 o1) o ->
-      red_stat S C (stat_switch_1 (out_ter S0 vi) (switchbody_withdefault scs1 ts1 scs2)) o
+      red_stat S C (stat_switch_2 o1 labs) o ->
+      red_stat S C (stat_switch_1 (out_ter S0 vi) labs (switchbody_withdefault scs1 ts1 scs2)) o
 
   | red_stat_switch_2_break : forall S S0 C R rv lab labs,  (* step 3 *)
       R = res_intro restype_break rv lab ->
       (* Daniele: problem here. The spec says "If R.type is break and R.target is in the current label set, return (normal, R.value, empty)."
                 I don't understand/know where I can find the 'current label set'. I see that e.g. in 'while' this 'labs' is part of the args, but 
                 it seems it is not the case here... *)
-      (*res_label_in R labs ->*)
+      res_label_in R labs ->
       (* FOR_DANIELE: yes, good point, you'll need to add "lab" as an extra argument 
          to "stat_switch", and also to stat_switch_1 and stat_switch_2 *)
-      red_stat S0 C (stat_switch_2 (out_ter S R)) (out_ter S (res_normal rv))
 
-  | red_stat_switch_2_normal : forall S0 S C rv, (* step 4 *)
-      red_stat S0 C (stat_switch_2 (out_ter S rv)) (out_ter S rv)
+      (* FOR_ARTHUR: done. I leave the comments just in case. We can remove them 
+         when rules are good.  *)
+      red_stat S0 C (stat_switch_2 (out_ter S R) labs) (out_ter S (res_normal rv))
+
+  | red_stat_switch_2_normal : forall S0 S C rv labs, (* step 4 *)
+      red_stat S0 C (stat_switch_2 (out_ter S rv) labs) (out_ter S rv)
 
   (** -- Switch without default case *)
 

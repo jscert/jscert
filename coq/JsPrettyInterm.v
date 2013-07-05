@@ -614,8 +614,8 @@ with ext_stat :=
 
   (* Extended statements for 'switch' *)
                                                                            
-  | stat_switch_1: out -> switchbody -> ext_stat
-  | stat_switch_2: out -> ext_stat
+  | stat_switch_1: out -> label_set -> switchbody -> ext_stat
+  | stat_switch_2: out -> label_set -> ext_stat
   | stat_switch_nodefault_1: value -> resvalue -> list switchclause -> ext_stat
   | stat_switch_nodefault_2: out -> value -> resvalue -> list stat -> list switchclause -> ext_stat
   | stat_switch_nodefault_3: bool -> value -> resvalue -> list stat -> list switchclause -> ext_stat
@@ -1192,8 +1192,8 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | spec_expr_get_value_conv_stat_1 o _ _ => Some o
   | spec_expr_get_value_conv_stat_2 o _ => Some o
 
-  | stat_switch_1 o _ => Some o
-  | stat_switch_2 o => Some o
+  | stat_switch_1 o _ _ => Some o
+  | stat_switch_2 o _ => Some o
   | stat_switch_nodefault_1 _ _ _=> None
   | stat_switch_nodefault_2 o _ _ _ _  => Some o
   | stat_switch_nodefault_3 _ _ _ _ _ => None
@@ -1273,12 +1273,12 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_try_1 (out_ter S R) (Some cb) fo)
   | abort_intercepted_stat_try_3 : forall S R fo,
       abort_intercepted_stat (stat_try_3 (out_ter S R) fo)
-  | abort_intercepted_stat_switch_2 : forall S R,
+  | abort_intercepted_stat_switch_2 : forall S R labs,
       res_type R = restype_break ->
       (* FOR_DANIELE: need to add a premise
          res_label_in R labs ->
          once you've added labs to stat_switch_2 *)
-      abort_intercepted_stat (stat_switch_2 (out_ter S R))
+      abort_intercepted_stat (stat_switch_2 (out_ter S R) labs)
   | abort_intercepted_stat_switch_nodefault_6 : forall S rv R scs,
       ~ res_is_normal R ->
       abort_intercepted_stat (stat_switch_nodefault_6 rv (out_ter S R) scs)
