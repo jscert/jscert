@@ -1201,18 +1201,11 @@ Admitted. (* OLD
     forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
 Qed. *)
 
-Theorem runs_correct : forall num,
-  runs_type_correct (runs num).
+Lemma run_expr_correct : forall runs,
+  runs_type_correct runs ->
+   follow_expr (run_expr runs).
 Proof.
-
-  induction num.
-   constructors; try solve [unfolds~ (* Temporary, to remove [True] properties *)];
-     introv H; inverts H; introv P; inverts P.
-
-   (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
-   constructors.
-
-   intros S C e S' res R. simpl in R. unfolds in R. destruct e.
+  introv RC. intros S C e S' res R. unfolds in R. destruct e.
    Focus 6.
 
     (* Access *)
@@ -1226,11 +1219,7 @@ Proof.
         applys* red_spec_check_object_coercible_return.
        run' red_expr_access_3. applys* red_expr_access_4.
 
-Admitted.
-
-(* OLD:
-
-   (* run_expr *)
+Admitted. (* OLD:
    intros S C e S' res R. destruct e; simpl in R; dealing_follows.
     (* this *)
     unmonad. apply~ red_expr_this.
@@ -1429,8 +1418,14 @@ Admitted.
     skip. (* TODO *)
     (* assign *)
     skip. (* TODO *)
+*)
 
-   (* run_stat *)
+Lemma run_stat_correct : forall runs,
+  runs_type_correct runs ->
+   follow_stat (run_stat runs).
+Proof.
+  introv RC. intros S C t S' res R. unfolds in R. destruct t.
+Admitted. (* OLD:
    intros S C t S' res R. destruct t; simpl in R; dealing_follows.
     (* Expression *)
     apply~ red_stat_expr. unmonad.
@@ -1519,12 +1514,24 @@ Admitted.
     unmonad. apply~ res_stat_debugger.
     (* switch *)
     skip. (* TODO *)
+*)
 
-   (* run_prog *)
-   intros S C p S' res R. destruct p as [str es]. simpls.
-   forwards~ RC: run_elements_correct R. constructors~. apply~ red_prog_prog.
+Lemma run_prog_correct : forall runs,
+  runs_type_correct runs ->
+   follow_prog (run_prog runs).
+Proof.
+  introv RC. intros S C p S' res R. unfolds in R. destruct p.
+  apply~ red_prog_prog. applys~ run_elements_correct R.
+Qed.
 
-   (* run_call *)
+Lemma run_call_correct : forall runs,
+  runs_type_correct runs -> forall l (vs : list value),
+  follow_call l vs
+    (fun S C (vthis : value) =>
+      run_call runs S C l vthis vs).
+Proof.
+   introv RC. intros l vs S C v S' res R. unfolds in R.
+Admitted. (* OLD:
    intros l vs S C v S' res R. simpls. unfolds in R. unmonad.
    name_object_method. do 2 (destruct B as [B|]; tryfalse). destruct B; tryfalse.
     (* Call Default *)
@@ -1535,8 +1542,12 @@ Admitted.
       apply~ red_spec_call_1_prealloc. unmonad.
       skip. (* TODO *)
      skip. (* TODO *)
+*)
 
-   (* HasInstance *)
+Lemma run_function_has_instance_correct : forall runs,
+  runs_type_correct runs ->
+  follow_function_has_instance (run_function_has_instance runs).
+Admitted. (* OLD:
    intros S C lo lv S' res R. simpls. rewrite_morph_option; tryfalse.
     simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
      destruct p; inverts R. splits*.
@@ -1545,8 +1556,13 @@ Admitted.
       substs. inverts R. splits*. apply~ red_spec_function_has_instance_3_eq.
       applys_and red_spec_function_has_instance_3_neq n.
        forwards~: IHhi C R.
+*)
 
-   (* While
+Lemma run_stat_while_correct : forall runs,
+  runs_type_correct runs -> forall (ls : label_set) e t,
+  follow_stat_while ls e t
+    (fun S C rv => run_stat_while runs S C rv ls e t).
+Admitted. (* OLD:
    intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
    unmonad.
     forwards~ RC: IHe (rm HE).
@@ -1579,9 +1595,13 @@ Admitted.
          do 2 cases_if; apply~ red_stat_while_4_continue.
         destruct Rt; tryfalse; inverts HE; apply~ red_stat_while_4_abrupt; absurd_neg.
        unmonad. apply~ red_stat_while_2_false.
-   *)
-   skip.
-   (* GetOwnprop *)
+*)
+
+Lemma run_object_get_own_prop_correct : forall runs,
+  runs_type_correct runs -> forall l,
+  follow_object_get_own_prop l
+    (fun S C => run_object_get_own_prop runs S C l).
+Admitted. (* OLD:
    introv E R. simpls. unfolds in E. unmonad_passing.
     applys_and red_spec_object_get_own_prop R0. name_passing_def.
     asserts Co: (forall K o,
@@ -1624,8 +1644,13 @@ Admitted.
           forwards*: RC K. constructors.
        substs. inverts R. splits. constructors.
         forwards*: Co K. constructors.
+*)
 
-   (* Getprop *)
+Lemma run_object_get_prop_correct : forall runs,
+  runs_type_correct runs -> forall l,
+  follow_object_get_prop l
+    (fun S C => run_object_get_prop runs S C l).
+Admitted. (* OLD:
    introv E R. simpls. unfolds in E. unmonad_passing.
    applys_and red_spec_object_get_prop R0. destruct x0.
     applys_and red_spec_object_get_prop_1_default. unmonad_passing.
@@ -1642,11 +1667,37 @@ Admitted.
        splits. apply~ red_spec_object_get_prop_2_not_undef. absurd_neg.
      subst p. inverts R. applys_and RC.  splits. constructors.
       forwards*: RC K. constructors.
-
-   (* IsPrototypeOf *)
-   skip. (* TODO *)
-
-   (* Equal *)
-   skip. (* TODO *)
-
 *)
+
+Lemma object_proto_is_prototype_of_correct : forall runs,
+  runs_type_correct runs ->
+  follow_object_proto_is_prototype_of
+    (object_proto_is_prototype_of runs).
+Admitted.
+
+Lemma run_equal_correct : forall runs,
+  runs_type_correct runs ->
+  follow_equal (run_equal runs).
+Admitted.
+
+
+Theorem runs_correct : forall num,
+  runs_type_correct (runs num).
+Proof.
+  induction num.
+   constructors; try solve [unfolds~ (* Temporary, to remove [True] properties *)];
+     introv H; inverts H; introv P; inverts P.
+   (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
+   constructors.
+     apply~ run_expr_correct.
+     apply~ run_stat_correct.
+     apply~ run_prog_correct.
+     apply~ run_call_correct.
+     apply~ run_function_has_instance_correct.
+     apply~ run_stat_while_correct.
+     apply~ run_object_get_own_prop_correct.
+     apply~ run_object_get_prop_correct.
+     apply~ object_proto_is_prototype_of_correct.
+     apply~ run_equal_correct.
+Qed.
+
