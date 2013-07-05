@@ -1102,7 +1102,7 @@ Ltac run_post_extra ::=
     let v1 := fresh "v" in
     destruct H as [(Er&Ab)|(S1&v1&O1&H)];
     [ try abort_expr | try subst_hyp O1 ]
-  | H: if_string_to_string_post _ _ _ |- _ =>
+  | H: if_to_string_post _ _ _ |- _ =>
     let O1 := fresh "O1" in
     let S1 := fresh "S" in
     let s := fresh "s" in
