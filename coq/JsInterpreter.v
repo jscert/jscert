@@ -1933,7 +1933,7 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
         ifb (  decide (res_type R <> restype_continue) (* todo: notation pour decide *)
              || ! res_label_in R labs) then (
            ifb decide (res_type R = restype_break) && res_label_in R labs then (
-              out_ter S2 res_empty
+              out_ter S2 rv'
            ) else (
               ifb (res_type R <> restype_normal) then (
                 out_ter S2 R
