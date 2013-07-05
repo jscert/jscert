@@ -4,6 +4,7 @@ Require Import LibFix LibList.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 Require Import JsInterpreter JsPrettyInterm JsPrettyRules.
 
+(*
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -97,16 +98,14 @@ Definition follow_elements rv :=
 Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
   forall S C v S' R,
     run S C v = out_ter S' R ->
-    red_expr S C (spec_call l v vs) (out_ter S' R) /\
-      (res_is_normal R -> exists v', R = res_val v').
+    red_expr S C (spec_call l v vs) (out_ter S' R).
 Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
   forall S C lo lv S' R,
     run S lv (lo : object_loc) = out_ter S' R ->
     (* Note that this function is related to [spec_function_has_instance_2] instead of
       [spec_function_has_instance_1] as it's much more closer to the specification and
       thus much easier to prove. *)
-    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' R) /\
-      (res_is_normal R -> exists b, R = prim_bool b).
+    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' R).
 Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
@@ -524,10 +523,16 @@ Tactic Notation "abort_stat" :=
     abort_tactic red_stat_abort.
 Tactic Notation "abort_prog" :=
     abort_tactic red_prog_abort.
+Tactic Notation "abort" :=
+  match goal with 
+  | |- red_expr _ _ _ _ => abort_expr 
+  | |- red_stat _ _ _ _ => abort_stat
+  | |- red_prog _ _ _ _ => abort_prog 
+  end.
 
-(** [run_ifres_select] selects the appropriate "out" lemma *)
+(** [run_select_ifres] selects the appropriate "out" lemma *)
 
-Ltac run_ifres_select H :=
+Ltac run_select_ifres H :=
   match type of H with
   | context [ if_ter ] => constr:(if_ter_out)
   | context [ if_success ] => constr:(if_success_out)
@@ -539,44 +544,113 @@ Ltac run_ifres_select H :=
   | context [ if_number ] => constr:(if_number_out)
   end.
 
-(* [run_hyp H] exploits the induction hypothesis
-   on [runs_type_correct] to the hypothesis [H] *)
+(** [run_select_proj] is used to obtain automatically 
+    the right correctness lemma out of the correctness record *)
 
-Ltac run_hyp_expr_get_value_if_to_string H := fail.
-
-Ltac run_hyp_select_proj H :=
+Ltac run_select_proj H :=
   match type of H with
+  | ?T = _ =>
+  match T with
   | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
   | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
   | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
-  | _ => run_hyp_expr_get_value_if_to_string H
+  end end.
+
+(** [run_select_lemma] is used to obtain automatically 
+    the right correctness lemma for an auxiliary function *)
+
+Ltac run_select_lemma_run_expr_get_value T := fail.
+Ltac run_select_lemma_if_to_string T := fail.
+
+Ltac run_select_lemma H :=
+  match type of H with
+  | ?T = _ =>
+    match constr:(tt) with
+    | ?x => run_select_lemma_run_expr_get_value T
+    | ?x => run_select_lemma_if_to_string T
+    end 
   end.
 
-Ltac run_hyp_select_ind tt :=
+
+Definition if_to_string_post K o o1 := (* warning: this is not a copy-paste *)
+  (eqabort o1 o \/
+    exists S, exists (s : string), o1 = out_ter S s /\
+      K S s = result_out o).
+
+Axiom if_to_string_correct' : forall runs, (* TODO *)
+  runs_type_correct runs -> forall S C v K o,
+  if_string (to_string runs S C v) K = o -> exists o1,
+    red_expr S C (spec_to_string v) o1 /\
+      if_to_string_post K o o1.
+
+Definition run_expr_get_value_post K o o1 := (* warning: this is not a copy-paste *)
+  (eqabort o1 o \/
+    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
+      K S1 v1 = result_out o).
+
+Axiom run_expr_get_value_correct' : forall runs, (* TODO *)
+  runs_type_correct runs -> forall S C e K o,
+  run_expr_get_value runs S C e K = o -> exists o1,
+    red_expr S C (spec_expr_get_value e) o1 /\
+      run_expr_get_value_post K o o1.
+
+
+
+Ltac run_select_lemma_run_expr_get_value T ::= 
+  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct') end.
+
+Ltac run_select_lemma_if_to_string T ::= 
+  match T with if_string (to_string _ _ _ _) _ => constr:(if_to_string_correct') end.
+
+
+
+(** [run_hyp_select_ind_hyp] returns the induction hypothesis
+    on [runs_type_correct] *)
+
+Ltac run_hyp_select_ind_hyp tt :=
   match goal with IH: runs_type_correct _ |- _ => constr:(IH) end.
+
+(* [run_hyp H] exploits the induction hypothesis
+   on [runs_type_correct] to the hypothesis [H] *)
 
 Tactic Notation "run_hyp" hyp(H) "as" simple_intropattern(R) :=
   let T := fresh in rename H into T;
-  let IH := run_hyp_select_ind tt in
-  let Proj := run_hyp_select_proj T in
+  let IH := run_hyp_select_ind_hyp tt in
+  let Proj := run_select_proj T in
   lets R: Proj IH (rm T).
 
 Tactic Notation "run_hyp" hyp(H) :=
   let T := fresh in rename H into T;
   run_hyp T as H.
 
-(* [run_pre] exploits the "out" lemma and
-   the induction hypothesis, forwarding the
-   lemma given by [run_ifres_select] and running [run_hyp] *)
+(** [prove_runs_type_correct] discharges the trivial goal 
+    that consists in invoking the induction hypothesis*)
 
-Ltac run_pre_forward H o1 O1 K :=
-  let L := run_ifres_select H in
-  lets (o1&O1&K): L (rm H). (* To deconstruct [isout]. *)
+Ltac prove_runs_type_correct := 
+  match goal with |- runs_type_correct _ => assumption end.
 
+(* [run_pre] exploits the appropriate "out" lemma, whether it comes
+   from the correctness record or it is an auxiliary lemma. *)
+
+Ltac run_pre_ifres H o1 R1 K :=
+   let L := run_select_ifres H in
+   let O1 := fresh "O1" in
+   lets (o1&O1&K): L (rm H); (* deconstruction of [isout]. *)
+   try run_hyp O1 as R1.
+
+Ltac run_pre_lemma H o1 R1 K :=
+  let L := run_select_lemma H in
+  let T := fresh in rename H into T;
+  lets (o1&R1&K): L (rm T);
+  try prove_runs_type_correct.
+  
 Ltac run_pre_core H o1 R1 K :=
-  let O1 := fresh "O1" in
-  run_pre_forward H o1 O1 K;
-  try run_hyp O1 as R1.
+  first 
+  [ let L := run_select_lemma H in (* test if it's a lemma *)
+    first [ run_pre_lemma H o1 R1 K | fail 1 ] 
+  | let L := run_select_ifres H in (* test if it's a proj *)
+    first [ run_pre_ifres H o1 R1 K | fail 1 ]
+  ].
 
 Tactic Notation "run_pre" hyp(H) "as" ident(o1) ident(R1) ident(K) :=
   let T := fresh in rename H into T;
@@ -595,13 +669,13 @@ Tactic Notation "run_pre" :=
   let o1 := fresh "o1" in let R1 := fresh "R1" in
   run_pre as o1 R1.
 
-(** [run_step Red o1 R1] applys a reduction rule on a given
+(** [run_apply Red o1 R1] applys a reduction rule on a given
     [o1] or reduction reaching [o1]. *)
 
-Tactic Notation "run_step" constr(Red) constr(o1orR1) :=
+Tactic Notation "run_apply" constr(Red) constr(o1orR1) :=
   applys Red o1orR1.
 
-Tactic Notation "run_step" constr(Red) constr(o1) constr(R1) :=
+Tactic Notation "run_apply" constr(Red) constr(o1) constr(R1) :=
   first [ applys Red (rm R1)
         | applys Red o1 ].
 
@@ -636,7 +710,25 @@ Ltac run_post_core :=
     let s := fresh "s" in go H s
   | H: if_number_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
-  | |- _ => run_post_extra
+  | |- _ => run_post_extra (* TODO: create one tactic for each lemma, like for the "select" tactic *)
+  end.
+
+Ltac run_post_extra ::=
+  let Er := fresh "Er" in
+  let Ab := fresh "Ab" in
+  match goal with
+  | H: run_expr_get_value_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let v1 := fresh "v" in
+    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  | H: if_to_string_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let s := fresh "s" in
+    destruct H as [(Er&Ab)|(S1&s&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
   end.
 
 Tactic Notation "run_post" :=
@@ -679,52 +771,65 @@ Ltac run_check_current_out o :=
   (* TODO:  Complete *)
   end.
 
-(** [run_ifres L] combines [run_pre], [run_step L] and calls
+(** [run_step L] combines [run_pre], [run_apply L] and calls
     [run_post] on the main reduction subgoal, followed
     with a cleanup using [run_inv] *)
 
-Ltac run_ifres Red :=
+Ltac run_step Red :=
   let o1 := fresh "o1" in let R1 := fresh "R1" in
   run_pre as o1 R1;
   let o := run_get_current_out tt in
-  run_step Red o1 R1;
-  try (run_check_current_out o; run_post);
-  run_inv.
+  run_apply Red o1 R1;
+  try (run_check_current_out o; run_post; run_inv).
 
-(** [run_if] is intended for simplyfing simple monads
+(** [run_simpl] is intended for simplyfing simple monads
     that do not match over a result, then run
     [run_inv] to clean up the goal. *)
 
-Ltac run_if_core H K :=
+
+
+Axiom run_error_correct' : forall S ne S' R' C, (* TODO *)
+  run_error S ne = out_ter S' R' ->
+  red_expr S C (spec_error ne) (out_ter S' R') /\
+    ~ res_is_normal R'.
+
+
+Ltac run_simpl_base H K :=
   let E := fresh "E" in
-  match type of H with
-  | context [ if_some ] =>
+  match type of H with ?T = _ => match T with
+  | if_some _ _ =>
      let x := fresh "x" in
      lets (x&E&K): if_some_out (rm H)
-  | context [ if_some_or_default ] =>
+  | if_some_or_default _ _ _ =>
      let x := fresh "x" in
      let E1 := fresh "E" in let E2 := fresh "E" in
      lets [(E1&E2)|(n&E&K)]: if_some_or_default_out (rm H)
-  | context [ if_empty_label ] =>
+  | if_empty_label _ _ _ =>
      lets (E&K): if_empty_label_out (rm H)
-  end.
+  | run_error _ _ =>
+     let N := fresh "N" in
+     let C := match goal with |- _ _ ?C _ _ => constr:(C) end in
+     lets (K&N): run_error_correct' C (rm H)
+  end end.
 
-Tactic Notation "run_if" constr(H) "as" ident(K) :=
-  run_if_core H K;
-  run_inv.
+Ltac run_simpl_core H K :=
+  run_simpl_base H K; run_inv.
 
-Tactic Notation "run_if" :=
+Tactic Notation "run_simpl" ident(H) "as" ident(K) :=
+  run_simpl_core H K.
+
+Tactic Notation "run_simpl" :=
   match goal with H: _ = result_out _ |- _ =>
-    let T := fresh in rename H into T;
-    run_if T as H
+    let H' := fresh in rename H into H';
+    run_simpl_core H' H
   end.
 
-(** [run Red] is the same as [run_ifres Red].
-    [run] without arguments is the same as [run_if].
+(** [run Red] is the same as [run_step Red].
+    [run] without arguments is the same as [run_simpl].
     [runs] is same as [run] followed with [subst]. *)
 
 Tactic Notation "run" constr(Red) :=
-  run_ifres Red.
+  run_step Red.
 
 Tactic Notation "run" "*" constr(Red) :=
   run Red; auto*.
@@ -736,7 +841,7 @@ Tactic Notation "runs" "*" constr(Red) :=
   run Red; subst; auto*.
 
 Tactic Notation "run" :=
-  run_if.
+  run_simpl.
 
 Tactic Notation "run" "*" :=
   run; auto*.
@@ -748,12 +853,24 @@ Tactic Notation "runs" "*" :=
   runs; auto*.
 
 
+(* debugging of [run Red]:
+  run_pre as o1 R1.
+    or: run_pre H as o1 R1 K. (* where H is the hypothesis *)
+    or: run_pre_core H o1 R1 K. (* where H is the hypothesis *)
+    or: run_pre_lemma H o1 R1 K. (* where H is the hypothesis *)
+    or: run_pre_ifres H o1 R1 K. (* where H is the hypothesis *)
+  run_apply __my_red_lemma__ R1. (* where R1 is the red hypothesis *)
+  run_post. 
+  run_inv.
+*)
+
+
 (************************************************************)
 (* ** Correctness Lemmas *)
 
-Lemma run_error_correct : forall S ne S' R',
+Lemma run_error_correct : forall S ne S' R' C,
   run_error S ne = out_ter S' R' ->
-  (forall C, red_expr S C (spec_error ne) (out_ter S' R')) /\
+  red_expr S C (spec_error ne) (out_ter S' R') /\
     ~ res_is_normal R'.
 Admitted. (* OLD
   introv E. deal_with_regular_lemma E if_object_out; substs.
@@ -913,37 +1030,20 @@ Proof.
         cases_if; destruct v as [()|l]; simpls; try (solve [inverts C; false]);
          cases_if; first [ applys~ prim_value_get_correct RC | applys~ run_object_get_correct RC ].
        intro Rn. destruct v. destruct p; simpls; tryfalse;
-         try solve [ forwards~ (_&?): run_error_correct E; false ]; cases_if; tryfalse.
+         try solve [ forwards~ (_&?): run_error_correct C0 E; false ]; cases_if; tryfalse.
         simpls. cases_if. forwards~ (_&?): run_object_get_correct RC E.
     destruct r as [rb rn rs]; destruct rb as [[()|l]|?]; simpls; tryfalse;
       try (false C; first [ solve [left~] | solve [right~] ]); split.
+<<<<<<< Updated upstream
+     apply~ red_spec_ref_get_value_ref_a. constructors. applys~ run_error_correct.
+=======
      apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
-     introv Eq. forwards~ (_&?): run_error_correct E. false.
+>>>>>>> Stashed changes
+     introv Eq. forwards~ (_&?): run_error_correct C0 E. false.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
       applys~ env_record_get_binding_value_correct RC.
      intros. forwards~ (_&?): env_record_get_binding_value_correct E.
 Qed.
-
-(*
-Lemma if_success_value_out : forall runs,
-  runs_type_correct runs -> forall res0 K S C R,
-  if_success_value runs C res0 K = out_ter S R ->
-  if_regular_lemma res0 S R (fun S' R' => (exists rv S'' R'',
-    R' = res_normal rv /\
-    red_expr S' C (spec_get_value rv) (out_ter S'' R'') /\
-    res_type R'' <> restype_normal /\
-    R = R'' /\ S = S'') \/ (exists rv S'' v,
-    R' = res_normal rv /\
-    red_expr S' C (spec_get_value rv) (out_ter S'' (v : value)) /\
-    K S'' v = out_ter S R)).
-Admitted. *) (* OLD
-  introv RC H. deal_with_regular_lemma H if_success_out; substs; repeat eexists.
-   branch~ 1.
-   deal_with_regular_lemma H0 if_success_out; substs.
-    forwards~ (GV&GVC): ref_get_value_correct HE. branch 2. repeat eexists; auto*.
-    forwards~ (GV&GVC): ref_get_value_correct HE. branch 3.
-     forwards~ (v&Ev): GVC. inverts Ev. repeat eexists; auto*.
-Qed. *)
 
 Lemma run_callable_correct : forall S v co,
   run_callable S v = Some co ->
@@ -1035,11 +1135,33 @@ Admitted. (* OLD
              apply~ red_spec_object_default_value_4.
 Qed. *)
 
-Lemma to_string_correct : forall runs,
-  runs_type_correct runs -> forall S S' R' C v,
-  to_string runs S C v = out_ter S' R' ->
-  red_expr S C (spec_to_string v) (out_ter S' R') /\
-    (res_is_normal R' -> exists s, R' = prim_string s).
+
+(** Conversions *)
+
+Lemma run_expr_get_value_correct : forall runs,
+  runs_type_correct runs -> forall S C e K o,
+  run_expr_get_value runs S C e K = o -> exists o1,
+    red_expr S C (spec_expr_get_value e) o1 /\
+      run_expr_get_value_post K o o1.
+Admitted.
+
+Definition if_to_primitive_post K o o1 :=
+  (eqabort o1 o \/
+    exists S, exists (w : prim), o1 = out_ter S w /\
+      K S w = result_out o).
+
+Lemma if_to_primitive_correct : forall runs,
+  runs_type_correct runs -> forall S C v prefo K o,
+  if_primitive (to_primitive runs S C v prefo) K = o -> exists o1,
+    red_expr S C (spec_to_primitive v prefo) o1 /\
+      if_to_primitive_post K o o1.
+Admitted.
+
+Lemma if_to_string_correct : forall runs,
+  runs_type_correct runs -> forall S C v K o,
+  if_string (to_string runs S C v) K = o -> exists o1,
+    red_expr S C (spec_to_string v) o1 /\
+      if_to_string_post K o o1.
 Admitted. (* OLD
   introv RC E. destruct v; simpls.
    inverts E. splits*. apply~ red_spec_to_string_prim.
@@ -1055,17 +1177,6 @@ Admitted. (* OLD
 Qed. *)
 
 
-Definition run_expr_get_value_post K o o1 :=
-  (eqabort o1 o \/
-    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
-      K S1 v1 = result_out o).
-
-Lemma run_expr_get_value_correct : forall runs,
-  runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
-Admitted.
 
 (* OLD
 Ltac unmonad_passing :=
@@ -1112,51 +1223,6 @@ Ltac unmonad_passing :=
   other_follows.
 *)
 
-Definition if_string_to_string_post K o o1 :=
-  (eqabort o1 o \/
-    exists S, exists (s : string), o1 = out_ter S s /\
-      K S s = result_out o).
-
-Lemma if_to_string_correct : forall runs,
-  runs_type_correct runs -> forall S C v K o,
-  if_string (to_string runs S C v) K = o -> exists o1,
-    red_expr S C (spec_to_string v) o1 /\
-      if_string_to_string_post K o o1.
-Admitted.
-
-Ltac run_hyp_expr_get_value_if_to_string H ::=
-  match type of H with
-  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
-  | if_string (to_string _ _ _ _) _ = _ => constr:(if_to_string_correct)
-  end.
-
-Ltac run_post_extra ::=
-  let Er := fresh "Er" in
-  let Ab := fresh "Ab" in
-  match goal with
-  | H: run_expr_get_value_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let v1 := fresh "v" in
-    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
-  | H: if_string_to_string_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let s := fresh "s" in
-    destruct H as [(Er&Ab)|(S1&s&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
-  end.
-
-Tactic Notation "run'" constr(Red) :=
-  match goal with H: _ = result_out _ |- _ =>
-    let T := fresh in rename H into T;
-    let o1 := fresh "o1" in let R1 := fresh "R1" in
-    run_hyp T as (o1&R1&R); applys Red (rm R1);
-    let o := run_get_current_out tt in
-    try (run_check_current_out o; run_post; run_inv)
-  end.
-
 
 (**************************************************************)
 (** ** Main theorem *)
@@ -1193,36 +1259,53 @@ Admitted. (* OLD
     forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
 Qed. *)
 
-Theorem runs_correct : forall num,
-  runs_type_correct (runs num).
+Lemma run_expr_correct : forall runs,
+  runs_type_correct runs ->
+   follow_expr (run_expr runs).
 Proof.
+  introv RC. intros S C e S' res R. unfolds in R. destruct e.
 
-  induction num.
-   constructors; try solve [unfolds~ (* Temporary, to remove [True] properties *)];
-     introv H; inverts H; introv P; inverts P.
-
-   (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
-   constructors.
-
-   intros S C e S' res R. simpl in R. unfolds in R. destruct e.
-   Focus 6.
+  (* this *)
+  run_inv. apply~ red_expr_this.
+  (* identifier *)
+  (* apply~ red_expr_identifier. *)
+  skip. (* FIXME:  [spec_identifier_resolution] needs rules! *)
+  (* literal *)
+  run_inv. apply~ red_expr_literal.
+  (* object *)
+  skip. (* OLD:
+  unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
+   (* Abort case *)
+   inverts HE. false~ Hnn.
+   (* Normal case *)
+   unmonad. skip. (* TODO:  Needs an intermediate lemma for [init_object]. *) *)
+  (* function *)
+  skip. (* TODO *)
+  (* Access *)
+  unfolds in R.
+  run' red_expr_access. run' red_expr_access_1. cases_if.
+    lets (R2&N): run_error_correct R.
+     applys red_expr_access_2.
+       applys* red_spec_check_object_coercible_undef_or_null.
+     abort_expr.
+    applys red_expr_access_2.
+      applys* red_spec_check_object_coercible_return.
+     run' red_expr_access_3. applys* red_expr_access_4.
+  (* member *)
+  skip. (* OLD:  forwards~ ?: IHe (rm R). apply~ red_expr_member. *)
 
     (* Access *)
     unfolds in R.
-    run' red_expr_access. run' red_expr_access_1. cases_if.
-      lets (R2&N): run_error_correct R. specializes R2 C.
-       applys red_expr_access_2.
+    run red_expr_access. run red_expr_access_1. cases_if.
+      run. applys red_expr_access_2.
          applys* red_spec_check_object_coercible_undef_or_null.
-       abort_expr.
+       abort.
       applys red_expr_access_2.
         applys* red_spec_check_object_coercible_return.
-       run' red_expr_access_3. applys* red_expr_access_4.
+       run red_expr_access_3. applys* red_expr_access_4.
 
-Admitted.
 
-(* OLD:
-
-   (* run_expr *)
+Admitted. (* OLD:
    intros S C e S' res R. destruct e; simpl in R; dealing_follows.
     (* this *)
     unmonad. apply~ red_expr_this.
@@ -1421,8 +1504,14 @@ Admitted.
     skip. (* TODO *)
     (* assign *)
     skip. (* TODO *)
+*)
 
-   (* run_stat *)
+Lemma run_stat_correct : forall runs,
+  runs_type_correct runs ->
+   follow_stat (run_stat runs).
+Proof.
+  introv RC. intros S C t S' res R. unfolds in R. destruct t.
+Admitted. (* OLD:
    intros S C t S' res R. destruct t; simpl in R; dealing_follows.
     (* Expression *)
     apply~ red_stat_expr. unmonad.
@@ -1511,12 +1600,24 @@ Admitted.
     unmonad. apply~ res_stat_debugger.
     (* switch *)
     skip. (* TODO *)
+*)
 
-   (* run_prog *)
-   intros S C p S' res R. destruct p as [str es]. simpls.
-   forwards~ RC: run_elements_correct R. constructors~. apply~ red_prog_prog.
+Lemma run_prog_correct : forall runs,
+  runs_type_correct runs ->
+   follow_prog (run_prog runs).
+Proof.
+  introv RC. intros S C p S' res R. unfolds in R. destruct p.
+  apply~ red_prog_prog. applys~ run_elements_correct R.
+Qed.
 
-   (* run_call *)
+Lemma run_call_correct : forall runs,
+  runs_type_correct runs -> forall l (vs : list value),
+  follow_call l vs
+    (fun S C (vthis : value) =>
+      run_call runs S C l vthis vs).
+Proof.
+   introv RC. intros l vs S C v S' res R. unfolds in R.
+Admitted. (* OLD:
    intros l vs S C v S' res R. simpls. unfolds in R. unmonad.
    name_object_method. do 2 (destruct B as [B|]; tryfalse). destruct B; tryfalse.
     (* Call Default *)
@@ -1527,8 +1628,12 @@ Admitted.
       apply~ red_spec_call_1_prealloc. unmonad.
       skip. (* TODO *)
      skip. (* TODO *)
+*)
 
-   (* HasInstance *)
+Lemma run_function_has_instance_correct : forall runs,
+  runs_type_correct runs ->
+  follow_function_has_instance (run_function_has_instance runs).
+Admitted. (* OLD:
    intros S C lo lv S' res R. simpls. rewrite_morph_option; tryfalse.
     simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
      destruct p; inverts R. splits*.
@@ -1537,8 +1642,13 @@ Admitted.
       substs. inverts R. splits*. apply~ red_spec_function_has_instance_3_eq.
       applys_and red_spec_function_has_instance_3_neq n.
        forwards~: IHhi C R.
+*)
 
-   (* While
+Lemma run_stat_while_correct : forall runs,
+  runs_type_correct runs -> forall (ls : label_set) e t,
+  follow_stat_while ls e t
+    (fun S C rv => run_stat_while runs S C rv ls e t).
+Admitted. (* OLD:
    intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
    unmonad.
     forwards~ RC: IHe (rm HE).
@@ -1571,9 +1681,13 @@ Admitted.
          do 2 cases_if; apply~ red_stat_while_4_continue.
         destruct Rt; tryfalse; inverts HE; apply~ red_stat_while_4_abrupt; absurd_neg.
        unmonad. apply~ red_stat_while_2_false.
-   *)
-   skip.
-   (* GetOwnprop *)
+*)
+
+Lemma run_object_get_own_prop_correct : forall runs,
+  runs_type_correct runs -> forall l,
+  follow_object_get_own_prop l
+    (fun S C => run_object_get_own_prop runs S C l).
+Admitted. (* OLD:
    introv E R. simpls. unfolds in E. unmonad_passing.
     applys_and red_spec_object_get_own_prop R0. name_passing_def.
     asserts Co: (forall K o,
@@ -1616,8 +1730,13 @@ Admitted.
           forwards*: RC K. constructors.
        substs. inverts R. splits. constructors.
         forwards*: Co K. constructors.
+*)
 
-   (* Getprop *)
+Lemma run_object_get_prop_correct : forall runs,
+  runs_type_correct runs -> forall l,
+  follow_object_get_prop l
+    (fun S C => run_object_get_prop runs S C l).
+Admitted. (* OLD:
    introv E R. simpls. unfolds in E. unmonad_passing.
    applys_and red_spec_object_get_prop R0. destruct x0.
     applys_and red_spec_object_get_prop_1_default. unmonad_passing.
@@ -1634,11 +1753,38 @@ Admitted.
        splits. apply~ red_spec_object_get_prop_2_not_undef. absurd_neg.
      subst p. inverts R. applys_and RC.  splits. constructors.
       forwards*: RC K. constructors.
+*)
 
-   (* IsPrototypeOf *)
-   skip. (* TODO *)
+Lemma object_proto_is_prototype_of_correct : forall runs,
+  runs_type_correct runs ->
+  follow_object_proto_is_prototype_of
+    (object_proto_is_prototype_of runs).
+Admitted.
 
-   (* Equal *)
-   skip. (* TODO *)
+Lemma run_equal_correct : forall runs,
+  runs_type_correct runs ->
+  follow_equal (run_equal runs).
+Admitted.
+
+
+Theorem runs_correct : forall num,
+  runs_type_correct (runs num).
+Proof.
+  induction num.
+   constructors; try solve [unfolds~ (* Temporary, to remove [True] properties *)];
+     introv H; inverts H; introv P; inverts P.
+   (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
+   constructors.
+     apply~ run_expr_correct.
+     apply~ run_stat_correct.
+     apply~ run_prog_correct.
+     apply~ run_call_correct.
+     apply~ run_function_has_instance_correct.
+     apply~ run_stat_while_correct.
+     apply~ run_object_get_own_prop_correct.
+     apply~ run_object_get_prop_correct.
+     apply~ object_proto_is_prototype_of_correct.
+     apply~ run_equal_correct.
+Qed.
 
 *)
