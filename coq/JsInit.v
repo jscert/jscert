@@ -94,12 +94,12 @@ Definition object_create_prealloc_call fprealloc length P :=
   let O := object_create_prealloc_call_or_construct length P in
   object_with_invokation O None (Some (call_prealloc fprealloc)) None.
 
-(** Builds a native constructor object, with a Call method and
-    a Construct method implemented by builtin code. *)
+(** Builds a native constructor object, with a Call method, a Construct method,
+    and a HasInstance method implemented by builtin code. *)
 
 Definition object_create_prealloc_constructor fprealloc length P :=
   let O := object_create_prealloc_call_or_construct length P in
-  object_with_invokation O (Some (construct_prealloc fprealloc)) (Some (call_prealloc fprealloc)) None.
+  object_with_invokation O (Some (construct_prealloc fprealloc)) (Some (call_prealloc fprealloc)) (Some builtin_has_instance_function).
 
 (** Shorthand to extend a heap with a native method *)
 
