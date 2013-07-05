@@ -300,7 +300,7 @@ Admitted.
 (* with unfolding:
 Lemma if_success_out : forall W K o,
   if_success W K = o ->
-  exists o1, W = result_out o1 /\
+  exists o1, W = result_some o1 /\
    (   (o = o1 /\ abort o)
     \/ (exists S rv, o1 = out_ter S rv /\ K S rv = o)).
 *)
@@ -575,39 +575,6 @@ Ltac run_select_lemma H :=
     end
   end.
 
-
-Definition if_to_string_post K o o1 := (* warning: this is not a copy-paste *)
-  (eqabort o1 o \/
-    exists S, exists (s : string), o1 = out_ter S s /\
-      K S s = result_some o).
-
-Axiom if_to_string_correct' : forall runs, (* TODO *)
-  runs_type_correct runs -> forall S C v K o,
-  if_string (to_string runs S C v) K = o -> exists o1,
-    red_expr S C (spec_to_string v) o1 /\
-      if_to_string_post K o o1.
-
-Definition run_expr_get_value_post K o o1 := (* warning: this is not a copy-paste *)
-  (eqabort o1 o \/
-    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
-      K S1 v1 = result_some o).
-
-Axiom run_expr_get_value_correct' : forall runs, (* TODO *)
-  runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
-
-
-
-Ltac run_select_lemma_run_expr_get_value T ::=
-  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct') end.
-
-Ltac run_select_lemma_if_to_string T ::=
-  match T with if_string (to_string _ _ _ _) _ => constr:(if_to_string_correct') end.
-
-
-
 (** [run_hyp_select_ind_hyp] returns the induction hypothesis
     on [runs_type_correct] *)
 
@@ -661,7 +628,8 @@ Tactic Notation "run_pre" hyp(H) "as" ident(o1) ident(R1) ident(K) :=
   run_pre_core T o1 R1 K.
 
 Tactic Notation "run_pre" "as" ident(o1) ident(R1) :=
-  match goal with H: _ = result_out _ |- _ =>
+  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  match goal with H: _ = result_some _ |- _ =>
     let T := fresh in rename H into T;
     run_pre_core T o1 R1 H end.
 
@@ -717,24 +685,6 @@ Ltac run_post_core :=
   | |- _ => run_post_extra (* TODO: create one tactic for each lemma, like for the "select" tactic *)
   end.
 
-Ltac run_post_extra ::=
-  let Er := fresh "Er" in
-  let Ab := fresh "Ab" in
-  match goal with
-  | H: run_expr_get_value_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let v1 := fresh "v" in
-    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
-  | H: if_to_string_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let s := fresh "s" in
-    destruct H as [(Er&Ab)|(S1&s&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
-  end.
-
 Tactic Notation "run_post" :=
   run_post_core.
 
@@ -742,7 +692,7 @@ Tactic Notation "run_post" :=
     by performing inversions on equalities. *)
 
 Ltac run_inv :=
-  unfold result_some_out in * |- *;
+  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
   repeat
   match goal with
   | H: result_some ?o = result_some ?o |- _ => clear H
@@ -828,7 +778,8 @@ Tactic Notation "run_simpl" ident(H) "as" ident(K) :=
   run_simpl_core H K.
 
 Tactic Notation "run_simpl" :=
-  match goal with H: _ = result_out _ |- _ =>
+  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  match goal with H: _ = result_some _ |- _ =>
     let H' := fresh in rename H into H';
     run_simpl_core H' H
   end.
@@ -1145,13 +1096,6 @@ Qed. *)
 
 (** Conversions *)
 
-Lemma run_expr_get_value_correct : forall runs,
-  runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
-Admitted.
-
 Definition if_to_primitive_post K o o1 :=
   (eqabort o1 o \/
     exists S, exists (w : prim), o1 = out_ter S w /\
@@ -1163,6 +1107,11 @@ Lemma if_to_primitive_correct : forall runs,
     red_expr S C (spec_to_primitive v prefo) o1 /\
       if_to_primitive_post K o o1.
 Admitted.
+
+Definition if_to_string_post K o o1 :=
+  (eqabort o1 o \/
+    exists S, exists (s : string), o1 = out_ter S s /\
+      K S s = result_some o).
 
 Lemma if_to_string_correct : forall runs,
   runs_type_correct runs -> forall S C v K o,
@@ -1183,6 +1132,42 @@ Admitted. (* OLD
      splits*. apply~ red_spec_to_string_1.
 Qed. *)
 
+Definition run_expr_get_value_post K o o1 :=
+  (eqabort o1 o \/
+    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
+      K S1 v1 = result_some o).
+
+Lemma run_expr_get_value_correct : forall runs,
+  runs_type_correct runs -> forall S C e K o,
+  run_expr_get_value runs S C e K = o -> exists o1,
+    red_expr S C (spec_expr_get_value e) o1 /\
+      run_expr_get_value_post K o o1.
+Admitted.
+
+
+Ltac run_select_lemma_run_expr_get_value T ::=
+  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
+
+Ltac run_select_lemma_if_to_string T ::=
+  match T with if_string (to_string _ _ _ _) _ => constr:(if_to_string_correct) end.
+
+Ltac run_post_extra ::=
+  let Er := fresh "Er" in
+  let Ab := fresh "Ab" in
+  match goal with
+  | H: run_expr_get_value_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let v1 := fresh "v" in
+    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  | H: if_to_string_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let s := fresh "s" in
+    destruct H as [(Er&Ab)|(S1&s&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  end.
 
 
 (* OLD
@@ -1290,27 +1275,16 @@ Proof.
   skip. (* TODO *)
   (* Access *)
   unfolds in R.
-  run red_expr_access. run' red_expr_access_1. cases_if.
+  run red_expr_access. run red_expr_access_1. cases_if.
     lets (R2&N): run_error_correct R.
      applys red_expr_access_2.
        applys* red_spec_check_object_coercible_undef_or_null.
      abort_expr.
     applys red_expr_access_2.
       applys* red_spec_check_object_coercible_return.
-     run' red_expr_access_3. applys* red_expr_access_4.
+     run red_expr_access_3. applys* red_expr_access_4.
   (* member *)
   skip. (* OLD:  forwards~ ?: IHe (rm R). apply~ red_expr_member. *)
-
-    (* Access *)
-    unfolds in R.
-    run red_expr_access. run red_expr_access_1. cases_if.
-      run. applys red_expr_access_2.
-         applys* red_spec_check_object_coercible_undef_or_null.
-       abort.
-      applys red_expr_access_2.
-        applys* red_spec_check_object_coercible_return.
-       run red_expr_access_3. applys* red_expr_access_4.
-
 
 Admitted. (* OLD:
    intros S C e S' res R. destruct e; simpl in R; dealing_follows.
@@ -1690,6 +1664,7 @@ Admitted. (* OLD:
        unmonad. apply~ red_stat_while_2_false.
 *)
 
+(*
 Lemma run_object_get_own_prop_correct : forall runs,
   runs_type_correct runs -> forall l,
   follow_object_get_own_prop l
@@ -1738,7 +1713,9 @@ Admitted. (* OLD:
        substs. inverts R. splits. constructors.
         forwards*: Co K. constructors.
 *)
+*)
 
+(*
 Lemma run_object_get_prop_correct : forall runs,
   runs_type_correct runs -> forall l,
   follow_object_get_prop l
@@ -1760,6 +1737,7 @@ Admitted. (* OLD:
        splits. apply~ red_spec_object_get_prop_2_not_undef. absurd_neg.
      subst p. inverts R. applys_and RC.  splits. constructors.
       forwards*: RC K. constructors.
+*)
 *)
 
 Lemma object_proto_is_prototype_of_correct : forall runs,
@@ -1788,8 +1766,8 @@ Proof.
      apply~ run_call_correct.
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
-     apply~ run_object_get_own_prop_correct.
-     apply~ run_object_get_prop_correct.
+     solve [unfolds*]. (* apply~ run_object_get_own_prop_correct. *)
+     solve [unfolds*]. (* apply~ run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
      apply~ run_equal_correct.
 Qed.
