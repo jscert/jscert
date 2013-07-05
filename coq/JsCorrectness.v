@@ -239,17 +239,21 @@ Ltac constructors_and :=
 (**************************************************************)
 (** Monadic Constructors, Lemmas *)
 
-Inductive passing_terminates {A : Type} : passing A -> Prop :=
-  | passing_terminates_normal : forall S a,
-    passing_terminates (passing_normal S a)
-  | passing_terminates_abort : forall S R,
-    abort (out_ter S R) ->
-    passing_terminates (passing_abort (out_ter S R)).
+(* Shared defs *)
 
+(** [eqabort o1 o] assert that [o1] and [o] are equal
+    and satisfy the [abort] predicate. *)
 
-(* To be sorted *) (* FIXME:  Reread from here *)
+Definition eqabort o1 o :=
+  o = o1 /\ abort o.
 
-(* generic *)
+(** [isout W Pred] asserts that [W] is in fact
+    an outcome that satisfies [Pred]. *)
+
+Definition isout W (Pred:out->Prop) :=
+  exists o1, W = result_out o1 /\ Pred o1.
+
+(* Generic *)
 
 Lemma if_some_out : forall (A : Type) (oa : option A) K o,
   if_some oa K = o ->
@@ -267,24 +271,7 @@ Lemma if_empty_label_out : forall K S R o,
   res_label R = label_empty /\ K tt = o.
 Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
 
-
-(* --shared defs *)
-
-
-(** [eqabort o1 o] assert that [o1] and [o] are equal
-    and satisfy the [abort] predicate. *)
-
-Definition eqabort o1 o :=
-  o = o1 /\ abort o.
-
-(** [isout W Pred] asserts that [W] is in fact
-    an outcome that satisfies [Pred]. *)
-
-Definition isout W (Pred:out->Prop) :=
-  exists o1, W = result_out o1 /\ Pred o1.
-
-
-(* results *)
+(* Results *)
 
 Definition if_ter_post K o o1 :=
      (o1 = out_div /\ o = o1)
@@ -301,7 +288,7 @@ Proof.
 Qed.
 
 Definition if_success_post K o o1 :=
-  eqabort o1 o \/ 
+  eqabort o1 o \/
   exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = result_out o.
 
 Lemma if_success_out : forall W K o,
@@ -312,13 +299,13 @@ Admitted.
 (* with unfolding:
 Lemma if_success_out : forall W K o,
   if_success W K = o ->
-  exists o1, W = result_out o1 /\ 
-   (   (o = o1 /\ abort o) 
+  exists o1, W = result_out o1 /\
+   (   (o = o1 /\ abort o)
     \/ (exists S rv, o1 = out_ter S rv /\ K S rv = o)).
 *)
 
 Definition if_value_post K o o1 :=
-  eqabort o1 o \/ 
+  eqabort o1 o \/
   exists S v, o1 = out_ter S (res_val v) /\ K S v = result_out o.
 
 Lemma if_value_out : forall W K o,
@@ -327,7 +314,7 @@ Lemma if_value_out : forall W K o,
 Admitted.
 
 Definition if_void_post K o o1 :=
-  eqabort o1 o \/ 
+  eqabort o1 o \/
   exists S, o1 = out_void S /\ K S = result_out o.
 
 Lemma if_void_out : forall W K o,
@@ -335,10 +322,10 @@ Lemma if_void_out : forall W K o,
   isout W (if_void_post K o).
 Admitted.
 
-(* results+deconstruction (we don't factorize the defs below for readability) *)
+(* Results and deconstruction (we don't factorize the defs below for readability) *)
 
 Definition if_object_post K o o1 :=
-  eqabort o1 o \/ 
+  eqabort o1 o \/
   exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = result_out o.
 
 Lemma if_object_out : forall W K o,
@@ -347,7 +334,7 @@ Lemma if_object_out : forall W K o,
 Admitted.
 
 Definition if_bool_post K o o1 :=
-  eqabort o1 o \/ 
+  eqabort o1 o \/
   exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = result_out o.
 
 Lemma if_bool_out : forall W K o,
@@ -356,7 +343,7 @@ Lemma if_bool_out : forall W K o,
 Admitted.
 
 Definition if_string_post K o o1 :=
-  eqabort o1 o \/ 
+  eqabort o1 o \/
   exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = result_out o.
 
 Lemma if_string_out : forall W K o,
@@ -365,7 +352,7 @@ Lemma if_string_out : forall W K o,
 Admitted.
 
 Definition if_number_post K o o1 :=
-  eqabort o1 o \/ 
+  eqabort o1 o \/
   exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = result_out o.
 
 Lemma if_number_out : forall W K o,
@@ -374,13 +361,7 @@ Lemma if_number_out : forall W K o,
 Admitted.
 
 
-(* Old monadic lemmas
-Lemma if_empty_label_out : forall K S0 S R0 R,
-  if_empty_label S0 R0 K = out_ter S R ->
-    res_label R0 = label_empty /\
-    K tt = out_ter S R.
-Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
-
+(* proofs of old monadic lemmas, might be useful
 Lemma if_success_out : forall res K S R,
   if_success res K = out_ter S R ->
   if_regular_lemma res S R (fun S' R' => exists rv,
@@ -452,7 +433,15 @@ Proof.
 Qed.
 *)
 
-(* FIXME:  What do we do with the passing, then? *)
+(* Passing *)
+
+Inductive passing_terminates {A : Type} : passing A -> Prop :=
+  | passing_terminates_normal : forall S a,
+    passing_terminates (passing_normal S a)
+  | passing_terminates_abort : forall S R,
+    abort (out_ter S R) ->
+    passing_terminates (passing_abort (out_ter S R)).
+
 Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
   passing_def bo K = p ->
   (exists b, bo = Some b /\ K b = p) \/
@@ -521,9 +510,7 @@ Hint Extern 1 (~ abort_intercepted_stat _) => prove_not_intercept.
 Hint Extern 1 (~ abort_intercepted_prog _) => prove_not_intercept.
 
 Ltac prove_abort :=
-  solve [ first [
-    assumption | constructor; absurd_neg
-  ]].
+  solve [ assumption | (constructor; absurd_neg) ].
 
 Ltac abort_tactic L :=
   apply L;
@@ -552,34 +539,17 @@ Ltac run_ifres_select H :=
   | context [ if_number ] => constr:(if_number_out)
   end.
 
-Definition run_expr_get_value_post K o o1 :=
-  (eqabort o1 o \/
-    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
-      K S1 v1 = result_out o).
-
-Axiom run_expr_get_value_correct : forall runs,
-  runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
-
 (* [run_hyp H] exploits the induction hypothesis
    on [runs_type_correct] to the hypothesis [H] *)
 
-Ltac run_hyp_expr_get_value H := fail.
+Ltac run_hyp_expr_get_value_if_to_string H := fail.
 
 Ltac run_hyp_select_proj H :=
   match type of H with
   | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
   | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
   | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
-  | _ => first [ run_hyp_expr_get_value H ]
-  (* TODO: Complete. *)
-  end.
-
-Ltac run_hyp_expr_get_value H ::=
-  match type of H with
-  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
+  | _ => run_hyp_expr_get_value_if_to_string H
   end.
 
 Ltac run_hyp_select_ind tt :=
@@ -1085,8 +1055,17 @@ Admitted. (* OLD
 Qed. *)
 
 
-(**************************************************************)
-(** Monadic Constructors, Tactics *)
+Definition run_expr_get_value_post K o o1 :=
+  (eqabort o1 o \/
+    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
+      K S1 v1 = result_out o).
+
+Lemma run_expr_get_value_correct : forall runs,
+  runs_type_correct runs -> forall S C e K o,
+  run_expr_get_value runs S C e K = o -> exists o1,
+    red_expr S C (spec_expr_get_value e) o1 /\
+      run_expr_get_value_post K o o1.
+Admitted.
 
 (* OLD
 Ltac unmonad_passing :=
@@ -1133,6 +1112,51 @@ Ltac unmonad_passing :=
   other_follows.
 *)
 
+Definition if_string_to_string_post K o o1 :=
+  (eqabort o1 o \/
+    exists S, exists (s : string), o1 = out_ter S s /\
+      K S s = result_out o).
+
+Lemma if_to_string_correct : forall runs,
+  runs_type_correct runs -> forall S C v K o,
+  if_string (to_string runs S C v) K = o -> exists o1,
+    red_expr S C (spec_to_string v) o1 /\
+      if_string_to_string_post K o o1.
+Admitted.
+
+Ltac run_hyp_expr_get_value_if_to_string H ::=
+  match type of H with
+  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
+  | if_string (to_string _ _ _ _) _ = _ => constr:(if_to_string_correct)
+  end.
+
+Ltac run_post_extra ::=
+  let Er := fresh "Er" in
+  let Ab := fresh "Ab" in
+  match goal with
+  | H: run_expr_get_value_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let v1 := fresh "v" in
+    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  | H: if_string_to_string_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let s := fresh "s" in
+    destruct H as [(Er&Ab)|(S1&s&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  end.
+
+Tactic Notation "run'" constr(Red) :=
+  match goal with H: _ = result_out _ |- _ =>
+    let T := fresh in rename H into T;
+    let o1 := fresh "o1" in let R1 := fresh "R1" in
+    run_hyp T as (o1&R1&R); applys Red (rm R1);
+    let o := run_get_current_out tt in
+    try (run_check_current_out o; run_post; run_inv)
+  end.
+
 
 (**************************************************************)
 (** ** Main theorem *)
@@ -1174,61 +1198,14 @@ Theorem runs_correct : forall num,
 Proof.
 
   induction num.
-   constructors; try solve [unfolds~ (* Temporary *)]; introv H; inverts H; introv P; inverts P.
+   constructors; try solve [unfolds~ (* Temporary, to remove [True] properties *)];
+     introv H; inverts H; introv P; inverts P.
 
    (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
    constructors.
 
    intros S C e S' res R. simpl in R. unfolds in R. destruct e.
    Focus 6.
-
-Definition if_string_to_string_post K o o1 :=
-  (eqabort o1 o \/
-    exists S, exists (s : string), o1 = out_ter S s /\
-      K S s = result_out o).
-
-Axiom if_string_to_string_correct : forall runs,
-  runs_type_correct runs -> forall S C v K o,
-  if_string (to_string runs S C v) K = o -> exists o1,
-    red_expr S C (spec_to_string v) o1 /\
-      if_string_to_string_post K o o1.
-
-Ltac run_post_extra ::=
-  let Er := fresh "Er" in
-  let Ab := fresh "Ab" in
-  match goal with
-  | H: run_expr_get_value_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let v1 := fresh "v" in
-    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
-  | H: if_string_to_string_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let s := fresh "s" in
-    destruct H as [(Er&Ab)|(S1&s&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
-  end.
-
-Tactic Notation "run'" constr(Red) :=
-  match goal with H: _ = result_out _ |- _ =>
-    let T := fresh in rename H into T;
-    let o1 := fresh "o1" in let R1 := fresh "R1" in
-    run_hyp T as (o1&R1&R); applys Red (rm R1);
-    let o := run_get_current_out tt in
-    try (run_check_current_out o; run_post; run_inv)
-  end.
-
-Ltac run_hyp_select_proj H ::=
-  match type of H with
-  | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
-  | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
-  | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
-  | run_expr_get_value _ _ _ _ _ = _ => constr:(run_expr_get_value_correct)
-  | if_string (to_string _ _ _ _) _ = _ => constr:(if_string_to_string_correct)
-  (* TODO: Complete. *)
-  end.
 
     (* Access *)
     unfolds in R.
@@ -1561,7 +1538,7 @@ Admitted.
       applys_and red_spec_function_has_instance_3_neq n.
        forwards~: IHhi C R.
 
-   (* While 
+   (* While
    intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
    unmonad.
     forwards~ RC: IHe (rm HE).
