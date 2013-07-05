@@ -62,13 +62,6 @@ Implicit Type Z : Type.
 
 
 (**************************************************************)
-(** ** Some functions to be implemented (or extracted differently). *)
-
-Parameter JsNumber_to_int : JsNumber.number -> (* option? *) int.
-(* It should never return an option, but its result will be a pain to be used... -- Martin *)
-
-
-(**************************************************************)
 (** ** Some types used by the interpreter *)
 
 (*
