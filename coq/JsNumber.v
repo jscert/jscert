@@ -28,6 +28,8 @@ Parameter neg_zero : number.
 Definition one := Fappli_IEEE.binary_normalize 53 1024 eq_refl eq_refl Fappli_IEEE.mode_NE 1 0 false.
 Parameter infinity : number.
 Parameter neg_infinity : number.
+Parameter max_value : number.
+Parameter min_value : number.
 
 
 (**************************************************************)
