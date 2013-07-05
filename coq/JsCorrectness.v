@@ -4,7 +4,6 @@ Require Import LibFix LibList.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 Require Import JsInterpreter JsPrettyInterm JsPrettyRules.
 
-(*
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -62,6 +61,7 @@ Definition follow_spec {T Te : Type}
   run S C e = out_ter S' res ->
   red S C (conv e) (out_ter S' res).
 
+(* Waiting for the rules to be updated.
 Inductive passing_output {Te A : Type}
     (K : A -> Te) (red : state -> execution_ctx -> Te -> out -> Prop) C
     : passing A -> result -> Prop :=
@@ -89,6 +89,7 @@ Definition follow_spec_inject {A : Type}
     run = passing_abort (out_ter S R) ->
     red (out_ter S R) /\
     abort (out_ter S R)).
+*)
 
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
@@ -110,10 +111,16 @@ Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
     red_stat.
+Definition follow_object_get_own_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor) :=
+  True. (* TODO *)
+(* OLD:
 Definition follow_object_get_own_prop l :=
-  follow_spec_passing (spec_object_get_own_prop l) red_expr.
+  follow_spec_passing (spec_object_get_own_prop l) red_expr. *)
+Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor) :=
+  True. (* TODO *)
+(* OLD:
 Definition follow_object_get_prop l :=
-  follow_spec_passing (spec_object_get_prop l) red_expr.
+  follow_spec_passing (spec_object_get_prop l) red_expr. *)
 Definition follow_object_proto_is_prototype_of (_ : state -> object_loc -> object_loc -> result) :=
   True. (* TODO *)
 Definition follow_equal (_ : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result) :=
@@ -132,11 +139,15 @@ Record runs_type_correct runs :=
     runs_type_correct_stat_while : forall ls e t,
       follow_stat_while ls e t (fun S C rv =>
         runs_type_stat_while runs S C rv ls e t);
-    runs_type_correct_object_get_own_prop : forall l,
+    runs_type_correct_object_get_own_prop :
+      follow_object_get_own_prop (runs_type_object_get_own_prop runs)
+    (* OLD: forall l,
       follow_object_get_own_prop l (fun S C =>
-        runs_type_object_get_own_prop runs S C l);
-    runs_type_correct_object_get_prop : forall l,
-      follow_object_get_prop l (fun S C => runs_type_object_get_prop runs S C l);
+        runs_type_object_get_own_prop runs S C l) *);
+    runs_type_correct_object_get_prop :
+      follow_object_get_prop (runs_type_object_get_prop runs)
+      (* OLD: forall l,
+      follow_object_get_prop l (fun S C => runs_type_object_get_prop runs S C l)*);
     runs_type_correct_object_proto_is_prototype_of :
       follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs);
     runs_type_correct_equal :
@@ -200,15 +211,6 @@ Proof.
     rewrite length_cons in I. nat_math.
 Qed.
 
-Lemma passing_output_trans {Te A : Type} :
-  forall (red : state -> execution_ctx -> Te -> out -> Prop) C K K' (p : passing A) o,
-  (forall S C a,
-    red S C (K' K a) o ->
-    red S C (K a) o) ->
-  passing_output (K' K) red C p o ->
-  passing_output K red C p o.
-Proof. introv I R. inverts R; constructors*. Qed.
-
 Lemma and_impl_left : forall P1 P2 P3 : Prop,
   (P1 -> P2) ->
   P1 /\ P3 ->
@@ -250,7 +252,7 @@ Definition eqabort o1 o :=
     an outcome that satisfies [Pred]. *)
 
 Definition isout W (Pred:out->Prop) :=
-  exists o1, W = result_out o1 /\ Pred o1.
+  exists o1, W = result_some o1 /\ Pred o1.
 
 (* Generic *)
 
@@ -274,7 +276,7 @@ Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
 
 Definition if_ter_post K o o1 :=
      (o1 = out_div /\ o = o1)
-  \/ (exists S R, o1 = out_ter S R /\ K S R = result_out o).
+  \/ (exists S R, o1 = out_ter S R /\ K S R = result_some o).
 
 Lemma if_ter_out : forall W K o,
   if_ter W K = o ->
@@ -288,7 +290,7 @@ Qed.
 
 Definition if_success_post K o o1 :=
   eqabort o1 o \/
-  exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = result_out o.
+  exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = result_some o.
 
 Lemma if_success_out : forall W K o,
   if_success W K = o ->
@@ -305,7 +307,7 @@ Lemma if_success_out : forall W K o,
 
 Definition if_value_post K o o1 :=
   eqabort o1 o \/
-  exists S v, o1 = out_ter S (res_val v) /\ K S v = result_out o.
+  exists S v, o1 = out_ter S (res_val v) /\ K S v = result_some o.
 
 Lemma if_value_out : forall W K o,
   if_value W K = o ->
@@ -314,7 +316,7 @@ Admitted.
 
 Definition if_void_post K o o1 :=
   eqabort o1 o \/
-  exists S, o1 = out_void S /\ K S = result_out o.
+  exists S, o1 = out_void S /\ K S = result_some o.
 
 Lemma if_void_out : forall W K o,
   if_void W K = o ->
@@ -325,7 +327,7 @@ Admitted.
 
 Definition if_object_post K o o1 :=
   eqabort o1 o \/
-  exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = result_out o.
+  exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = result_some o.
 
 Lemma if_object_out : forall W K o,
   if_object W K = o ->
@@ -334,7 +336,7 @@ Admitted.
 
 Definition if_bool_post K o o1 :=
   eqabort o1 o \/
-  exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = result_out o.
+  exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = result_some o.
 
 Lemma if_bool_out : forall W K o,
   if_bool W K = o ->
@@ -343,7 +345,7 @@ Admitted.
 
 Definition if_string_post K o o1 :=
   eqabort o1 o \/
-  exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = result_out o.
+  exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = result_some o.
 
 Lemma if_string_out : forall W K o,
   if_string W K = o ->
@@ -352,7 +354,7 @@ Admitted.
 
 Definition if_number_post K o o1 :=
   eqabort o1 o \/
-  exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = result_out o.
+  exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = result_some o.
 
 Lemma if_number_out : forall W K o,
   if_number W K = o ->
@@ -434,6 +436,7 @@ Qed.
 
 (* Passing *)
 
+(*
 Inductive passing_terminates {A : Type} : passing A -> Prop :=
   | passing_terminates_normal : forall S a,
     passing_terminates (passing_normal S a)
@@ -493,6 +496,7 @@ Proof.
     [ discriminate | solve [left*] || solve [try right; discriminate] ]).
   branch 1. repeat eexists.
 Qed.
+*)
 
 
 (************************************************************)
@@ -524,10 +528,10 @@ Tactic Notation "abort_stat" :=
 Tactic Notation "abort_prog" :=
     abort_tactic red_prog_abort.
 Tactic Notation "abort" :=
-  match goal with 
-  | |- red_expr _ _ _ _ => abort_expr 
+  match goal with
+  | |- red_expr _ _ _ _ => abort_expr
   | |- red_stat _ _ _ _ => abort_stat
-  | |- red_prog _ _ _ _ => abort_prog 
+  | |- red_prog _ _ _ _ => abort_prog
   end.
 
 (** [run_select_ifres] selects the appropriate "out" lemma *)
@@ -544,7 +548,7 @@ Ltac run_select_ifres H :=
   | context [ if_number ] => constr:(if_number_out)
   end.
 
-(** [run_select_proj] is used to obtain automatically 
+(** [run_select_proj] is used to obtain automatically
     the right correctness lemma out of the correctness record *)
 
 Ltac run_select_proj H :=
@@ -556,7 +560,7 @@ Ltac run_select_proj H :=
   | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
   end end.
 
-(** [run_select_lemma] is used to obtain automatically 
+(** [run_select_lemma] is used to obtain automatically
     the right correctness lemma for an auxiliary function *)
 
 Ltac run_select_lemma_run_expr_get_value T := fail.
@@ -568,14 +572,14 @@ Ltac run_select_lemma H :=
     match constr:(tt) with
     | ?x => run_select_lemma_run_expr_get_value T
     | ?x => run_select_lemma_if_to_string T
-    end 
+    end
   end.
 
 
 Definition if_to_string_post K o o1 := (* warning: this is not a copy-paste *)
   (eqabort o1 o \/
     exists S, exists (s : string), o1 = out_ter S s /\
-      K S s = result_out o).
+      K S s = result_some o).
 
 Axiom if_to_string_correct' : forall runs, (* TODO *)
   runs_type_correct runs -> forall S C v K o,
@@ -586,7 +590,7 @@ Axiom if_to_string_correct' : forall runs, (* TODO *)
 Definition run_expr_get_value_post K o o1 := (* warning: this is not a copy-paste *)
   (eqabort o1 o \/
     exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
-      K S1 v1 = result_out o).
+      K S1 v1 = result_some o).
 
 Axiom run_expr_get_value_correct' : forall runs, (* TODO *)
   runs_type_correct runs -> forall S C e K o,
@@ -596,10 +600,10 @@ Axiom run_expr_get_value_correct' : forall runs, (* TODO *)
 
 
 
-Ltac run_select_lemma_run_expr_get_value T ::= 
+Ltac run_select_lemma_run_expr_get_value T ::=
   match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct') end.
 
-Ltac run_select_lemma_if_to_string T ::= 
+Ltac run_select_lemma_if_to_string T ::=
   match T with if_string (to_string _ _ _ _) _ => constr:(if_to_string_correct') end.
 
 
@@ -623,10 +627,10 @@ Tactic Notation "run_hyp" hyp(H) :=
   let T := fresh in rename H into T;
   run_hyp T as H.
 
-(** [prove_runs_type_correct] discharges the trivial goal 
+(** [prove_runs_type_correct] discharges the trivial goal
     that consists in invoking the induction hypothesis*)
 
-Ltac prove_runs_type_correct := 
+Ltac prove_runs_type_correct :=
   match goal with |- runs_type_correct _ => assumption end.
 
 (* [run_pre] exploits the appropriate "out" lemma, whether it comes
@@ -643,11 +647,11 @@ Ltac run_pre_lemma H o1 R1 K :=
   let T := fresh in rename H into T;
   lets (o1&R1&K): L (rm T);
   try prove_runs_type_correct.
-  
+
 Ltac run_pre_core H o1 R1 K :=
-  first 
+  first
   [ let L := run_select_lemma H in (* test if it's a lemma *)
-    first [ run_pre_lemma H o1 R1 K | fail 1 ] 
+    first [ run_pre_lemma H o1 R1 K | fail 1 ]
   | let L := run_select_ifres H in (* test if it's a proj *)
     first [ run_pre_ifres H o1 R1 K | fail 1 ]
   ].
@@ -738,14 +742,19 @@ Tactic Notation "run_post" :=
     by performing inversions on equalities. *)
 
 Ltac run_inv :=
+  unfold result_some_out in * |- *;
   repeat
   match goal with
-  | H: result_out ?o = result_out ?o |- _ => clear H
-  | H: result_out _ = result_out _ |- _ => inverts H
+  | H: result_some ?o = result_some ?o |- _ => clear H
+  | H: result_some _ = result_some _ |- _ => inverts H
   | H: out_ter ?S ?R = out_ter ?S ?R |- _ => clear H
   | H: out_ter _ _ = out_ter _ _ |- _ => inverts H
   | H: res_intro ?t ?v ?l = res_intro ?t ?v ?l |- _ => clear H
   | H: res_intro _ _ _ = res_intro _ _ _ |- _ => inverts H
+  | H: special_val ?S ?R = special_val ?S ?R |- _ => clear H
+  | H: special_val _ _ = special_val _ _ |- _ => inverts H
+  | H: special_out ?o = special_out ?o |- _ => clear H
+  | H: special_out _ = special_out _ |- _ => inverts H
   end.
 
 (** [runs_inv] is the same as [run_inv] followed by subst. *)
@@ -860,7 +869,7 @@ Tactic Notation "runs" "*" :=
     or: run_pre_lemma H o1 R1 K. (* where H is the hypothesis *)
     or: run_pre_ifres H o1 R1 K. (* where H is the hypothesis *)
   run_apply __my_red_lemma__ R1. (* where R1 is the red hypothesis *)
-  run_post. 
+  run_post.
   run_inv.
 *)
 
@@ -901,6 +910,7 @@ Proof.
   forwards: @pick_option_correct Bi. exists* O.
 Qed.
 
+(*
 Lemma object_has_prop_correct : forall runs,
   runs_type_correct runs -> forall S C l x (p : passing bool),
   object_has_prop runs S C l x = p ->
@@ -925,6 +935,7 @@ Admitted. (* OLD
       applys~ Ep spec_object_has_prop_2. constructors.
    substs. splits; introv Eq; inverts Eq.
 Qed. *)
+*)
 
 Lemma run_object_get_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 l x S R,
@@ -1034,11 +1045,7 @@ Proof.
         simpls. cases_if. forwards~ (_&?): run_object_get_correct RC E.
     destruct r as [rb rn rs]; destruct rb as [[()|l]|?]; simpls; tryfalse;
       try (false C; first [ solve [left~] | solve [right~] ]); split.
-<<<<<<< Updated upstream
-     apply~ red_spec_ref_get_value_ref_a. constructors. applys~ run_error_correct.
-=======
      apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
->>>>>>> Stashed changes
      introv Eq. forwards~ (_&?): run_error_correct C0 E. false.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
       applys~ env_record_get_binding_value_correct RC.
@@ -1148,7 +1155,7 @@ Admitted.
 Definition if_to_primitive_post K o o1 :=
   (eqabort o1 o \/
     exists S, exists (w : prim), o1 = out_ter S w /\
-      K S w = result_out o).
+      K S w = result_some o).
 
 Lemma if_to_primitive_correct : forall runs,
   runs_type_correct runs -> forall S C v prefo K o,
@@ -1283,7 +1290,7 @@ Proof.
   skip. (* TODO *)
   (* Access *)
   unfolds in R.
-  run' red_expr_access. run' red_expr_access_1. cases_if.
+  run red_expr_access. run' red_expr_access_1. cases_if.
     lets (R2&N): run_error_correct R.
      applys red_expr_access_2.
        applys* red_spec_check_object_coercible_undef_or_null.
@@ -1787,4 +1794,4 @@ Proof.
      apply~ run_equal_correct.
 Qed.
 
-*)
+
