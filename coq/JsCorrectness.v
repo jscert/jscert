@@ -97,16 +97,14 @@ Definition follow_elements rv :=
 Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
   forall S C v S' R,
     run S C v = out_ter S' R ->
-    red_expr S C (spec_call l v vs) (out_ter S' R) /\
-      (res_is_normal R -> exists v', R = res_val v').
+    red_expr S C (spec_call l v vs) (out_ter S' R).
 Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
   forall S C lo lv S' R,
     run S lv (lo : object_loc) = out_ter S' R ->
     (* Note that this function is related to [spec_function_has_instance_2] instead of
       [spec_function_has_instance_1] as it's much more closer to the specification and
       thus much easier to prove. *)
-    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' R) /\
-      (res_is_normal R -> exists b, R = prim_bool b).
+    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' R).
 Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
@@ -751,9 +749,9 @@ Tactic Notation "runs" "*" :=
 (************************************************************)
 (* ** Correctness Lemmas *)
 
-Lemma run_error_correct : forall S ne S' R',
+Lemma run_error_correct : forall S C ne S' R',
   run_error S ne = out_ter S' R' ->
-  (forall C, red_expr S C (spec_error ne) (out_ter S' R')) /\
+  red_expr S C (spec_error ne) (out_ter S' R') /\
     ~ res_is_normal R'.
 Admitted. (* OLD
   introv E. deal_with_regular_lemma E if_object_out; substs.
@@ -913,37 +911,16 @@ Proof.
         cases_if; destruct v as [()|l]; simpls; try (solve [inverts C; false]);
          cases_if; first [ applys~ prim_value_get_correct RC | applys~ run_object_get_correct RC ].
        intro Rn. destruct v. destruct p; simpls; tryfalse;
-         try solve [ forwards~ (_&?): run_error_correct E; false ]; cases_if; tryfalse.
+         try solve [ forwards~ (_&?): run_error_correct C0 E; false ]; cases_if; tryfalse.
         simpls. cases_if. forwards~ (_&?): run_object_get_correct RC E.
     destruct r as [rb rn rs]; destruct rb as [[()|l]|?]; simpls; tryfalse;
       try (false C; first [ solve [left~] | solve [right~] ]); split.
-     apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
-     introv Eq. forwards~ (_&?): run_error_correct E. false.
+     apply~ red_spec_ref_get_value_ref_a. constructors. applys~ run_error_correct.
+     introv Eq. forwards~ (_&?): run_error_correct C0 E. false.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
       applys~ env_record_get_binding_value_correct RC.
      intros. forwards~ (_&?): env_record_get_binding_value_correct E.
 Qed.
-
-(*
-Lemma if_success_value_out : forall runs,
-  runs_type_correct runs -> forall res0 K S C R,
-  if_success_value runs C res0 K = out_ter S R ->
-  if_regular_lemma res0 S R (fun S' R' => (exists rv S'' R'',
-    R' = res_normal rv /\
-    red_expr S' C (spec_get_value rv) (out_ter S'' R'') /\
-    res_type R'' <> restype_normal /\
-    R = R'' /\ S = S'') \/ (exists rv S'' v,
-    R' = res_normal rv /\
-    red_expr S' C (spec_get_value rv) (out_ter S'' (v : value)) /\
-    K S'' v = out_ter S R)).
-Admitted. *) (* OLD
-  introv RC H. deal_with_regular_lemma H if_success_out; substs; repeat eexists.
-   branch~ 1.
-   deal_with_regular_lemma H0 if_success_out; substs.
-    forwards~ (GV&GVC): ref_get_value_correct HE. branch 2. repeat eexists; auto*.
-    forwards~ (GV&GVC): ref_get_value_correct HE. branch 3.
-     forwards~ (v&Ev): GVC. inverts Ev. repeat eexists; auto*.
-Qed. *)
 
 Lemma run_callable_correct : forall S v co,
   run_callable S v = Some co ->
@@ -1206,18 +1183,34 @@ Lemma run_expr_correct : forall runs,
    follow_expr (run_expr runs).
 Proof.
   introv RC. intros S C e S' res R. unfolds in R. destruct e.
-   Focus 6.
-
-    (* Access *)
-    unfolds in R.
-    run' red_expr_access. run' red_expr_access_1. cases_if.
-      lets (R2&N): run_error_correct R. specializes R2 C.
-       applys red_expr_access_2.
-         applys* red_spec_check_object_coercible_undef_or_null.
-       abort_expr.
-      applys red_expr_access_2.
-        applys* red_spec_check_object_coercible_return.
-       run' red_expr_access_3. applys* red_expr_access_4.
+  (* this *)
+  run_inv. apply~ red_expr_this.
+  (* identifier *)
+  (* apply~ red_expr_identifier. *)
+  skip. (* FIXME:  [spec_identifier_resolution] needs rules! *)
+  (* literal *)
+  run_inv. apply~ red_expr_literal.
+  (* object *)
+  skip. (* OLD:
+  unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
+   (* Abort case *)
+   inverts HE. false~ Hnn.
+   (* Normal case *)
+   unmonad. skip. (* TODO:  Needs an intermediate lemma for [init_object]. *) *)
+  (* function *)
+  skip. (* TODO *)
+  (* Access *)
+  unfolds in R.
+  run' red_expr_access. run' red_expr_access_1. cases_if.
+    lets (R2&N): run_error_correct R.
+     applys red_expr_access_2.
+       applys* red_spec_check_object_coercible_undef_or_null.
+     abort_expr.
+    applys red_expr_access_2.
+      applys* red_spec_check_object_coercible_return.
+     run' red_expr_access_3. applys* red_expr_access_4.
+  (* member *)
+  skip. (* OLD:  forwards~ ?: IHe (rm R). apply~ red_expr_member. *)
 
 Admitted. (* OLD:
    intros S C e S' res R. destruct e; simpl in R; dealing_follows.

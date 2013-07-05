@@ -65,19 +65,41 @@ Implicit Type Z : Type.
 (** ** Some types used by the interpreter *)
 
 (*
-  * [result_out] is the normal result when the computation terminates normally.
+  * [result_some] is the normal result when the computation terminates normally.
   * [result_not_yet_implemented] means that this result is not implemented yet.
   * [result_impossible] should not happen and is probably the result of a broken invariant.
   * [result_bottom] means that the computation taked too long and we run out of fuel.
 *)
-Inductive result :=
-  | result_out : out -> result
+Inductive resultof (A : Type) :=
+  | result_some : A -> resultof A
   | result_not_yet_implemented
   | result_impossible
-  | result_bottom : state -> result. (* We could put any information there.  They can be used to create step by step interpreter. *)
+  | result_bottom : state -> resultof A. (* We could put any information there.  They can be used to create step by step interpreter. *)
+Implicit Arguments result_some [[A]].
+Implicit Arguments result_not_yet_implemented [[A]].
+Implicit Arguments result_impossible [[A]].
+Implicit Arguments result_bottom [[A]].
+
+(* Some intermediate form of the semantics do not return values when succeeding,
+  but rather descriptors or other types.  This wrapper is used to describe their
+  return:
+   * [special_val] is their normal output.
+   * [special_out] is used when an exception was thrown when executing this
+    function.  This returned [out] has to abort.
+*)
+Inductive special (A : Type) :=
+  | special_val : state -> A -> special A
+  | special_out : out -> special A.
+Implicit Arguments special_val [[A]].
+Implicit Arguments special_out [[A]].
+
+(* This is the most common result type. *)
+Definition result := resultof out.
+
+Implicit Type W : result.
 
 (* In the semantics, some rules returns an [out] which actually never
-  carry a result, only an [out_void] of something (or an error).  The
+  carries a result, only an [out_void] of something (or an error).  The
   following type is there to differentiate those functions from the
   others. *)
 Definition result_void := result.
@@ -86,18 +108,22 @@ Definition result_void := result.
 (* The cases where [result_impossible] is directly used are the cases
   where it has been proven impossible to get it under normal condition.
   See [JsCorrectness.v] for more details. *)
-Definition impossible_because s := result_impossible.
-Definition impossible_with_heap_because S s := result_impossible.
+Definition impossible_because {A : Type} s : resultof A := result_impossible.
+Definition impossible_with_heap_because {A : Type} S s : resultof A := result_impossible.
 
+Definition result_special (A : Type) := resultof (special A).
+Definition result_out {A : Type} o : result_special A :=
+  result_some (special_out o).
+Definition result_val {A : Type} S (a : A) : result_special A :=
+  result_some (special_val S a).
 
 (* Coercion *)
-
-Coercion result_out : out >-> result.
+Coercion result_some_out o : resultof out := result_some o.
 
 (* Inhabited *)
 
-Global Instance result_inhab : Inhab result.
-Proof. applys prove_Inhab impossible_because. exact "Result is inhabited". Qed.
+Global Instance result_inhab : forall (A : Type), Inhab (resultof A).
+Proof. introv. applys prove_Inhab @impossible_because. exact "Resultof is inhabited". Qed.
 
 
 (**************************************************************)
@@ -120,53 +146,61 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 (**************************************************************)
 (** Monadic Constructors *)
 
-Definition if_empty_label S R (K : unit -> result) : result :=
+Definition if_empty_label {A : Type} S R (K : unit -> resultof A) : resultof A :=
   ifb res_label R = label_empty then K tt
   else
     impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
 
-Definition if_some {A : Type} (op : option A) (K : A -> result) : result :=
+Definition if_some {A B : Type} (op : option A) (K : A -> resultof B) : resultof B :=
   match op with
   | None => impossible_because "[if_some] called with [None]."
   | Some a => K a
   end.
 
-Definition if_ter (o : result) (K : state -> res -> result) : result :=
-  match o with
-  | out_ter S0 R =>
-      K S0 R
-  | _ => o
+Definition if_result_some {A B : Type} (W : resultof A) (K : A -> resultof B) : resultof B :=
+  match W with
+  | result_some a => K a
+  | result_not_yet_implemented => result_not_yet_implemented
+  | result_impossible => result_impossible
+  | result_bottom S0 => result_bottom S0
   end.
 
-Definition if_success_state rv (o : result) (K : state -> resvalue -> result) : result :=
-  if_ter o (fun S0 R =>
+Definition if_ter W (K : state -> res -> result) : result :=
+  if_result_some W (fun o =>
+    match o with
+    | out_ter S0 R => K S0 R
+    | _ => result_some o
+    end).
+
+Definition if_success_state rv W (K : state -> resvalue -> result) : result :=
+  if_ter W (fun S0 R =>
     match res_type R with
     | restype_normal =>
       if_empty_label S0 R (fun _ =>
         K S0 (res_value (res_overwrite_value_if_empty rv R)))
-    | restype_throw => o
+    | restype_throw => W
     | _ =>
         out_ter S0 (res_overwrite_value_if_empty rv R)
     end).
 
 Definition if_success := if_success_state resvalue_empty.
 
-Definition if_void (o : result_void) (K : state -> result) : result :=
-  if_success o (fun S rv =>
+Definition if_void (W : result_void) (K : state -> result) : result :=
+  if_success W (fun S rv =>
     match rv with
     | resvalue_empty => K S
     | _ => impossible_with_heap_because S "[if_void called] with non-void result value."
     end).
 
-Definition if_not_throw (o : result) (K : state -> res -> result) : result :=
-  if_ter o (fun S0 R =>
+Definition if_not_throw W (K : state -> res -> result) : result :=
+  if_ter W (fun S0 R =>
     match res_type R with
-    | restype_throw => o
+    | restype_throw => W
     | _ => K S0 R
     end).
 
-Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> value -> result) : result :=
-  if_ter o (fun S R =>
+Definition if_any_or_throw W (K1 : result -> result) (K2 : state -> value -> result) : result :=
+  if_ter W (fun S R =>
     match res_type R with
     | restype_throw =>
       match res_value R with
@@ -174,21 +208,21 @@ Definition if_any_or_throw (o : result) (K1 : result -> result) (K2 : state -> v
       | _ =>
         impossible_with_heap_because S "[if_any_or_throw] called with a non-value result."
       end
-    | _ => K1 o
+    | _ => K1 W
     end).
 
-Definition if_success_or_return (o : result) (K1 : state -> result) (K2 : state -> resvalue -> result) : result :=
-  if_ter o (fun S R =>
+Definition if_success_or_return W (K1 : state -> result) (K2 : state -> resvalue -> result) : result :=
+  if_ter W (fun S R =>
     match res_type R with
     | restype_normal =>
       if_empty_label S R (fun _ => K1 S)
     | restype_return => K2 S (res_value R)
-    | _ => o
+    | _ => W
     end).
 
-Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
+Definition if_normal_continue_or_break W (search_label : res -> bool)
   (K1 : state -> res -> result) (K2 : state -> res -> result) : result :=
-  if_ter o (fun S R =>
+  if_ter W (fun S R =>
     match res_type R with
     | restype_break =>
       (if search_label R then K2 else out_ter) S R
@@ -199,51 +233,51 @@ Definition if_normal_continue_or_break (o : result) (search_label : res -> bool)
     | _ => out_ter S R
     end).
 
-Definition if_break (o : result) (K : state -> res -> result) : result :=
-  if_ter o (fun S R =>
+Definition if_break W (K : state -> res -> result) : result :=
+  if_ter W (fun S R =>
     match res_type R with
     | restype_break => K S R
     | _ => out_ter S R
     end).
 
-Definition if_value (o : result) (K : state -> value -> result) : result :=
-  if_success o (fun S rv =>
+Definition if_value W (K : state -> value -> result) : result :=
+  if_success W (fun S rv =>
     match rv with
     | resvalue_value v => K S v
     | _ => impossible_with_heap_because S "[if_value] called with non-value."
     end).
 
-Definition if_bool (o : result) (K : state -> bool -> result) : result :=
-  if_value o (fun S v =>
+Definition if_bool W (K : state -> bool -> result) : result :=
+  if_value W (fun S v =>
     match v with
     | prim_bool b => K S b
     | _ => impossible_with_heap_because S "[if_bool] called with non-boolean value."
     end).
 
-Definition if_object (o : result) (K : state -> object_loc -> result) : result :=
-  if_value o (fun S v =>
+Definition if_object W (K : state -> object_loc -> result) : result :=
+  if_value W (fun S v =>
     match v with
     | value_object l => K S l
     | value_prim _ =>
       impossible_with_heap_because S "[if_object] called on a primitive."
     end).
 
-Definition if_string (o : result) (K : state -> string -> result) : result :=
-  if_value o (fun S v =>
+Definition if_string W (K : state -> string -> result) : result :=
+  if_value W (fun S v =>
     match v with
     | prim_string s => K S s
     | _ => impossible_with_heap_because S "[if_string] called on a non-string value."
     end).
 
-Definition if_number (o : result) (K : state -> number -> result) : result :=
-  if_value o (fun S v =>
+Definition if_number W (K : state -> number -> result) : result :=
+  if_value W (fun S v =>
     match v with
     | prim_number n => K S n
     | _ => impossible_with_heap_because S "[if_number] called with non-number value."
     end).
 
-Definition if_primitive (o : result) (K : state -> prim -> result) : result :=
-  if_value o (fun S v =>
+Definition if_primitive W (K : state -> prim -> result) : result :=
+  if_value W (fun S v =>
     match v with
     | value_prim w => K S w
     | value_object _ =>
@@ -256,74 +290,66 @@ Definition if_some_or_default {A B : Type} (o : option B) (d : A) (K : B -> A) :
 Definition convert_option_attributes : option attributes -> option full_descriptor :=
   option_map (fun A => A : full_descriptor).
 
-
-(* This type has been added to deal with the continuations difficult
-  to handle of the specification.  It's mean to be used with the
-  following monads. *)
-
-Inductive passing (A : Type) : Type :=
-  | passing_normal : state -> A -> passing A
-  | passing_abort : result -> passing A.
-Implicit Arguments passing_abort [A].
-
-Global Instance passing_inhab : forall (A : Type),
-  Inhab (passing A).
-Proof. introv. apply prove_Inhab. apply passing_abort. exact result_impossible. Qed.
-
-Definition passing_def {A B : Type} (bo : option B) (K : B -> passing A) : passing A :=
-  if_some_or_default bo
-    (fun _ => passing_abort (impossible_because "[passing_defined] failed."))
-    (fun (b : B) _ => K b) tt.
-
-Definition passing_defined {A B : Type} (p : passing A)
-    (K : state -> A -> passing B) : passing B :=
-  match p with
-  | passing_normal S0 a => K S0 a
-  | passing_abort r => passing_abort r
-  end.
-
-Definition passing_ter {A : Type} (o : result)
-    (K : state -> res -> passing A) : passing A :=
+Definition if_abort {A : Type} o (K : unit -> resultof A) : resultof A :=
   match o with
   | out_ter S0 R =>
-      K S0 R
-  | _ => passing_abort o
-  end.
-
-Definition passing_success {A : Type} (o : result)
-    (K : state -> resvalue -> passing A) : passing A :=
-  passing_ter o (fun S R =>
     match res_type R with
     | restype_normal =>
-      ifb res_label R = label_empty then K S (res_value R)
-      else passing_abort
-             (impossible_with_heap_because S "[passing_success] received a normal result with non-empty label.")
-    | _ => passing_abort o
-    end).
-
-Definition passing_value {A : Type} (o : result)
-    (K : state -> value -> passing A) : passing A :=
-  passing_success o (fun S rv =>
-    match rv with
-    | resvalue_value v => K S v
-    | _ => passing_abort
-       (impossible_with_heap_because S "[passing_value] called with non-value.")
-    end).
-
-Definition result_passing {A : Type} (p : passing A)
-    (K : state -> A -> result) : result :=
-  match p with
-  | passing_normal S0 a => K S0 a
-  | passing_abort r =>
-    if_success r (fun S0 rv =>
-      ifb res_type rv = restype_normal then
-        impossible_with_heap_because S0 "[result_passing] received an aborting value with normal type."
-      else r)
+      impossible_with_heap_because S0 "[if_abort] received a normal result!"
+    | _ => K tt
+    end
+  | _ => K tt
   end.
 
-End InterpreterEliminations.
+Definition if_special {A B : Type} (W : result_special A)
+    (K : state -> A -> result_special B) :=
+  if_result_some W (fun sp =>
+    match sp with
+    | special_val S0 a => K S0 a
+    | special_out o =>
+      if_abort o (fun _ =>
+        result_out o)
+    end).
 
-Implicit Arguments passing_abort [A].
+Definition if_ter_special {A : Type} W
+    (K : state -> res -> result_special A) : result_special A :=
+  if_result_some W (fun o =>
+    match o with
+    | out_ter S0 R => K S0 R
+    | _ => result_out o
+    end).
+
+Definition if_success_special {A : Type} W
+    (K : state -> resvalue -> result_special A) : result_special A :=
+  if_ter_special W (fun S0 R =>
+    match res_type R with
+    | restype_normal =>
+      if_empty_label S0 R (fun _ =>
+        K S0 (res_value R))
+    | _ =>
+      result_out (out_ter S0 R)
+    end).
+
+Definition if_value_special {A : Type} W
+    (K : state -> value -> result_special A) : result_special A :=
+  if_success_special W (fun S rv =>
+    match rv with
+    | resvalue_value v => K S v
+    | _ =>
+      impossible_with_heap_because S "[if_value_special] called with non-value."
+    end).
+
+Definition if_special_ter {A : Type} (W : result_special A)
+    (K : state -> A -> result) : result :=
+  if_result_some W (fun sp =>
+    match sp with
+    | special_val S0 a => K S0 a
+    | special_out o =>
+      if_abort o (fun _ =>
+        result_some o)
+    end).
+
+End InterpreterEliminations.
 
 Section LexicalEnvironments.
 
@@ -391,8 +417,8 @@ Record runs_type : Type := runs_type_intro {
     runs_type_call : state -> execution_ctx -> object_loc -> value -> list value -> result;
     runs_type_function_has_instance : state -> object_loc -> value -> result;
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
-    runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor;
-    runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> passing full_descriptor;
+    runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor;
+    runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
     runs_type_equal : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result
   }.
@@ -403,19 +429,19 @@ Implicit Type runs : runs_type.
 (**************************************************************)
 (** Object Get *)
 
-Definition object_has_prop runs S C l x : passing bool :=
-  passing_def (run_object_method object_has_prop_ S l) (fun B =>
+Definition object_has_prop runs S C l x : result_special bool :=
+  if_some (run_object_method object_has_prop_ S l) (fun B =>
     match B with
     | builtin_has_prop_default =>
-      passing_defined (runs_type_object_get_prop runs S C l x) (fun S1 D =>
-        passing_normal S1 (decide (D <> full_descriptor_undef)))
+      if_special (runs_type_object_get_prop runs S C l x) (fun S1 D =>
+        result_val S1 (decide (D <> full_descriptor_undef)))
     end).
 
 Definition object_get_builtin runs S C B vthis l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
   match B with
   | builtin_get_default =>
-    result_passing (runs_type_object_get_prop runs S C l x) (fun S0 D =>
+    if_special_ter (runs_type_object_get_prop runs S C l x) (fun S0 D =>
       match D with
       | full_descriptor_undef => out_ter S0 undef
       | attributes_data_of Ad =>
@@ -447,60 +473,58 @@ Definition run_object_get runs S C l x : result :=
   if_some (run_object_method object_get_ S l) (fun B =>
     object_get_builtin runs S C B l l x).
 
-Definition run_object_get_own_prop runs S C l x : passing full_descriptor :=
-  passing_def (run_object_method object_get_own_prop_ S l) (fun B =>
+Definition run_object_get_own_prop runs S C l x : result_special full_descriptor :=
+  if_some (run_object_method object_get_own_prop_ S l) (fun B =>
     let default S' :=
-      passing_def (run_object_method object_properties_ S' l) (fun P =>
-        passing_normal S' (
+      if_some (run_object_method object_properties_ S' l) (fun P =>
+        result_val S' (
           if_some_or_default (convert_option_attributes (Heap.read_option P x))
             (full_descriptor_undef) id))
     in match B with
       | builtin_get_own_prop_default =>
         default S
       | builtin_get_own_prop_args_obj =>
-        passing_defined (default S) (fun S1 D =>
+        if_special (default S) (fun S1 D =>
           match D with
           | full_descriptor_undef =>
-            passing_normal S1 full_descriptor_undef
+            result_val S1 full_descriptor_undef
           | full_descriptor_some A =>
-            passing_def (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
-              passing_def lmapo (fun lmap =>
-                passing_defined (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
+            if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
+              if_some lmapo (fun lmap =>
+                if_special (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
                   let follow S' A :=
-                    passing_normal S' (full_descriptor_some A)
+                    result_val S' (full_descriptor_some A)
                   in match D with
                      | full_descriptor_undef =>
                        follow S2 A
                      | full_descriptor_some Amap =>
-                       passing_value (run_object_get runs S2 C lmap x) (fun S3 v =>
+                       if_value_special (run_object_get runs S2 C lmap x) (fun S3 v =>
                          match A with
                          | attributes_data_of Ad =>
                            follow S3 (attributes_data_with_value Ad v)
                          | attributes_accessor_of Aa =>
-                           passing_abort (
-                             impossible_with_heap_because S3 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens.")
+                           impossible_with_heap_because S3 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens."
                          end)
                      end)))
           end)
       end).
 
-Definition run_object_get_prop runs S C l x : passing full_descriptor :=
-  passing_def (run_object_method object_get_prop_ S l) (fun B =>
+Definition run_object_get_prop runs S C l x : result_special full_descriptor :=
+  if_some (run_object_method object_get_prop_ S l) (fun B =>
     match B with
     | builtin_get_prop_default =>
-      passing_defined (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
+      if_special (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         ifb D = full_descriptor_undef then (
-          passing_def (run_object_method object_proto_ S1 l) (fun proto =>
+          if_some (run_object_method object_proto_ S1 l) (fun proto =>
             match proto with
             | null =>
-              passing_normal S1 full_descriptor_undef
+              result_val S1 full_descriptor_undef
             | value_object lproto =>
               runs_type_object_get_prop runs S1 C lproto x
             | value_prim _ =>
-              passing_abort (
-                impossible_with_heap_because S1 "Found a non-null primitive value as a prototype in [object_get_own_prop].")
+              impossible_with_heap_because S1 "Found a non-null primitive value as a prototype in [object_get_own_prop]."
             end)
-        ) else passing_normal S1 D)
+        ) else result_val S1 D)
     end).
 
 Definition object_proto_is_prototype_of runs S l0 l : result :=
@@ -519,38 +543,38 @@ Definition object_proto_is_prototype_of runs S l0 l : result :=
 (**************************************************************)
 (** Object Set *)
 
-Definition object_can_put runs S C l x : passing bool :=
-  passing_def (run_object_method object_can_put_ S l) (fun B =>
+Definition object_can_put runs S C l x : result_special bool :=
+  if_some (run_object_method object_can_put_ S l) (fun B =>
       match B with
       | builtin_can_put_default =>
-        passing_defined (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
+        if_special (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
           match D with
           | attributes_accessor_of Aa =>
-            passing_normal S1 (decide (attributes_accessor_set Aa <> undef))
+            result_val S1 (decide (attributes_accessor_set Aa <> undef))
           | attributes_data_of Ad =>
-            passing_normal S1 (attributes_data_writable Ad)
+            result_val S1 (attributes_data_writable Ad)
           | full_descriptor_undef =>
-            passing_def (run_object_method object_proto_ S1 l) (fun vproto =>
+            if_some (run_object_method object_proto_ S1 l) (fun vproto =>
                 match vproto with
                 | null =>
-                  passing_def (run_object_method object_extensible_ S1 l)
-                    (passing_normal S1)
+                  if_some (run_object_method object_extensible_ S1 l)
+                    (result_val S1)
                 | value_object lproto =>
-                  passing_defined (run_object_get_prop runs S1 C lproto x) (fun S2 D' =>
+                  if_special (run_object_get_prop runs S1 C lproto x) (fun S2 D' =>
                     match D' with
                     | full_descriptor_undef =>
-                      passing_def (run_object_method object_extensible_ S2 l)
-                        (passing_normal S2)
+                      if_some (run_object_method object_extensible_ S2 l)
+                        (result_val S2)
                     | attributes_accessor_of Aa =>
-                      passing_normal S2 (decide (attributes_accessor_set Aa <> undef))
+                      result_val S2 (decide (attributes_accessor_set Aa <> undef))
                     | attributes_data_of Ad =>
-                      passing_def (run_object_method object_extensible_ S2 l) (fun ext =>
-                        passing_normal S2 (
+                      if_some (run_object_method object_extensible_ S2 l) (fun ext =>
+                        result_val S2 (
                           if ext then attributes_data_writable Ad
                           else false))
                   end)
-                | value_prim _ => passing_abort (
-                    impossible_with_heap_because S1 "Non-null primitive get as a prototype value in [object_can_put].")
+                | value_prim _ =>
+                  impossible_with_heap_because S1 "Non-null primitive get as a prototype value in [object_can_put]."
                 end)
           end)
       end).
@@ -559,7 +583,7 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
     match B with
     | builtin_define_own_prop_default =>
-      result_passing (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
+      if_special_ter (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         let reject S :=
           out_error_or_cst S str native_error_type false
         in if_some (run_object_method object_extensible_ S1 l) (fun ext =>
@@ -571,12 +595,12 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                  then attributes_data_of_descriptor Desc
                  else attributes_accessor_of_descriptor Desc
                in if_some (pick_option (object_set_property S1 l x A)) (fun S2 =>
-                    out_ter S2 true)
+                    result_some (out_ter S2 true))
              | full_descriptor_some A, bext =>
                let object_define_own_prop_write S1 A :=
                  let A' := attributes_update A Desc in
                  if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
-                   out_ter S2 true)
+                   result_some (out_ter S2 true))
                in ifb descriptor_contains A Desc then
                  out_ter S1 true
                else ifb attributes_change_enumerable_on_non_configurable A Desc then
@@ -607,7 +631,7 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                  end
              end))
       | builtin_define_own_prop_args_obj =>
-        out_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
+        result_some (out_ter S true) (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
     end).
 
 
@@ -649,25 +673,25 @@ Definition run_value_viewable_as_prim s S v : option (option prim) :=
 Definition env_record_lookup Z (d : Z) S L (K : env_record -> Z) : Z :=
   morph_option d K (Heap.read_option (state_env_record_heap S) L).
 
-Definition env_record_has_binding runs S C L x : passing bool :=
-  env_record_lookup (fun _ => passing_abort (
-      impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]"))
+Definition env_record_has_binding runs S C L x : result_special bool :=
+  env_record_lookup (fun _ =>
+    impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
     S L (fun E _ =>
       match E with
       | env_record_decl Ed =>
-          passing_normal S (decide (decl_env_record_indom Ed x))
+          result_val S (decide (decl_env_record_indom Ed x))
       | env_record_object l pt =>
           object_has_prop runs S C l x
       end) tt.
 
-Fixpoint lexical_env_get_identifier_ref runs S C X x str : passing ref :=
+Fixpoint lexical_env_get_identifier_ref runs S C X x str : result_special ref :=
   match X with
   | nil =>
-      passing_normal S (ref_create_value undef x str)
+      result_val S (ref_create_value undef x str)
   | L :: X' =>
-      passing_defined (env_record_has_binding runs S C L x) (fun S1 has =>
+      if_special (env_record_has_binding runs S C L x) (fun S1 has =>
         if has then
-          passing_normal S1 (ref_create_env_loc L x str)
+          result_val S1 (ref_create_env_loc L x str)
         else lexical_env_get_identifier_ref runs S C X' x str)
   end.
 
@@ -675,13 +699,13 @@ Definition object_delete runs S C l x str : result :=
   if_some (run_object_method object_delete_ S l) (fun B =>
     match B with
     | builtin_delete_default =>
-      result_passing (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
+      if_special_ter (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         match D with
         | full_descriptor_undef => out_ter S true
         | full_descriptor_some A =>
           if attributes_configurable A then
             if_some (pick_option (object_rem_property S l x)) (fun S' =>
-              out_ter S' true)
+              result_some (out_ter S' true))
           else
             out_error_or_cst S str native_error_type false
         end)
@@ -715,7 +739,7 @@ Definition env_record_implicit_this_value S L : option value :=
         if provide_this then l else undef
       end)).
 
-Definition identifier_res runs S C x : passing ref :=
+Definition identifier_res runs S C x : result_special ref :=
   let X := execution_ctx_lexical_env C in
   let str := execution_ctx_strict C in
   lexical_env_get_identifier_ref runs S C X x str.
@@ -731,7 +755,7 @@ Definition env_record_get_binding_value runs S C L x str : result :=
           out_error_or_cst S str native_error_ref undef
         else out_ter S v)
     | env_record_object l pt =>
-      result_passing (object_has_prop runs S C l x) (fun S1 has =>
+      if_special_ter (object_has_prop runs S C l x) (fun S1 has =>
         if has then
           run_object_get runs S1 C l x
         else out_error_or_cst S1 str native_error_ref undef)
@@ -777,9 +801,9 @@ Definition ref_get_value runs S C rv : result :=
 Definition object_put_complete runs B S C vthis l x v str : result_void :=
   match B with
   | builtin_put_default =>
-    result_passing (object_can_put runs S C l x) (fun S1 b =>
+    if_special_ter (object_can_put runs S C l x) (fun S1 b =>
       if b then
-        result_passing (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
+        if_special_ter (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
           match D with
 
           | attributes_data_of Ad =>
@@ -793,7 +817,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
             end
 
           | _ =>
-            result_passing (run_object_get_prop runs S2 C l x) (fun S3 D' =>
+            if_special_ter (run_object_get_prop runs S2 C l x) (fun S3 D' =>
               match D' with
               | attributes_accessor_of Aa' =>
                 match attributes_accessor_set Aa' with
@@ -888,7 +912,7 @@ Definition env_record_create_mutable_binding runs S C L x (deletable_opt : optio
         let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
         out_void S'
     | env_record_object l pt =>
-      result_passing (object_has_prop runs S C l x) (fun S1 has =>
+      if_special_ter (object_has_prop runs S C l x) (fun S1 has =>
         if has then
           impossible_with_heap_because S1 "Already declared binding in [env_record_create_mutable_binding]."
         else (
@@ -1002,7 +1026,7 @@ Definition to_string runs S C v : result :=
 (** Built-in constructors *)
 
 Definition call_object_new S v : result :=
-  match type_of v return result with
+  match type_of v with
   | type_object => out_ter S v
   | type_string | type_bool | type_number =>
     to_object S v
@@ -1101,8 +1125,8 @@ Definition run_construct runs S C co l args : result :=
 
 Definition run_call_default runs S C (lf : object_loc) : result :=
   (* Corresponds to the [spec_call_default_1] of the specification. *)
-  let follow (o : result) :=
-    if_success_or_return o
+  let follow W :=
+    if_success_or_return W
       (fun S' => out_ter S' undef) out_ter
   in let default := out_ter S undef
   in if_some (run_object_method object_code_ S lf) (fun OC =>
@@ -1145,7 +1169,7 @@ Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list
   | nil => out_void S
   | argname :: names' =>
     let v := hd undef args in
-    result_passing (env_record_has_binding runs S C L argname) (fun S1 hb =>
+    if_special_ter (env_record_has_binding runs S C L argname) (fun S1 hb =>
       let follow S' :=
         if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S'' =>
           binding_inst_formal_params runs S'' C L (tl args) names' str)
@@ -1165,10 +1189,10 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
         let follow S2 :=
           if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
             binding_inst_function_decls runs S3 C L fds' str bconfig)
-        in result_passing (env_record_has_binding runs S1 C L fname) (fun S2 has =>
+        in if_special_ter (env_record_has_binding runs S1 C L fname) (fun S2 has =>
           if has then (
             ifb L = env_loc_global_env_record then (
-              result_passing (run_object_get_prop runs S2 C prealloc_global fname) (fun S3 D =>
+              if_special_ter (run_object_get_prop runs S2 C prealloc_global fname) (fun S3 D =>
                 match D with
                 | full_descriptor_undef =>
                   impossible_with_heap_because S3 "Undefined full descriptor in [binding_inst_function_decls]."
@@ -1192,7 +1216,7 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
   | nil => out_void S
   | vd :: vds' =>
     let bivd S := binding_inst_var_decls runs S C L vds' bconfig str in
-    result_passing (env_record_has_binding runs S C L vd) (fun S1 has =>
+    if_special_ter (env_record_has_binding runs S C L vd) (fun S1 has =>
       if has then bivd S
       else
         if_void (env_record_create_set_mutable_binding runs S1 C L vd (Some bconfig) undef str) bivd)
@@ -1275,7 +1299,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
       let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
       if_void (binding_inst_function_decls runs S' C L fds str bconfig) (fun S1 =>
-        result_passing (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
+        if_special_ter (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
           let follow2 S' :=
             let vds := prog_vardecl p in
             binding_inst_var_decls runs S' C L vds str (prog_intro_strictness p)
@@ -1541,7 +1565,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     match v2 with
     | value_object l =>
       if_string (to_string runs S C v1) (fun S2 x =>
-        result_passing (object_has_prop runs S2 C l x) out_ter)
+        if_special_ter (object_has_prop runs S2 C l x) out_ter)
     | value_prim _ => run_error S native_error_type
     end
 
@@ -1696,7 +1720,7 @@ Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
     | None => follow S
     | Some e =>
       run_expr_get_value runs S C e (fun S1 v =>
-        result_passing (identifier_res runs S1 C x) (fun S2 ir =>
+        if_special_ter (identifier_res runs S1 C x) (fun S2 ir =>
           if_void (ref_put_value runs S2 C ir v) (fun S3 =>
             follow S3)))
     end
@@ -1953,7 +1977,8 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
           runs S' C L x None v throw_irrelevant) (fun S2 =>
             let C' := execution_ctx_with_lex C lex' in
             finally (runs_type_stat runs S2 C' t2))
-      | nil => impossible_with_heap_because S1 "Empty lexical environnment in [run_stat_try]."
+      | nil =>
+        impossible_with_heap_because S1 "Empty lexical environnment in [run_stat_try]."
       end
     end).
 
@@ -1981,7 +2006,7 @@ Definition run_expr runs S C e : result :=
     out_ter S (convert_literal_to_prim i)
 
   | expr_identifier x =>
-    result_passing (identifier_res runs S C x) out_ter
+    if_special_ter (identifier_res runs S C x) out_ter
 
   | expr_unary_op op e =>
     run_unary_op runs S C op e
@@ -2140,7 +2165,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
               out_ter S1 l)
           | x :: xs' =>
-            result_passing (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
+            if_special_ter (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
               match D with
               | full_descriptor_some A =>
                 let A' :=
@@ -2169,7 +2194,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_method object_extensible_ S l) (fun ext =>
               out_ter S (neg ext))
           | x :: xs' =>
-            result_passing (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
+            if_special_ter (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
               match D with
               | full_descriptor_some A =>
                 if attributes_configurable A then
@@ -2193,7 +2218,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
               out_ter S1 l)
           | x :: xs' =>
-            result_passing (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
+            if_special_ter (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
               match D with
               | full_descriptor_some A =>
                 let A' :=
@@ -2229,7 +2254,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
             if_some (run_object_method object_extensible_ S l) (fun ext =>
               out_ter S (neg ext))
           | x :: xs' =>
-            result_passing (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
+            if_special_ter (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
               let check_configurable A :=
                 if attributes_configurable A then
                   out_ter S0 false : result
@@ -2295,7 +2320,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
     let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
       if_object (to_object S1 (execution_ctx_this_binding C)) (fun S2 l =>
-        result_passing (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
+        if_special_ter (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
           match D with
           | full_descriptor_undef =>
             out_ter S3 false
@@ -2377,8 +2402,8 @@ Fixpoint runs max_step : runs_type :=
       runs_type_call := fun S _ _ _ _ => result_bottom S;
       runs_type_function_has_instance := fun S _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
-      runs_type_object_get_own_prop := fun S _ _ _ => passing_abort (result_bottom S);
-      runs_type_object_get_prop := fun S _ _ _ => passing_abort (result_bottom S);
+      runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
+      runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
       runs_type_equal := fun S _ _ _ _ => result_bottom S
     |}
