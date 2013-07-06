@@ -23,7 +23,7 @@ let prprealloc = function
   | Coq_prealloc_object_get_own_prop_name -> "Coq_prealloc_object_get_own_prop_name"
   | Coq_prealloc_object_create -> "Coq_prealloc_object_create"
   | Coq_prealloc_object_define_prop -> "Coq_prealloc_object_define_prop"
-  | Coq_prealloc_object_define_properties -> "Coq_prealloc_object_define_properties"
+  | Coq_prealloc_object_define_props -> "Coq_prealloc_object_define_props"
   | Coq_prealloc_object_seal -> "Coq_prealloc_object_seal"
   | Coq_prealloc_object_freeze -> "Coq_prealloc_object_freeze"
   | Coq_prealloc_object_prevent_extensions -> "Coq_prealloc_object_prevent_extensions"
