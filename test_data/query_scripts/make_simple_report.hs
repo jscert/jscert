@@ -127,17 +127,20 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                       -- ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       -- ++   "(SELECT id from test_groups where description=\"Number constructor object tests\")) AND "
                                       -- Not tests that use the Boolean constructor
-                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
-                                      ++   "(SELECT id from test_groups where description=\"Boolean constructor object tests\")) AND "
+                                      -- ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      -- ++   "(SELECT id from test_groups where description=\"Boolean constructor object tests\")) AND "
                                       -- Not tests that use the String constructor
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description=\"String constructor object tests\")) AND "
                                       -- Not tests that use the String object
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description=\"String object tests\")) AND "
-                                      -- Not known type conversion bug https://gforge.inria.fr/tracker/index.php?func=detail&aid=15904&group_id=4179&atid=13867
+                                      -- -- Not known type conversion bug https://gforge.inria.fr/tracker/index.php?func=detail&aid=15904&group_id=4179&atid=13867
+                                      -- ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      -- ++   "(SELECT id from test_groups where description=\"ToNumber conversion tests\")) AND "
+                                      -- Not Intl object tests
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
-                                      ++   "(SELECT id from test_groups where description=\"ToNumber conversion tests\")) AND "
+                                      ++   "(SELECT id from test_groups where description=\"Intl object tests\")) AND "
                                       ++ (concat $ intersperse " AND "
                                           ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
                                           ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))
