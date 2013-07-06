@@ -246,7 +246,7 @@ Definition object_prealloc_object_proto :=
   let P := write_native P "valueOf" prealloc_object_proto_value_of in 
   (* LATER: let P := write_native P "has_own_property" prealloc_object_proto_has_own_property in*)
   let P := write_native P "isPrototypeOf" prealloc_object_proto_is_prototype_of in 
-  (* LATER: let P := write_native P "property_is_enumerable" prealloc_object_proto_property_is_enumerable in*)
+  let P := write_native P "propertyIsEnumerable" prealloc_object_proto_prop_is_enumerable in
   object_create_builtin null "Object" P.
 
 (* Daniele: in the following definitions, why [object_proto_to_string_function_object]
@@ -262,6 +262,8 @@ Definition object_proto_value_of_function_object :=
 Definition object_proto_is_prototype_of_function_object :=
   object_create_prealloc_call prealloc_object_proto_is_prototype_of 1 Heap.empty.
 
+Definition object_proto_prop_is_enumerable_function_object :=
+  object_create_prealloc_call prealloc_object_proto_prop_is_enumerable 1 Heap.empty.
 
 (**************************************************************)
 (** Function object *)
@@ -482,6 +484,58 @@ Definition throw_type_error_object :=  (* TODO: check this *)
 (**************************************************************)
 (** Initial object heap *)
 
+(* Daniele: as Arthur suggested, I had to split the definition of object_heap_initial_function_objects_1 into several bits. Otherwise, there seems to be an issue with non-termination - don't know why. The full definition is commented below. *)
+
+Definition object_heap_initial_function_objects_1 (h : Heap.heap object_loc object) :=
+  (* ThrowTypeError Function object *)
+  let h := Heap.write h prealloc_throw_type_error throw_type_error_object in
+
+  (* Function objects of Global object *)
+  let h := Heap.write h prealloc_global_eval global_eval_function_object in
+  let h := Heap.write h prealloc_global_is_nan global_is_nan_function_object in
+  let h := Heap.write h prealloc_global_is_finite global_is_finite_function_object in h.
+
+Definition object_heap_initial_function_objects_2 (h : Heap.heap object_loc object) :=
+  let h := object_heap_initial_function_objects_1 h in 
+  (* Function objects of Object *)
+  let h := Heap.write h prealloc_object_get_proto_of object_get_proto_of_function_object in
+  let h := Heap.write h prealloc_object_get_own_prop_descriptor object_get_own_prop_descriptor_function_object in
+  let h := Heap.write h prealloc_object_get_own_prop_name object_get_own_prop_name_function_object in
+  let h := Heap.write h prealloc_object_create object_create_function_object in
+  let h := Heap.write h prealloc_object_define_prop object_define_prop_function_object in
+  let h := Heap.write h prealloc_object_define_properties object_define_properties_function_object in
+  let h := Heap.write h prealloc_object_seal object_seal_function_object in
+  let h := Heap.write h prealloc_object_freeze object_freeze_function_object in
+  let h := Heap.write h prealloc_object_prevent_extensions object_prevent_extensions_function_object in
+  let h := Heap.write h prealloc_object_is_sealed object_is_sealed_function_object in
+  let h := Heap.write h prealloc_object_is_frozen object_is_frozen_function_object in
+  let h := Heap.write h prealloc_object_is_extensible object_is_extensible_function_object in h.
+
+Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc object) :=
+  let h := object_heap_initial_function_objects_2 h in 
+  (* Function objects of Object.prototype *)
+  let h := Heap.write h prealloc_object_proto_to_string object_proto_to_string_function_object in
+  let h := Heap.write h prealloc_object_proto_value_of object_proto_value_of_function_object in
+  let h := Heap.write h prealloc_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
+  let h := Heap.write h prealloc_object_proto_prop_is_enumerable object_proto_prop_is_enumerable_function_object in
+
+  (* Function objects of Boolean.prototype *)
+  let h := Heap.write h prealloc_bool_proto_to_string bool_proto_to_string_function_object in
+  let h := Heap.write h prealloc_bool_proto_value_of bool_proto_value_of_function_object in h.
+
+Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
+  let h := object_heap_initial_function_objects_3 h in 
+  (* Function objects of Number.prototype *)
+  let h := Heap.write h prealloc_number_proto_to_string number_proto_to_string_function_object in
+  let h := Heap.write h prealloc_number_proto_value_of number_proto_value_of_function_object in 
+  (* Function objects of Error.prototype *)
+  let h := Heap.write h prealloc_error_proto_to_string error_proto_to_string_function_object in h.
+
+
+
+
+
+(*
 Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
   (* ThrowTypeError Function object *)
   let h := Heap.write h prealloc_throw_type_error throw_type_error_object in
@@ -511,7 +565,8 @@ Definition object_heap_initial_function_objects (h : Heap.heap object_loc object
   let h := Heap.write h prealloc_object_proto_to_string object_proto_to_string_function_object in
   let h := Heap.write h prealloc_object_proto_value_of object_proto_value_of_function_object in
   let h := Heap.write h prealloc_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
-  
+  let h := Heap.write h prealloc_object_proto_prop_is_enumerable object_proto_prop_is_enumerable_function_object in
+
   (* Function objects of Boolean.prototype *)
   let h := Heap.write h prealloc_bool_proto_to_string bool_proto_to_string_function_object in
   let h := Heap.write h prealloc_bool_proto_value_of bool_proto_value_of_function_object in
@@ -524,7 +579,7 @@ Definition object_heap_initial_function_objects (h : Heap.heap object_loc object
   let h := Heap.write h prealloc_error_proto_to_string error_proto_to_string_function_object in
 
   h.
-
+*)
 Definition object_heap_initial :=
   let h : Heap.heap object_loc object := Heap.empty in
   let h := Heap.write h prealloc_global object_prealloc_global in

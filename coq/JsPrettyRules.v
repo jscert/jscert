@@ -3372,7 +3372,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_1 l vp) o
 
   | red_spec_call_object_object_define_props_2 : forall S0 S C l lp xs o o1, (* step 3 and 4 *) 
-      object_properties_enumerable_keys_as_list S lp xs ->
+      object_properties_enumerable_keys_as_list S lp xs -> (* Daniele: define *)
       red_expr S C (spec_call_object_define_props_6 l lp xs nil) o ->
       red_expr S0 C (spec_call_object_define_props_2 (out_ter S lp) l) o
 
