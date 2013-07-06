@@ -195,7 +195,7 @@ Definition object_prealloc_object :=
   let P := write_native P "getOwnPropertyNames" prealloc_object_get_own_prop_name in
   let P := write_native P "create" prealloc_object_create in
   let P := write_native P "defineProperty" prealloc_object_define_prop in
-  let P := write_native P "defineProperties" prealloc_object_define_properties in
+  let P := write_native P "defineProperties" prealloc_object_define_props in
   let P := write_native P "seal" prealloc_object_seal in
   let P := write_native P "freeze" prealloc_object_freeze in
   let P := write_native P "preventExtensions" prealloc_object_prevent_extensions in
@@ -217,8 +217,8 @@ Definition object_create_function_object :=
   object_create_prealloc_call prealloc_object_create 1 Heap.empty.
 Definition object_define_prop_function_object :=
   object_create_prealloc_call prealloc_object_define_prop 1 Heap.empty.
-Definition object_define_properties_function_object :=
-  object_create_prealloc_call  prealloc_object_define_properties 1 Heap.empty.
+Definition object_define_props_function_object :=
+  object_create_prealloc_call  prealloc_object_define_props 1 Heap.empty.
 Definition object_seal_function_object :=
   object_create_prealloc_call prealloc_object_seal 1 Heap.empty.
 Definition object_freeze_function_object :=
@@ -503,7 +503,7 @@ Definition object_heap_initial_function_objects_2 (h : Heap.heap object_loc obje
   let h := Heap.write h prealloc_object_get_own_prop_name object_get_own_prop_name_function_object in
   let h := Heap.write h prealloc_object_create object_create_function_object in
   let h := Heap.write h prealloc_object_define_prop object_define_prop_function_object in
-  let h := Heap.write h prealloc_object_define_properties object_define_properties_function_object in
+  let h := Heap.write h prealloc_object_define_props object_define_props_function_object in
   let h := Heap.write h prealloc_object_seal object_seal_function_object in
   let h := Heap.write h prealloc_object_freeze object_freeze_function_object in
   let h := Heap.write h prealloc_object_prevent_extensions object_prevent_extensions_function_object in

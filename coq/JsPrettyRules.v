@@ -3359,7 +3359,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_object_define_props : forall S C vo vp o args, (* step 0 *)
       arguments_from args (vo::vp::nil) ->
       red_expr S C (spec_call_object_define_props_1 vo vp) o ->
-      red_expr S C (spec_call_prealloc prealloc_object_define_properties args) o
+      red_expr S C (spec_call_prealloc prealloc_object_define_props args) o
  
   | red_spec_call_object_object_define_props_1_not_object : forall S C vo vp o, (* step 1 *)
       type_of vo <> type_object ->
@@ -3372,38 +3372,38 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_1 l vp) o
 
   | red_spec_call_object_object_define_props_2 : forall S0 S C l lp xs o o1, (* step 3 and 4 *) 
-      object_properties_enumerable_keys_as_list S lp xs -> (* Daniele: define *)
-      red_expr S C (spec_call_object_define_props_6 l lp xs nil) o ->
+      object_properties_enumerable_keys_as_list S lp xs -> (*Daniele: define*)
+      red_expr S C (spec_call_object_define_props_3 l lp xs nil) o ->
       red_expr S0 C (spec_call_object_define_props_2 (out_ter S lp) l) o
 
-  | red_spec_call_object_define_props_6_nil : forall S C l lp Descs o, (* step 5 (end loop) *)
-      red_expr S C (spec_call_object_define_props_9 l Descs) o ->
-      red_expr S C (spec_call_object_define_props_6 l lp nil Descs) o
+  | red_spec_call_object_define_props_3_nil : forall S C l lp Descs o, (* step 5 (end loop) *)
+      red_expr S C (spec_call_object_define_props_6 l Descs) o ->
+      red_expr S C (spec_call_object_define_props_3 l lp nil Descs) o
 
-  | red_spec_call_object_define_props_6_cons : forall S C l lp x xs Descs o o1, (* step 5 and 5.a *)
+  | red_spec_call_object_define_props_3_cons : forall S C l lp x xs Descs o o1, (* step 5 and 5.a *)
       red_expr S C (spec_object_get lp x) o1 -> 
-      red_expr S C (spec_call_object_define_props_7 o1 l lp x xs Descs) o ->
-      red_expr S C (spec_call_object_define_props_6 l lp (x::xs) Descs) o
+      red_expr S C (spec_call_object_define_props_4 o1 l lp x xs Descs) o ->
+      red_expr S C (spec_call_object_define_props_3 l lp (x::xs) Descs) o
 
-  | red_spec_call_object_define_props_7 : forall S0 S C v l lp o o1 x xs Descs, (* step 5.b *)
-      red_expr S C (spec_to_descriptor v (spec_call_object_define_props_8 l lp x xs Descs)) o1 -> 
-      red_expr S0 C (spec_call_object_define_props_7 (out_ter S v) l lp x xs Descs) o
+  | red_spec_call_object_define_props_4 : forall S0 S C v l lp o o1 x xs Descs, (* step 5.b *)
+      red_expr S C (spec_to_descriptor v (spec_call_object_define_props_5 l lp x xs Descs)) o1 -> 
+      red_expr S0 C (spec_call_object_define_props_4 (out_ter S v) l lp x xs Descs) o
 
-  | red_spec_call_object_define_props_8 : forall S C A l lp o o1 x xs Descs, (* step 5.c *)
-      red_expr S C (spec_call_object_define_props_6 l lp xs (Descs++(x,A)::nil)) o ->
-      red_expr S C (spec_call_object_define_props_8 l lp x xs Descs A) o
+  | red_spec_call_object_define_props_5 : forall S C A l lp o o1 x xs Descs, (* step 5.c *)
+      red_expr S C (spec_call_object_define_props_3 l lp xs (Descs++(x,A)::nil)) o ->
+      red_expr S C (spec_call_object_define_props_5 l lp x xs Descs A) o
 
-  | red_spec_call_object_define_props_9_cons : forall S C l x A Descs o1 o , (* step 6 *)
+  | red_spec_call_object_define_props_6_cons : forall S C l x A Descs o1 o , (* step 6 *)
      red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A) throw_true) o1 ->
-     red_expr S C (spec_call_object_define_props_10 o1 l Descs) o ->
-     red_expr S C (spec_call_object_define_props_9 l ((x,A)::Descs)) o
+     red_expr S C (spec_call_object_define_props_7 o1 l Descs) o ->
+     red_expr S C (spec_call_object_define_props_6 l ((x,A)::Descs)) o
 
-  | red_spec_call_object_define_props_10 : forall S0 S C l Descs b o, (* step 6 (end loop) *)
-     red_expr S C (spec_call_object_define_props_9 l Descs) o ->
-     red_expr S0 C (spec_call_object_define_props_10 (out_ter S b) l Descs) o  
+  | red_spec_call_object_define_props_7 : forall S0 S C l Descs b o, (* step 6 (end loop) *)
+     red_expr S C (spec_call_object_define_props_6 l Descs) o ->
+     red_expr S0 C (spec_call_object_define_props_7 (out_ter S b) l Descs) o  
 
-  | red_spec_call_object_define_props_9_nil : forall S C l, (* step 7 *)
-      red_expr S C (spec_call_object_define_props_9 l nil) (out_ter S l)
+  | red_spec_call_object_define_props_6_nil : forall S C l, (* step 7 *)
+      red_expr S C (spec_call_object_define_props_6 l nil) (out_ter S l)
 
   (** Seal (returns Object) (15.2.3.8) *)
 
