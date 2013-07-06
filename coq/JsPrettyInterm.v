@@ -1278,9 +1278,7 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_try_3 (out_ter S R) fo)
   | abort_intercepted_stat_switch_2 : forall S R labs,
       res_type R = restype_break ->
-      (* FOR_DANIELE: need to add a premise
-         res_label_in R labs ->
-         once you've added labs to stat_switch_2 *)
+      res_label_in R labs ->  
       abort_intercepted_stat (stat_switch_2 (out_ter S R) labs)
   | abort_intercepted_stat_switch_nodefault_6 : forall S rv R scs,
       ~ res_is_normal R ->
