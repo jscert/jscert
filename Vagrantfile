@@ -109,10 +109,10 @@ Vagrant.configure("2") do |config|
   #
   #   chef.validation_client_name = "ORGNAME-validator"
   $script = <<SCRIPT
-echo Setting up OCaml and Coq...
-sudo echo "deb http://www.recoil.org/~avsm/ wheezy main" >> /etc/apt/sources.list
+echo Setting up OCaml, Coq and Haskell...
+sudo curl -kL https://raw.github.com/hcarty/ocamlbrew/master/ocamlbrew-install | env OCAMLBREW_FLAGS="-r" bash
 sudo apt-get update
-sudo apt-get install -y opam cabal-install
+sudo apt-get install -y cabal-install
 su vagrant -c "opam update"
 su vagrant -c "opam install ocaml"
 su vagrant -c "opam install coq"
@@ -120,7 +120,7 @@ su vagrant -c "opam install ocamlfind"
 su vagrant -c "opam install xml-light"
 su vagrant -c "opam install bisect"
 su vagrant -c "cabal install cabal-dev"
-echo You now have all you need to compile JSCert. Do "vagrant ssh", and run "make init ; make ; make".
+echo You now have all you need to compile JSCert. Do "vagrant ssh", and run "cd /vagrant ; make init ; make ; make".
 SCRIPT
 
   config.vm.provision :shell, :inline => $script
