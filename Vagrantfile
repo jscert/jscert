@@ -112,14 +112,15 @@ Vagrant.configure("2") do |config|
 echo Setting up OCaml and Coq...
 sudo echo "deb [arch=amd64] http://www.recoil.org/~avsm/ wheezy main" >> /etc/apt/sources.list
 sudo apt-get update
-sudo apt-get install -y opam
+sudo apt-get install -y opam cabal-install
 su vagrant -c "opam update"
 su vagrant -c "opam install ocaml"
 su vagrant -c "opam install coq"
 su vagrant -c "opam install ocamlfind"
 su vagrant -c "opam install xml-light"
 su vagrant -c "opam install bisect"
-echo You now have all you need to compile JSCert. Do inside "vagrant ssh", then run "make init ; make ; make".
+su vagrant -c "cabal install cabal-dev"
+echo You now have all you need to compile JSCert. Do "vagrant ssh", and run "make init ; make ; make".
 SCRIPT
 
   config.vm.provision :shell, :inline => $script
