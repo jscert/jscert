@@ -110,7 +110,7 @@ Vagrant.configure("2") do |config|
   #   chef.validation_client_name = "ORGNAME-validator"
   $script = <<SCRIPT
 echo Setting up OCaml and Coq...
-sudo echo "deb [arch=amd64] http://www.recoil.org/~avsm/ wheezy main" >> /etc/apt/sources.list
+sudo echo "deb http://www.recoil.org/~avsm/ wheezy main" >> /etc/apt/sources.list
 sudo apt-get update
 sudo apt-get install -y opam cabal-install
 su vagrant -c "opam update"
