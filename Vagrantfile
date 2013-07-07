@@ -111,16 +111,17 @@ Vagrant.configure("2") do |config|
   $script = <<SCRIPT
 echo Setting up OCaml, Coq and Haskell...
 sudo apt-get update
-sudo apt-get install -y cabal-install curl
-sudo curl -kL https://raw.github.com/hcarty/ocamlbrew/master/ocamlbrew-install | env OCAMLBREW_FLAGS="-r" bash
-su vagrant -c "opam update"
-su vagrant -c "opam install ocaml"
-su vagrant -c "opam install coq"
-su vagrant -c "opam install ocamlfind"
-su vagrant -c "opam install xml-light"
-su vagrant -c "opam install bisect"
-su vagrant -c "cabal update"
-su vagrant -c "cabal install cabal-dev"
+sudo apt-get install -y make cabal-install haddock curl git m4
+[ -a /home/vagrant/ocamlbrew ] || su vagrant -c "curl -kL https://raw.github.com/hcarty/ocamlbrew/master/ocamlbrew-install | env OCAMLBREW_FLAGS=\\"-r\\" bash > /dev/null"
+su vagrant -c "echo \\"export PATH=/home/vagrant/.cabal/bin:\\\\$PATH\\" >> ~/.bashrc"
+su vagrant -c "echo \\"source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc\\" >> ~/.bashrc"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam update"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y coq"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y ocamlfind"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y xml-light"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y bisect"
+su vagrant -c "cabal update > /dev/null"
+su vagrant -c "cabal install cabal-dev > /dev/null"
 echo You now have all you need to compile JSCert. Do "vagrant ssh", and run "cd /vagrant ; make init ; make ; make".
 SCRIPT
 
