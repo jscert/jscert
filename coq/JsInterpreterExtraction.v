@@ -100,7 +100,8 @@ Extract Constant JsNumber.absolute => "abs_float".
 Extract Constant JsNumber.from_string =>
   "(fun s ->
     try
-      float_of_string (String.concat """" (List.map (String.make 1) s))
+      let s = (String.concat """" (List.map (String.make 1) s)) in
+      if s = """" then 0. else float_of_string s
     with Failure ""float_of_string"" -> nan)
    (* Note that we're using `float_of_string' there, which does not have the same
       behavior than JavaScript.  For instance it will read ""022"" as 22 instead of
