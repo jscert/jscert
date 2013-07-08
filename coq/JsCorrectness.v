@@ -238,6 +238,17 @@ Ltac constructors_and :=
   eapply and_impl_left; [ intro H; constructors; exact H |].
 
 
+Lemma run_callable_correct : forall S v co,
+  run_callable S v = Some co ->
+  callable S v co.
+Proof.
+  introv E. destruct v; simpls~.
+   inverts~ E.
+   sets_eq <- B: (pick_option (object_binds S o)). destruct B; simpls; tryfalse.
+    exists o0. splits~. forwards~: @pick_option_correct EQB. inverts~ E.
+Qed.
+
+
 (**************************************************************)
 (** Monadic Constructors, Lemmas *)
 
@@ -697,7 +708,8 @@ Tactic Notation "run_apply" constr(Red) constr(o1) constr(R1) :=
 (** [run_post] decomposes the conclusion of the "out"
     lemma *)
 
-Ltac run_post_extra := fail.
+Ltac run_post_run_expr_get_value := fail.
+Ltac run_post_if_to_string := fail.
 
 Ltac run_post_core :=
   let Er := fresh "Er" in
@@ -725,7 +737,8 @@ Ltac run_post_core :=
     let s := fresh "s" in go H s
   | H: if_number_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
-  | |- _ => run_post_extra (* TODO: create one tactic for each lemma, like for the "select" tactic *)
+  | |- _ => run_post_run_expr_get_value
+  | |- _ => run_post_if_to_string
   end.
 
 Tactic Notation "run_post" :=
@@ -864,9 +877,9 @@ Tactic Notation "runs" "*" :=
 (************************************************************)
 (* ** Correctness Lemmas *)
 
-Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l (z : Z),
-  run_object_method meth S l = Some z ->
-  object_method meth S l z.
+Lemma run_object_method_correct : forall Z (Proj : _ -> Z) S l (z : Z),
+  run_object_method Proj S l = Some z ->
+  object_method Proj S l z.
 Proof.
   introv B. unfolds. forwards (O&Bi&E): option_map_some_back B.
   forwards: @pick_option_correct Bi. exists* O.
@@ -898,8 +911,8 @@ Ltac run_simpl_run_error H T K ::=
      lets (K&N): run_error_correct C (rm H)
   end.
 
-Lemma out_error_or_void_correct : forall S C str ne o,
-  out_error_or_void S str (ne : native_error) = o ->
+Lemma out_error_or_void_correct : forall S C str (ne : native_error) o,
+  out_error_or_void S str ne = o ->
   red_expr S C (spec_error_or_void str ne) o /\
     (~ abort o -> o = out_void S).
 Proof.
@@ -908,8 +921,8 @@ Proof.
    inverts E. splits~. apply~ red_spec_error_or_void_false.
 Qed.
 
-Lemma out_error_or_cst_correct : forall S C str ne v o,
-  out_error_or_cst S str (ne : native_error) v = o ->
+Lemma out_error_or_cst_correct : forall S C str (ne : native_error) v o,
+  out_error_or_cst S str ne v = o ->
   red_expr S C (spec_error_or_cst str ne v) o /\
     (~ abort o -> o = out_ter S v).
 Proof.
@@ -945,17 +958,17 @@ Admitted. (* OLD
 Qed. *)
 *)
 
-Lemma object_get_builtin_correct : forall runs,
-  runs_type_correct runs -> forall S C B vthis l x o,
+Lemma object_get_builtin_correct : forall runs S C B vthis l x o,
+  runs_type_correct runs ->
   object_get_builtin runs S C B vthis l x = o ->
   red_expr S C (spec_object_get_1 B vthis l x) o.
 Admitted.
 
-Lemma run_object_get_correct : forall runs,
-  runs_type_correct runs -> forall S C l x o,
+Lemma run_object_get_correct : forall runs S C l x o,
+  runs_type_correct runs ->
   run_object_get runs S C l x = o ->
   red_expr S C (spec_object_get l x) o /\
-    (~ abort o -> exists S' v, o = out_ter S' v).
+    (~ abort o -> exists S' v, o = out_ter S' v). (* Needed for [ref_get_value_correct]. *)
 Admitted. (* OLD
   introv RC E.
   unfolds in E.
@@ -1014,8 +1027,8 @@ Qed. *)
 (* TODO:  Waiting for specification
 Lemma object_can_put_correct *)
 
-Lemma object_define_own_prop_correct : forall runs,
-  runs_type_correct runs -> forall S C l x Desc str o,
+Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
+  runs_type_correct runs ->
   object_define_own_prop runs S C l x Desc str = o ->
   red_expr S C (spec_object_define_own_prop l x Desc str) o.
 Admitted.
@@ -1027,8 +1040,7 @@ Proof. introv H. false. Qed.
 
 Lemma to_object_correct : forall S C v o,
   to_object S v = o ->
-  red_expr S C (spec_to_object v) o /\
-    (~ abort o -> exists S', exists (l : object_loc), o = S' l).
+  red_expr S C (spec_to_object v) o.
 Admitted.
 
 Definition if_to_object_post K o o1 :=
@@ -1042,14 +1054,14 @@ Lemma if_to_object_correct : forall S C v K o,
       if_to_object_post K o o1.
 Admitted.
 
-Lemma prim_value_get_correct : forall runs,
-  runs_type_correct runs -> forall S C v x o,
+Lemma prim_value_get_correct : forall runs S C v x o,
+  runs_type_correct runs ->
   prim_value_get runs S C v x = o ->
   red_expr S C (spec_prim_value_get v x) o.
 Admitted.
 
-Lemma env_record_get_binding_value_correct : forall runs,
-  runs_type_correct runs -> forall S C L rn rs o,
+Lemma env_record_get_binding_value_correct : forall runs S C L rn rs o,
+  runs_type_correct runs ->
   env_record_get_binding_value runs S C L rn rs = o ->
   red_expr S C (spec_env_record_get_binding_value L rn rs) o /\
     (~ abort o -> exists S' v, o = out_ter S' v).
@@ -1077,8 +1089,8 @@ Admitted. (* OLD
       cases_if; false.
 Qed. *)
 
-Lemma ref_get_value_correct : forall runs,
-  runs_type_correct runs -> forall S C rv o,
+Lemma ref_get_value_correct : forall runs S C rv o,
+  runs_type_correct runs ->
   ref_get_value runs S C rv = o ->
   red_expr S C (spec_get_value rv) o /\
     (~ abort o -> exists S' v, o = out_ter S' v).
@@ -1105,18 +1117,75 @@ Proof.
      intros. forwards~ (_&?): env_record_get_binding_value_correct E.
 Qed.
 
-Lemma run_callable_correct : forall S v co,
-  run_callable S v = Some co ->
-  callable S v co.
-Admitted. (* OLD
-  introv E. destruct v; simpls~.
-   inverts~ E.
-   rewrite_morph_option; simpls; tryfalse.
-    exists o0. splits~. forwards~: @pick_option_correct EQx. inverts~ E.
-Qed. *)
+Lemma object_put_correct : forall runs S C l x v str o,
+  runs_type_correct runs ->
+  object_put runs S C l x v str = o ->
+  red_expr S C (spec_object_put l x v str) o.
+Admitted.
 
-Lemma object_default_value_correct : forall runs,
-  runs_type_correct runs -> forall S C l pref o,
+Lemma env_record_set_mutable_binding_correct : forall runs S C L x v str o,
+  runs_type_correct runs ->
+  env_record_set_mutable_binding runs S C L x v str = o ->
+  red_expr S C (spec_env_record_set_mutable_binding L x v str) o.
+Admitted.
+
+Lemma ref_put_value_correct : forall runs S C rv v o,
+  runs_type_correct runs ->
+  ref_put_value runs S C rv v = o ->
+  red_expr S C (spec_put_value rv v) o.
+Admitted.
+
+Definition run_expr_get_value_post K o o1 :=
+  (eqabort o1 o \/
+    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
+      K S1 v1 = result_some o).
+
+Lemma run_expr_get_value_correct : forall runs S C e K o,
+  runs_type_correct runs ->
+  run_expr_get_value runs S C e K = o -> exists o1,
+    red_expr S C (spec_expr_get_value e) o1 /\
+      run_expr_get_value_post K o o1.
+Admitted.
+
+Ltac run_select_lemma_run_expr_get_value T ::=
+  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
+
+Ltac run_post_run_expr_get_value ::=
+  let Er := fresh "Er" in
+  let Ab := fresh "Ab" in
+  match goal with
+  | H: run_expr_get_value_post _ _ _ |- _ =>
+    let O1 := fresh "O1" in
+    let S1 := fresh "S" in
+    let v1 := fresh "v" in
+    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
+    [ try abort_expr | try subst_hyp O1 ]
+  end.
+
+Lemma env_record_create_mutable_binding_correct : forall runs S C L x deletable_opt o,
+  runs_type_correct runs ->
+  env_record_create_mutable_binding runs S C L x deletable_opt = o ->
+  red_expr S C (spec_env_record_create_mutable_binding L x deletable_opt) o.
+Admitted.
+
+Lemma env_record_create_set_mutable_binding_correct : forall runs S C L x deletable_opt v str o,
+  runs_type_correct runs ->
+  env_record_create_set_mutable_binding runs S C L x deletable_opt v str = o ->
+  red_expr S C (spec_env_record_create_set_mutable_binding L x deletable_opt v str) o.
+Admitted.
+
+Lemma env_record_create_immutable_binding_correct : forall S C L x o,
+  env_record_create_immutable_binding S L x = o ->
+  red_expr S C (spec_env_record_create_immutable_binding L x) o.
+Admitted.
+
+Lemma env_record_initialize_immutable_binding_correct : forall S C L x v o,
+  env_record_initialize_immutable_binding S L x v = o ->
+  red_expr S C (spec_env_record_initialize_immutable_binding L x v) o.
+Admitted.
+
+Lemma object_default_value_correct : forall runs S C l pref o,
+  runs_type_correct runs ->
   object_default_value runs S C l pref = o ->
   red_expr S C (spec_object_default_value l pref) o.
 Admitted. (* OLD
@@ -1203,8 +1272,8 @@ Definition if_to_primitive_post K o o1 :=
     exists S, exists (w : prim), o1 = out_ter S w /\
       K S w = result_some o).
 
-Lemma if_to_primitive_correct : forall runs,
-  runs_type_correct runs -> forall S C v prefo K o,
+Lemma if_to_primitive_correct : forall runs S C v prefo K o,
+  runs_type_correct runs ->
   if_primitive (to_primitive runs S C v prefo) K = o -> exists o1,
     red_expr S C (spec_to_primitive v prefo) o1 /\
       if_to_primitive_post K o o1.
@@ -1215,8 +1284,8 @@ Definition if_to_string_post K o o1 :=
     exists S, exists (s : string), o1 = out_ter S s /\
       K S s = result_some o).
 
-Lemma if_to_string_correct : forall runs,
-  runs_type_correct runs -> forall S C v K o,
+Lemma if_to_string_correct : forall runs S C v K o,
+  runs_type_correct runs ->
   if_string (to_string runs S C v) K = o -> exists o1,
     red_expr S C (spec_to_string v) o1 /\
       if_to_string_post K o o1.
@@ -1234,36 +1303,13 @@ Admitted. (* OLD
      splits*. apply~ red_spec_to_string_1.
 Qed. *)
 
-
-Definition run_expr_get_value_post K o o1 :=
-  (eqabort o1 o \/
-    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
-      K S1 v1 = result_some o).
-
-Lemma run_expr_get_value_correct : forall runs,
-  runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
-Admitted.
-
-
-Ltac run_select_lemma_run_expr_get_value T ::=
-  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
-
 Ltac run_select_lemma_if_to_string T ::=
   match T with if_string (to_string _ _ _ _) _ => constr:(if_to_string_correct) end.
 
-Ltac run_post_extra ::=
+Ltac run_post_if_to_string ::=
   let Er := fresh "Er" in
   let Ab := fresh "Ab" in
   match goal with
-  | H: run_expr_get_value_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let v1 := fresh "v" in
-    destruct H as [(Er&Ab)|(S1&v1&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
   | H: if_to_string_post _ _ _ |- _ =>
     let O1 := fresh "O1" in
     let S1 := fresh "S" in
@@ -1751,10 +1797,10 @@ Proof.
   applys* red_stat_while_1 (rm R2). run_post_expr_get_value_bool K.
     run red_stat_while_2_true. subst. abort. 
      let_simpl. applys red_stat_while_3 rv'. case_if; case_if*.
-     move K after EQrv'. case_if.
-       applys red_stat_while_4_not_continue. rew_logic*. case_if. 
+     case_if in K.
+       applys red_stat_while_4_not_continue. rew_logic*. case_if in K.
          run_inv. applys* red_stat_while_5_break. 
-         applys* red_stat_while_5_not_break. case_if; run_inv.
+         applys* red_stat_while_5_not_break. case_if in K; run_inv.
            applys* red_stat_while_6_abort.
            applys* red_stat_while_6_normal.
             applys* runs_type_correct_stat_while.
