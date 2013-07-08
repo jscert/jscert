@@ -142,7 +142,7 @@ let print res =
    (Prheap.prrestype res.JsSyntax.res_type) ^ "; " ^ (Prheap.prresvalue res.JsSyntax.res_value)
 
 let display env = try (match env#eval with
-  | JsInterpreter.Coq_result_out out -> begin match out with
+  | JsInterpreter.Coq_result_some out -> begin match out with
       | JsSyntax.Coq_out_div ->  env#clear, "Diverge"
       | JsSyntax.Coq_out_ter (state, res) -> 
           print_endline (Prheap.prstate false state);

@@ -247,6 +247,7 @@ class ResultPrinter:
               exit(1)
         if args.verbose or args.debug:
             print result.stdout
+            print result.stderr
 
     def start_test(self,filename):
         self.print_heading(filename)
