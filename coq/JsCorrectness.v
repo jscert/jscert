@@ -555,9 +555,9 @@ Ltac run_select_proj H :=
   match type of H with
   | ?T = _ =>
   match T with
-  | runs_type_expr _ _ _ _ = _ => constr:(runs_type_correct_expr)
-  | runs_type_stat _ _ _ _ = _ => constr:(runs_type_correct_stat)
-  | runs_type_prog _ _ _ _ = _ => constr:(runs_type_correct_prog)
+  | runs_type_expr _ _ _ _ => constr:(runs_type_correct_expr)
+  | runs_type_stat _ _ _ _ => constr:(runs_type_correct_stat)
+  | runs_type_prog _ _ _ _ => constr:(runs_type_correct_prog)
   end end.
 
 (** [run_select_lemma] is used to obtain automatically
@@ -1265,12 +1265,7 @@ Proof.
   (* literal *)
   run_inv. apply~ red_expr_literal.
   (* object *)
-  skip. (* OLD:
-  unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
-   (* Abort case *)
-   inverts HE. false~ Hnn.
-   (* Normal case *)
-   unmonad. skip. (* TODO:  Needs an intermediate lemma for [init_object]. *) *)
+  skip. (* TODO *)
   (* function *)
   skip. (* TODO *)
   (* Access *)
@@ -1284,17 +1279,28 @@ Proof.
       applys* red_spec_check_object_coercible_return.
      run red_expr_access_3. applys* red_expr_access_4.
   (* member *)
-  skip. (* OLD:  forwards~ ?: IHe (rm R). apply~ red_expr_member. *)
+  run_hyp R. apply~ red_expr_member.
+  (* new *)
+  skip. (* TODO *)
+  (* call *)
+  unfolds in R.
+  skip. (* TODO *)
+  (* unary operators *)
+  skip. (* TODO *)
+  (* binary operators *)
+  skip. (* TODO *)
+  (* conditionnal *)
+  unfolds in R. run red_expr_conditional.
+   (* applys~ red_spec_expr_get_value_conv R1. *)
+   skip. (* The [run] tactic didn't made the right choice. *)
+  skip. (* TODO *)
+  (* assign *)
+  unfolds in R.
+  (* run_pre as o1 R1. (* There is a probleme there with the final name of [R]. *)
+  run red_expr_assign. *)
+  skip. (* TODO *)
 
-Admitted. (* OLD:
-   intros S C e S' res R. destruct e; simpl in R; dealing_follows.
-    (* this *)
-    unmonad. apply~ red_expr_this.
-    (* identifier *)
-    apply~ red_expr_identifier.
-    skip. (* FIXME:  [spec_identifier_resolution] needs rules! *)
-    (* literal *)
-    unmonad. apply~ red_expr_literal.
+Qed. (* OLD:
     (* object *)
     unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
      (* Abort case *)
@@ -1303,42 +1309,6 @@ Admitted. (* OLD:
      unmonad. skip. (* TODO:  Needs an intermediate lemma for [init_object]. *)
     (* function *)
     skip. (* TODO *)
-    (* access *)
-    unmonad.
-     (* Abort case *)
-     forwards~ RC: IHe (rm HE). apply~ red_expr_access.
-      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr], two times *)
-     (* Normal case *)
-     forwards~ RC: IHe (rm HE).
-      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-       apply~ red_expr_access.
-         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
-        abort_expr.
-       apply~ red_expr_access.
-         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
-        unmonad.
-         forwards~ RC': IHe (rm HE). apply~ red_expr_access_1.
-          applys~ red_spec_expr_get_value RC'. skip. skip. (* Old [abort_expr], two times *)
-         forwards~ RC': IHe (rm HE).
-          inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-           apply~ red_expr_access_1.
-             applys~ red_spec_expr_get_value RC'. applys~ red_spec_expr_get_value_1 H1.
-            abort_expr.
-           apply~ red_expr_access_1.
-             applys~ red_spec_expr_get_value RC'. applys~ red_spec_expr_get_value_1 H1.
-            cases_if.
-             forwards~ (RCer&?): run_error_correct H2.
-              applys~ red_expr_access_2.
-                applys~ red_spec_check_object_coercible_undef_or_null.
-              abort_expr.
-             apply~ red_expr_access_2. applys~ red_spec_check_object_coercible_return n.
-              unmonad.
-               forwards~ (TS&?): to_string_correct (rm HE). constructors~.
-                applys~ red_expr_access_3 TS. abort_expr.
-               forwards~ (TS&?): to_string_correct (rm HE). constructors~.
-                applys~ red_expr_access_3 TS. apply~ red_expr_access_4.
-    (* member *)
-    forwards~ ?: IHe (rm R). apply~ red_expr_member.
     (* new *)
     skip. (* TODO *)
     (* call *)
