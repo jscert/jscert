@@ -2111,7 +2111,7 @@ Definition run_prog runs S C p : result :=
 
 (**************************************************************)
 
-Definition run_call_prealloc runs S C B (args : list value) : result :=
+Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   match B with
 
   | prealloc_global_is_nan =>
@@ -2272,33 +2272,31 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
     end
 
   | prealloc_object_proto_to_string =>
-    let v := execution_ctx_this_binding C in
-    match v with
+    match vthis with
     | undef => out_ter S "[object Undefined]"
     | null => out_ter S "[object Null]"
     | _ =>
-      if_object (to_object S v) (fun S1 l =>
+      if_object (to_object S vthis) (fun S1 l =>
         if_some (run_object_method object_class_ S l) (fun s =>
           out_ter S1 ("[object " ++ s ++ "]")))
     end
 
   | prealloc_object_proto_value_of =>
-    to_object S (execution_ctx_this_binding C)
+    to_object S vthis
 
   | prealloc_object_proto_is_prototype_of =>
     let v := get_arg 0 args in
     match v with
     | value_prim w => out_ter S false
     | value_object l =>
-      let vt := execution_ctx_this_binding C in
-      if_object (to_object S vt) (fun S1 lo =>
+      if_object (to_object S vthis) (fun S1 lo =>
         runs_type_object_proto_is_prototype_of runs S1 lo l)
     end
 
   | prealloc_object_proto_prop_is_enumerable =>
     let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
-      if_object (to_object S1 (execution_ctx_this_binding C)) (fun S2 l =>
+      if_object (to_object S1 vthis) (fun S2 l =>
         if_spec_ter (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
           match D with
           | full_descriptor_undef =>
@@ -2333,8 +2331,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
       to_number runs S C v
 
   | prealloc_number_proto_value_of =>
-    let v := execution_ctx_this_binding C in
-    if_some (run_value_viewable_as_prim "Number" S v) (fun vw =>
+    if_some (run_value_viewable_as_prim "Number" S vthis) (fun vw =>
       match vw with
       | Some (prim_number n) => out_ter S n
       | _ => run_error S native_error_type
@@ -2354,7 +2351,7 @@ Definition run_call runs S C l vthis args : result :=
       | call_default =>
         entering_func_code runs S C l vthis args
       | call_prealloc B =>
-        run_call_prealloc runs S C B args
+        run_call_prealloc runs S C B vthis args
       | call_after_bind =>
         impossible_with_heap_because S "[run_call_full]:  [call_after_bind] found."
       end)).
