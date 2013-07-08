@@ -17,7 +17,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type T : type.
+Implicit Type ty : type.
 
 Implicit Type rt : restype.
 Implicit Type rv : resvalue.
@@ -49,6 +49,8 @@ Implicit Type W : result.
 Implicit Type e : expr.
 Implicit Type p : prog.
 Implicit Type t : stat.
+
+Implicit Type T : Type.
 
 
 (**************************************************************)
@@ -256,21 +258,33 @@ Definition isout W (Pred:out->Prop) :=
 
 (* Generic *)
 
-Lemma if_some_out : forall (A : Type) (oa : option A) K o,
-  if_some oa K = o ->
-  exists (a:A), oa = Some a /\ K a = o.
+Lemma if_some_out : forall (A B : Type) (oa : option A) K (b : B),
+  if_some oa K = result_some b ->
+  exists (a:A), oa = Some a /\ K a = result_some b.
 Proof. introv E. destruct* oa; tryfalse. Qed.
 
-Lemma if_some_or_default_out : forall (A : Type) (oa : option A) d K b,
+Lemma if_some_or_default_out : forall (A B : Type) (oa : option A) d K (b : B),
   if_some_or_default oa d K = b ->
      (oa = None /\ d = b)
   \/ (exists a, oa = Some a /\ K a = b).
 Proof. introv E. destruct* oa; tryfalse. Qed.
 
-Lemma if_empty_label_out : forall K S R o,
-  if_empty_label S R K = o ->
-  res_label R = label_empty /\ K tt = o.
+Lemma if_empty_label_out : forall T K S R (o : T),
+  if_empty_label S R K = result_some o ->
+  res_label R = label_empty /\ K tt = result_some o.
 Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
+
+Lemma if_result_some_out : forall (A B : Type) (W : resultof A) K (b : B),
+  if_result_some W K = result_some b ->
+  exists (a : A), W = result_some a /\ K a = result_some b.
+Proof. introv H. destruct* W; tryfalse. Qed.
+
+(* TODO:  Lemma if_special_out : forall (A B : Type) (W : specres A) K *)
+(* TODO:  Lemma if_ter_special_out : forall T W K *)
+(* TODO:  Lemma if_success_special_out : forall T W K *)
+(* TODO:  Lemma if_value_special_out : forall T W K *)
+(* TODO:  Lemma if_special_ter_out : forall T (W : specres T) K o,
+  if_special_ter W K = result_some o -> *)
 
 (* Results *)
 
@@ -359,6 +373,15 @@ Definition if_number_post K o o1 :=
 Lemma if_number_out : forall W K o,
   if_number W K = o ->
   isout W (if_number_post K o).
+Admitted.
+
+Definition if_primitive_post K o o1 :=
+  eqabort o1 o \/
+  exists S w, o1 = out_ter S (res_val (value_prim w)) /\ K S w = result_some o.
+
+Lemma if_primitive_out : forall W K o,
+  if_primitive W K = o ->
+  isout W (if_primitive_post K o).
 Admitted.
 
 
@@ -852,6 +875,12 @@ Proof.
    applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E. splits*.
    inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
+
+Lemma out_error_or_void_correct : forall S C str ne S' R',
+  out_error_or_void S str (ne : native_error) = out_ter S' R' ->
+  red_expr S C (spec_error_or_void str ne) (out_ter S' R') /\
+    (res_is_normal R' -> R' = res_empty).
+Admitted.
 
 Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l (z : Z),
   run_object_method meth S l = Some z ->

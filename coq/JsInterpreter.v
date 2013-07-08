@@ -297,7 +297,7 @@ Definition if_abort {A : Type} o (K : unit -> resultof A) : resultof A :=
   | _ => K tt
   end.
 
-Definition if_special {A B : Type} (W : specres A) (K : state -> A -> specres B) :=
+Definition if_special {A B : Type} (W : specres A) (K : state -> A -> specres B) : specres B :=
   if_result_some W (fun sp =>
     match sp with
     | specret_val S0 a => K S0 a
@@ -348,13 +348,6 @@ Section LexicalEnvironments.
 (**************************************************************)
 (** Error Handling *)
 
-(** [out_error_or_cst S str B R] throws the builtin B if
-    [str] is true, empty otherwise. *)
-
-Definition out_error_or_void S str B :=
-  if str then out_ter S (res_throw B)
-  else out_void S.
-
 Definition build_error S vproto vmsg : result :=
   let O := object_new vproto "Error" in
   let '(l, S') := object_alloc S O in
@@ -365,10 +358,17 @@ Definition run_error S ne : result :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
     out_ter S' (res_throw l)).
 
+(** [out_error_or_void S str ne R] throws the error [ne] if
+    [str] is true, empty otherwise. *)
+
+Definition out_error_or_void S str ne :=
+  if str then run_error S ne
+  else out_void S.
+
 (** [out_error_or_cst S str ne v] throws the error [ne] if
     [str] is true, the value [v] otherwise. *)
 
-Definition out_error_or_cst S str (ne : native_error) v :=
+Definition out_error_or_cst S str ne v :=
   if str then run_error S ne
   else out_ter S v.
 
