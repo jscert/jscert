@@ -1408,7 +1408,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* TODO:ARTHUR: already moved *)
 
   (** Conversion to unsigned 32-bit integer (passes an int to the continuation) (9.6) *)
-
+  (* Daniele: moved
   | red_spec_to_uint32 : forall S C v  K o1 o,
       red_expr S C (spec_to_number v) o1 ->
       red_expr S C (spec_to_uint32_1 o1 K) o ->
@@ -1417,7 +1417,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_to_uint32_1 : forall S0 S C n K o,
       red_expr S C (K (JsNumber.to_uint32 n)) o ->
       red_expr S0 C (spec_to_uint32_1 (out_ter S n) K) o
-  
+  *)
   (** Conversion to unsigned 16-bit integer (passes an int to the continuation) : LATER (9.7) *)
 
   (** Conversion to string (returns string) (9.8) *)
@@ -4064,6 +4064,17 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   | red_spec_to_int32_1 : forall S0 S C n,
       red_spec S0 C (spec_to_int32_1 (out_ter S n)) (ret S (JsNumber.to_int32 n))
+
+  (** Conversion to unsigned 32-bit integer (passes an int to the continuation) (9.6) *)
+
+  | red_spec_to_uint32 : forall S C v o1 (y:specret int),
+      red_expr S C (spec_to_number v) o1 ->
+      red_spec S C (spec_to_uint32_1 o1) y ->
+      red_spec S C (spec_to_uint32 v) y
+
+  | red_spec_to_uint32_1 : forall S0 S C n,
+      red_spec S0 C (spec_to_uint32_1 (out_ter S n)) (ret S (JsNumber.to_uint32 n))
+
 .
 
 

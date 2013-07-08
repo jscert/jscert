@@ -150,9 +150,10 @@ Inductive ext_expr :=
   | spec_to_string : value -> ext_expr
   | spec_to_string_1 : out -> ext_expr
   | spec_to_object : value -> ext_expr
-
+(* Daniele: moved.
   | spec_to_uint32 : value -> (int -> ext_expr) -> ext_expr
   | spec_to_uint32_1 : out -> (int -> ext_expr) -> ext_expr
+*)
   | spec_check_object_coercible : value -> ext_expr
 
   | spec_convert_twice : ext_expr -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
@@ -672,6 +673,10 @@ with ext_prog :=
 with ext_spec :=
   | spec_to_int32 : value -> ext_spec
   | spec_to_int32_1 : out -> ext_spec
+  | spec_to_uint32 : value -> ext_spec
+  | spec_to_uint32_1 : out -> ext_spec
+
+
 .
 
 
@@ -788,8 +793,10 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_to_string_1 o => Some o
   | spec_to_object _ => None
 
+(* Daniele: moved
   | spec_to_uint32 _ _ => None
   | spec_to_uint32_1 o _ => Some o
+*)
   | spec_check_object_coercible _ => None
 
   | spec_convert_twice _ _ _ => None
@@ -1237,6 +1244,9 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   match es with
   | spec_to_int32 _ => None
   | spec_to_int32_1 o => Some o
+  | spec_to_uint32 _ => None
+  | spec_to_uint32_1 o => Some o
+
   end.
 
 
