@@ -1279,6 +1279,20 @@ Lemma if_to_primitive_correct : forall runs S C v prefo K o,
       if_to_primitive_post K o o1.
 Admitted.
 
+Definition if_to_number_post K o o1 :=
+  (eqabort o1 o \/
+    exists S, exists (n : number), o1 = out_ter S n /\
+      K S n = result_some o).
+
+Lemma if_to_number_correct : forall runs S C v K o,
+  runs_type_correct runs ->
+  if_number (to_number runs S C v) K = o -> exists o1,
+    red_expr S C (spec_to_number v) o1 /\
+      if_to_number_post K o o1.
+Admitted.
+
+(* TODO:  to_int32, to_uint32 *)
+
 Definition if_to_string_post K o o1 :=
   (eqabort o1 o \/
     exists S, exists (s : string), o1 = out_ter S s /\
@@ -1319,50 +1333,23 @@ Ltac run_post_if_to_string ::=
   end.
 
 
-(* OLD
-Ltac unmonad_passing :=
-  let Ep := fresh "Ep" in
-  let No := fresh "No" in
-  let deal_with_fail_case :=
-    try match goal with
-    | H : passing_output ?K ?red ?C ?p ?res |- _ =>
-      first [ solve [ rewrite Ep in H; inverts H; false* No ]
-            | solve [ substs; inverts H; constructors~ ] ]
-    end
-  in try match goal with
-  (* TODO:  Factorize the following tactics. *)
-  | H : passing_def ?bo ?K = ?p |- _ =>
-    let E := fresh "E" in
-    forwards [(?&?&E)|(?&?&Ep&No)]: @passing_def_out (rm H);
-    deal_with_fail_case;
-    simpl_after_regular_lemma
-  | H : passing_defined ?p ?K = ?p0 |- _ =>
-    let S := fresh "S" in
-    let p := fresh "p" in
-    let E := fresh "E" in
-    forwards [(S&?&?&E)|(?&Ep&?)]: @passing_defined_out (rm H);
-    deal_with_fail_case;
-    simpl_after_regular_lemma
-  | H : passing_success ?p ?K = ?p0 |- _ =>
-    let S := fresh "S" in
-    let rv := fresh "rv" in
-    let E := fresh "E" in
-    let Eo := fresh "Eo" in
-    forwards [(S&rv&Eo&E)|[(?&S&rv&?&Ep&No&?&?)|[(?&?&E&?)|(E&No)]]]: @passing_success_out (rm H);
-    deal_with_fail_case;
-    simpl_after_regular_lemma
-  | H : passing_value ?p ?K = ?p0 |- _ =>
-    let S := fresh "S" in
-    let v := fresh "v" in
-    let E := fresh "E" in
-    let Eo := fresh "Eo" in
-    forwards [(S&v&Eo&E)|[(?&S&rv&?&Ep&No&?&?)|[(?&?&E&?)|(E&No)]]]: @passing_value_out (rm H);
-    deal_with_fail_case;
-    simpl_after_regular_lemma
-  end;
-  dealing_follows;
-  other_follows.
-*)
+Lemma run_construct_prealloc_correct : forall runs S C B args o,
+  runs_type_correct runs ->
+  run_construct_prealloc runs S C B args = o ->
+  red_expr S C (spec_construct_prealloc B args) o.
+Admitted.
+
+Lemma run_construct_default_correct : forall runs S C l args o,
+  runs_type_correct runs ->
+  run_construct_default runs S C l args = o ->
+  red_expr S C (spec_construct_default l args) o.
+Admitted.
+
+Lemma run_construct_correct : forall runs S C co l args o,
+  runs_type_correct runs ->
+  run_construct runs S C co l args = o ->
+  red_expr S C (spec_construct_1 co l args) o.
+Admitted.
 
 
 (**************************************************************)
