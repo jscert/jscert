@@ -106,7 +106,7 @@ Inductive ext_expr :=
   | expr_prepost_3 : unary_op -> res -> out -> ext_expr
   | expr_prepost_4 : value -> out -> ext_expr
   | expr_unary_op_neg_1 : out -> ext_expr
-  | expr_unary_op_bitwise_not_1 : special int -> ext_expr
+  | expr_unary_op_bitwise_not_1 : specret int -> ext_expr
   | expr_unary_op_not_1 : out -> ext_expr
   | expr_conditional_1 : out -> expr -> expr -> ext_expr
   | expr_conditional_1': out -> expr -> expr -> ext_expr
@@ -744,8 +744,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_prepost_3 _ _ o => Some o
   | expr_prepost_4 _ o => Some o
   | expr_unary_op_neg_1 o => Some o
-  | expr_unary_op_bitwise_not_1 (special_out o) => Some o
-  | expr_unary_op_bitwise_not_1 (special_val _ _) => None
+  | expr_unary_op_bitwise_not_1 (specret_out o) => Some o
+  | expr_unary_op_bitwise_not_1 (specret_val _ _) => None
   | expr_unary_op_not_1 o => Some o
   | expr_conditional_1 o _ _ => Some o
   | expr_conditional_1' o _ _ => None

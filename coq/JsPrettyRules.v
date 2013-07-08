@@ -4053,7 +4053,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       out_of_ext_spec exts = Some o ->
       abort o ->
       ~ abort_intercepted_spec exts ->
-      red_spec S C exts (@special_out T o)
+      red_spec S C exts (@specret_out T o)
 
   (** Conversion to 32-bit integer (passes an int to the continuation) (9.5) *)
 
@@ -4065,4 +4065,5 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_to_int32_1 : forall S0 S C n,
       red_spec S0 C (spec_to_int32_1 (out_ter S n)) (ret S (JsNumber.to_int32 n))
 .
+
 

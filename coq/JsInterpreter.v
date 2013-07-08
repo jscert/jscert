@@ -47,8 +47,7 @@ Implicit Type e : expr.
 Implicit Type p : prog.
 Implicit Type t : stat.
 
-
-Implicit Type Z : Type.
+Implicit Type T : Type.
 
 
 (**************************************************************)
@@ -72,16 +71,16 @@ Implicit Type Z : Type.
   * [result_bottom] means that the computation taked too long and we run out of fuel.
 *)
 
-Inductive resultof (A : Type) :=
-  | result_some : A -> resultof A
+Inductive resultof T :=
+  | result_some : T -> resultof T
   | result_not_yet_implemented
   | result_impossible
-  | result_bottom : state -> resultof A. (* We could put any information there.  They can be used to create step by step interpreter. *)
+  | result_bottom : state -> resultof T. (* We could put any information there.  They can be used to create step by step interpreter. *)
 
-Implicit Arguments result_some [[A]].
-Implicit Arguments result_not_yet_implemented [[A]].
-Implicit Arguments result_impossible [[A]].
-Implicit Arguments result_bottom [[A]].
+Implicit Arguments result_some [[T]].
+Implicit Arguments result_not_yet_implemented [[T]].
+Implicit Arguments result_impossible [[T]].
+Implicit Arguments result_bottom [[T]].
 
 (* This is the most common result type. *)
 
@@ -101,17 +100,17 @@ Definition result_void := result.
   where it has been proven impossible to get it under normal condition.
   See [JsCorrectness.v] for more details. *)
 
-Definition impossible_because {A : Type} s : resultof A := result_impossible.
+Definition impossible_because {T} s : resultof T := result_impossible.
 
-Definition impossible_with_heap_because {A : Type} S s : resultof A := result_impossible.
+Definition impossible_with_heap_because {T} S s : resultof T := result_impossible.
 
-Definition result_special (A : Type) := resultof (special A).
+Definition specres T := resultof (specret T).
 
-Definition result_out {A : Type} o : result_special A :=
-  result_some (special_out o).
+Definition res_out {T} o : specres T :=
+  result_some (specret_out o).
 
-Definition result_val {A : Type} S (a : A) : result_special A :=
-  result_some (special_val S a).
+Definition result_val {T} S a : specres T :=
+  result_some (specret_val S a).
 
 (* Coercion *)
 
@@ -119,7 +118,7 @@ Coercion result_some_out o : resultof out := result_some o.
 
 (* Inhabited *)
 
-Global Instance result_inhab : forall (A : Type), Inhab (resultof A).
+Global Instance result_inhab : forall T, Inhab (resultof T).
 Proof. introv. applys prove_Inhab @impossible_because. exact "Resultof is inhabited". Qed.
 
 
@@ -143,7 +142,7 @@ Definition destr_list {A B : Type} (l : list A) (d : B) f :=
 (**************************************************************)
 (** Monadic Constructors *)
 
-Definition if_empty_label {A : Type} S R (K : unit -> resultof A) : resultof A :=
+Definition if_empty_label {T} S R (K : unit -> resultof T) : resultof T :=
   ifb res_label R = label_empty then K tt
   else
     impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
@@ -298,37 +297,33 @@ Definition if_abort {A : Type} o (K : unit -> resultof A) : resultof A :=
   | _ => K tt
   end.
 
-Definition if_special {A B : Type} (W : result_special A)
-    (K : state -> A -> result_special B) :=
+Definition if_special {A B : Type} (W : specres A) (K : state -> A -> specres B) :=
   if_result_some W (fun sp =>
     match sp with
-    | special_val S0 a => K S0 a
-    | special_out o =>
+    | specret_val S0 a => K S0 a
+    | specret_out o =>
       if_abort o (fun _ =>
-        result_out o)
+        res_out o)
     end).
 
-Definition if_ter_special {A : Type} W
-    (K : state -> res -> result_special A) : result_special A :=
+Definition if_ter_special {T} W (K : state -> res -> specres T) : specres T :=
   if_result_some W (fun o =>
     match o with
     | out_ter S0 R => K S0 R
-    | _ => result_out o
+    | _ => res_out o
     end).
 
-Definition if_success_special {A : Type} W
-    (K : state -> resvalue -> result_special A) : result_special A :=
+Definition if_success_special {T} W (K : state -> resvalue -> specres T) : specres T :=
   if_ter_special W (fun S0 R =>
     match res_type R with
     | restype_normal =>
       if_empty_label S0 R (fun _ =>
         K S0 (res_value R))
     | _ =>
-      result_out (out_ter S0 R)
+      res_out (out_ter S0 R)
     end).
 
-Definition if_value_special {A : Type} W
-    (K : state -> value -> result_special A) : result_special A :=
+Definition if_value_special {T} W (K : state -> value -> specres T) : specres T :=
   if_success_special W (fun S rv =>
     match rv with
     | resvalue_value v => K S v
@@ -336,12 +331,11 @@ Definition if_value_special {A : Type} W
       impossible_with_heap_because S "[if_value_special] called with non-value."
     end).
 
-Definition if_special_ter {A : Type} (W : result_special A)
-    (K : state -> A -> result) : result :=
+Definition if_special_ter {T} (W : specres T) (K : state -> T -> result) : result :=
   if_result_some W (fun sp =>
     match sp with
-    | special_val S0 a => K S0 a
-    | special_out o =>
+    | specret_val S0 a => K S0 a
+    | specret_out o =>
       if_abort o (fun _ =>
         result_some o)
     end).
@@ -414,8 +408,8 @@ Record runs_type : Type := runs_type_intro {
     runs_type_call : state -> execution_ctx -> object_loc -> value -> list value -> result;
     runs_type_function_has_instance : state -> object_loc -> value -> result;
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
-    runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor;
-    runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor;
+    runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
+    runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
     runs_type_equal : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result
   }.
@@ -426,7 +420,7 @@ Implicit Type runs : runs_type.
 (**************************************************************)
 (** Object Get *)
 
-Definition object_has_prop runs S C l x : result_special bool :=
+Definition object_has_prop runs S C l x : specres bool :=
   if_some (run_object_method object_has_prop_ S l) (fun B =>
     match B with
     | builtin_has_prop_default =>
@@ -470,7 +464,7 @@ Definition run_object_get runs S C l x : result :=
   if_some (run_object_method object_get_ S l) (fun B =>
     object_get_builtin runs S C B l l x).
 
-Definition run_object_get_own_prop runs S C l x : result_special full_descriptor :=
+Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
   if_some (run_object_method object_get_own_prop_ S l) (fun B =>
     let default S' :=
       if_some (run_object_method object_properties_ S' l) (fun P =>
@@ -506,7 +500,7 @@ Definition run_object_get_own_prop runs S C l x : result_special full_descriptor
           end)
       end).
 
-Definition run_object_get_prop runs S C l x : result_special full_descriptor :=
+Definition run_object_get_prop runs S C l x : specres full_descriptor :=
   if_some (run_object_method object_get_prop_ S l) (fun B =>
     match B with
     | builtin_get_prop_default =>
@@ -540,7 +534,7 @@ Definition object_proto_is_prototype_of runs S l0 l : result :=
 (**************************************************************)
 (** Object Set *)
 
-Definition object_can_put runs S C l x : result_special bool :=
+Definition object_can_put runs S C l x : specres bool :=
   if_some (run_object_method object_can_put_ S l) (fun B =>
       match B with
       | builtin_can_put_default =>
@@ -670,7 +664,7 @@ Definition run_value_viewable_as_prim s S v : option (option prim) :=
 Definition env_record_lookup Z (d : Z) S L (K : env_record -> Z) : Z :=
   morph_option d K (Heap.read_option (state_env_record_heap S) L).
 
-Definition env_record_has_binding runs S C L x : result_special bool :=
+Definition env_record_has_binding runs S C L x : specres bool :=
   env_record_lookup (fun _ =>
     impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
     S L (fun E _ =>
@@ -681,7 +675,7 @@ Definition env_record_has_binding runs S C L x : result_special bool :=
           object_has_prop runs S C l x
       end) tt.
 
-Fixpoint lexical_env_get_identifier_ref runs S C X x str : result_special ref :=
+Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
   match X with
   | nil =>
       result_val S (ref_create_value undef x str)
@@ -736,7 +730,7 @@ Definition env_record_implicit_this_value S L : option value :=
         if provide_this then l else undef
       end)).
 
-Definition identifier_res runs S C x : result_special ref :=
+Definition identifier_res runs S C x : specres ref :=
   let X := execution_ctx_lexical_env C in
   let str := execution_ctx_strict C in
   lexical_env_get_identifier_ref runs S C X x str.

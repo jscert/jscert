@@ -111,12 +111,12 @@ Definition follow_stat_while ls e t :=
   follow_spec
     (stat_while_1 ls e t)
     red_stat.
-Definition follow_object_get_own_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor) :=
+Definition follow_object_get_own_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   True. (* TODO *)
 (* OLD:
 Definition follow_object_get_own_prop l :=
   follow_spec_passing (spec_object_get_own_prop l) red_expr. *)
-Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> result_special full_descriptor) :=
+Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   True. (* TODO *)
 (* OLD:
 Definition follow_object_get_prop l :=
@@ -701,10 +701,10 @@ Ltac run_inv :=
   | H: out_ter _ _ = out_ter _ _ |- _ => inverts H
   | H: res_intro ?t ?v ?l = res_intro ?t ?v ?l |- _ => clear H
   | H: res_intro _ _ _ = res_intro _ _ _ |- _ => inverts H
-  | H: special_val ?S ?R = special_val ?S ?R |- _ => clear H
-  | H: special_val _ _ = special_val _ _ |- _ => inverts H
-  | H: special_out ?o = special_out ?o |- _ => clear H
-  | H: special_out _ = special_out _ |- _ => inverts H
+  | H: specret_val ?S ?R = specret_val ?S ?R |- _ => clear H
+  | H: specret_val _ _ = specret_val _ _ |- _ => inverts H
+  | H: specret_out ?o = specret_out ?o |- _ => clear H
+  | H: specret_out _ = specret_out _ |- _ => inverts H
   end.
 
 (** [runs_inv] is the same as [run_inv] followed by subst. *)

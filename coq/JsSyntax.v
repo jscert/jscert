@@ -52,7 +52,7 @@ Inductive unary_op :=
   | unary_op_pre_decr
   | unary_op_add
   | unary_op_neg
-  | unary_op_bitwise_not  
+  | unary_op_bitwise_not
   | unary_op_not.
 
 (** Binary operators *)
@@ -143,12 +143,12 @@ with propbody :=
 
 with funcbody :=
   | funcbody_intro : prog -> string -> funcbody
-  
+
 (** Grammar of statements *)
 
 with stat :=
   | stat_expr : expr -> stat
-  | stat_label : string -> stat -> stat 
+  | stat_label : string -> stat -> stat
   | stat_block : list stat -> stat
   | stat_var_decl : list (string * option expr) -> stat
   | stat_if : expr -> stat -> option stat -> stat
@@ -163,9 +163,9 @@ with stat :=
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
   | stat_debugger : stat
-  | stat_switch : label_set -> expr -> switchbody -> stat 
+  | stat_switch : label_set -> expr -> switchbody -> stat
 
-with switchbody := 
+with switchbody :=
   | switchbody_nodefault : list switchclause -> switchbody
   | switchbody_withdefault : list switchclause -> list stat -> list switchclause -> switchbody
 
@@ -175,7 +175,7 @@ with switchclause :=
 (** Grammar of programs *)
 
 with prog :=
-  | prog_intro : strictness_flag -> list element -> prog 
+  | prog_intro : strictness_flag -> list element -> prog
 
 (** Grammar of program elements *)
 
@@ -233,7 +233,7 @@ Inductive prealloc :=
   | prealloc_global_parse_int
   | prealloc_object
   | prealloc_object_get_proto_of      (* location to getPrototypeOf function object *)
-  | prealloc_object_get_own_prop_descriptor 
+  | prealloc_object_get_own_prop_descriptor
   | prealloc_object_get_own_prop_name  (* LATER: support *)
   | prealloc_object_create
   | prealloc_object_define_prop
@@ -285,13 +285,13 @@ Inductive prealloc :=
   | prealloc_native_error : native_error -> prealloc (* 15.11.6 *)
   | prealloc_native_error_proto : native_error -> prealloc (* 15.11.7.7 *)
   | prealloc_error_proto_to_string
-  | prealloc_throw_type_error (* 13.2.3 *) 
+  | prealloc_throw_type_error (* 13.2.3 *)
   .
 
 (* Identifiers for "Callable" methods *)
 
 Inductive call := (* Note: could be named [builtin_call] *)
-  | call_default  (* 13.2.1 *)  
+  | call_default  (* 13.2.1 *)
   | call_after_bind (* 15.3.4.5.1 *)
   | call_prealloc : prealloc -> call. (* all are functions except those tagged not callable *)
 
@@ -455,7 +455,7 @@ Record attributes_accessor := attributes_accessor_intro {
 
 (** Property attributes *)
 
-Inductive attributes := 
+Inductive attributes :=
   | attributes_data_of : attributes_data -> attributes
   | attributes_accessor_of : attributes_accessor -> attributes.
 
@@ -597,7 +597,7 @@ Record object := object_intro {
    object_default_value_ : builtin_default_value;
    object_define_own_prop_ : builtin_define_own_prop;
    object_construct_ : option construct;
-   object_call_ : option call ; 
+   object_call_ : option call ;
    object_has_instance_ : option builtin_has_instance;
    object_scope_ : option lexical_env;
    object_formal_parameters_ : option (list string);
@@ -666,7 +666,7 @@ Inductive res := res_intro {
   res_type : restype;
   res_value : resvalue;
   res_label : label }.
-  
+
 Definition abrupt_res R :=
   res_type R <> restype_normal.
 
@@ -693,44 +693,34 @@ Inductive out :=
   | out_ter : state -> res -> out.
 
 (** Special outcome used by specification operations, i.e.
-    specification-level functions which do not produce any 
+    specification-level functions which do not produce any
     value, but only perform side effects. *)
 
 Definition out_void S := out_ter S res_empty.
 
 (** Internal functions may return values other than JS results,
-    or may trigger JS exceptions, or diverge. The type 
-    [special A] accounts for such results: [special_val S a]
+    or may trigger JS exceptions, or diverge. The type
+    [specret A] accounts for such results: [specret_val S a]
     describes a normal result as a pair of a heap [S] and a
-    value [a] of type [A], while [special_out o] describes 
+    value [a] of type [A], while [specret_out o] describes
     an abrupt behavior [o]. *)
 
-Inductive special (T : Type) :=
-  | special_val : state -> T -> special T
-  | special_out : out -> special T.
+Inductive specret (T : Type) :=
+  | specret_val : state -> T -> specret T
+  | specret_out : out -> specret T.
 
-Implicit Arguments special_val [[T]].
-Implicit Arguments special_out [[T]].
-
-Coercion special_out : out >-> special.
-
-(* TODO: rename the definitions above directly *)
-
-Definition specret T := special T.
-Definition specret_val T S (a:T) := special_val (T:=T) S a.
-Definition specret_out T o := special_out (T:=T) o.
 Implicit Arguments specret_val [[T]].
 Implicit Arguments specret_out [[T]].
 
-(** [ret S a] is a shorthand for [special_val S a] *)
+(** [ret S a] is a shorthand for [specret_val S a] *)
 
-Definition ret T S (a:T) := special_val S a.
+Definition ret T S (a:T) := specret_val S a.
 Implicit Arguments ret [[T]].
 
-(** [ret_void S] is a shorthand for [special_val S tt], 
+(** [ret_void S] is a shorthand for [specret_val S tt],
     used by specifications functions that do no return any value.  *)
 
-Definition ret_void S := special_val S tt.
+Definition ret_void S := specret_val S tt.
 
 
 (**************************************************************)
@@ -743,3 +733,5 @@ Inductive codetype :=
   | codetype_func : codetype
   | codetype_global : codetype
   | codetype_eval : codetype.
+
+
