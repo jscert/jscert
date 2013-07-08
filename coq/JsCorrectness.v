@@ -1319,17 +1319,19 @@ Proof.
   (* binary operators *)
   skip. (* TODO *)
   (* conditionnal *)
+  (*
   unfolds in R. run red_expr_conditional.
    (* applys~ red_spec_expr_get_value_conv R1. *)
    skip. (* The [run] tactic didn't made the right choice. *)
   skip. (* TODO *)
+  *)
   (* assign *)
   unfolds in R.
   (* run_pre as o1 R1. (* There is a probleme there with the final name of [R]. *)
   run red_expr_assign. *)
   skip. (* TODO *)
 
-Qed. (* OLD:
+Admitted. (* OLD:
     (* object *)
     unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
      (* Abort case *)

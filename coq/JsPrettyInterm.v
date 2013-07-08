@@ -14,7 +14,7 @@ Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
 (*Implicit Type B : builtin.*)
-Implicit Type T : type.
+Implicit Type ty : type.
 
 Implicit Type rt : restype.
 Implicit Type rv : resvalue.
@@ -108,19 +108,19 @@ Inductive ext_expr :=
   | expr_unary_op_neg_1 : out -> ext_expr
   | expr_unary_op_bitwise_not_1 : specret int -> ext_expr
   | expr_unary_op_not_1 : out -> ext_expr
-  | expr_conditional_1 : out -> expr -> expr -> ext_expr
+  | expr_conditional_1 : specret value -> expr -> expr -> ext_expr
   | expr_conditional_1': out -> expr -> expr -> ext_expr
 
   | expr_binary_op_1 : binary_op -> out -> expr -> ext_expr
   | expr_binary_op_2 : binary_op -> value -> out -> ext_expr
   | expr_binary_op_3 : binary_op -> value -> value -> ext_expr
-  | expr_binary_op_add_1 : value -> value -> ext_expr
-  | expr_binary_op_add_string_1 : value -> value -> ext_expr
-  | expr_puremath_op_1 : (number -> number -> number) -> value -> value -> ext_expr
-  | expr_shift_op_1 : (int -> int -> int) -> value -> int -> ext_expr
-  | expr_shift_op_2 : (int -> int -> int) -> int -> int -> ext_expr
+  | expr_binary_op_add_1 : specret (value*value) -> ext_expr
+  | expr_binary_op_add_string_1 : specret (value*value) -> ext_expr
+  | expr_puremath_op_1 : (number -> number -> number) -> specret (value*value) -> ext_expr
+  | expr_shift_op_1 : (int -> int -> int) -> specret int -> value -> ext_expr
+  | expr_shift_op_2 : (int -> int -> int) -> int -> specret int -> ext_expr
   | expr_inequality_op_1 : bool -> bool -> value -> value -> ext_expr
-  | expr_inequality_op_2 : bool -> bool -> value -> value -> ext_expr
+  | expr_inequality_op_2 : bool -> bool -> specret (value*value) -> ext_expr
   | expr_binary_op_in_1 : object_loc -> out -> ext_expr
   | expr_binary_op_disequal_1 : out -> ext_expr
   | spec_equal : value -> value -> ext_expr
@@ -128,8 +128,8 @@ Inductive ext_expr :=
   | spec_equal_2 : bool -> ext_expr
   | spec_equal_3 : value -> (value -> ext_expr) -> value -> ext_expr
   | spec_equal_4 : value -> out -> ext_expr
-  | expr_bitwise_op_1 : (int -> int -> int) -> value -> int -> ext_expr
-  | expr_bitwise_op_2 : (int -> int -> int) -> int -> int -> ext_expr
+  | expr_bitwise_op_1 : (int -> int -> int) -> specret int -> value -> ext_expr
+  | expr_bitwise_op_2 : (int -> int -> int) -> int -> specret int -> ext_expr
   | expr_lazy_op_1 : bool -> out -> expr -> ext_expr
   | expr_lazy_op_2 : bool -> value -> out -> expr -> ext_expr
 
@@ -155,10 +155,6 @@ Inductive ext_expr :=
   | spec_to_uint32_1 : out -> (int -> ext_expr) -> ext_expr
 *)
   | spec_check_object_coercible : value -> ext_expr
-
-  | spec_convert_twice : ext_expr -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
-  | spec_convert_twice_1 : out -> ext_expr -> (value -> value -> ext_expr) -> ext_expr
-  | spec_convert_twice_2 : out -> (value -> ext_expr) -> ext_expr
 
   (** Extended expressions for comparison *)
 
@@ -254,8 +250,6 @@ Inductive ext_expr :=
 
   | spec_expr_get_value : expr -> ext_expr
   | spec_expr_get_value_1 : out -> ext_expr
-  | spec_expr_get_value_conv : (value -> ext_expr) -> expr -> ext_expr
-  | spec_expr_get_value_conv_1 : (value -> ext_expr) -> out -> ext_expr
 
   (** Extended expressions for operations on environment records *)
 
@@ -584,10 +578,10 @@ with ext_stat :=
   | stat_var_decl_item_2 : string -> ref -> out -> ext_stat
   | stat_var_decl_item_3 : string -> out -> ext_stat
 
-  | stat_if_1 : value -> stat -> option stat -> ext_stat
+  | stat_if_1 : specret value -> stat -> option stat -> ext_stat
 
   | stat_while_1 : label_set -> expr -> stat -> resvalue -> ext_stat
-  | stat_while_2 : label_set -> expr -> stat -> resvalue -> value -> ext_stat
+  | stat_while_2 : label_set -> expr -> stat -> resvalue -> specret value -> ext_stat
   | stat_while_3 : label_set -> expr -> stat -> resvalue -> out -> ext_stat
   | stat_while_4 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
   | stat_while_5 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
@@ -597,7 +591,7 @@ with ext_stat :=
   | stat_do_while_2 : label_set -> stat ->  expr -> resvalue -> out -> ext_stat
   | stat_do_while_3 : label_set -> stat ->  expr -> resvalue -> res -> ext_stat
   | stat_do_while_4 : label_set -> stat ->  expr -> resvalue -> ext_stat
-  | stat_do_while_5 : label_set -> stat ->  expr -> resvalue -> value -> ext_stat
+  | stat_do_while_5 : label_set -> stat ->  expr -> resvalue -> specret value -> ext_stat
 
 (* LATER
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
@@ -639,7 +633,7 @@ with ext_stat :=
   | stat_switch_default_7: resvalue -> list switchclause -> ext_stat
   | stat_switch_default_8: out -> list switchclause -> ext_stat
 
-  | stat_with_1 : stat -> value -> ext_stat (* The expression have been executed. *)
+  | stat_with_1 : stat -> specret value -> ext_stat (* The expression have been executed. *)
 
   | stat_throw_1 : out -> ext_stat (* The expression have been executed. *)
 
@@ -650,13 +644,6 @@ with ext_stat :=
   | stat_try_3 : out -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
   | stat_try_4 : res -> option stat -> ext_stat (* The try catch block has been executed:  there only stay an optional finally. *)
   | stat_try_5 : res -> out -> ext_stat (* The finally has been executed. *)
-
-  (* Auxiliary forms for performing [red_expr] then [ref_get_value] and a conversion *)
-
-  | spec_expr_get_value_conv_stat : expr -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
-  | spec_expr_get_value_conv_stat_1 : out -> (value -> ext_expr) -> (value -> ext_stat) -> ext_stat
-  | spec_expr_get_value_conv_stat_2 : out -> (value -> ext_stat) -> ext_stat
-
 
 (** Grammar of extended programs *)
 
@@ -676,7 +663,13 @@ with ext_spec :=
   | spec_to_uint32 : value -> ext_spec
   | spec_to_uint32_1 : out -> ext_spec
 
+  | spec_expr_get_value_conv : (value -> ext_expr) -> expr -> ext_spec
+  | spec_expr_get_value_conv_1 : (value -> ext_expr) -> out -> ext_spec
+  | spec_expr_get_value_conv_2 : out -> ext_spec
 
+  | spec_convert_twice : ext_expr -> ext_expr -> ext_spec
+  | spec_convert_twice_1 : out -> ext_expr -> ext_spec
+  | spec_convert_twice_2 : value -> out -> ext_spec
 .
 
 
@@ -695,6 +688,14 @@ Definition spec_to_primitive_auto v :=
 
 (**************************************************************)
 (** ** Extracting outcome from an extended expression. *)
+
+(** Auxiliary definition for extracting [out] of [specret] *)
+
+Definition out_of_specret T (y:specret T) :=
+  match y with
+  | specret_out o => Some o
+  | specret_val _ _ => None
+  end.
 
 (** The [out_of_ext_*] family of definitions is used by
     the generic abort rule, which propagates exceptions,
@@ -749,22 +750,21 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_prepost_3 _ _ o => Some o
   | expr_prepost_4 _ o => Some o
   | expr_unary_op_neg_1 o => Some o
-  | expr_unary_op_bitwise_not_1 (specret_out o) => Some o
-  | expr_unary_op_bitwise_not_1 (specret_val _ _) => None
+  | expr_unary_op_bitwise_not_1 y => out_of_specret y
   | expr_unary_op_not_1 o => Some o
-  | expr_conditional_1 o _ _ => Some o
+  | expr_conditional_1 y _ _ => out_of_specret y
   | expr_conditional_1' o _ _ => None
 
   | expr_binary_op_1 _ o _ => Some o
   | expr_binary_op_2 _ _ o => Some o
   | expr_binary_op_3 _ _ _ => None
-  | expr_binary_op_add_1 _ _ => None
-  | expr_binary_op_add_string_1 _ _ => None
-  | expr_puremath_op_1 _ _ _ => None
-  | expr_shift_op_1 _ _ _ => None
-  | expr_shift_op_2 _ _ _ => None
+  | expr_binary_op_add_1 y => out_of_specret y
+  | expr_binary_op_add_string_1 y => out_of_specret y
+  | expr_puremath_op_1 _ y => out_of_specret y
+  | expr_shift_op_1 _ y _ => out_of_specret y
+  | expr_shift_op_2 _ _ y => out_of_specret y
   | expr_inequality_op_1 _ _ _ _ => None
-  | expr_inequality_op_2 _ _ _ _ => None
+  | expr_inequality_op_2 _ _ y => out_of_specret y
   | expr_binary_op_in_1 _ o => Some o
   | expr_binary_op_disequal_1 o => Some o
   | spec_equal _ _ => None
@@ -772,8 +772,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_equal_2 _ => None
   | spec_equal_3 _ _ _ => None
   | spec_equal_4 _ o => Some o
-  | expr_bitwise_op_1 _ _ _ => None
-  | expr_bitwise_op_2 _ _ _ => None
+  | expr_bitwise_op_1 _ y _ => out_of_specret y
+  | expr_bitwise_op_2 _ _ y => out_of_specret y
   | expr_lazy_op_1 _ o _ => Some o
   | expr_lazy_op_2 _ _ o _ => Some o
 
@@ -798,10 +798,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_to_uint32_1 o _ => Some o
 *)
   | spec_check_object_coercible _ => None
-
-  | spec_convert_twice _ _ _ => None
-  | spec_convert_twice_1 o _ _ => Some o
-  | spec_convert_twice_2 o _ => Some o
 
   | spec_eq _ _ => None
   | spec_eq0 _ _ => None
@@ -875,8 +871,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_expr_get_value _ => None
   | spec_expr_get_value_1 o => Some o
-  | spec_expr_get_value_conv _ _ => None
-  | spec_expr_get_value_conv_1 _ o => Some o
 
   | spec_env_record_has_binding _ _ => None
   | spec_env_record_has_binding_1 _ _ _ => None
@@ -1174,22 +1168,22 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_var_decl_item_2 _ _ o => Some o
   | stat_var_decl_item_3 _ o => Some o
 
-  | stat_if_1 _ _ _ => None
+  | stat_if_1 y _ _ => out_of_specret y
 
   | stat_while_1 _ _ _ _ => None
-  | stat_while_2 _ _ _ _ _ => None
+  | stat_while_2 _ _ _ _ y => out_of_specret y
   | stat_while_3 _ _ _ _ o => Some o
   | stat_while_4 _ _ _ _ _ => None
   | stat_while_5 _ _ _ _ _ => None
   | stat_while_6 _ _ _ _ _ => None
 
-  | stat_do_while_1 _ _  expr _ => None
-  | stat_do_while_2 _ _  expr _ o => Some o
-  | stat_do_while_3 _ _  expr _ _ => None
-  | stat_do_while_4 _ _  expr _ => None
-  | stat_do_while_5 _ _  expr _ _ => None
+  | stat_do_while_1 _ _ _ _ => None
+  | stat_do_while_2 _ _ _ _ o => Some o
+  | stat_do_while_3 _ _ _ _ _ => None
+  | stat_do_while_4 _ _ _ _ => None
+  | stat_do_while_5 _ _ _ _ y => out_of_specret y
 
-  | stat_with_1 _ _ => None
+  | stat_with_1 _ y => out_of_specret y
 
   | stat_throw_1 o => Some o
 
@@ -1200,10 +1194,6 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_try_3 o _ => Some o
   | stat_try_4 _ _ => None
   | stat_try_5 _ o => Some o
-
-  | spec_expr_get_value_conv_stat _ _ _ => None
-  | spec_expr_get_value_conv_stat_1 o _ _ => Some o
-  | spec_expr_get_value_conv_stat_2 o _ => Some o
 
   | stat_switch_1 o _ _ => Some o
   | stat_switch_2 o _ => Some o
@@ -1246,7 +1236,12 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_to_int32_1 o => Some o
   | spec_to_uint32 _ => None
   | spec_to_uint32_1 o => Some o
-
+  | spec_expr_get_value_conv _ _ => None
+  | spec_expr_get_value_conv_1 _ o => Some o
+  | spec_expr_get_value_conv_2 o => Some o
+  | spec_convert_twice _ _ => None
+  | spec_convert_twice_1 o _ => Some o
+  | spec_convert_twice_2 _ o => Some o
   end.
 
 
@@ -1346,3 +1341,4 @@ Inductive arguments_from : list value -> list value -> Prop :=
  | arguments_from_cons : forall Vs1 Vs2 v,
       arguments_from Vs1 Vs2 ->
       arguments_from (v::Vs1) (v::Vs2).
+

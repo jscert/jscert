@@ -1,5 +1,10 @@
 Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux JsSyntaxInfos JsInit.
 
+
+(* TODO: move *)
+
+Definition vret := ret (T:=value).
+
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
 
@@ -232,21 +237,21 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** If statement (12.5) *)
  
-  | red_stat_if : forall S C e1 t2 t3opt o,
-      red_stat S C (spec_expr_get_value_conv_stat e1 spec_to_boolean 
-                      (fun v => stat_if_1 v t2 t3opt)) o ->
+  | red_stat_if : forall S C e1 t2 t3opt y1 o,
+      red_spec S C (spec_expr_get_value_conv spec_to_boolean e1) y1 ->
+      red_stat S C (stat_if_1 y1 t2 t3opt) o ->
       red_stat S C (stat_if e1 t2 t3opt) o
 
-  | red_stat_if_1_true : forall S C t2 t3opt o,
+  | red_stat_if_1_true : forall S0 S C t2 t3opt o,
       red_stat S C t2 o ->
-      red_stat S C (stat_if_1 true t2 t3opt) o
+      red_stat S0 C (stat_if_1 (vret S true) t2 t3opt) o
 
-  | red_stat_if_1_false : forall S C t2 t3 o,
+  | red_stat_if_1_false : forall S0 S C t2 t3 o,
       red_stat S C t3 o ->
-      red_stat S C (stat_if_1 false t2 (Some t3)) o
+      red_stat S0 C (stat_if_1 (vret S false) t2 (Some t3)) o
 
-  | red_stat_if_1_false_implicit : forall S C t2,
-      red_stat S C (stat_if_1 false t2 None) (out_ter S resvalue_empty)
+  | red_stat_if_1_false_implicit : forall S0 S C t2,
+      red_stat S0 C (stat_if_1 (vret S false) t2 None) (out_ter S resvalue_empty)
       (* I've changed this rule, please check. -- Martin. *)
 
   (** Do-while statement (12.6.1)
@@ -285,16 +290,17 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o ->      
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
 
-  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv o,
-      red_stat S C (spec_expr_get_value_conv_stat e2 spec_to_boolean (stat_do_while_5 labs t1 e2 rv)) o ->
+  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv y1 o,
+      red_spec S C (spec_expr_get_value_conv spec_to_boolean e2) y1 ->
+      red_stat S C (stat_do_while_5 labs t1 e2 rv y1) o ->
       red_stat S C (stat_do_while_4 labs t1 e2 rv) o
 
-  | red_stat_do_while_5_false : forall S C labs t1 e2 rv,
-      red_stat S C (stat_do_while_5 labs t1 e2 rv false) (out_ter S rv)
+  | red_stat_do_while_5_false : forall S0 S C labs t1 e2 rv,
+      red_stat S0 C (stat_do_while_5 labs t1 e2 rv (vret S false)) (out_ter S rv)
 
-  | red_stat_do_while_5_true : forall S C labs t1 e2 rv o,
+  | red_stat_do_while_5_true : forall S0 S C labs t1 e2 rv o,
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o ->
-      red_stat S C (stat_do_while_5 labs t1 e2 rv true) o
+      red_stat S0 C (stat_do_while_5 labs t1 e2 rv (vret S true)) o
 
   (** While statement (12.6.2)
       -- See also the definition of [abort_intercepted_stat]. *)
@@ -303,17 +309,18 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_while_1 labs e1 t2 resvalue_empty) o ->
       red_stat S C (stat_while labs e1 t2) o
 
-  | red_stat_while_1 : forall S C labs e1 t2 rv o,
-      red_stat S C (spec_expr_get_value_conv_stat e1 spec_to_boolean (stat_while_2 labs e1 t2 rv)) o ->
+  | red_stat_while_1 : forall S C labs e1 t2 rv y1 o,
+      red_spec S C (spec_expr_get_value_conv spec_to_boolean e1) y1 ->
+      red_stat S C (stat_while_2 labs e1 t2 rv y1) o ->
       red_stat S C (stat_while_1 labs e1 t2 rv) o
 
-  | red_stat_while_2_false : forall S C labs e1 t2 rv,
-      red_stat S C (stat_while_2 labs e1 t2 rv false) (out_ter S rv)
+  | red_stat_while_2_false : forall S0 S C labs e1 t2 rv,
+      red_stat S0 C (stat_while_2 labs e1 t2 rv (vret S false)) (out_ter S rv)
 
-  | red_stat_while_2_true : forall S C labs e1 t2 rv o1 o,
+  | red_stat_while_2_true : forall S0 S C labs e1 t2 rv o1 o,
       red_stat S C t2 o1 ->
       red_stat S C (stat_while_3 labs e1 t2 rv o1) o ->
-      red_stat S C (stat_while_2 labs e1 t2 rv true) o
+      red_stat S0 C (stat_while_2 labs e1 t2 rv (vret S true)) o
 
   | red_stat_while_3 : forall rv S0 S C labs e1 t2 rv' R o,
       rv' = (If res_value R <> resvalue_empty then res_value R else rv) ->
@@ -386,16 +393,17 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** With statement (12.10) *)
 
-  | red_stat_with : forall S C e1 t2 o,
-      red_stat S C (spec_expr_get_value_conv_stat e1 spec_to_object (stat_with_1 t2)) o ->
+  | red_stat_with : forall S C e1 t2 y1 o,
+      red_spec S C (spec_expr_get_value_conv spec_to_object e1) y1 ->
+      red_stat S C (stat_with_1 t2 y1) o ->
       red_stat S C (stat_with e1 t2) o
 
-  | red_stat_with_1 : forall S S' C t2 l o lex lex' s' C',
+  | red_stat_with_1 : forall S0 S S' C t2 l o lex lex' s' C',
       lex = execution_ctx_lexical_env C ->
       (lex',S') = lexical_env_alloc_object S lex l provide_this_true ->
       C' = execution_ctx_with_lex_this C lex' l ->
       red_stat S' C' t2 o ->
-      red_stat S C (stat_with_1 t2 l) o
+      red_stat S0 C (stat_with_1 t2 (vret S l)) o
 
   (** Switch statement (12.11) *)
 (*!!!ARTHUR!!!*)
@@ -674,24 +682,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   
   | res_stat_debugger : forall S C,
       red_stat S C stat_debugger (out_ter S res_empty)
-
-  (* Auxiliary forms : [spec_expr_get_value] plus a type conversion 
-     for statements *)
-
-  | red_spec_expr_get_value_conv_stat : forall S C e Kc K o o1, (* TODO: rename sc *)
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (spec_expr_get_value_conv_stat_1 o1 Kc K) o ->
-      red_stat S C (spec_expr_get_value_conv_stat e Kc K) o
-
-  | red_spec_expr_get_value_conv_stat_1 : forall S0 S C Kc K v o o1,
-      red_expr S C (Kc v) o1 ->
-      red_stat S C (spec_expr_get_value_conv_stat_2 o1 K) o ->
-      red_stat S0 C (spec_expr_get_value_conv_stat_1 (out_ter S v) Kc K) o
-
-  | red_spec_expr_get_value_conv_stat_2 : forall S0 S C K v o,
-      red_stat S C (K v) o ->
-      red_stat S0 C (spec_expr_get_value_conv_stat_2 (out_ter S v) K) o
-
 
 
 (**************************************************************)
@@ -1094,52 +1084,57 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Binary op : addition (11.6.1) *)
   
-  | red_expr_binary_op_add : forall S C v1 v2 o,
-      red_expr S C (spec_convert_twice (spec_to_primitive_auto v1) (spec_to_primitive_auto v2) expr_binary_op_add_1) o ->
+  | red_expr_binary_op_add : forall S C v1 v2 y1 o,
+      red_spec S C (spec_convert_twice (spec_to_primitive_auto v1) (spec_to_primitive_auto v2)) y1 ->
+      red_expr S C (expr_binary_op_add_1 y1) o ->
       red_expr S C (expr_binary_op_3 binary_op_add v1 v2) o
 
-  | red_expr_binary_op_add_1_string : forall S C v1 v2 o,
+  | red_expr_binary_op_add_1_string : forall S0 S C v1 v2 y1 o,
       (type_of v1 = type_string \/ type_of v2 = type_string) ->
-      red_expr S C (spec_convert_twice (spec_to_string v1) (spec_to_string v2) expr_binary_op_add_string_1) o ->
-      red_expr S C (expr_binary_op_add_1 v1 v2) o
+      red_spec S C (spec_convert_twice (spec_to_string v1) (spec_to_string v2)) y1 ->
+      red_expr S C (expr_binary_op_add_string_1 y1) o ->
+      red_expr S0 C (expr_binary_op_add_1 (ret S (v1,v2))) o
 
-  | red_expr_binary_op_add_string_1 : forall S C s1 s2 s o,
+  | red_expr_binary_op_add_string_1 : forall S0 S C s1 s2 s o,
       s = string_concat s1 s2 ->
-      red_expr S C (expr_binary_op_add_string_1 s1 s2) (out_ter S s)
+      red_expr S0 C (expr_binary_op_add_string_1 (ret S (value_prim s1, value_prim s2))) (out_ter S s)
 
-  | red_expr_binary_op_add_1_number : forall S C v1 v2 o,
+  | red_expr_binary_op_add_1_number : forall S0 S C v1 v2 y1 o,
       ~ (type_of v1 = type_string \/ type_of v2 = type_string) ->
-      red_expr S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2) (expr_puremath_op_1 JsNumber.add)) o ->
-      red_expr S C (expr_binary_op_add_1 v1 v2) o
+      red_spec S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2)) y1 ->
+      red_expr S C (expr_puremath_op_1 JsNumber.add y1) o ->
+      (* TODO: maybe we could go more directly to "expr_binary_op_3 JsNumber.add" *)
+      red_expr S0 C (expr_binary_op_add_1 (ret S (v1,v2))) o
 
   (** Binary op : pure maths operations (11.5) *)
  
-  | red_expr_puremath_op : forall S C op F v1 v2 o,
+  | red_expr_puremath_op : forall S C op F v1 v2 y1 o,
       puremath_op op F ->
-      red_expr S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2) (expr_puremath_op_1 F)) o ->
+      red_spec S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2)) y1 ->
+      red_expr S C (expr_puremath_op_1 F y1) o ->
       red_expr S C (expr_binary_op_3 op v1 v2) o
 
-  | red_expr_puremath_op_1 : forall S C F n n1 n2,
+  | red_expr_puremath_op_1 : forall S0 S C F n n1 n2,
       n = F n1 n2 ->
-      red_expr S C (expr_puremath_op_1 F n1 n2) (out_ter S n)
+      red_expr S0 C (expr_puremath_op_1 F (ret S (value_prim n1, value_prim n2))) (out_ter S n)
 
   (** Binary op : shift operations (11.7) *)
 
-(* ARTHUR:TODO--restore while eliminating continuations.
-  | red_expr_shift_op : forall S C op b_unsigned F ext v1 v2 o,
+  | red_expr_shift_op : forall S C op b_unsigned F ext v1 v2 y1 o,
       shift_op op b_unsigned F ->
       ext = (if b_unsigned then spec_to_uint32 else spec_to_int32) ->
-      red_expr S C (ext v1 (expr_shift_op_1 F v2)) o ->
+      red_spec S C (ext v1) y1 ->
+      red_expr S C (expr_shift_op_1 F y1 v2) o ->
       red_expr S C (expr_binary_op_3 op v1 v2) o
 
-  | red_expr_shift_op_1 : forall S C F k1 v2 o,
-      red_expr S C (spec_to_uint32 v2 (expr_shift_op_2 F k1)) o ->
-      red_expr S C (expr_shift_op_1 F v2 k1) o
+  | red_expr_shift_op_1 : forall S0 S C F k1 v2 y1 o,
+      red_spec S C (spec_to_uint32 v2) y1 ->
+      red_expr S C (expr_shift_op_2 F k1 y1) o ->
+      red_expr S0 C (expr_shift_op_1 F (ret S k1) v2) o
 
-  | red_expr_shift_op_2 : forall S C k1 k2 F n o,
+  | red_expr_shift_op_2 : forall S0 S C k1 k2 F n,
       n = JsNumber.of_int (F k1 (JsNumber.modulo_32 k2)) ->
-      red_expr S C (expr_shift_op_2 F k1 k2) (out_ter S n)
-*)
+      red_expr S0 C (expr_shift_op_2 F k1 (ret S k2)) (out_ter S n)
 
   (** Binary op : inequality (11.8) *)
 
@@ -1148,18 +1143,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_inequality_op_1 b_swap b_neg v1 v2) o ->
       red_expr S C (expr_binary_op_3 op v1 v2) o
 
-  | red_expr_inequality_op_1 : forall S C v1 v2 b_swap b_neg o,
-      red_expr S C (spec_convert_twice (spec_to_primitive_auto v1) (spec_to_primitive_auto v2) (expr_inequality_op_2 b_swap b_neg)) o ->
+  | red_expr_inequality_op_1 : forall S C v1 v2 b_swap b_neg y1 o,
+      red_spec S C (spec_convert_twice (spec_to_primitive_auto v1) (spec_to_primitive_auto v2)) y1 ->
+      red_expr S C (expr_inequality_op_2 b_swap b_neg y1) o ->
       red_expr S C (expr_inequality_op_1 b_swap b_neg v1 v2) o
 
-  | red_expr_inequality_op_2 : forall S C (w1 w2 wa wb wr wr':prim) b (b_swap b_neg : bool),
+  | red_expr_inequality_op_2 : forall S0 S C (w1 w2 wa wb wr wr':prim) b (b_swap b_neg : bool),
       ((wa,wb) = if b_swap then (w2,w1) else (w1,w2)) ->
       wr = inequality_test_primitive wa wb ->
       (* Note: wr may only be true or false or undef *)
       wr' = (If wr = prim_undef then false  
             else If (b_neg = true /\ wr = true) then false
             else wr) ->
-      red_expr S C (expr_inequality_op_2 b_swap b_neg w1 w2) (out_ter S wr')
+      red_expr S0 C (expr_inequality_op_2 b_swap b_neg (ret S (value_prim w1, value_prim w2))) (out_ter S wr')
 
   (** Binary op : instanceof (11.8.6) *)
 
@@ -1256,22 +1252,21 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_3 binary_op_strict_disequal v1 v2) (out_ter S b)
 
   (** Binary op : bitwise op (11.10) *)
-(* ARTHUR:TODO--restore while eliminating continuations.
 
-  | red_expr_bitwise_op : forall S C op F v1 v2 o,
+  | red_expr_bitwise_op : forall S C op F v1 v2 y1 o,
       bitwise_op op F ->
-      red_expr S C (spec_to_int32 v1 (expr_bitwise_op_1 F v2)) o ->
+      red_spec S C (spec_to_int32 v1) y1 ->
+      red_expr S C (expr_bitwise_op_1 F y1 v2) o ->
       red_expr S C (expr_binary_op_3 op v1 v2) o
 
-  | red_expr_bitwise_op_1 : forall S C F k1 v2 o,
-      red_expr S C (spec_to_int32 v2 (expr_bitwise_op_2 F k1)) o ->
-      red_expr S C (expr_bitwise_op_1 F v2 k1) o
+  | red_expr_bitwise_op_1 : forall S0 S C F k1 v2 y1 o,
+      red_spec S C (spec_to_int32 v2) y1 ->
+      red_expr S C (expr_bitwise_op_2 F k1 y1) o ->
+      red_expr S0 C (expr_bitwise_op_1 F (ret S k1) v2) o
 
-  | red_expr_bitwise_op_2 : forall S C F k1 k2 n,
+  | red_expr_bitwise_op_2 : forall S0 S C F k1 k2 n,
       n = JsNumber.of_int (F k1 k2) ->
-      red_expr S C (expr_bitwise_op_2 F k1 k2) (out_ter S n)
-
-*)
+      red_expr S0 C (expr_bitwise_op_2 F k1 (ret S k2)) (out_ter S n)
 
   (** Binary op : lazy ops [and] and [or] (not regular ops) (11.11) *)
 
@@ -1297,15 +1292,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Conditional operator (11.12) *)
 
-  | red_expr_conditional : forall S C e1 e2 e3 o o1,
-      red_expr S C (spec_expr_get_value_conv spec_to_boolean e1) o1 ->
-      red_expr S C (expr_conditional_1 o1 e2 e3) o ->
+  | red_expr_conditional : forall S C e1 e2 e3 y1 o,
+      red_spec S C (spec_expr_get_value_conv spec_to_boolean e1) y1 ->
+      red_expr S C (expr_conditional_1 y1 e2 e3) o ->
       red_expr S C (expr_conditional e1 e2 e3) o
 
   | red_expr_conditional_1 : forall S0 S C e b e2 e3 o,
       e = (If b = true then e2 else e3) ->
       red_expr S C (spec_expr_get_value e) o ->
-      red_expr S0 C (expr_conditional_1 (out_ter S b) e2 e3) o
+      red_expr S0 C (expr_conditional_1 (vret S b) e2 e3) o
 
   (** Assignment (11.13) *)
   
@@ -1404,22 +1399,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       n' = convert_number_to_integer n ->
       red_expr S0 C (spec_to_integer_1 (out_ter S n)) (out_ter S n')
 
-  (** Conversion to 32-bit integer (passes an int to the continuation) (9.5) *)
-  (* TODO:ARTHUR: already moved *)
-
-  (** Conversion to unsigned 32-bit integer (passes an int to the continuation) (9.6) *)
-  (* Daniele: moved
-  | red_spec_to_uint32 : forall S C v  K o1 o,
-      red_expr S C (spec_to_number v) o1 ->
-      red_expr S C (spec_to_uint32_1 o1 K) o ->
-      red_expr S C (spec_to_uint32 v K) o
-
-  | red_spec_to_uint32_1 : forall S0 S C n K o,
-      red_expr S C (K (JsNumber.to_uint32 n)) o ->
-      red_expr S0 C (spec_to_uint32_1 (out_ter S n) K) o
-  *)
-  (** Conversion to unsigned 16-bit integer (passes an int to the continuation) : LATER (9.7) *)
-
   (** Conversion to string (returns string) (9.8) *)
 
   | red_spec_to_string_prim : forall S C w s,
@@ -1460,22 +1439,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_check_object_coercible_return : forall S C v,
       ~ (v = prim_undef \/ v = prim_null) ->
       red_expr S C (spec_check_object_coercible v) (out_void S)
-
-  (** Auxiliary: conversion of two values at once (passes two values to the continuation) (9.1) *)
-
-  | red_spec_convert_twice : forall S C ex1 ex2 o1 K o,
-      red_expr S C ex1 o1 ->
-      red_expr S C (spec_convert_twice_1 o1 ex2 K) o ->
-      red_expr S C (spec_convert_twice ex1 ex2 K) o
-
-  | red_spec_convert_twice_1 : forall S0 S C v1 ex2 o2 K o,
-      red_expr S C ex2 o2 ->
-      red_expr S C (spec_convert_twice_2 o2 (K v1)) o ->
-      red_expr S0 C (spec_convert_twice_1 (out_ter S v1) ex2 K) o
-
-  | red_spec_convert_twice_2 : forall S0 S C v2 K o,
-      red_expr S C (K v2) o ->
-      red_expr S0 C (spec_convert_twice_2 (out_ter S v2) K) o
 
   (** IsCallable: is handled inline in the rules (9.11) *)
 
@@ -2032,17 +1995,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_expr_get_value_1 : forall S0 S C rv o,
       red_expr S C (spec_get_value rv) o ->
       red_expr S0 C (spec_expr_get_value_1 (out_ter S rv)) o
-
-  (** Auxiliary: [spec_expr_get_value_conv] as a combination [spec_expr_get_value] and a conversion *)
-
-  | red_spec_expr_get_value_conv : forall S C e K o o1,
-      red_expr S C (spec_expr_get_value e) o1 -> 
-      red_expr S C (spec_expr_get_value_conv_1 K o1) o -> 
-      red_expr S C (spec_expr_get_value_conv K e) o
-
-  | red_spec_expr_get_value_conv_1 : forall S0 S C K v o,
-      red_expr S C (K v) o ->
-      red_expr S0 C (spec_expr_get_value_conv_1 K (out_ter S v)) o
 
 
   (*------------------------------------------------------------*)
@@ -4055,7 +4007,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       ~ abort_intercepted_spec exts ->
       red_spec S C exts (@specret_out T o)
 
-  (** Conversion to 32-bit integer (passes an int to the continuation) (9.5) *)
+  (** Conversion to 32-bit integer (9.5) *)
 
   | red_spec_to_int32 : forall S C v o1 (y:specret int),
       red_expr S C (spec_to_number v) o1 ->
@@ -4063,9 +4015,9 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_int32 v) y
 
   | red_spec_to_int32_1 : forall S0 S C n,
-      red_spec S0 C (spec_to_int32_1 (out_ter S n)) (ret S (JsNumber.to_int32 n))
+      red_spec S0 C (spec_to_int32_1 (out_ter S n)) (vret S (JsNumber.to_int32 n))
 
-  (** Conversion to unsigned 32-bit integer (passes an int to the continuation) (9.6) *)
+  (** Conversion to unsigned 32-bit integer (9.6) *)
 
   | red_spec_to_uint32 : forall S C v o1 (y:specret int),
       red_expr S C (spec_to_number v) o1 ->
@@ -4073,8 +4025,41 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_uint32 v) y
 
   | red_spec_to_uint32_1 : forall S0 S C n,
-      red_spec S0 C (spec_to_uint32_1 (out_ter S n)) (ret S (JsNumber.to_uint32 n))
+      red_spec S0 C (spec_to_uint32_1 (out_ter S n)) (vret S (JsNumber.to_uint32 n))
+
+  (** Conversion to unsigned 16-bit integer (passes an int to the continuation) : LATER (9.7) *)
+
+
+  (** Auxiliary: conversion of two values at once (passes two values to the continuation) (9.1) *)
+
+  | red_spec_convert_twice : forall S C ex1 ex2 o1 (y:specret (value*value)),
+      red_expr S C ex1 o1 ->
+      red_spec S C (spec_convert_twice_1 o1 ex2) y ->
+      red_spec S C (spec_convert_twice ex1 ex2) y
+
+  | red_spec_convert_twice_1 : forall S0 S C v1 ex2 o2 (y:specret (value*value)),
+      red_expr S C ex2 o2 ->
+      red_spec S C (spec_convert_twice_2 v1 o2) y ->
+      red_spec S0 C (spec_convert_twice_1 (out_ter S v1) ex2) y
+
+  | red_spec_convert_twice_2 : forall S0 S C v1 v2,
+      red_spec S0 C (spec_convert_twice_2 v1 (out_ter S v2)) (ret S (v1,v2))
+
+  (** Auxiliary: [spec_expr_get_value_conv] as a combination
+      of [spec_expr_get_value] and a conversion *)
+
+  | red_spec_expr_get_value_conv : forall S C e K o1 (y:specret value),
+      red_expr S C (spec_expr_get_value e) o1 -> 
+      red_spec S C (spec_expr_get_value_conv_1 K o1) y -> 
+      red_spec S C (spec_expr_get_value_conv K e) y
+
+  | red_spec_expr_get_value_conv_1 : forall S0 S C K v o1 (y:specret value),
+      red_expr S C (K v) o1 ->
+      red_spec S0 C (spec_expr_get_value_conv_2 o1) y ->
+      red_spec S0 C (spec_expr_get_value_conv_1 K (out_ter S v)) y
+
+  | red_spec_expr_get_value_conv_2 : forall S0 S C v (y:specret value),
+      red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v)
 
 .
-
 
