@@ -290,26 +290,7 @@ Inductive ext_expr :=
   | spec_from_descriptor_5 : object_loc -> attributes -> out -> ext_expr
   | spec_from_descriptor_6 : object_loc -> out -> ext_expr
 
-  | spec_to_descriptor : value -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_1a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
-  | spec_to_descriptor_1b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_1c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_2a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
-  | spec_to_descriptor_2b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_2c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_3a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
-  | spec_to_descriptor_3b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_3c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_4a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
-  | spec_to_descriptor_4b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_4c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_5a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
-  | spec_to_descriptor_5b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_5c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_6a : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
-  | spec_to_descriptor_6b : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_6c : out -> object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr
-  | spec_to_descriptor_7 : object_loc -> descriptor -> (descriptor -> ext_expr) -> ext_expr                                   
+                       
                   
   (** Extented expressions for eval *)
 
@@ -482,7 +463,7 @@ Inductive ext_expr :=
   | spec_call_object_define_props_2 : out -> object_loc -> ext_expr
   | spec_call_object_define_props_3 : object_loc -> object_loc -> list prop_name -> list (prop_name * attributes) -> ext_expr
   | spec_call_object_define_props_4 : out -> object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> ext_expr
-  | spec_call_object_define_props_5 : object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> descriptor -> ext_expr
+  | spec_call_object_define_props_5 : object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> (specret attributes) -> ext_expr
   | spec_call_object_define_props_6 : object_loc -> list (prop_name * attributes) -> ext_expr
   | spec_call_object_define_props_7 : out -> object_loc -> list (prop_name * attributes) -> ext_expr
 
@@ -512,7 +493,7 @@ Inductive ext_expr :=
 
   | spec_call_object_define_prop_1: value -> value -> value -> ext_expr
   | spec_call_object_define_prop_2: object_loc -> out -> value -> ext_expr
-  | spec_call_object_define_prop_3: object_loc -> string -> descriptor -> ext_expr
+  | spec_call_object_define_prop_3: object_loc -> string -> (specret descriptor) -> ext_expr
   | spec_call_object_define_prop_4: object_loc -> out -> ext_expr
 
   | spec_call_object_get_own_prop_descriptor_1: value -> value -> ext_expr
@@ -671,6 +652,27 @@ with ext_spec :=
   | spec_list_then : list expr -> ext_spec
   | spec_list_then_1 : list value -> list expr -> ext_spec
   | spec_list_then_2 : list value -> out -> list expr -> ext_spec 
+
+  | spec_to_descriptor : value -> ext_spec
+  | spec_to_descriptor_1a : object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_1b : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_1c : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_2a : object_loc -> descriptor -> ext_spec                            
+  | spec_to_descriptor_2b : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_2c : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_3a : object_loc -> descriptor -> ext_spec                            
+  | spec_to_descriptor_3b : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_3c : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_4a : object_loc -> descriptor -> ext_spec                            
+  | spec_to_descriptor_4b : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_4c : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_5a : object_loc -> descriptor -> ext_spec                            
+  | spec_to_descriptor_5b : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_5c : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_6a : object_loc -> descriptor -> ext_spec                            
+  | spec_to_descriptor_6b : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_6c : out -> object_loc -> descriptor -> ext_spec
+  | spec_to_descriptor_7 : object_loc -> descriptor -> ext_spec    
 .
 
 
@@ -906,26 +908,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_from_descriptor_5 _ _ o => Some o
   | spec_from_descriptor_6 _ o => Some o
 
-  | spec_to_descriptor _ _ => None
-  | spec_to_descriptor_1a _ _ _ => None
-  | spec_to_descriptor_1b o _ _ _ => Some o
-  | spec_to_descriptor_1c o _ _ _ => Some o
-  | spec_to_descriptor_2a _ _ _ => None
-  | spec_to_descriptor_2b o _ _ _ => Some o
-  | spec_to_descriptor_2c o _ _ _ => Some o
-  | spec_to_descriptor_3a _ _ _ => None
-  | spec_to_descriptor_3b o _ _ _ => Some o
-  | spec_to_descriptor_3c o _ _ _ => Some o
-  | spec_to_descriptor_4a _ _ _ => None
-  | spec_to_descriptor_4b o _ _ _ => Some o
-  | spec_to_descriptor_4c o _ _ _ => Some o
-  | spec_to_descriptor_5a _ _ _ => None
-  | spec_to_descriptor_5b o _ _ _ => Some o
-  | spec_to_descriptor_5c o _ _ _ => Some o
-  | spec_to_descriptor_6a _ _ _ => None
-  | spec_to_descriptor_6b o _ _ _ => Some o
-  | spec_to_descriptor_6c o _ _ _ => Some o
-  | spec_to_descriptor_7 _ _ _ => None
 
   | spec_entering_eval_code _ _ _ => None
   | spec_entering_eval_code_1 _ _ => None
@@ -1243,6 +1225,27 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_list_then _ => None
   | spec_list_then_1 _ _ => None
   | spec_list_then_2 _ o _ => Some o
+  | spec_to_descriptor _ => None
+  | spec_to_descriptor_1a _ _ => None
+  | spec_to_descriptor_1b o _ _ => Some o
+  | spec_to_descriptor_1c o _ _ => Some o
+  | spec_to_descriptor_2a _ _ => None
+  | spec_to_descriptor_2b o _ _ => Some o
+  | spec_to_descriptor_2c o _ _ => Some o
+  | spec_to_descriptor_3a _ _ => None
+  | spec_to_descriptor_3b o _ _ => Some o
+  | spec_to_descriptor_3c o _ _ => Some o
+  | spec_to_descriptor_4a _ _ => None
+  | spec_to_descriptor_4b o _ _ => Some o
+  | spec_to_descriptor_4c o _ _ => Some o
+  | spec_to_descriptor_5a _ _ => None
+  | spec_to_descriptor_5b o _ _ => Some o
+  | spec_to_descriptor_5c o _ _ => Some o
+  | spec_to_descriptor_6a _ _ => None
+  | spec_to_descriptor_6b o _ _=> Some o
+  | spec_to_descriptor_6c o _ _ => Some o
+  | spec_to_descriptor_7 _ _ => None
+
   end.
 
 
