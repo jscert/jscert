@@ -3,6 +3,109 @@ Require Import Shared.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 Require Import LibFix LibList.
 
+(* TODO: move to Shared once stable *)
+
+
+Definition let_binding (A B:Type) (v:A) (K:A->B) := K v.
+
+Notation "'Let' x ':=' v 'in' e" := (let_binding v (fun x => e))
+  (at level 69, x ident, right associativity,
+  format "'[v' '[' 'Let'  x  ':='  v  'in' ']'  '/'  '[' e ']' ']'").
+
+Lemma let_binding_unfold : forall (A B:Type) (v:A) (K:A->B),
+  let_binding v K = K v.
+Proof. reflexivity. Qed.
+
+Ltac let_get_fresh_binding_name K :=
+  match K with (fun x => _) => let y := fresh x in y end.
+
+(** [changes] is like [change] except that it does not silently 
+   fail to perform its task. Moreover, it does beta-unfolding *)
+
+Tactic Notation "changes" constr(E1) "with" constr(E2) "in" hyp(H) :=
+  asserts_rewrite (E1 = E2) in H; [ reflexivity | ].
+Tactic Notation "changes" constr(E1) "with" constr(E2) :=
+  asserts_rewrite (E1 = E2); [ reflexivity | ].
+Tactic Notation "changes" constr(E1) "with" constr(E2) "in" "*" :=
+  asserts_rewrite (E1 = E2) in *; [ reflexivity | ].
+
+Tactic Notation "let_inline" "in" hyp(H) := 
+  match type of H with context [ let_binding ?v ?K ] => 
+     changes (let_binding v K) with (K v) in H
+  end.
+
+Tactic Notation "let_simpl" "in" hyp(H) := 
+  match type of H with context [ let_binding ?v ?K ] => 
+     let x := let_get_fresh_binding_name K in
+     set_eq x: v in H; 
+     let_inline in H
+  end.
+
+Tactic Notation "let_simpl" "in" hyp(H) "as" ident(x) := 
+  match type of H with context [ let_binding ?v ?K ] => 
+     set_eq x: v in H;
+     let_inline in H
+  end.
+
+Tactic Notation "let_inline" := 
+  match goal with
+  | |- context [ let_binding ?v ?K ] => 
+     changes (let_binding v K) with (K v)
+  | H: context [ let_binding ?v ?K ] |- _ => let_inline in H
+  end.
+
+Tactic Notation "let_simpl" := 
+  match goal with  
+  | |- context [ let_binding ?v ?K ] => 
+     let x := let_get_fresh_binding_name K in
+     set_eq x: v; 
+     let_inline
+  | H: context [ let_binding ?v ?K ] |- _ => let_simpl in H
+  end.
+
+Tactic Notation "let_simpl" "as" ident(x) := 
+  match goal with  
+  | |- context [ let_binding ?v ?K ] => 
+     set_eq x: v;
+     let_inline
+  | H: context [ let_binding ?v ?K ] |- _ => let_simpl in H as x
+  end.
+  
+Definition let_binding_test_1 :
+  (Let x := 3 in Let y := x + x in y + y) = 12.
+Proof.
+  dup 3.
+  (* One can compute with Let *)
+  reflexivity.
+  (* One can inline Let step by step *)
+  simpl. (* does nothing *)
+  let_inline.
+  let_inline.
+  reflexivity.
+  (* One can name the arguments of Let step by step *)
+  let_simpl.
+  let_simpl as z.
+  subst x. subst z. reflexivity.
+Qed.
+  
+Definition let_binding_test_2 :
+  (Let x := 3 in Let y := x + x in y + y) = 12 -> True.
+Proof.
+  dup 2; intros H.
+  (* One can inline Let step by step *)
+  simpl in H. (* does nothing *)
+  let_inline in H.
+  let_inline in H.
+  auto.
+  (* One can name the arguments of Let step by step *)
+  let_simpl in H.
+  let_simpl in H as z.
+  subst x. subst z. auto.
+Qed.  
+  
+  
+
+
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -1916,12 +2019,12 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
   run_expr_get_value runs S C e1 (fun S1 v1 =>
     if convert_value_to_boolean v1 then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
-        let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+        Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
         let loop tt := runs_type_stat_while runs S2 C rv' labs e1 t2 in
         ifb res_type R <> restype_continue
              \/ ~ res_label_in R labs then (
            ifb res_type R = restype_break /\ res_label_in R labs then (
-              out_ter S2 rv'
+              result_some (out_ter S2 rv')
            ) else (
               ifb res_type R <> restype_normal then (
                 out_ter S2 R

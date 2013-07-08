@@ -1750,8 +1750,7 @@ Proof.
   run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
   applys* red_stat_while_1 (rm R2). run_post_expr_get_value_bool K.
     run red_stat_while_2_true. subst. abort. 
-     sets_eq rv': (ifb res_value R <> resvalue_empty then res_value R else rv).
-     applys red_stat_while_3 rv'. case_if; case_if*.
+     let_simpl. applys red_stat_while_3 rv'. case_if; case_if*.
      move K after EQrv'. case_if.
        applys red_stat_while_4_not_continue. rew_logic*. case_if. 
          run_inv. applys* red_stat_while_5_break. 
