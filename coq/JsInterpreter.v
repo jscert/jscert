@@ -352,7 +352,7 @@ Definition build_error S vproto vmsg : result :=
   let O := object_new vproto "Error" in
   let '(l, S') := object_alloc S O in
   ifb vmsg = undef then out_ter S' l
-  else result_not_yet_implemented (* TODO:  Need [to_string] *).
+  else result_not_yet_implemented (* TODO:  Need [to_string] (this function shall be put in [runs_type].) *).
 
 Definition run_error S ne : result :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
@@ -378,16 +378,6 @@ Definition out_error_or_cst S str ne v :=
 
 Definition run_object_method Z (Proj : object -> Z) S l : option Z :=
   option_map Proj (pick_option (object_binds S l)).
-
-Definition run_object_code_empty S l : option bool :=
-  option_map (fun O =>
-    morph_option true (fun _ => false) (object_code_ O))
-    (pick_option (object_binds S l)).
-
-Definition run_object_heap_set_properties S l P' : option state :=
-  option_map (fun O =>
-    object_write S l (object_with_properties O P'))
-    (pick_option (object_binds S l)).
 
 Definition run_object_heap_set_extensible b S l : option state :=
   option_map (fun O =>

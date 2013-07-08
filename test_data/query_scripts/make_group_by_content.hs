@@ -8,7 +8,7 @@
 -- number: Find all files that contain "Number."
 
 -- A good way to run this is:
--- ./test_data/query_scripts/make_group_by_content number `find tests/ -type f -name \*.js`
+-- ./test_data/query_scripts/cabal-dev/bin/make_group_by_content number `find tests/ -type f -name \*.js`
 
 
 module Main where
@@ -48,6 +48,9 @@ isToNumberTest = (" * Operator uses ToNumber" `isInfixOf`)
 isWhileTest :: ByteString -> Bool
 isWhileTest content = content =~ ("while *\\("::ByteString)
 
+isStrictTest :: ByteString -> Bool
+isStrictTest = ("@onlyStrict" `isInfixOf`)
+
 grouptypes :: String -> (String, ByteString -> Bool)
 grouptypes "arith" = ("Arithmetic error tests", isMathFile)
 grouptypes "number" = ("Number object tests", isNumFile)
@@ -57,6 +60,7 @@ grouptypes "stringconstructor" = ("String constructor object tests", isStringCon
 grouptypes "string" = ("String object tests", isStringFile)
 grouptypes "tonumber" = ("ToNumber conversion tests", isToNumberTest)
 grouptypes "while" = ("Tests that use while loops", isWhileTest)
+grouptypes "strict" = ("Tests that only work in strict mode",isStrictTest)
 
 main :: IO ()
 main = do
