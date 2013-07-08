@@ -59,9 +59,8 @@ Implicit Type T : Type.
 Definition follow_spec {T Te : Type}
     (conv : T -> Te)
     (red : state -> execution_ctx -> Te -> out -> Prop)
-    (run : state -> execution_ctx -> T -> result) := forall S C (e : T) S' res,
-  run S C e = out_ter S' res ->
-  red S C (conv e) (out_ter S' res).
+    (run : state -> execution_ctx -> T -> result) := forall S C (e : T) o,
+  run S C e = o -> red S C (conv e) o.
 
 (* Waiting for the rules to be updated.
 Inductive passing_output {Te A : Type}
@@ -583,6 +582,7 @@ Ltac run_select_proj H :=
 (** [run_select_lemma] is used to obtain automatically
     the right correctness lemma for an auxiliary function *)
 
+Ltac run_select_lemma_run_expr_get_value_conv T := fail.
 Ltac run_select_lemma_run_expr_get_value T := fail.
 Ltac run_select_lemma_if_to_string T := fail.
 
@@ -590,6 +590,7 @@ Ltac run_select_lemma H :=
   match type of H with
   | ?T = _ =>
     match constr:(tt) with
+    | ?x => run_select_lemma_run_expr_get_value_conv T
     | ?x => run_select_lemma_run_expr_get_value T
     | ?x => run_select_lemma_if_to_string T
     end
@@ -757,15 +758,17 @@ Ltac run_check_current_out o :=
 Ltac run_step Red :=
   let o1 := fresh "o1" in let R1 := fresh "R1" in
   run_pre as o1 R1;
-  let o := run_get_current_out tt in
-  run_apply Red o1 R1;
-  try (run_check_current_out o; run_post; run_inv).
+  match Red with ltac_wild => idtac | _ =>
+    let o := run_get_current_out tt in
+    run_apply Red o1 R1;
+    try (run_check_current_out o; run_post; run_inv)
+  end.
 
 (** [run_simpl] is intended for simplyfing simple monads
     that do not match over a result, then run
     [run_inv] to clean up the goal. *)
 
-Ltac run_simpl_run_error H K := fail.
+Ltac run_simpl_run_error H T K := fail.
 
 Ltac run_simpl_base H K :=
   let E := fresh "E" in
@@ -779,7 +782,7 @@ Ltac run_simpl_base H K :=
      lets [(E1&E2)|(n&E&K)]: if_some_or_default_out (rm H)
   | if_empty_label _ _ _ =>
      lets (E&K): if_empty_label_out (rm H)
-  | _ => run_simpl_run_error H K
+  | _ => run_simpl_run_error H T K
   end end.
 
 Ltac run_simpl_core H K :=
@@ -852,10 +855,10 @@ Lemma run_object_heap_set_extensible_correct : forall b S l S',
   object_heap_set_extensible b S l S'.
 Admitted.
 
-Lemma run_error_correct : forall S ne S' R' C,
-  run_error S ne = out_ter S' R' ->
-  red_expr S C (spec_error ne) (out_ter S' R') /\
-    ~ res_is_normal R'.
+Lemma run_error_correct : forall S ne o C, 
+  run_error S ne = o ->
+  red_expr S C (spec_error ne) o /\ abort o.
+(* TODO: see definition of axiom [run_error_correct'] *)
 Admitted. (* OLD
   introv E. deal_with_regular_lemma E if_object_out; substs.
   unfolds build_error. destruct S as [E L [l S]]. simpls. cases_if; tryfalse.
@@ -867,18 +870,16 @@ Admitted. (* OLD
    apply~ red_spec_build_error_1_no_msg.
 Qed. *)
 
-Ltac run_simpl_run_error H K ::=
-  let E := fresh "E" in
-  match type of H with ?T = _ => match T with
-  | run_error _ _ =>
+Ltac run_simpl_run_error H T K ::=
+  match T with run_error _ _ =>
      let N := fresh "N" in
      let C := match goal with |- _ _ ?C _ _ => constr:(C) end in
      lets (K&N): run_error_correct C (rm H)
-  end end.
+  end.
 
-
+(* TOFIX
 Lemma out_error_or_cst_correct : forall S C str ne v S' R',
-  out_error_or_cst S str (ne : native_error) v = out_ter S' R' ->
+  out_error_or_cst S str (ne : native_error) v = out_ter S' R' (* TODO: mettre un "o" là *) ->
   red_expr S C (spec_error_or_cst str ne v) (out_ter S' R') /\
     (res_is_normal R' -> R' = v).
 Proof.
@@ -892,6 +893,7 @@ Lemma out_error_or_void_correct : forall S C str ne S' R',
   red_expr S C (spec_error_or_void str ne) (out_ter S' R') /\
     (res_is_normal R' -> R' = res_empty).
 Admitted.
+*)
 
 (*
 Lemma object_has_prop_correct : forall runs,
@@ -922,7 +924,7 @@ Qed. *)
 
 Lemma run_object_get_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 l x S R,
-  run_object_get runs S0 C0 l x = out_ter S R ->
+  run_object_get runs S0 C0 l x = out_ter S R (* TODO: mettre un "o" là *) -> 
   red_expr S0 C0 (spec_object_get l x) (out_ter S R) /\
     (res_is_normal R -> exists v, R = res_val v).
 Admitted. (* OLD
@@ -1011,10 +1013,11 @@ Qed. *)
 
 Lemma ref_get_value_correct : forall runs,
   runs_type_correct runs -> forall S0 C0 rv S R,
-  ref_get_value runs S0 C0 rv = out_ter S R ->
+  ref_get_value runs S0 C0 rv = out_ter S R (* TODO: mettre un "o" là *)->
   red_expr S0 C0 (spec_get_value rv) (out_ter S R) /\
     (res_is_normal R -> exists v, R = res_val v).
 Proof.
+(* TOFIX: should take o as last argument
   introv RC E. destruct rv; tryfalse.
    inverts E. splits. apply~ red_spec_ref_get_value_value. intros. auto*.
    tests: (ref_is_property r).
@@ -1033,6 +1036,7 @@ Proof.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
       applys~ env_record_get_binding_value_correct RC.
      intros. forwards~ (_&?): env_record_get_binding_value_correct E.
+*) skip.
 Qed.
 
 Lemma run_callable_correct : forall S v co,
@@ -1047,7 +1051,7 @@ Qed. *)
 
 Lemma object_default_value_correct : forall runs,
   runs_type_correct runs -> forall S S' R' C l pref,
-  object_default_value runs S C l pref = out_ter S' R' ->
+  object_default_value runs S C l pref = out_ter S' R' (* TODO: mettre un "o" là *)->
   red_expr S C (spec_object_default_value l pref) (out_ter S' R').
 Admitted. (* OLD
   introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
@@ -1177,6 +1181,9 @@ Lemma run_expr_get_value_correct : forall runs,
 Admitted.
 
 
+Ltac run_select_lemma_run_expr_get_value_conv T ::=
+  match T with run_expr_get_value (if _ then _ else _) _ _ _ _ => constr:(run_expr_get_value_correct) end.
+
 Ltac run_select_lemma_run_expr_get_value T ::=
   match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
 
@@ -1287,7 +1294,7 @@ Lemma run_expr_correct : forall runs,
   runs_type_correct runs ->
    follow_expr (run_expr runs).
 Proof.
-  introv RC. intros S C e S' res R. unfolds in R. destruct e.
+  introv RC. intros S C e o R. unfolds in R. destruct e.
 
   (* this *)
   run_inv. apply~ red_expr_this.
@@ -1303,8 +1310,7 @@ Proof.
   (* Access *)
   unfolds in R.
   run red_expr_access. run red_expr_access_1. cases_if.
-    lets (R2&N): run_error_correct R.
-     applys red_expr_access_2.
+    run. applys red_expr_access_2.
        applys* red_spec_check_object_coercible_undef_or_null.
      abort_expr.
     applys red_expr_access_2.
@@ -1495,7 +1501,8 @@ Lemma run_stat_correct : forall runs,
   runs_type_correct runs ->
    follow_stat (run_stat runs).
 Proof.
-  introv RC. intros S C t S' res R. unfolds in R. destruct t.
+  introv RC. intros S C t o R. unfolds in R. destruct t.
+ 
 Admitted. (* OLD:
    intros S C t S' res R. destruct t; simpl in R; dealing_follows.
     (* Expression *)
@@ -1591,7 +1598,7 @@ Lemma run_prog_correct : forall runs,
   runs_type_correct runs ->
    follow_prog (run_prog runs).
 Proof.
-  introv RC. intros S C p S' res R. unfolds in R. destruct p.
+  introv RC. intros S C p o R. unfolds in R. destruct p.
   apply~ red_prog_prog. applys~ run_elements_correct R.
 Qed.
 
@@ -1629,11 +1636,38 @@ Admitted. (* OLD:
        forwards~: IHhi C R.
 *)
 
+
+
 Lemma run_stat_while_correct : forall runs,
   runs_type_correct runs -> forall (ls : label_set) e t,
   follow_stat_while ls e t
     (fun S C rv => run_stat_while runs S C rv ls e t).
-Admitted. (* OLD:
+Proof.
+  intros runs IH ls e t S C v o R.
+  unfolds in R.
+
+
+(*
+
+  run_pre. applys red_stat_while_1. 
+  run_post.
+    or: run_pre H as o1 R1 K. (* where H is the hypothesis *)
+    or: run_pre_core H o1 R1 K. (* where H is the hypothesis *)
+    or: run_pre_lemma H o1 R1 K. (* where H is the hypothesis *)
+    or: run_pre_ifres H o1 R1 K. (* where H is the hypothesis *)
+  run_apply __my_red_lemma__ R1. (* where R1 is the red hypothesis *)
+  run_post.
+  run_inv.
+*)
+
+
+(*
+  run red_stat_while_1.
+   run red_stat_while_1.
+  *)
+Admitted.
+
+(* OLD:
    intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
    unmonad.
     forwards~ RC: IHe (rm HE).
