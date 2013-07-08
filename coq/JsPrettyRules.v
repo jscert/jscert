@@ -339,7 +339,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_while_5_break : forall S C labs e1 t2 rv R,
       res_type R = restype_break /\ res_label_in R labs ->
-      red_stat S C (stat_while_5 labs e1 t2 rv R) (out_ter S res_empty)
+      red_stat S C (stat_while_5 labs e1 t2 rv R) (out_ter S rv)
 
   | red_stat_while_5_not_break : forall S C labs e1 t2 rv R o,
       ~ (res_type R = restype_break /\ res_label_in R labs) ->

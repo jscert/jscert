@@ -535,7 +535,7 @@ Ltac prove_abort :=
   solve [ assumption | (constructor; absurd_neg) ].
 
 Ltac abort_tactic L :=
-  apply L;
+  try subst; apply L;
   [ simpl; congruence
   | try prove_abort
   | try prove_not_intercept ].
@@ -546,11 +546,14 @@ Tactic Notation "abort_stat" :=
     abort_tactic red_stat_abort.
 Tactic Notation "abort_prog" :=
     abort_tactic red_prog_abort.
+Tactic Notation "abort_spec" :=
+    abort_tactic red_spec_abort.
 Tactic Notation "abort" :=
   match goal with
   | |- red_expr _ _ _ _ => abort_expr
   | |- red_stat _ _ _ _ => abort_stat
   | |- red_prog _ _ _ _ => abort_prog
+  | |- red_spec _ _ _ _ => abort_spec
   end.
 
 (** [run_select_ifres] selects the appropriate "out" lemma *)
@@ -582,7 +585,6 @@ Ltac run_select_proj H :=
 (** [run_select_lemma] is used to obtain automatically
     the right correctness lemma for an auxiliary function *)
 
-Ltac run_select_lemma_run_expr_get_value_conv T := fail.
 Ltac run_select_lemma_run_expr_get_value T := fail.
 Ltac run_select_lemma_if_to_string T := fail.
 
@@ -590,7 +592,6 @@ Ltac run_select_lemma H :=
   match type of H with
   | ?T = _ =>
     match constr:(tt) with
-    | ?x => run_select_lemma_run_expr_get_value_conv T
     | ?x => run_select_lemma_run_expr_get_value T
     | ?x => run_select_lemma_if_to_string T
     end
@@ -1168,6 +1169,7 @@ Admitted. (* OLD
      splits*. apply~ red_spec_to_string_1.
 Qed. *)
 
+
 Definition run_expr_get_value_post K o o1 :=
   (eqabort o1 o \/
     exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
@@ -1180,9 +1182,6 @@ Lemma run_expr_get_value_correct : forall runs,
       run_expr_get_value_post K o o1.
 Admitted.
 
-
-Ltac run_select_lemma_run_expr_get_value_conv T ::=
-  match T with run_expr_get_value (if _ then _ else _) _ _ _ _ => constr:(run_expr_get_value_correct) end.
 
 Ltac run_select_lemma_run_expr_get_value T ::=
   match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
@@ -1636,36 +1635,73 @@ Admitted. (* OLD:
        forwards~: IHhi C R.
 *)
 
+Definition run_expr_get_value_bool_post K1 K2 o (y1:specret value) :=
+     (exists o1, y1 = specret_out o1 /\ eqabort o1 o) 
+  \/ (exists S b, y1 = specret_val S b /\ 
+       (   (b = true /\ K1 S = result_some o)
+        \/ (b = false /\ K2 S = result_some o))).  
 
+Ltac run_post_expr_get_value_bool H := (* todo: integrate into run_post *)
+  let o1 := fresh "o1" in
+  let Eq := fresh "Eq" in
+  let S1 := fresh "S" in
+  let b := fresh "b" in
+  let O1 := fresh "O1" in
+  let EB := fresh "EB" in
+  destruct H as [(o1&Eq&Er&Ab)|(S1&b&O1&[(EB&H)|(EB&H)])];
+  [ try abort
+  | try subst_hyp O1; try subst_hyp EB
+  | try subst_hyp O1; try subst_hyp EB ].
+
+
+Hint Unfold eqabort. (* todo move *)
+
+(* todo: backport *)
+Axiom red_spec_expr_get_value_conv_2 : forall S0 S C v, 
+      red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v).
+
+Lemma run_expr_get_value_post_to_bool : forall S C e o o1 (K1 K2:state->result),
+  red_expr S C (spec_expr_get_value e) o1 ->
+  run_expr_get_value_post (fun S v => if convert_value_to_boolean v then K1 S else K2 S) o o1 ->
+  exists (y1:specret value), red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y1 /\
+    run_expr_get_value_bool_post K1 K2 o y1.
+Proof.
+  introv HR HP. run_post. 
+  exists (@specret_out value o1). splits.
+    subst. apply* red_spec_expr_get_value_conv. abort.
+    subst. left. exists* o1.
+  exists (specret_val S1 (value_prim (convert_value_to_boolean v))). splits.
+    applys* red_spec_expr_get_value_conv.
+     applys* red_spec_expr_get_value_conv_1.
+     applys* red_spec_to_boolean.
+     applys* red_spec_expr_get_value_conv_2.
+    right. exists S1 __. split*.
+     destruct (convert_value_to_boolean v); inverts* HP.
+Qed.
 
 Lemma run_stat_while_correct : forall runs,
   runs_type_correct runs -> forall (ls : label_set) e t,
   follow_stat_while ls e t
     (fun S C rv => run_stat_while runs S C rv ls e t).
 Proof.
-  intros runs IH ls e t S C v o R.
-  unfolds in R.
+  intros runs IH ls e t S C rv o R. unfolds in R.
+  run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
+  applys* red_stat_while_1 (rm R2). run_post_expr_get_value_bool K.
+    run red_stat_while_2_true. subst. abort. 
+     sets_eq rv': (ifb res_value R <> resvalue_empty then res_value R else rv).
+     applys red_stat_while_3 rv'. case_if; case_if*.
+     move K after EQrv'. case_if.
+       applys red_stat_while_4_not_continue. rew_logic*. case_if. 
+         run_inv. applys* red_stat_while_5_break. 
+         applys* red_stat_while_5_not_break. case_if; run_inv.
+           applys* red_stat_while_6_abort.
+           applys* red_stat_while_6_normal.
+            applys* runs_type_correct_stat_while.
+       rew_logic in *. applys* red_stat_while_4_continue.
+        applys* runs_type_correct_stat_while.
+   run_inv. applys red_stat_while_2_false.
+Admitted. (*faster*)
 
-
-(*
-
-  run_pre. applys red_stat_while_1. 
-  run_post.
-    or: run_pre H as o1 R1 K. (* where H is the hypothesis *)
-    or: run_pre_core H o1 R1 K. (* where H is the hypothesis *)
-    or: run_pre_lemma H o1 R1 K. (* where H is the hypothesis *)
-    or: run_pre_ifres H o1 R1 K. (* where H is the hypothesis *)
-  run_apply __my_red_lemma__ R1. (* where R1 is the red hypothesis *)
-  run_post.
-  run_inv.
-*)
-
-
-(*
-  run red_stat_while_1.
-   run red_stat_while_1.
-  *)
-Admitted.
 
 (* OLD:
    intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
