@@ -280,9 +280,6 @@ Lemma if_result_some_out : forall (A B : Type) (W : resultof A) K (b : B),
 Proof. introv H. destruct* W; tryfalse. Qed.
 
 (* TODO:  Lemma if_spec_out : forall (A B : Type) (W : specres A) K *)
-(* TODO:  Lemma if_ter_spec_out : forall T W K *)
-(* TODO:  Lemma if_success_spec_out : forall T W K *)
-(* TODO:  Lemma if_value_spec_out : forall T W K *)
 (* TODO:  Lemma if_spec_ter_out : forall T (W : specres T) K o,
   if_spec_ter W K = result_some o -> *)
 
@@ -768,13 +765,7 @@ Ltac run_step Red :=
     that do not match over a result, then run
     [run_inv] to clean up the goal. *)
 
-
-
-Axiom run_error_correct' : forall S ne S' R' C, (* TODO *)
-  run_error S ne = out_ter S' R' ->
-  red_expr S C (spec_error ne) (out_ter S' R') /\
-    ~ res_is_normal R'.
-
+Ltac run_simpl_run_error H K := fail.
 
 Ltac run_simpl_base H K :=
   let E := fresh "E" in
@@ -788,10 +779,7 @@ Ltac run_simpl_base H K :=
      lets [(E1&E2)|(n&E&K)]: if_some_or_default_out (rm H)
   | if_empty_label _ _ _ =>
      lets (E&K): if_empty_label_out (rm H)
-  | run_error _ _ =>
-     let N := fresh "N" in
-     let C := match goal with |- _ _ ?C _ _ => constr:(C) end in
-     lets (K&N): run_error_correct' C (rm H)
+  | _ => run_simpl_run_error H K
   end end.
 
 Ltac run_simpl_core H K :=
@@ -851,6 +839,19 @@ Tactic Notation "runs" "*" :=
 (************************************************************)
 (* ** Correctness Lemmas *)
 
+Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l (z : Z),
+  run_object_method meth S l = Some z ->
+  object_method meth S l z.
+Proof.
+  introv B. unfolds. forwards (O&Bi&E): option_map_some_back B.
+  forwards: @pick_option_correct Bi. exists* O.
+Qed.
+
+Lemma run_object_heap_set_extensible_correct : forall b S l S',
+  run_object_heap_set_extensible b S l = Some S' ->
+  object_heap_set_extensible b S l S'.
+Admitted.
+
 Lemma run_error_correct : forall S ne S' R' C,
   run_error S ne = out_ter S' R' ->
   red_expr S C (spec_error ne) (out_ter S' R') /\
@@ -865,6 +866,16 @@ Admitted. (* OLD
    cases_if. inverts HE.
    apply~ red_spec_build_error_1_no_msg.
 Qed. *)
+
+Ltac run_simpl_run_error H K ::=
+  let E := fresh "E" in
+  match type of H with ?T = _ => match T with
+  | run_error _ _ =>
+     let N := fresh "N" in
+     let C := match goal with |- _ _ ?C _ _ => constr:(C) end in
+     lets (K&N): run_error_correct C (rm H)
+  end end.
+
 
 Lemma out_error_or_cst_correct : forall S C str ne v S' R',
   out_error_or_cst S str (ne : native_error) v = out_ter S' R' ->
@@ -881,14 +892,6 @@ Lemma out_error_or_void_correct : forall S C str ne S' R',
   red_expr S C (spec_error_or_void str ne) (out_ter S' R') /\
     (res_is_normal R' -> R' = res_empty).
 Admitted.
-
-Lemma run_object_method_correct : forall Z (meth : _ -> Z) S l (z : Z),
-  run_object_method meth S l = Some z ->
-  object_method meth S l z.
-Proof.
-  introv B. unfolds. forwards (O&Bi&E): option_map_some_back B.
-  forwards: @pick_option_correct Bi. exists* O.
-Qed.
 
 (*
 Lemma object_has_prop_correct : forall runs,
