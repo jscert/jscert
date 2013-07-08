@@ -162,12 +162,9 @@ Inductive ext_expr :=
   (** Extended expressions for operations on objects *)
 
   (* todo *)
-  | spec_object_get_own_prop : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_own_prop_1 : builtin_get_own_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_own_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> option attributes -> ext_expr
   | spec_object_get_prop : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
   | spec_object_get_prop_1 : builtin_get_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
+  | spec_object_get_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> (specret full_descriptor) -> ext_expr
   | spec_object_get_prop_3 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> value -> ext_expr
   | spec_object_get : value -> prop_name -> ext_expr
   | spec_object_get_1 : builtin_get -> value -> object_loc -> prop_name -> ext_expr
@@ -176,7 +173,7 @@ Inductive ext_expr :=
 
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
   | spec_object_can_put_1 : builtin_can_put -> object_loc -> prop_name -> ext_expr
-  | spec_object_can_put_2 : object_loc -> prop_name -> full_descriptor -> ext_expr
+  | spec_object_can_put_2 : object_loc -> prop_name -> (specret full_descriptor) -> ext_expr
   (* Daiva: Not needed? *)
   (*| spec_object_can_put_3 : object_loc -> prop_name -> bool -> ext_expr*)
   | spec_object_can_put_4 : object_loc -> prop_name -> value -> ext_expr
@@ -186,7 +183,7 @@ Inductive ext_expr :=
   | spec_object_put : value -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_1 : builtin_put -> value -> object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_2 : value -> object_loc -> prop_name -> value -> bool -> out -> ext_expr
-  | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> full_descriptor -> ext_expr
+  | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> (specret full_descriptor) -> ext_expr
   | spec_object_put_4 : value -> object_loc -> prop_name -> value -> bool -> full_descriptor -> ext_expr
   | spec_object_put_5 : out -> ext_expr
 
@@ -196,7 +193,7 @@ Inductive ext_expr :=
 
   | spec_object_delete : object_loc -> prop_name -> bool -> ext_expr
   | spec_object_delete_1 : builtin_delete -> object_loc -> prop_name -> bool -> ext_expr
-  | spec_object_delete_2 : object_loc -> prop_name -> bool -> full_descriptor -> ext_expr
+  | spec_object_delete_2 : object_loc -> prop_name -> bool -> (specret full_descriptor) -> ext_expr
   | spec_object_delete_3 : object_loc -> prop_name -> bool -> bool -> ext_expr
 
   | spec_object_default_value : object_loc -> option preftype -> ext_expr
@@ -210,7 +207,7 @@ Inductive ext_expr :=
 
   | spec_object_define_own_prop : object_loc -> prop_name -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_1 : builtin_define_own_prop -> object_loc -> prop_name -> descriptor -> bool -> ext_expr
-  | spec_object_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> full_descriptor -> ext_expr
+  | spec_object_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> (specret full_descriptor) -> ext_expr
   | spec_object_define_own_prop_3 : object_loc -> prop_name -> descriptor -> bool -> full_descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_4 : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_5 : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
@@ -282,7 +279,7 @@ Inductive ext_expr :=
 
   (** Extended expressions for operations on property descriptors (8.10) *)
 
-  | spec_from_descriptor : full_descriptor -> ext_expr
+  | spec_from_descriptor : (specret full_descriptor) -> ext_expr
   | spec_from_descriptor_1 : attributes -> out -> ext_expr
   | spec_from_descriptor_2 : object_loc -> attributes_data -> out -> ext_expr
   | spec_from_descriptor_3 : object_loc -> attributes_accessor -> out -> ext_expr
@@ -342,21 +339,21 @@ Inductive ext_expr :=
   | spec_make_arg_getter : object_loc -> string -> lexical_env -> ext_expr
   | spec_make_arg_setter : object_loc -> string -> lexical_env -> ext_expr
   
-  | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> full_descriptor -> ext_expr
+  | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> (specret full_descriptor) -> ext_expr
   
-  | spec_args_obj_get_own_prop_1 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
+  | spec_args_obj_get_own_prop_1 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> (specret full_descriptor) -> ext_expr
   | spec_args_obj_get_own_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> object_loc -> full_descriptor -> full_descriptor -> ext_expr
   | spec_args_obj_get_own_prop_3 : (full_descriptor -> ext_expr) -> full_descriptor -> out -> ext_expr
   | spec_args_obj_get_own_prop_4 : (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
   
-  | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> full_descriptor -> ext_expr
+  | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> (specret full_descriptor) -> ext_expr
   | spec_args_obj_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> full_descriptor -> out -> ext_expr
   | spec_args_obj_define_own_prop_3 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> out -> ext_expr
   | spec_args_obj_define_own_prop_4 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> ext_expr
   | spec_args_obj_define_own_prop_5 : out -> ext_expr
   | spec_args_obj_define_own_prop_6 : ext_expr
   
-  | spec_args_obj_delete_1 : object_loc -> prop_name -> bool -> object_loc -> full_descriptor -> ext_expr
+  | spec_args_obj_delete_1 : object_loc -> prop_name -> bool -> object_loc -> (specret full_descriptor) -> ext_expr
   | spec_args_obj_delete_2 : object_loc -> prop_name -> bool -> object_loc -> full_descriptor -> out -> ext_expr
   | spec_args_obj_delete_3 : out -> ext_expr
   | spec_args_obj_delete_4 : bool -> ext_expr
@@ -469,22 +466,22 @@ Inductive ext_expr :=
 
   | spec_call_object_seal_1 : value -> ext_expr
   | spec_call_object_seal_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> (specret full_descriptor) -> ext_expr
   | spec_call_object_seal_4 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> (specret full_descriptor) -> ext_expr
 
   | spec_call_object_freeze_1 : value -> ext_expr
   | spec_call_object_freeze_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> (specret full_descriptor) -> ext_expr
   | spec_call_object_freeze_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_freeze_5 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_frozen_1 : value -> ext_expr
   | spec_call_object_is_frozen_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_is_frozen_3 : object_loc -> list prop_name -> full_descriptor -> ext_expr
+  | spec_call_object_is_frozen_3 : object_loc -> list prop_name -> (specret full_descriptor) -> ext_expr
   | spec_call_object_is_frozen_4 : object_loc -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_is_frozen_5 : object_loc -> list prop_name -> full_descriptor -> ext_expr
 
@@ -510,7 +507,7 @@ Inductive ext_expr :=
   | spec_call_object_proto_prop_is_enumerable_1 : value -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_2 : out -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
-  | spec_call_object_proto_prop_is_enumerable_4 : full_descriptor -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_4 : (specret full_descriptor) -> ext_expr
   
   | spec_construct_bool_1 : out -> ext_expr
   | spec_call_bool_proto_to_string_1 : out -> ext_expr
@@ -673,6 +670,11 @@ with ext_spec :=
   | spec_to_descriptor_6b : out -> object_loc -> descriptor -> ext_spec
   | spec_to_descriptor_6c : out -> object_loc -> descriptor -> ext_spec
   | spec_to_descriptor_7 : object_loc -> descriptor -> ext_spec    
+
+  | spec_object_get_own_prop : object_loc -> prop_name -> ext_spec
+  | spec_object_get_own_prop_1 : builtin_get_own_prop -> object_loc -> prop_name -> ext_spec
+  | spec_object_get_own_prop_2 : object_loc -> prop_name -> option attributes -> ext_spec
+
 .
 
 
@@ -804,9 +806,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_eq1 _ _ => None
   | spec_eq2 _ _ _ => None
 
-  | spec_object_get_own_prop _ _ _ => None
-  | spec_object_get_own_prop_1 _ _ _ _ => None
-  | spec_object_get_own_prop_2 _ _ _ _ => None
   | spec_object_get_prop _ _ _ => None
   | spec_object_get_prop_1 _ _ _ _ => None
   | spec_object_get_prop_2 _ _ _ _ => None
@@ -1245,6 +1244,9 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_to_descriptor_6b o _ _=> Some o
   | spec_to_descriptor_6c o _ _ => Some o
   | spec_to_descriptor_7 _ _ => None
+  | spec_object_get_own_prop _ _ => None
+  | spec_object_get_own_prop_1 _ _ _ => None
+  | spec_object_get_own_prop_2 _ _ _ => None
 
   end.
 
