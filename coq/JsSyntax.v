@@ -163,7 +163,7 @@ with stat :=
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
   | stat_debugger : stat
-  | stat_switch : expr -> switchbody -> stat 
+  | stat_switch : label_set -> expr -> switchbody -> stat 
 
 with switchbody := 
   | switchbody_nodefault : list switchclause -> switchbody
@@ -237,7 +237,7 @@ Inductive prealloc :=
   | prealloc_object_get_own_prop_name  (* LATER: support *)
   | prealloc_object_create
   | prealloc_object_define_prop
-  | prealloc_object_define_properties
+  | prealloc_object_define_props
   | prealloc_object_seal
   | prealloc_object_freeze
   | prealloc_object_prevent_extensions

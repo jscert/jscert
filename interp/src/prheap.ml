@@ -23,7 +23,7 @@ let prprealloc = function
   | Coq_prealloc_object_get_own_prop_name -> "Coq_prealloc_object_get_own_prop_name"
   | Coq_prealloc_object_create -> "Coq_prealloc_object_create"
   | Coq_prealloc_object_define_prop -> "Coq_prealloc_object_define_prop"
-  | Coq_prealloc_object_define_properties -> "Coq_prealloc_object_define_properties"
+  | Coq_prealloc_object_define_props -> "Coq_prealloc_object_define_props"
   | Coq_prealloc_object_seal -> "Coq_prealloc_object_seal"
   | Coq_prealloc_object_freeze -> "Coq_prealloc_object_freeze"
   | Coq_prealloc_object_prevent_extensions -> "Coq_prealloc_object_prevent_extensions"
@@ -367,7 +367,7 @@ let dump_stat_step = function
   | Coq_stat_for_in _ -> "Stat_for_in"
   | Coq_stat_for_in_var _ -> "Stat_for_in_var"
   | Coq_stat_debugger -> "Stat_debugger"
-  | Coq_stat_switch (_, _) -> "Stat_switch"
+  | Coq_stat_switch (_, _, _) -> "Stat_switch"
 
 let dump_prog_step = function
   | Coq_prog_intro (b, es) ->

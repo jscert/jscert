@@ -20,7 +20,7 @@ executable add_test_cases
 
 executable manage_test_group
   main-is: manage_test_group.hs
-  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, cmdargs ==0.10.*, filepath ==1.3.*
+  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, cmdargs ==0.10.* && >=0.10.4, filepath ==1.3.*
 
 executable make_group_by_content
   main-is: make_group_by_content.hs

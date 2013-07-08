@@ -202,7 +202,7 @@ Definition prealloc_compare bl1 bl2 :=
   | prealloc_object_get_own_prop_name, prealloc_object_get_own_prop_name => true
   | prealloc_object_create, prealloc_object_create => true
   | prealloc_object_define_prop, prealloc_object_define_prop => true
-  | prealloc_object_define_properties, prealloc_object_define_properties => true
+  | prealloc_object_define_props, prealloc_object_define_props => true
   | prealloc_object_seal, prealloc_object_seal => true
   | prealloc_object_freeze, prealloc_object_freeze => true
   | prealloc_object_prevent_extensions, prealloc_object_prevent_extensions => true
@@ -1006,7 +1006,7 @@ Fixpoint stat_vardecl (t : stat) : list string :=
   | stat_for_in _ _ _ s => stat_vardecl s
   | stat_for_in_var _ _ _ _ s => stat_vardecl s
   | stat_debugger => nil
-  | stat_switch _ sb => switchbody_vardecl sb
+  | stat_switch _ _ sb => switchbody_vardecl sb
   end
 
 with switchbody_vardecl (sb : switchbody) : list string :=

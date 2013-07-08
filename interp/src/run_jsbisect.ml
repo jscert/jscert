@@ -47,7 +47,7 @@ let get_value_ref state r =
 		(JsInterpreterBisect.runs max_int)
 		state (JsPreliminary.execution_ctx_initial false)
 		(JsSyntax.Coq_resvalue_ref r) with
-    | JsInterpreterBisect.Coq_result_out (
+    | JsInterpreterBisect.Coq_result_some (
 	   JsSyntax.Coq_out_ter (_,
 	     { JsSyntax.res_type = JsSyntax.Coq_restype_normal ;
 		   JsSyntax.res_value =
@@ -94,7 +94,7 @@ let _ =
             (JsInterpreterBisect.runs max_int)
             exp'
     with
-    | JsInterpreterBisect.Coq_result_out o ->
+    | JsInterpreterBisect.Coq_result_some o ->
        begin
          match o with
          | JsSyntax.Coq_out_ter (state, res) ->

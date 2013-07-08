@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
 
   # The url from where the 'config.vm.box' box will be fetched if it
   # doesn't already exist on the user's system.
-  # config.vm.box_url = "http://domain.com/path/to/above.box"
+  config.vm.box_url = "http://files.vagrantup.com/precise32.box"
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
@@ -109,17 +109,20 @@ Vagrant.configure("2") do |config|
   #
   #   chef.validation_client_name = "ORGNAME-validator"
   $script = <<SCRIPT
-echo Setting up OCaml and Coq...
-sudo echo "deb [arch=amd64] http://www.recoil.org/~avsm/ wheezy main" >> /etc/apt/sources.list
+echo Setting up OCaml, Coq and Haskell...
 sudo apt-get update
-sudo apt-get install -y opam
-su vagrant -c "opam update"
-su vagrant -c "opam install ocaml"
-su vagrant -c "opam install coq"
-su vagrant -c "opam install ocamlfind"
-su vagrant -c "opam install xml-light"
-su vagrant -c "opam install bisect"
-echo You now have all you need to compile JSCert. Do inside "vagrant ssh", then run "make init ; make ; make".
+sudo apt-get install -y make cabal-install haddock curl git m4
+[ -a /home/vagrant/ocamlbrew ] || su vagrant -c "curl -kL https://raw.github.com/hcarty/ocamlbrew/master/ocamlbrew-install | env OCAMLBREW_FLAGS=\\"-r\\" bash > /dev/null"
+su vagrant -c "echo \\"export PATH=/home/vagrant/.cabal/bin:\\\\$PATH\\" >> ~/.bashrc"
+su vagrant -c "echo \\"source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc\\" >> ~/.bashrc"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam update"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y coq"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y ocamlfind"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y xml-light"
+su vagrant -c "source /home/vagrant/ocamlbrew/ocaml-4.00.1/etc/ocamlbrew.bashrc ; opam install -y bisect"
+su vagrant -c "cabal update > /dev/null"
+su vagrant -c "cabal install cabal-dev > /dev/null"
+echo You now have all you need to compile JSCert. Do "vagrant ssh", and run "cd /vagrant ; make init ; make ; make".
 SCRIPT
 
   config.vm.provision :shell, :inline => $script
