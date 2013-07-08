@@ -255,6 +255,8 @@ Definition eqabort o1 o :=
 Definition isout W (Pred:out->Prop) :=
   exists o1, W = result_some o1 /\ Pred o1.
 
+Hint Unfold isout.
+
 (* Generic *)
 
 Lemma if_some_out : forall (A B : Type) (oa : option A) K (b : B),
@@ -313,10 +315,32 @@ Lemma if_ter_out : forall W K o,
   if_ter W K = o ->
   isout W (if_ter_post K o).
 Proof.
-  introv H. destruct W as [o1 | | | ]; simpls; tryfalse.
+  introv H. destruct W as [o1| | | ]; simpls; tryfalse.
   exists o1. splits~. unfolds. destruct o1 as [|S R].
    inverts* H.
    jauto.
+Qed.
+
+Definition if_success_state_post rv0 K o o1 :=
+  (* An ugly lemma, but is that really possible to make something better? *)
+  (o1 = out_div /\ o = o1) \/
+  (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = o1) \/
+  (exists S R, o1 = out_ter S R /\ res_type R <> restype_throw /\
+    o = out_ter S (res_overwrite_value_if_empty rv0 R)) \/
+  exists S rv, o1 = out_ter S (res_normal rv) /\
+    K S (res_value (res_overwrite_value_if_empty rv0 rv)) = result_some o.
+
+Lemma if_success_state_out : forall rv W K o,
+  if_success_state rv W K = o ->
+  isout W (if_success_state_post rv K o).
+Proof.
+  introv E. forwards~ (o1&WE&P): if_ter_out (rm E). subst W. eexists. splits*.
+  inversion_clear P as [?|(S&R&?&H)]. branch~ 1.
+  substs. destruct R as [rt rv' rl]. destruct~ rt; simpls;
+    try solve [branch 3; repeat eexists; [discriminate | inverts~ H]].
+   forwards~ (?&?): if_empty_label_out (rm H). simpls. substs.
+    branch 4. repeat eexists. auto*.
+   inverts H. branch 2. repeat eexists.
 Qed.
 
 Definition if_success_post K o o1 :=
@@ -1376,6 +1400,26 @@ Proof.
      destruct (convert_value_to_boolean v); inverts* HP.
 Qed.
 
+
+Lemma run_call_default_correct : forall runs S C lf o,
+  runs_type_correct runs ->
+  run_call_default runs S C lf = o ->
+  red_expr S C (spec_call_default_1 lf) o.
+Admitted.
+
+Lemma creating_function_object_proto_correct : forall runs S C l o,
+  runs_type_correct runs ->
+  creating_function_object_proto runs S C l = o ->
+  red_expr S C (spec_creating_function_object_proto l) o.
+Admitted.
+
+Lemma creating_function_object_correct : forall runs S C names bd X str o,
+  runs_type_correct runs ->
+  creating_function_object runs S C names bd X str = o ->
+  red_expr S C (spec_creating_function_object names bd X str) o.
+Admitted.
+
+(* TODO:  Complete *)
 
 
 (**************************************************************)

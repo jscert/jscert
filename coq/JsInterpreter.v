@@ -279,7 +279,7 @@ Definition if_success_state rv W (K : state -> resvalue -> result) : result :=
         K S0 (res_value (res_overwrite_value_if_empty rv R)))
     | restype_throw => W
     | _ =>
-        out_ter S0 (res_overwrite_value_if_empty rv R)
+      out_ter S0 (res_overwrite_value_if_empty rv R)
     end).
 
 Definition if_success := if_success_state resvalue_empty.
@@ -288,7 +288,8 @@ Definition if_void (W : result_void) (K : state -> result) : result :=
   if_success W (fun S rv =>
     match rv with
     | resvalue_empty => K S
-    | _ => impossible_with_heap_because S "[if_void called] with non-void result value."
+    | _ =>
+      impossible_with_heap_because S "[if_void called] with non-void result value."
     end).
 
 Definition if_not_throw W (K : state -> res -> result) : result :=
