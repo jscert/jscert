@@ -294,9 +294,9 @@ Proof.
 Qed.
 
 Lemma if_spec_ter_out : forall T (W : specres T) K o,
-  if_spec_ter W K = result_some o ->
+  if_spec_ter W K = o ->
     (exists o, W = result_some (specret_out o) /\ abort o) \/
-    (exists S a, W = result_some (specret_val S a) /\ K S a = result_some o).
+    (exists S a, W = result_some (specret_val S a) /\ K S a = o).
 Proof.
   introv H. destruct W as [sp| | |]; tryfalse.
   destruct sp; [right* | left]. simpls. eexists. splits~.
@@ -898,16 +898,6 @@ Ltac run_simpl_run_error H T K ::=
      lets (K&N): run_error_correct C (rm H)
   end.
 
-Lemma out_error_or_cst_correct : forall S C str ne v o,
-  out_error_or_cst S str (ne : native_error) v = o ->
-  red_expr S C (spec_error_or_cst str ne v) o /\
-    (~ abort o -> o = out_ter S v).
-Proof.
-  introv E. unfolds in E. cases_if.
-   applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E. splits*.
-   inverts E. splits~. apply~ red_spec_error_or_cst_false.
-Qed.
-
 Lemma out_error_or_void_correct : forall S C str ne o,
   out_error_or_void S str (ne : native_error) = o ->
   red_expr S C (spec_error_or_void str ne) o /\
@@ -916,6 +906,16 @@ Proof.
   introv E. unfolds in E. cases_if.
    applys_and red_spec_error_or_void_true. forwards~ (RC&Cr): run_error_correct E. splits*.
    inverts E. splits~. apply~ red_spec_error_or_void_false.
+Qed.
+
+Lemma out_error_or_cst_correct : forall S C str ne v o,
+  out_error_or_cst S str (ne : native_error) v = o ->
+  red_expr S C (spec_error_or_cst str ne v) o /\
+    (~ abort o -> o = out_ter S v).
+Proof.
+  introv E. unfolds in E. cases_if.
+   applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E. splits*.
+   inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
 
 (* TODO:  Waiting for the specification.
@@ -944,6 +944,12 @@ Admitted. (* OLD
    substs. splits; introv Eq; inverts Eq.
 Qed. *)
 *)
+
+Lemma object_get_builtin_correct : forall runs,
+  runs_type_correct runs -> forall S C B vthis l x o,
+  object_get_builtin runs S C B vthis l x = o ->
+  red_expr S C (spec_object_get_1 B vthis l x) o.
+Admitted.
 
 Lemma run_object_get_correct : forall runs,
   runs_type_correct runs -> forall S C l x o,
@@ -1004,6 +1010,43 @@ Admitted. (* OLD
        cases_if; false.
       inverts~ Hab.
 Qed. *)
+
+(* TODO:  Waiting for specification
+Lemma object_can_put_correct *)
+
+Lemma object_define_own_prop_correct : forall runs,
+  runs_type_correct runs -> forall S C l x Desc str o,
+  object_define_own_prop runs S C l x Desc str = o ->
+  red_expr S C (spec_object_define_own_prop l x Desc str) o.
+Admitted.
+
+Lemma prim_new_object_correct : forall S C w o,
+  prim_new_object S w = o ->
+  red_expr S C (spec_prim_new_object w) o.
+Proof. introv H. false. Qed.
+
+Lemma to_object_correct : forall S C v o,
+  to_object S v = o ->
+  red_expr S C (spec_to_object v) o /\
+    (~ abort o -> exists S', exists (l : object_loc), o = S' l).
+Admitted.
+
+Definition if_to_object_post K o o1 :=
+  (eqabort o1 o \/
+    exists S, exists (l : object_loc), o1 = out_ter S l /\
+      K S l = result_some o).
+
+Lemma if_to_object_correct : forall S C v K o,
+  if_object (to_object S v) K = o -> exists o1,
+    red_expr S C (spec_to_object v) o1 /\
+      if_to_object_post K o o1.
+Admitted.
+
+Lemma prim_value_get_correct : forall runs,
+  runs_type_correct runs -> forall S C v x o,
+  prim_value_get runs S C v x = o ->
+  red_expr S C (spec_prim_value_get v x) o.
+Admitted.
 
 Lemma env_record_get_binding_value_correct : forall runs,
   runs_type_correct runs -> forall S C L rn rs o,
@@ -1321,7 +1364,7 @@ Proof.
   run_inv. apply~ red_expr_this.
   (* identifier *)
   (* apply~ red_expr_identifier. *)
-  skip. (* FIXME:  [spec_identifier_resolution] needs rules! *)
+  skip. (* TODO *)
   (* literal *)
   run_inv. apply~ red_expr_literal.
   (* object *)
