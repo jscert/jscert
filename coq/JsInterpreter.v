@@ -3,6 +3,109 @@ Require Import Shared.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 Require Import LibFix LibList.
 
+(* TODO: move to Shared once stable *)
+
+
+Definition let_binding (A B:Type) (v:A) (K:A->B) := K v.
+
+Notation "'Let' x ':=' v 'in' e" := (let_binding v (fun x => e))
+  (at level 69, x ident, right associativity,
+  format "'[v' '[' 'Let'  x  ':='  v  'in' ']'  '/'  '[' e ']' ']'").
+
+Lemma let_binding_unfold : forall (A B:Type) (v:A) (K:A->B),
+  let_binding v K = K v.
+Proof. reflexivity. Qed.
+
+Ltac let_get_fresh_binding_name K :=
+  match K with (fun x => _) => let y := fresh x in y end.
+
+(** [changes] is like [change] except that it does not silently 
+   fail to perform its task. Moreover, it does beta-unfolding *)
+
+Tactic Notation "changes" constr(E1) "with" constr(E2) "in" hyp(H) :=
+  asserts_rewrite (E1 = E2) in H; [ reflexivity | ].
+Tactic Notation "changes" constr(E1) "with" constr(E2) :=
+  asserts_rewrite (E1 = E2); [ reflexivity | ].
+Tactic Notation "changes" constr(E1) "with" constr(E2) "in" "*" :=
+  asserts_rewrite (E1 = E2) in *; [ reflexivity | ].
+
+Tactic Notation "let_inline" "in" hyp(H) := 
+  match type of H with context [ let_binding ?v ?K ] => 
+     changes (let_binding v K) with (K v) in H
+  end.
+
+Tactic Notation "let_simpl" "in" hyp(H) := 
+  match type of H with context [ let_binding ?v ?K ] => 
+     let x := let_get_fresh_binding_name K in
+     set_eq x: v in H; 
+     let_inline in H
+  end.
+
+Tactic Notation "let_simpl" "in" hyp(H) "as" ident(x) := 
+  match type of H with context [ let_binding ?v ?K ] => 
+     set_eq x: v in H;
+     let_inline in H
+  end.
+
+Tactic Notation "let_inline" := 
+  match goal with
+  | |- context [ let_binding ?v ?K ] => 
+     changes (let_binding v K) with (K v)
+  | H: context [ let_binding ?v ?K ] |- _ => let_inline in H
+  end.
+
+Tactic Notation "let_simpl" := 
+  match goal with  
+  | |- context [ let_binding ?v ?K ] => 
+     let x := let_get_fresh_binding_name K in
+     set_eq x: v; 
+     let_inline
+  | H: context [ let_binding ?v ?K ] |- _ => let_simpl in H
+  end.
+
+Tactic Notation "let_simpl" "as" ident(x) := 
+  match goal with  
+  | |- context [ let_binding ?v ?K ] => 
+     set_eq x: v;
+     let_inline
+  | H: context [ let_binding ?v ?K ] |- _ => let_simpl in H as x
+  end.
+  
+Definition let_binding_test_1 :
+  (Let x := 3 in Let y := x + x in y + y) = 12.
+Proof.
+  dup 3.
+  (* One can compute with Let *)
+  reflexivity.
+  (* One can inline Let step by step *)
+  simpl. (* does nothing *)
+  let_inline.
+  let_inline.
+  reflexivity.
+  (* One can name the arguments of Let step by step *)
+  let_simpl.
+  let_simpl as z.
+  subst x. subst z. reflexivity.
+Qed.
+  
+Definition let_binding_test_2 :
+  (Let x := 3 in Let y := x + x in y + y) = 12 -> True.
+Proof.
+  dup 2; intros H.
+  (* One can inline Let step by step *)
+  simpl in H. (* does nothing *)
+  let_inline in H.
+  let_inline in H.
+  auto.
+  (* One can name the arguments of Let step by step *)
+  let_simpl in H.
+  let_simpl in H as z.
+  subst x. subst z. auto.
+Qed.  
+  
+  
+
+
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -286,14 +389,12 @@ Definition if_some_or_default {A B : Type} (o : option B) (d : A) (K : B -> A) :
 Definition convert_option_attributes : option attributes -> option full_descriptor :=
   option_map (fun A => A : full_descriptor).
 
-Definition if_abort {A : Type} o (K : unit -> resultof A) : resultof A :=
+Definition if_abort {T} o (K : unit -> resultof T) : resultof T :=
   match o with
   | out_ter S0 R =>
-    match res_type R with
-    | restype_normal =>
+    ifb res_type R = restype_normal then
       impossible_with_heap_because S0 "[if_abort] received a normal result!"
-    | _ => K tt
-    end
+    else K tt
   | _ => K tt
   end.
 
@@ -456,7 +557,7 @@ Definition run_object_get runs S C l x : result :=
 
 Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
   if_some (run_object_method object_get_own_prop_ S l) (fun B =>
-    let default S' :=
+    Let default := fun S' =>
       if_some (run_object_method object_properties_ S' l) (fun P =>
         result_val S' (
           if_some_or_default (convert_option_attributes (Heap.read_option P x))
@@ -565,7 +666,7 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
     match B with
     | builtin_define_own_prop_default =>
       if_spec_ter (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
-        let reject S :=
+        Let reject := fun S =>
           out_error_or_cst S str native_error_type false
         in if_some (run_object_method object_extensible_ S1 l) (fun ext =>
              match D, ext with
@@ -578,12 +679,12 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                in if_some (pick_option (object_set_property S1 l x A)) (fun S2 =>
                     result_some (out_ter S2 true))
              | full_descriptor_some A, bext =>
-               let object_define_own_prop_write S1 A :=
+               Let object_define_own_prop_write := fun S1 A =>
                  let A' := attributes_update A Desc in
                  if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
                    result_some (out_ter S2 true))
                in ifb descriptor_contains A Desc then
-                 out_ter S1 true
+                 result_some (out_ter S1 true)
                else ifb attributes_change_enumerable_on_non_configurable A Desc then
                  reject S1
                else ifb descriptor_is_generic Desc then
@@ -941,7 +1042,7 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
     | builtin_default_value_default =>
       let gpref := unsome_default preftype_number prefo in
       let lpref := other_preftypes gpref in
-      let sub S' x K :=
+      Let sub := fun S' x K =>
         if_value (run_object_get runs S' C l x) (fun S1 vfo =>
           if_some (run_callable S1 vfo) (fun co =>
             match co with
@@ -977,13 +1078,8 @@ Definition to_number runs S C v : result :=
   end.
 
 Definition to_integer runs S C v : result :=
-  if_success (to_number runs S C v) (fun S1 rv1 =>
-    match rv1 with
-    | prim_number n =>
-      out_ter S1 (convert_number_to_integer n)
-    | _ =>
-      impossible_with_heap_because S1 "[to_number] failed in [to_integer]."
-    end).
+  if_number (to_number runs S C v) (fun S1 n =>
+    out_ter S1 (convert_number_to_integer n)).
 
 Definition to_int32 runs S C v (K : state -> int -> result) : result :=
   if_number (to_number runs S C v) (fun S' n =>
@@ -1017,15 +1113,14 @@ Definition call_object_new S v : result :=
     out_ter S' l
   end.
 
-Definition bool_proto_value_of_call S C : result :=
-  let v := execution_ctx_this_binding C in
-  if_some (run_value_viewable_as_prim "Boolean" S v) (fun vw =>
+Definition bool_proto_value_of_call S vthis : result :=
+  if_some (run_value_viewable_as_prim "Boolean" S vthis) (fun vw =>
     match vw with
     | Some (prim_bool b) => out_ter S b
     | _ => run_error S native_error_type
     end).
 
-Definition run_construct_prealloc runs B S C (args : list value) : result :=
+Definition run_construct_prealloc runs S C B (args : list value) : result :=
   match B with
 
   | prealloc_object =>
@@ -1044,17 +1139,17 @@ Definition run_construct_prealloc runs B S C (args : list value) : result :=
     out_ter S' l
 
   | prealloc_number =>
-    let follow S' v :=
+    Let follow := fun S' v =>
       let O1 := object_new prealloc_number_proto "Number" in
       let O := object_with_primitive_value O1 v in
       let '(l, S1) := object_alloc S' O in
-      out_ter S1 l
+      out_ter S1 l : result
       in
     ifb args = nil then
       follow S JsNumber.zero
     else
       let v := get_arg 0 args in
-      if_value (to_number runs S C v) follow
+      if_number (to_number runs S C v) follow
 
   | prealloc_array =>
     result_not_yet_implemented (* TODO:  Waiting for specification*)
@@ -1095,7 +1190,7 @@ Definition run_construct runs S C co l args : result :=
   | construct_default =>
     run_construct_default runs S C l args
   | construct_prealloc B =>
-    run_construct_prealloc runs B S C args
+    run_construct_prealloc runs S C B args
   | construct_after_bind =>
     impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
   end.
@@ -1106,7 +1201,7 @@ Definition run_construct runs S C co l args : result :=
 
 Definition run_call_default runs S C (lf : object_loc) : result :=
   (* Corresponds to the [spec_call_default_1] of the specification. *)
-  let follow W :=
+  Let follow := fun W =>
     if_success_or_return W
       (fun S' => out_ter S' undef) out_ter
   in let default := out_ter S undef
@@ -1120,7 +1215,7 @@ Definition run_call_default runs S C (lf : object_loc) : result :=
        end).
 
 Definition creating_function_object_proto runs S C l : result :=
-  if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S1 lproto =>
+  if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 lproto =>
     let A1 := attributes_data_intro l true false true in
     if_bool (object_define_own_prop runs S1 C lproto "constructor" A1 false) (fun S2 b =>
       let A2 := attributes_data_intro lproto true false false in
@@ -1151,7 +1246,7 @@ Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list
   | argname :: names' =>
     let v := hd undef args in
     if_spec_ter (env_record_has_binding runs S C L argname) (fun S1 hb =>
-      let follow S' :=
+      Let follow := fun S' =>
         if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S'' =>
           binding_inst_formal_params runs S'' C L (tl args) names' str)
       in if hb then follow S1
@@ -1167,7 +1262,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
       let fparams := funcdecl_parameters fd in
       let fname := funcdecl_name fd in
       if_object (creating_function_object runs S C fparams fbd (execution_ctx_variable_env C) str_fd) (fun S1 fo =>
-        let follow S2 :=
+        Let follow := fun S2 =>
           if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
             binding_inst_function_decls runs S3 C L fds' str bconfig)
         in if_spec_ter (env_record_has_binding runs S1 C L fname) (fun S2 has =>
@@ -1222,14 +1317,14 @@ Fixpoint arguments_object_map_loop runs S C l xs len args L str lmap xsmap : res
                     builtin_delete_args_obj in
         out_void (object_write S l O')))
   | S len' => (* args <> nil *)
-    let arguments_object_map_loop' S xsmap :=
+    Let arguments_object_map_loop' := fun S xsmap =>
       arguments_object_map_loop runs S C l xs len' (removelast args) L str lmap xsmap in
     let A := attributes_data_intro_all_true (last args undef) in
     if_bool (object_define_own_prop runs S C l (convert_prim_to_string len') A false) (fun S1 b =>
       ifb len' >= length xs then
         arguments_object_map_loop' S1 xsmap
       else (
-        let x := List.nth len' xs "" in
+        Let x := List.nth len' xs "" in
         ifb str = true \/ In x xsmap then
           arguments_object_map_loop' S1 xsmap
         else
@@ -1242,7 +1337,7 @@ Fixpoint arguments_object_map_loop runs S C l xs len args L str lmap xsmap : res
   end.
 
 Definition arguments_object_map runs S C l xs args L str : result_void :=
-  if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S' lmap =>
+  if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S' lmap =>
     arguments_object_map_loop runs S' C l xs (length args) args L str lmap nil).
 
 Definition create_arguments_object runs S C lf xs args L str : result :=
@@ -1276,12 +1371,12 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
   destr_list (execution_ctx_variable_env C) (fun _ => impossible_with_heap_because S
     "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst].") (fun L _ =>
     let str := prog_intro_strictness p in
-    let follow S' names :=
+    Let follow := fun S' names =>
       let bconfig := decide (ct = codetype_eval) in
       let fds := prog_funcdecl p in
       if_void (binding_inst_function_decls runs S' C L fds str bconfig) (fun S1 =>
         if_spec_ter (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
-          let follow2 S' :=
+          Let follow2 := fun S' =>
             let vds := prog_vardecl p in
             binding_inst_var_decls runs S' C L vds str (prog_intro_strictness p)
           in match ct, funco, bdefined with
@@ -1307,7 +1402,7 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
   if_some (run_object_method object_code_ S lf) (fun bdo =>
     if_some bdo (fun bd =>
       let str := funcbody_is_strict bd in
-      let follow S' vthis' :=
+      Let follow := fun S' vthis' =>
         if_some (run_object_method object_scope_ S' lf) (fun lexo =>
           if_some lexo (fun lex =>
             let '(lex', S1) := lexical_env_alloc_decl S' lex in
@@ -1365,8 +1460,8 @@ Definition from_prop_descriptor runs S C D : result :=
   match D with
   | full_descriptor_undef => out_ter S undef
   | full_descriptor_some A =>
-    if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S1 l =>
-      let follow S0 :=
+    if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 l =>
+      Let follow := fun S0 =>
         let A1 := attributes_data_intro_all_true (attributes_enumerable A) in
         if_void (object_define_own_prop runs S0 C l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' =>
           let A2 := attributes_data_intro_all_true (attributes_configurable A) in
@@ -1445,17 +1540,17 @@ Definition convert_twice {A : Type} (ifv : result -> (state -> A -> result) -> r
 
 Definition run_equal runs S (conv_number conv_primitive : state -> value -> result)
     v1 v2 : result :=
-  let checkTypesThen S0 v1 v2 (K : type -> type -> result) :=
+  Let checkTypesThen := fun S0 v1 v2 (K : type -> type -> result) =>
     let ty1 := type_of v1 in
     let ty2 := type_of v2 in
     ifb ty1 = ty2 then
       out_ter S0 (equality_test_for_same_type ty1 v1 v2) : result
     else K ty1 ty2 in
   checkTypesThen S v1 v2 (fun ty1 ty2 =>
-    let dc_conv v1 F v2 :=
+    Let dc_conv := fun v1 F v2 =>
       if_value (F S v2) (fun S0 v2' =>
         runs_type_equal runs S0 conv_number conv_primitive v1 v2') in
-    let so b :=
+    let so b : result :=
       out_ter S b in
     ifb (ty1 = type_null \/ ty1 = type_undef) /\ (ty2 = type_null \/ ty2 = type_undef) then
       so true
@@ -1474,17 +1569,17 @@ Definition run_equal runs S (conv_number conv_primitive : state -> value -> resu
     else so false).
 
 Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
-  let conv_primitive S v :=
+  Let conv_primitive := fun S v =>
     to_primitive runs S C v None in
-  let convert_twice_primitive :=
+  Let convert_twice_primitive :=
     convert_twice if_primitive conv_primitive in
-  let conv_number S v :=
+  Let conv_number := fun S v =>
     to_number runs S C v in
-  let convert_twice_number :=
+  Let convert_twice_number :=
     convert_twice if_number conv_number in
-  let conv_string S v :=
+  Let conv_string := fun S v =>
     to_string runs S C v in
-  let convert_twice_string :=
+  Let convert_twice_string :=
     convert_twice if_string conv_string in
 
   match op with
@@ -1551,7 +1646,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     end
 
   | binary_op_equal | binary_op_disequal =>
-    let finalPass b :=
+    Let finalPass := fun b =>
       match op with
       | binary_op_equal => Some b
       | binary_op_disequal => Some (negb b)
@@ -1665,13 +1760,13 @@ Section Interpreter.
 (** Some spec cases *)
 
 Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
-  let create_new_function_in S0 args bd :=
+  Let create_new_function_in := fun S0 args bd =>
     creating_function_object runs S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
-  match pds with
+  match pds return result with
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
     let x := string_of_propname pn in
-    let follows S1 A :=
+    Let follows := fun S1 A =>
       if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
         init_object runs S2 C l pds') in
     match pb with
@@ -1694,7 +1789,7 @@ Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
   match xeos with
   | nil => out_ter S res_empty
   | (x, eo) :: xeos' =>
-    let follow S' : result :=
+    Let follow := fun S' =>
       run_var_decl runs S' C xeos'
     in
     match eo with
@@ -1753,7 +1848,7 @@ Definition run_expr_access runs S C e1 e2 : result :=
 
 Definition run_expr_assign runs S C (opo : option binary_op) e1 e2 : result :=
   if_success (runs_type_expr runs S C e1) (fun S1 rv1 =>
-    let follow S rv' :=
+    Let follow := fun S rv' =>
       match rv' with
       | resvalue_value v =>
         if_void (ref_put_value runs S C rv1 v) (fun S' =>
@@ -1776,7 +1871,7 @@ Definition run_expr_function runs S C fo args bd : result :=
     creating_function_object runs S C args bd lex (funcbody_is_strict bd)
   | Some fn =>
     let '(lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
-    let follow L :=
+    Let follow := fun L =>
       if_some (pick_option (env_record_binds S' L)) (fun E =>
         if_void (env_record_create_immutable_binding S' L fn) (fun S1 =>
           if_object (creating_function_object runs S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
@@ -1847,7 +1942,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
         | value_object l =>
           ifb ~ (is_callable S3 l) then run_error S3 native_error_type
           else
-            let follow vthis :=
+            Let follow := fun vthis =>
               ifb l = prealloc_global_eval then
                 run_eval runs S3 C is_eval_direct vthis vs
               else runs_type_call runs S3 C l vthis vs in
@@ -1918,12 +2013,12 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
   run_expr_get_value runs S C e1 (fun S1 v1 =>
     if convert_value_to_boolean v1 then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
-        let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+        Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
         let loop tt := runs_type_stat_while runs S2 C rv' labs e1 t2 in
         ifb res_type R <> restype_continue
              \/ ~ res_label_in R labs then (
            ifb res_type R = restype_break /\ res_label_in R labs then (
-              out_ter S2 rv'
+              result_some (out_ter S2 rv')
            ) else (
               ifb res_type R <> restype_normal then (
                 out_ter S2 R
@@ -1937,7 +2032,7 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     else out_ter S1 rv).
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=
-  let finally res :=
+  Let finally := fun res =>
     match t3o with
     | None => res
     | Some t3 =>
@@ -1996,7 +2091,7 @@ Definition run_expr runs S C e : result :=
     run_expr_binary_op runs S C op e1 e2
 
   | expr_object pds =>
-    if_object (run_construct_prealloc runs prealloc_object S C nil) (fun S1 l =>
+    if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 l =>
       init_object runs S1 C l pds)
 
   | expr_member e1 f =>
@@ -2113,7 +2208,7 @@ Definition run_prog runs S C p : result :=
 
 (**************************************************************)
 
-Definition run_call_prealloc runs S C B (args : list value) : result :=
+Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   match B with
 
   | prealloc_global_is_nan =>
@@ -2236,9 +2331,9 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
               out_ter S (neg ext))
           | x :: xs' =>
             if_spec_ter (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
-              let check_configurable A :=
+              Let check_configurable := fun A =>
                 if attributes_configurable A then
-                  out_ter S0 false : result
+                  result_some (out_ter S0 false)
                 else object_is_frozen xs'
               in match D with
               | attributes_data_of Ad =>
@@ -2274,33 +2369,31 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
     end
 
   | prealloc_object_proto_to_string =>
-    let v := execution_ctx_this_binding C in
-    match v with
+    match vthis with
     | undef => out_ter S "[object Undefined]"
     | null => out_ter S "[object Null]"
     | _ =>
-      if_object (to_object S v) (fun S1 l =>
+      if_object (to_object S vthis) (fun S1 l =>
         if_some (run_object_method object_class_ S l) (fun s =>
           out_ter S1 ("[object " ++ s ++ "]")))
     end
 
   | prealloc_object_proto_value_of =>
-    to_object S (execution_ctx_this_binding C)
+    to_object S vthis
 
   | prealloc_object_proto_is_prototype_of =>
     let v := get_arg 0 args in
     match v with
     | value_prim w => out_ter S false
     | value_object l =>
-      let vt := execution_ctx_this_binding C in
-      if_object (to_object S vt) (fun S1 lo =>
+      if_object (to_object S vthis) (fun S1 lo =>
         runs_type_object_proto_is_prototype_of runs S1 lo l)
     end
 
   | prealloc_object_proto_prop_is_enumerable =>
     let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
-      if_object (to_object S1 (execution_ctx_this_binding C)) (fun S2 l =>
+      if_object (to_object S1 vthis) (fun S2 l =>
         if_spec_ter (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
           match D with
           | full_descriptor_undef =>
@@ -2321,11 +2414,11 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
     out_ter S' l
 
   | prealloc_bool_proto_to_string =>
-    if_bool (bool_proto_value_of_call S C) (fun S b =>
+    if_bool (bool_proto_value_of_call S vthis) (fun S b =>
       out_ter S (convert_bool_to_string b))
 
   | prealloc_bool_proto_value_of =>
-    bool_proto_value_of_call S C
+    bool_proto_value_of_call S vthis
 
   | prealloc_number =>
     ifb args = nil then
@@ -2335,8 +2428,7 @@ Definition run_call_prealloc runs S C B (args : list value) : result :=
       to_number runs S C v
 
   | prealloc_number_proto_value_of =>
-    let v := execution_ctx_this_binding C in
-    if_some (run_value_viewable_as_prim "Number" S v) (fun vw =>
+    if_some (run_value_viewable_as_prim "Number" S vthis) (fun vw =>
       match vw with
       | Some (prim_number n) => out_ter S n
       | _ => run_error S native_error_type
@@ -2356,7 +2448,7 @@ Definition run_call runs S C l vthis args : result :=
       | call_default =>
         entering_func_code runs S C l vthis args
       | call_prealloc B =>
-        run_call_prealloc runs S C B args
+        run_call_prealloc runs S C B vthis args
       | call_after_bind =>
         impossible_with_heap_because S "[run_call_full]:  [call_after_bind] found."
       end)).

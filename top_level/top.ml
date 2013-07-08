@@ -95,13 +95,18 @@ struct
   
   let translate_file file = Translate_syntax.coq_syntax_from_file file;;
   let translate_string str = Translate_syntax.coq_syntax_from_string str;;
+
+  let launch runs state ctx prog =
+    JsInterpreter.if_void
+      (JsInterpreter.execution_ctx_binding_inst runs state ctx JsSyntax.Coq_codetype_global None prog [])
+      (fun s' -> runs.JsInterpreter.runs_type_prog s' ctx prog)
   
   let eval env =
     let prog = if env.file then
       translate_file env.prog
     else
       translate_string env.prog in
-      JsInterpreter.execution_ctx_binding_inst env.runs_type env.state env.context JsSyntax.Coq_codetype_global None prog [];; 
+      launch env.runs_type env.state env.context prog;; 
   
   class environment e = object
     val env : env = e

@@ -425,7 +425,7 @@ Inductive ext_expr :=
   | spec_call : object_loc -> value -> list value -> ext_expr (* object with the call method, this value, arguments *)
   | spec_call_1 : call -> object_loc -> value -> list value -> ext_expr
 
-  | spec_call_prealloc : prealloc -> list value -> ext_expr
+  | spec_call_prealloc : prealloc -> value -> list value -> ext_expr
 
   | spec_call_default : object_loc -> value -> list value -> ext_expr
   | spec_call_default_1 : object_loc -> ext_expr
@@ -499,13 +499,13 @@ Inductive ext_expr :=
 
   | spec_call_object_proto_to_string_1 : value -> ext_expr
   | spec_call_object_proto_to_string_2 : out -> ext_expr
-  | spec_call_object_proto_is_prototype_of_2_1 : value -> ext_expr
+  | spec_call_object_proto_is_prototype_of_2_1 : value -> value -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_2 : out -> object_loc -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_4 : object_loc -> value -> ext_expr
 
-  | spec_call_object_proto_prop_is_enumerable_1 : value -> ext_expr
-  | spec_call_object_proto_prop_is_enumerable_2 : out -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_1 : value -> value -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_2 : value -> out -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_4 : (specret full_descriptor) -> ext_expr
   
@@ -1030,7 +1030,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call _ _ _ => None
   | spec_call_1 _ _ _ _ => None
 
-  | spec_call_prealloc _ _ => None
+  | spec_call_prealloc _ _ _ => None
 
   | spec_call_default _ _ _ => None
   | spec_call_default_1 _ => None
@@ -1104,13 +1104,13 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_call_object_proto_to_string_1 _ => None
   | spec_call_object_proto_to_string_2 o => Some o
-  | spec_call_object_proto_is_prototype_of_2_1 _ => None
+  | spec_call_object_proto_is_prototype_of_2_1 _ _ => None
   | spec_call_object_proto_is_prototype_of_2_2 o _ => Some o
   | spec_call_object_proto_is_prototype_of_2_3 _ _ => None
   | spec_call_object_proto_is_prototype_of_2_4 _ _ => None
 
-  | spec_call_object_proto_prop_is_enumerable_1 _ => None
-  | spec_call_object_proto_prop_is_enumerable_2 o => Some o
+  | spec_call_object_proto_prop_is_enumerable_1 _ _ => None
+  | spec_call_object_proto_prop_is_enumerable_2 _ o => Some o
   | spec_call_object_proto_prop_is_enumerable_3 o _ => Some o
   | spec_call_object_proto_prop_is_enumerable_4 _ => None
   
