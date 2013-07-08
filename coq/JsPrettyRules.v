@@ -697,25 +697,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
        ~ abort_intercepted_expr exte ->
       red_expr S C exte o
 
-  (** Reduction of lists of expressions *)
-
-  | red_expr_list_then : forall S C K es o,
-      red_expr S C (expr_list_then_1 K nil es) o ->
-      red_expr S C (expr_list_then K es) o
-
-  | red_expr_list_then_1_nil : forall S C K vs o,
-      red_expr S C (K vs) o ->
-      red_expr S C (expr_list_then_1 K vs nil) o
-
-  | red_expr_list_then_1_cons : forall S C K vs es e o o1,
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_expr S C (expr_list_then_2 K vs o1 es) o ->
-      red_expr S C (expr_list_then_1 K vs (e::es)) o
-
-  | red_expr_list_then_2 : forall S0 S C K v vs es o,
-      red_expr S C (expr_list_then_1 K (vs&v) es) o ->
-      red_expr S0 C (expr_list_then_2 K vs (out_ter S v) es) o
-
   (** This construct (11.1.1) *)
 
   | red_expr_this : forall S C v,
@@ -832,19 +813,25 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_expr_get_value e1) o1 ->
       red_expr S C (expr_new_1 o1 e2s) o ->
       red_expr S C (expr_new e1 e2s) o
-      
+  (* 
   | red_expr_new_1 : forall S0 S C e1 rv e2s v o o1, (* Step 3 *)
-      red_expr S C (expr_list_then (expr_new_2 v) e2s) o ->
+      red_expr S C (spec_list_then (expr_new_2 v) e2s) o ->
       red_expr S0 C (expr_new_1 (out_ter S v) e2s) o
-      
-  | red_expr_new_2_type_error : forall S C o v vs, (* Steps 4-5 *)
+  *)  
+
+  | red_expr_new_1 : forall S0 S C e1 rv e2s v o (y:specret (list value)), (* Step 3 *)
+      red_spec S C (spec_list_then e2s) y ->
+      red_expr S C (expr_new_2 v y)  o ->
+      red_expr S0 C (expr_new_1 (out_ter S v) e2s) o
+
+  | red_expr_new_2_type_error : forall S S0 C o v vs, (* Steps 4-5 *)
       (type_of v <> type_object) \/ (exists l, v = value_object l /\ object_construct S l None) ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_new_2 v vs) o
+      red_expr S0 C (expr_new_2 v (ret S vs)) o
       
-  | red_expr_new_2_construct : forall S C l vs v o, (* Step 6 *)
+  | red_expr_new_2_construct : forall S S0 C l vs v o, (* Step 6 *)
       red_expr S C (spec_construct l vs) o ->
-      red_expr S C (expr_new_2 (value_object l) vs) o
+      red_expr S0 C (expr_new_2 (value_object l) (ret S vs)) o
 
   (** Call (11.2.3) *)
 
@@ -858,20 +845,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_get_value rv) o1 ->
       red_expr S C (expr_call_2 rv is_eval_direct e2s o1) o ->
       red_expr S0 C (expr_call_1 (out_ter S rv) is_eval_direct e2s) o
-      
+  (* 
   | red_expr_call_2 : forall S0 S C o rv v e2s is_eval_direct, (* Step 3 *)
-      red_expr S C (expr_list_then (expr_call_3 rv v is_eval_direct) e2s) o ->
+      red_expr S C (spec_list_then (expr_call_3 rv v is_eval_direct) e2s) o ->
+      red_expr S0 C (expr_call_2 rv is_eval_direct e2s (out_ter S v)) o
+  *)
+
+  | red_expr_call_2 : forall S0 S C o rv v e2s is_eval_direct (y:specret (list value)), (* Step 3 *)
+      red_spec S C (spec_list_then e2s) y ->
+      red_expr S C (expr_call_3 rv v is_eval_direct y) o ->
       red_expr S0 C (expr_call_2 rv is_eval_direct e2s (out_ter S v)) o
 
   | red_expr_call_3 : forall l S C o rv v is_eval_direct vs, (* Steps 4-5 *)
       (type_of v <> type_object) \/ (v = value_object l /\ ~ is_callable S l) ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_call_3 rv v is_eval_direct vs) o
+      red_expr S C (expr_call_3 rv v is_eval_direct (ret S vs)) o
       
   | red_expr_call_3_callable : forall l S C o rv v is_eval_direct vs, (* Step 5 else *)
       is_callable S l ->
       red_expr S C (expr_call_4 rv l is_eval_direct vs) o ->
-      red_expr S C (expr_call_3 rv (value_object l) is_eval_direct vs) o
+      red_expr S C (expr_call_3 rv (value_object l) is_eval_direct (ret S vs)) o
 
   | red_expr_call_4_prop : forall v S C o r l is_eval_direct vs, (* Step 6a *)
       ref_is_property r -> 
@@ -4029,7 +4022,6 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** Conversion to unsigned 16-bit integer (passes an int to the continuation) : LATER (9.7) *)
 
-
   (** Auxiliary: conversion of two values at once (passes two values to the continuation) (9.1) *)
 
   | red_spec_convert_twice : forall S C ex1 ex2 o1 (y:specret (value*value)),
@@ -4060,6 +4052,24 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   | red_spec_expr_get_value_conv_2 : forall S0 S C v (y:specret value),
       red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v)
+
+  (** Reduction of lists of expressions *)
+
+  | red_spec_list_then : forall S C es (y:specret (list value)),
+      red_spec S C (spec_list_then_1 nil es) y ->
+      red_spec S C (spec_list_then es) y
+
+  | red_spec_list_then_1_nil : forall S C vs,
+      red_spec S C (spec_list_then_1 vs nil) (ret S vs)
+
+  | red_spec_list_then_1_cons : forall S C vs es e o1 (y:specret (list value)),
+      red_expr S C (spec_expr_get_value e) o1 ->
+      red_spec S C (spec_list_then_2 vs o1 es) y ->
+      red_spec S C (spec_list_then_1 vs (e::es)) y
+
+  | red_spec_list_then_2 : forall S0 S C v vs es (y:specret (list value)),
+      red_spec S C (spec_list_then_1 (vs&v) es) y ->
+      red_spec S0 C (spec_list_then_2 vs (out_ter S v) es) y
 
 .
 

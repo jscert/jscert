@@ -279,12 +279,12 @@ Lemma if_result_some_out : forall (A B : Type) (W : resultof A) K (b : B),
   exists (a : A), W = result_some a /\ K a = result_some b.
 Proof. introv H. destruct* W; tryfalse. Qed.
 
-(* TODO:  Lemma if_special_out : forall (A B : Type) (W : specres A) K *)
-(* TODO:  Lemma if_ter_special_out : forall T W K *)
-(* TODO:  Lemma if_success_special_out : forall T W K *)
-(* TODO:  Lemma if_value_special_out : forall T W K *)
-(* TODO:  Lemma if_special_ter_out : forall T (W : specres T) K o,
-  if_special_ter W K = result_some o -> *)
+(* TODO:  Lemma if_spec_out : forall (A B : Type) (W : specres A) K *)
+(* TODO:  Lemma if_ter_spec_out : forall T W K *)
+(* TODO:  Lemma if_success_spec_out : forall T W K *)
+(* TODO:  Lemma if_value_spec_out : forall T W K *)
+(* TODO:  Lemma if_spec_ter_out : forall T (W : specres T) K o,
+  if_spec_ter W K = result_some o -> *)
 
 (* Results *)
 
