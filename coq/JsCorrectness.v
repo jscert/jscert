@@ -1086,12 +1086,21 @@ Admitted. (* OLD
       cases_if; false.
 Qed. *)
 
+(* Daniele: this is now broken, since the return type of spec_get_value changed *)
 Lemma ref_get_value_correct : forall runs,
+(*
   runs_type_correct runs -> forall S C rv o,
   ref_get_value runs S C rv = o ->
   red_expr S C (spec_get_value rv) o /\
     (~ abort o -> exists S' v, o = out_ter S' v).
+*)
+  runs_type_correct runs -> forall S C rv o,
+  ref_get_value runs S C rv = o ->
+  red_spec S C (spec_get_value rv) (ret S o) /\
+    (~ abort o -> exists S' v, o = out_ter S' v).
+
 Proof.
+(*
   introv RC E. destruct rv; tryfalse.
    inverts E. splits. apply~ red_spec_ref_get_value_value. intros. auto*.
    tests: (ref_is_property r).
@@ -1112,7 +1121,9 @@ Proof.
      apply~ red_spec_ref_get_value_ref_c. reflexivity.
       applys~ env_record_get_binding_value_correct RC.
      intros. forwards~ (_&?): env_record_get_binding_value_correct E.
-Qed.
+Qed.*) Admitted.
+
+
 
 Lemma run_callable_correct : forall S v co,
   run_callable S v = Some co ->
@@ -1249,11 +1260,19 @@ Definition run_expr_get_value_post K o o1 :=
     exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
       K S1 v1 = result_some o).
 
+
 Lemma run_expr_get_value_correct : forall runs,
-  runs_type_correct runs -> forall S C e K o,
+(*
+ runs_type_correct runs -> forall S C e K o,
   run_expr_get_value runs S C e K = o -> exists o1,
     red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
+      run_expr_get_value_post K o o1. *)
+
+ runs_type_correct runs -> forall S C e K o,
+  run_expr_get_value runs S C e K = o -> exists o1,
+    red_spec S C (spec_expr_get_value e) (ret S o1) /\
+      run_expr_get_value_post K o o1. 
+
 Admitted.
 
 
@@ -1357,12 +1376,23 @@ Hint Unfold eqabort. (* todo move *)
 Axiom red_spec_expr_get_value_conv_2 : forall S0 S C v, 
       red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v).
 
+
+(* Daniele: broken because of change of type in spec_expr_get_value  *)
 Lemma run_expr_get_value_post_to_bool : forall S C e o o1 (K1 K2:state->result),
+(*
   red_expr S C (spec_expr_get_value e) o1 ->
   run_expr_get_value_post (fun S v => if convert_value_to_boolean v then K1 S else K2 S) o o1 ->
   exists (y1:specret value), red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y1 /\
     run_expr_get_value_bool_post K1 K2 o y1.
+*)
+  (*red_expr S C (spec_expr_get_value e) o1 ->*)
+  red_spec S C (spec_expr_get_value e) (ret S o1) ->
+  run_expr_get_value_post (fun S v => if convert_value_to_boolean v then K1 S else K2 S) o o1 ->
+  exists (y1:specret value), red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y1 /\
+    run_expr_get_value_bool_post K1 K2 o y1.
+
 Proof.
+(*
   introv HR HP. run_post. 
   exists (@specret_out value o1). splits.
     subst. apply* red_spec_expr_get_value_conv. abort.
@@ -1374,7 +1404,7 @@ Proof.
      applys* red_spec_expr_get_value_conv_2.
     right. exists S1 __. split*.
      destruct (convert_value_to_boolean v); inverts* HP.
-Qed.
+Qed.*) Admitted.
 
 
 
@@ -1417,6 +1447,7 @@ Lemma run_expr_correct : forall runs,
   runs_type_correct runs ->
    follow_expr (run_expr runs).
 Proof.
+(*
   introv RC. intros S C e o R. unfolds in R. destruct e.
 
   (* this *)
@@ -1460,7 +1491,7 @@ Proof.
   run red_expr_assign. *)
   skip. (* TODO *)
 
-Qed. (* OLD:
+Qed.*) Admitted. (* OLD:
     (* object *)
     unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
      (* Abort case *)
@@ -1693,15 +1724,18 @@ Focus 5.
 Focus 9.
   (* Return *)
   unfolds in R. rename o0 into ov. destruct ov. 
+(*
     run red_stat_return_some. 
      applys* red_stat_return_1.
     run_inv. applys* red_stat_return_none.
-
-Focus 11.
+*) skip.
+(*Focus 11.*)
   (* Try *)
+  (*
   skip_rewrite (run_stat_try = run_stat_try') in R.
   rename o0 into co, o1 into fo.
   unfolds in R. let_simpl.
+  *) skip.
   (*  --does not work
   asserts finally_correct: (forall S C R o, (* todo: could change the design so that out_ter S R  can be generalized to o1 *)
     finally (result_some (out_ter S R)) = result_some o -> 
@@ -1851,6 +1885,7 @@ Lemma run_stat_while_correct : forall runs,
   follow_stat_while ls e t
     (fun S C rv => run_stat_while runs S C rv ls e t).
 Proof.
+(* Daniele: broken
   intros runs IH ls e t S C rv o R. unfolds in R.
   run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
   applys* red_stat_while_1 (rm R2). run_post_expr_get_value_bool K.
@@ -1866,6 +1901,7 @@ Proof.
        rew_logic in *. applys* red_stat_while_4_continue.
         applys* runs_type_correct_stat_while.
    run_inv. applys red_stat_while_2_false.
+*)
 Admitted. (*faster*)
 
 

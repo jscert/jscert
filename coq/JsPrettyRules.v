@@ -216,24 +216,28 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_var_decl_item_1 x o1 e) o ->
       red_stat S C (stat_var_decl_item (x,Some e)) o
 
-  | red_stat_var_decl_item_1 : forall S S0 C x e o o1 r, 
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_var_decl_item_2 x r o1) o ->
+  | red_stat_var_decl_item_1 : forall S S0 C x e o r (y:specret value), 
+      red_spec S C (spec_expr_get_value e) y ->
+      red_stat S C (stat_var_decl_item_2 x r y) o ->
       red_stat S0 C (stat_var_decl_item_1 x (out_ter S r) e) o
 
   | red_stat_var_decl_item_2 : forall S S0 C r v o o1 x,  
       red_expr S C (spec_put_value r v) o1 ->
       red_stat S C (stat_var_decl_item_3 x o1) o ->
-      red_stat S0 C (stat_var_decl_item_2 x r (out_ter S v)) o
+      red_stat S0 C (stat_var_decl_item_2 x r (ret S v)) o
   
   | red_stat_var_decl_item_3 : forall S S0 C x rv,
       red_stat S0 C (stat_var_decl_item_3 x (out_ter S rv)) (out_ter S x)
 
   (** Expression (12.4) *)
 
-  | red_stat_expr : forall S C e o,
-      red_expr S C (spec_expr_get_value e) o ->
-      red_stat S C (stat_expr e) o
+| red_stat_expr : forall S C e o (y:specret value),
+     red_spec S C (spec_expr_get_value e) y ->
+     red_stat S C (stat_expr_1 y) o ->
+     red_stat S C (stat_expr e) o
+
+| red_stat_expr_1 : forall S0 S C v,
+     red_stat S0 C (stat_expr_1 (ret S v)) (out_ter S v)
 
   (** If statement (12.5) *)
  
@@ -383,13 +387,13 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_return_none : forall S C,
       red_stat S C (stat_return None) (out_ter S (res_return undef))
 
-  | red_stat_return_some : forall S C e o o1,
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_return_1 o1) o ->
+  | red_stat_return_some : forall S C e o (y:specret value),
+      red_spec S C (spec_expr_get_value e) y ->
+      red_stat S C (stat_return_1 y) o ->
       red_stat S C (stat_return (Some e)) o
 
   | red_stat_return_1 : forall S0 S C v,
-      red_stat S0 C (stat_return_1 (out_ter S v)) (out_ter S (res_return v))
+      red_stat S0 C (stat_return_1 (ret S v)) (out_ter S (res_return v))
 
   (** With statement (12.10) *)
 
@@ -407,20 +411,20 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Switch statement (12.11) *)
 (*!!!ARTHUR!!!*)
-  | red_stat_switch : forall S C e o o1 sb labs,
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_1 o1 labs sb) o ->
+  | red_stat_switch : forall S C e o sb labs (y:specret value),
+      red_spec S C (spec_expr_get_value e) y ->
+      red_stat S C (stat_switch_1 y labs sb) o ->
       red_stat S C (stat_switch labs e sb) o
 
   | red_stat_switch_1_nodefault : forall S S0 C vi o o1 scs labs, 
       red_stat S C (stat_switch_nodefault_1 vi resvalue_empty scs) o1 ->
       red_stat S C (stat_switch_2 o1 labs) o ->
-      red_stat S C (stat_switch_1 (out_ter S0 vi) labs (switchbody_nodefault scs)) o
+      red_stat S C (stat_switch_1 (ret S0 vi) labs (switchbody_nodefault scs)) o
 
   | red_stat_switch_1_default: forall S S0 C o o1 vi scs1 scs2 ts1 labs, 
       red_stat S C (stat_switch_default_A_1 false vi resvalue_empty scs1 ts1 scs2) o1 ->
       red_stat S C (stat_switch_2 o1 labs) o ->
-      red_stat S C (stat_switch_1 (out_ter S0 vi) labs (switchbody_withdefault scs1 ts1 scs2)) o
+      red_stat S C (stat_switch_1 (ret S0 vi) labs (switchbody_withdefault scs1 ts1 scs2)) o
 
   | red_stat_switch_2_break : forall S S0 C R rv lab labs,  (* step 3 *)
       R = res_intro restype_break rv lab ->
@@ -436,15 +440,15 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_nodefault_5 rv nil) o ->
       red_stat S C (stat_switch_nodefault_1 vi rv nil) o
 
-  | red_stat_switch_nodefault_1_cons : forall S C e vi rv ts scs o o1, 
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_nodefault_2 o1 vi rv ts scs) o ->
+  | red_stat_switch_nodefault_1_cons : forall S C e vi rv ts scs o (y:specret value), 
+      red_spec S C (spec_expr_get_value e) y ->
+      red_stat S C (stat_switch_nodefault_2 y vi rv ts scs) o ->
       red_stat S C (stat_switch_nodefault_1 vi rv ((switchclause_intro e ts)::scs)) o
 
   | red_stat_switch_nodefault_2 : forall S0 S C b vi v1 rv ts scs o, 
       b = (strict_equality_test v1 vi) ->
       red_stat S C (stat_switch_nodefault_3 b vi rv ts scs) o ->
-      red_stat S0 C (stat_switch_nodefault_2 (out_ter S v1) vi rv ts scs) o
+      red_stat S0 C (stat_switch_nodefault_2 (ret S v1) vi rv ts scs) o
 
   | red_stat_switch_nodefault_3_false : forall S C vi rv scs ts o,  
       red_stat S C (stat_switch_nodefault_1 vi rv scs) o ->
@@ -517,16 +521,16 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
-  | red_stat_switch_default_A_1_cons_false : forall S C e o o1 vi rv ts ts1 scs scs2,  
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_default_A_2 o1 false vi rv ts scs ts1 scs2) o ->
+  | red_stat_switch_default_A_1_cons_false : forall S C e o vi rv ts ts1 scs scs2 (y:specret value),  
+      red_spec S C (spec_expr_get_value e) y ->
+      red_stat S C (stat_switch_default_A_2 y false vi rv ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 false vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
 
   | red_stat_switch_default_A_2 : forall S0 S C b vi v1 rv ts scs ts1 scs2 o,  
       b = (strict_equality_test v1 vi) ->
       red_stat S C (stat_switch_default_A_3 b false vi rv ts scs ts1 scs2) o ->
-      red_stat S0 C (stat_switch_default_A_2 (out_ter S v1) false vi rv ts scs ts1 scs2) o
+      red_stat S0 C (stat_switch_default_A_2 (ret S v1) false vi rv ts scs ts1 scs2) o
 
   | red_stat_switch_default_A_3_false : forall S C b vi rv scs ts ts1 scs2 o,  
       red_stat S C (stat_switch_default_A_1 b vi rv scs ts1 scs2) o ->
@@ -553,15 +557,15 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_5 vi rv ts1 nil) o ->
       red_stat S C (stat_switch_default_B_1 vi rv ts1 nil) o
 
-  | red_stat_switch_default_B_1_cons : forall S C e o o1 vi rv ts ts1 scs,
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_default_B_2 o1 vi rv ts ts1 scs) o ->
+  | red_stat_switch_default_B_1_cons : forall S C e o vi rv ts ts1 scs (y:specret value),
+      red_spec S C (spec_expr_get_value e) y ->
+      red_stat S C (stat_switch_default_B_2 y vi rv ts ts1 scs) o ->
       red_stat S C (stat_switch_default_B_1 vi rv ts1 ((switchclause_intro e ts)::scs)) o
 
   | red_stat_switch_default_B_2 : forall S S0 C b vi v1 rv ts scs ts1 o,
       b = (strict_equality_test v1 vi) ->
       red_stat S C (stat_switch_default_B_3 b vi rv ts ts1 scs) o ->
-      red_stat S C (stat_switch_default_B_2 (out_ter S0 v1) vi rv ts ts1 scs) o
+      red_stat S C (stat_switch_default_B_2 (ret S0 v1) vi rv ts ts1 scs) o
 
   | red_stat_switch_default_B_3_false : forall S C vi rv scs ts ts1 o,
       red_stat S C (stat_switch_default_B_1 vi rv ts1 scs) o ->
@@ -622,13 +626,13 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
  (** Throw statement (12.13) *)
 
-  | red_stat_throw : forall S C e o o1,
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_throw_1 o1) o ->
+  | red_stat_throw : forall S C e o (y:specret value),
+      red_spec S C (spec_expr_get_value e) y ->
+      red_stat S C (stat_throw_1 y) o ->
       red_stat S C (stat_throw e) o
 
   | red_stat_throw_1 : forall S0 S C v,
-      red_stat S0 C (stat_throw_1 (out_ter S v)) (out_ter S (res_throw v))
+      red_stat S0 C (stat_throw_1 (ret S v)) (out_ter S (res_throw v))
 
   (** Try statement (12.14)
       -- See also the definition of [abort_intercepted_stat]. *)
@@ -736,15 +740,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_2 l x pb pds) o ->
       red_expr S C (expr_object_1 l ((pn,pb)::pds)) o
 
-  | red_expr_object_2_val : forall S C e o o1 l x pds, 
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_expr S C (expr_object_3_val l x o1 pds) o ->
+  | red_expr_object_2_val : forall S C e o l x pds (y:specret value), 
+      red_spec S C (spec_expr_get_value e) y ->
+      red_expr S C (expr_object_3_val l x y pds) o ->
       red_expr S C (expr_object_2 l x (propbody_val e) pds) o
 
   | red_expr_object_3_val : forall S S0 C l x A v o pds,
       A = attributes_data_intro v true true true ->
       red_expr S C (expr_object_4 l x A pds) o ->
-      red_expr S0 C (expr_object_3_val l x (out_ter S v) pds) o
+      red_expr S0 C (expr_object_3_val l x (ret S v) pds) o
   
   | red_expr_object_2_get : forall S C bd l x o o1 pds,
       red_expr S C (spec_create_new_function_in C nil bd) o1 ->
@@ -783,20 +787,20 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Access (11.2.1) *)
 
-  | red_expr_access : forall S C e1 e2 o o1,
-      red_expr S C (spec_expr_get_value e1) o1 ->
-      red_expr S C (expr_access_1 o1 e2) o ->
+  | red_expr_access : forall S C e1 e2 o (y:specret value),
+      red_spec S C (spec_expr_get_value e1) y ->
+      red_expr S C (expr_access_1 y e2) o ->
       red_expr S C (expr_access e1 e2) o
       
-  | red_expr_access_1 : forall S0 S C v1 o o1 e2,
-      red_expr S C (spec_expr_get_value e2) o1 ->
-      red_expr S C (expr_access_2 v1 o1) o ->
-      red_expr S0 C (expr_access_1 (out_ter S v1) e2) o
+  | red_expr_access_1 : forall S0 S C v1 o e2 (y:specret value),
+      red_spec S C (spec_expr_get_value e2) y ->
+      red_expr S C (expr_access_2 v1 y) o ->
+      red_expr S0 C (expr_access_1 (ret S v1) e2) o
       
   | red_expr_access_2 : forall S0 S C v1 v2 o1 o,
       red_expr S C (spec_check_object_coercible v1) o1 ->
       red_expr S C (expr_access_3 v1 o1 v2) o ->
-      red_expr S0 C (expr_access_2 v1 (out_ter S v2)) o
+      red_expr S0 C (expr_access_2 v1 (ret S v2)) o
 
   | red_expr_access_3 : forall S0 S C v1 v2 o1 o,
       red_expr S C (spec_to_string v2) o1 ->
@@ -809,20 +813,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** New (11.2.2, second part) *)
 
-  | red_expr_new : forall S C e1 e2s o o1, (* Steps 1-2 *)
-      red_expr S C (spec_expr_get_value e1) o1 ->
-      red_expr S C (expr_new_1 o1 e2s) o ->
+  | red_expr_new : forall S C e1 e2s o (y:specret value), (* Steps 1-2 *)
+      red_spec S C (spec_expr_get_value e1) y ->
+      red_expr S C (expr_new_1 y e2s) o ->
       red_expr S C (expr_new e1 e2s) o
-  (* 
-  | red_expr_new_1 : forall S0 S C e1 rv e2s v o o1, (* Step 3 *)
-      red_expr S C (spec_list_then (expr_new_2 v) e2s) o ->
-      red_expr S0 C (expr_new_1 (out_ter S v) e2s) o
-  *)  
 
   | red_expr_new_1 : forall S0 S C e1 rv e2s v o (y:specret (list value)), (* Step 3 *)
       red_spec S C (spec_list_then e2s) y ->
       red_expr S C (expr_new_2 v y)  o ->
-      red_expr S0 C (expr_new_1 (out_ter S v) e2s) o
+      red_expr S0 C (expr_new_1 (ret S v) e2s) o
 
   | red_expr_new_2_type_error : forall S S0 C o v vs, (* Steps 4-5 *)
       (type_of v <> type_object) \/ (exists l, v = value_object l /\ object_construct S l None) ->
@@ -841,20 +840,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_call_1 o1 is_eval_direct e2s) o2 ->
       red_expr S C (expr_call e1 e2s) o2
 
-  | red_expr_call_1 : forall o1 S0 S C o rv is_eval_direct e2s, (* Step 2 *)
-      red_expr S C (spec_get_value rv) o1 ->
-      red_expr S C (expr_call_2 rv is_eval_direct e2s o1) o ->
+  | red_expr_call_1 : forall o1 S0 S C o rv is_eval_direct e2s (y:specret value), (* Step 2 *)
+      red_spec S C (spec_get_value rv) y ->
+      red_expr S C (expr_call_2 rv is_eval_direct e2s y) o ->
       red_expr S0 C (expr_call_1 (out_ter S rv) is_eval_direct e2s) o
-  (* 
-  | red_expr_call_2 : forall S0 S C o rv v e2s is_eval_direct, (* Step 3 *)
-      red_expr S C (spec_list_then (expr_call_3 rv v is_eval_direct) e2s) o ->
-      red_expr S0 C (expr_call_2 rv is_eval_direct e2s (out_ter S v)) o
-  *)
-
+ 
   | red_expr_call_2 : forall S0 S C o rv v e2s is_eval_direct (y:specret (list value)), (* Step 3 *)
       red_spec S C (spec_list_then e2s) y ->
       red_expr S C (expr_call_3 rv v is_eval_direct y) o ->
-      red_expr S0 C (expr_call_2 rv is_eval_direct e2s (out_ter S v)) o
+      red_expr S0 C (expr_call_2 rv is_eval_direct e2s (ret S v)) o
 
   | red_expr_call_3 : forall l S C o rv v is_eval_direct vs, (* Steps 4-5 *)
       (type_of v <> type_object) \/ (v = value_object l /\ ~ is_callable S l) ->
@@ -927,15 +921,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_prepost_1 op o1) o ->
       red_expr S C (expr_unary_op op e) o
 
-  | red_expr_prepost_1_valid : forall S0 S C rv op o1 o,
-      red_expr S C (spec_get_value rv) o1 ->
-      red_expr S C (expr_prepost_2 op rv o1) o ->
+  | red_expr_prepost_1_valid : forall S0 S C rv op o1 o (y:specret value),
+      red_spec S C (spec_get_value rv) y ->
+      red_expr S C (expr_prepost_2 op rv y) o ->
       red_expr S0 C (expr_prepost_1 op (out_ter S rv)) o
  
   | red_expr_prepost_2 : forall S0 S C rv op v o1 o,    
       red_expr S C (spec_to_number v) o1 ->
       red_expr S C (expr_prepost_3 op rv o1) o ->
-      red_expr S0 C (expr_prepost_2 op rv (out_ter S v)) o
+      red_expr S0 C (expr_prepost_2 op rv (ret S v)) o
  
   | red_expr_prepost_3 : forall S0 S C rv op number_op is_pre v n1 n2 o1 o,  
       prepost_op op number_op is_pre ->
@@ -950,15 +944,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Unary op -- common rules for regular operators *)
 
-  | red_expr_unary_op : forall S C op e o1 o,
+  | red_expr_unary_op : forall S C op e o (y:specret value),
       regular_unary_op op ->
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_expr S C (expr_unary_op_1 op o1) o ->
+      red_spec S C (spec_expr_get_value e) y ->
+      red_expr S C (expr_unary_op_1 op y) o ->
       red_expr S C (expr_unary_op op e) o
 
   | red_expr_unary_op_1 : forall S0 S C op v o,
       red_expr S C (expr_unary_op_2 op v) o ->
-      red_expr S0 C (expr_unary_op_1 op (out_ter S v)) o
+      red_expr S0 C (expr_unary_op_1 op (ret S v)) o
 
   (** Unary op : delete (not a regular op) (11.4.1) *)
 
@@ -1004,22 +998,22 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_unary_op unary_op_typeof e) o
 
   | red_expr_typeof_1_value : forall S0 S C v o,
-      red_expr S C (expr_typeof_2 (out_ter S v)) o ->
+      red_expr S C (expr_typeof_2 (ret S v)) o ->
       red_expr S0 C (expr_typeof_1 (out_ter S v)) o
 
   | red_expr_typeof_1_ref_unresolvable : forall S0 S r C,
       ref_is_unresolvable r ->
       red_expr S0 C (expr_typeof_1 (out_ter S r)) (out_ter S "undefined")
 
-  | red_expr_typeof_1_ref_resolvable : forall S0 S C r o1 o,
+  | red_expr_typeof_1_ref_resolvable : forall S0 S C r o1 o (y:specret value),
       ~ (ref_is_unresolvable r) ->
-      red_expr S C (spec_get_value r) o1 ->
-      red_expr S C (expr_typeof_2 o1) o ->
+      red_spec S C (spec_get_value r) y ->
+      red_expr S C (expr_typeof_2 y) o ->
       red_expr S0 C (expr_typeof_1 (out_ter S r)) o
 
   | red_expr_typeof_2 : forall S0 S s C v o,
       s = typeof_value S v ->
-      red_expr S0 C (expr_typeof_2 (out_ter S v)) (out_ter S s)
+      red_expr S0 C (expr_typeof_2 (ret S v)) (out_ter S s)
 
   (** Unary op : add (11.4.6) *)
 
@@ -1060,20 +1054,20 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Binary op -- common rules for regular operators *)
 
-  | red_expr_binary_op : forall S C op e1 e2 o1 o,
+  | red_expr_binary_op : forall S C op e1 e2 o (y:specret value),
       regular_binary_op op ->
-      red_expr S C (spec_expr_get_value e1) o1 ->
-      red_expr S C (expr_binary_op_1 op o1 e2) o ->
+      red_spec S C (spec_expr_get_value e1) y ->
+      red_expr S C (expr_binary_op_1 op y e2) o ->
       red_expr S C (expr_binary_op e1 op e2) o
 
-  | red_expr_binary_op_1 : forall S0 S C op v1 e2 o2 o,
-      red_expr S C (spec_expr_get_value e2) o2 ->
-      red_expr S C (expr_binary_op_2 op v1 o2) o ->
-      red_expr S0 C (expr_binary_op_1 op (out_ter S v1) e2) o
+  | red_expr_binary_op_1 : forall S0 S C op v1 e2 o (y:specret value),
+      red_spec S C (spec_expr_get_value e2) y ->
+      red_expr S C (expr_binary_op_2 op v1 y) o ->
+      red_expr S0 C (expr_binary_op_1 op (ret S v1) e2) o
 
   | red_expr_binary_op_2 : forall S0 S C op v1 v2 o,
       red_expr S C (expr_binary_op_3 op v1 v2) o ->
-      red_expr S0 C (expr_binary_op_2 op v1 (out_ter S v2)) o
+      red_expr S0 C (expr_binary_op_2 op v1 (ret S v2)) o
 
   (** Binary op : addition (11.6.1) *)
   
@@ -1263,25 +1257,29 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Binary op : lazy ops [and] and [or] (not regular ops) (11.11) *)
 
-  | red_expr_binary_op_lazy : forall S C op b_ret e1 e2 o1 o,
+  | red_expr_binary_op_lazy : forall S C op b_ret e1 e2 o (y:specret value),
       lazy_op op b_ret ->
-      red_expr S C (spec_expr_get_value e1) o1 ->
-      red_expr S C (expr_lazy_op_1 b_ret o1 e2) o ->
+      red_spec S C (spec_expr_get_value e1) y ->
+      red_expr S C (expr_lazy_op_1 b_ret y e2) o ->
       red_expr S C (expr_binary_op e1 op e2) o
 
   | red_expr_lazy_op_1 : forall S0 S C b_ret e1 e2 v1 v o2 o1 o,
       red_expr S C (spec_to_boolean v1) o1 ->
       red_expr S C (expr_lazy_op_2 b_ret v1 o1 e2) o ->      
-      red_expr S0 C (expr_lazy_op_1 b_ret (out_ter S v1) e2) o
+      red_expr S0 C (expr_lazy_op_1 b_ret (ret S v1) e2) o
 
   | red_expr_lazy_op_2_first : forall S0 S C b_ret b1 e2 v1,
       b1 = b_ret ->
       red_expr S0 C (expr_lazy_op_2 b_ret v1 (out_ter S b1) e2) (out_ter S v1)
 
-  | red_expr_lazy_op_2_second : forall S0 S C b_ret v1 b1 e2 o, 
+  | red_expr_lazy_op_2_second : forall S0 S C b_ret v v1 b1 e2 o (y:specret value), 
       b1 <> b_ret ->
-      red_expr S C (spec_expr_get_value e2) o ->
+      red_spec S C (spec_expr_get_value e2) y ->
+      red_expr S C (expr_lazy_op_2_1 y) o ->
       red_expr S0 C (expr_lazy_op_2 b_ret v1 (out_ter S b1) e2) o
+
+  | red_expr_lazy_op_2_second_1: forall S0 S C v,
+      red_expr S0 C (expr_lazy_op_2_1 (ret S v)) (out_ter S v)
 
   (** Conditional operator (11.12) *)
 
@@ -1290,10 +1288,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_conditional_1 y1 e2 e3) o ->
       red_expr S C (expr_conditional e1 e2 e3) o
 
-  | red_expr_conditional_1 : forall S0 S C e b e2 e3 o,
+  | red_expr_conditional_1 : forall S0 S C v e b e2 e3 o (y:specret value),
       e = (If b = true then e2 else e3) ->
-      red_expr S C (spec_expr_get_value e) o ->
+      red_spec S C (spec_expr_get_value e) y ->
+      red_expr S C (expr_conditional_2 y) o ->
       red_expr S0 C (expr_conditional_1 (vret S b) e2 e3) o
+
+  | red_expr_conditional_2 : forall S0 S C v,
+      red_expr S0 C (expr_conditional_2 (ret S v)) (out_ter S v)
+      
+
 
   (** Assignment (11.13) *)
   
@@ -1302,30 +1306,34 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_assign_1 o1 opo e2) o ->
       red_expr S C (expr_assign e1 opo e2) o
  
-  | red_expr_assign_1_simple : forall S0 S C rv e2 o o1,
-      red_expr S C (spec_expr_get_value e2) o1 ->
-      red_expr S C (expr_assign_4 rv o1) o ->
+  | red_expr_assign_1_simple : forall S0 S C rv e2 o (y:specret value),
+      red_spec S C (spec_expr_get_value e2) y ->
+      red_expr S C (expr_assign_4 rv y) o ->
       red_expr S0 C (expr_assign_1 (out_ter S rv) None e2) o
 
-  | red_expr_assign_1_compound : forall S0 S C rv op e2 o o1,
-      red_expr S C (spec_get_value rv) o1 ->
-      red_expr S C (expr_assign_2 rv o1 op e2) o ->
+  | red_expr_assign_1_compound : forall S0 S C rv op e2 o (y:specret value),
+      red_spec S C (spec_get_value rv) y ->
+      red_expr S C (expr_assign_2 rv y op e2) o ->
       red_expr S0 C (expr_assign_1 (out_ter S rv) (Some op) e2) o
 
-  | red_expr_assign_2_compound_get_value : forall S0 S C rv op v1 o2 e2 o,
-      red_expr S C (spec_expr_get_value e2) o2 ->
-      red_expr S C (expr_assign_3 rv v1 op o2) o ->
-      red_expr S0 C (expr_assign_2 rv (out_ter S v1) op e2) o
+  | red_expr_assign_2_compound_get_value : forall S0 S C rv op v1 e2 o (y:specret value),
+      red_spec S C (spec_expr_get_value e2) y ->
+      red_expr S C (expr_assign_3 rv v1 op y) o ->
+      red_expr S0 C (expr_assign_2 rv (ret S v1) op e2) o
 
   | red_expr_assign_3_compound_op : forall S0 S C rv op v1 v2 o1 o,
       red_expr S C (expr_binary_op_3 op v1 v2) o1 ->
-      red_expr S C (expr_assign_4 rv o1) o ->
-      red_expr S0 C (expr_assign_3 rv v1 op (out_ter S v2)) o
+      red_expr S C (expr_assign_3' rv o1) o -> 
+      red_expr S0 C (expr_assign_3 rv v1 op (ret S v2)) o
+
+| red_expr_assign_3': forall S0 S C v rv o, 
+      red_expr S C (expr_assign_4 rv (ret S v)) o ->
+      red_expr S0 C (expr_assign_3' rv (out_ter S v)) o
 
   | red_expr_assign_4_put_value : forall S0 S C rv v o1 o,
       red_expr S C (spec_put_value rv v) o1 ->
       red_expr S C (expr_assign_5 v o1) o ->
-      red_expr S0 C (expr_assign_4 rv (out_ter S v)) o
+      red_expr S0 C (expr_assign_4 rv (ret S v)) o
 
   | red_expr_assign_5_return : forall S0 S C rv' v,
       red_expr S0 C (expr_assign_5 v (out_ter S rv')) (out_ter S v)
@@ -1597,9 +1605,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_can_put_2 l x y) o ->      
       red_expr S C (spec_object_can_put_1 builtin_can_put_default l x) o  
 
-  (* Daniele: in the next 2 rules there is a type problem. The 3rd argument to spec_object_can_put_2
-     is declared as (specret full_descriptor) but (attributes_accessor_of Aa) has type attribute.
-     I guess it is a coercion problem...? *)
   | red_spec_object_can_put_2_accessor : forall S0 S C l x Aa b, (* Steps 2 and 2.a *)
       b = (If attributes_accessor_set Aa = undef then false else true) ->
       red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_accessor_of Aa))) (out_ter S b)
@@ -1893,29 +1898,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Operations on references (8.7) *)
 
-  (** Get value on a reference (returns value) (8.7.1) *)
-
-  | red_spec_ref_get_value_value : forall S C v, (* Step 1 *)
-      red_expr S C (spec_get_value v) (out_ter S v)
-
-  | red_spec_ref_get_value_ref_a : forall S C r o, (* Steps 2 and 3 *)
-      ref_is_unresolvable r ->
-      red_expr S C (spec_error native_error_ref) o ->
-      red_expr S C (spec_get_value r) o
-
-  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o, (* Steps 2 and 4 *)
-      ref_is_property r ->
-      ref_base r = ref_base_type_value v ->
-      ext_get = (If ref_has_primitive_base r
-        then spec_prim_value_get
-        else spec_object_get) -> (* It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
-      red_expr S C (ext_get v (ref_name r)) o ->
-      red_expr S C (spec_get_value r) o
-
-  | red_spec_ref_get_value_ref_c : forall L S C r o, (* Step 5. *)
-      ref_base r = ref_base_type_env_loc L ->
-      red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o ->
-      red_expr S C (spec_get_value r) o
+    (** Get value on a reference (returns value) (8.7.1) --- MOVED *)
 
   (** Special Get method for primitive values (returns value)  (8.7.1) 
       Note: implemented with the same rules as [spec_object_get] *)
@@ -1973,16 +1956,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put_1 builtin_put_default w l x v throw) o ->
       red_expr S0 C (spec_prim_value_put_1 w x v throw (out_ter S l)) o
 
-  (** Auxiliary: [spec_expr_get_value] as a combination of [red_expr] and [get_value] *)
-
-  | red_spec_expr_get_value : forall S C e o o1,
-      red_expr S C e o1 ->
-      red_expr S C (spec_expr_get_value_1 o1) o ->
-      red_expr S C (spec_expr_get_value e) o
-
-  | red_spec_expr_get_value_1 : forall S0 S C rv o,
-      red_expr S C (spec_get_value rv) o ->
-      red_expr S0 C (spec_expr_get_value_1 (out_ter S rv)) o
 
 
   (*------------------------------------------------------------*)
@@ -3895,18 +3868,34 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   (** Auxiliary: [spec_expr_get_value_conv] as a combination
       of [spec_expr_get_value] and a conversion *)
 
-  | red_spec_expr_get_value_conv : forall S C e K o1 (y:specret value),
-      red_expr S C (spec_expr_get_value e) o1 -> 
-      red_spec S C (spec_expr_get_value_conv_1 K o1) y -> 
+  | red_spec_expr_get_value_conv : forall S C e K (y:specret value) (y1:specret value),
+      red_spec S C (spec_expr_get_value e) y1 -> 
+      red_spec S C (spec_expr_get_value_conv_1 K y1) y -> 
       red_spec S C (spec_expr_get_value_conv K e) y
 
   | red_spec_expr_get_value_conv_1 : forall S0 S C K v o1 (y:specret value),
       red_expr S C (K v) o1 ->
       red_spec S0 C (spec_expr_get_value_conv_2 o1) y ->
-      red_spec S0 C (spec_expr_get_value_conv_1 K (out_ter S v)) y
+      red_spec S0 C (spec_expr_get_value_conv_1 K (ret S v)) y
 
   | red_spec_expr_get_value_conv_2 : forall S0 S C v (y:specret value),
       red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v)
+
+
+(*
+  | red_spec_expr_get_value_conv : forall S C e K o (y:specret value),
+      red_spec S C (spec_expr_get_value e) y -> 
+      red_expr S C (spec_expr_get_value_conv_1 K y) o -> 
+      red_expr S C (spec_expr_get_value_conv K e) o
+
+  | red_spec_expr_get_value_conv_1 : forall S0 S C K v o1 o,
+      red_expr S C (K v) o1 ->
+      red_expr S0 C (spec_expr_get_value_conv_2 o1) o ->
+      red_expr S0 C (spec_expr_get_value_conv_1 K (ret S v)) o
+
+  | red_spec_expr_get_value_conv_2 : forall S0 S C v,
+      red_expr S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v)
+*)
 
   (** Reduction of lists of expressions *)
 
@@ -3917,14 +3906,14 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_list_then_1_nil : forall S C vs,
       red_spec S C (spec_list_then_1 vs nil) (ret S vs)
 
-  | red_spec_list_then_1_cons : forall S C vs es e o1 (y:specret (list value)),
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_spec S C (spec_list_then_2 vs o1 es) y ->
+  | red_spec_list_then_1_cons : forall S C vs es e o1 (y:specret (list value)) (y1:specret value),
+      red_spec S C (spec_expr_get_value e) y1 ->
+      red_spec S C (spec_list_then_2 vs y1 es) y ->
       red_spec S C (spec_list_then_1 vs (e::es)) y
 
   | red_spec_list_then_2 : forall S0 S C v vs es (y:specret (list value)),
       red_spec S C (spec_list_then_1 (vs&v) es) y ->
-      red_spec S0 C (spec_list_then_2 vs (out_ter S v) es) y
+      red_spec S0 C (spec_list_then_2 vs (ret S v) es) y
 
   (** ToPropertyDescriptor ( Obj ) - (passes a Descriptor to the continuation) (8.10.5) *)    
   (* TODO: make "o1" be last argument of the intermediate forms *)
@@ -4095,5 +4084,42 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   | red_spec_object_get_own_prop_2_some_data : forall S C l x A, (* Step 2 through 8 *)
       red_spec S C (spec_object_get_own_prop_2 l x (Some A)) (ret S (full_descriptor_some A)) 
+
+  (** Get value on a reference (returns value) (8.7.1) *)
+
+  | red_spec_ref_get_value_value : forall S C v, (* Step 1 *)
+      red_spec S C (spec_get_value v) (ret S v)
+
+  | red_spec_ref_get_value_ref_a : forall S C r o, (* Steps 2 and 3 *)
+      ref_is_unresolvable r ->
+      red_expr S C (spec_error native_error_ref) o ->
+      red_spec S C (spec_get_value r) (ret S o)
+
+  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o, (* Steps 2 and 4 *)
+      ref_is_property r ->
+      ref_base r = ref_base_type_value v ->
+      ext_get = (If ref_has_primitive_base r
+        then spec_prim_value_get
+        else spec_object_get) -> (* It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
+      red_expr S C (ext_get v (ref_name r)) o ->
+      red_spec S C (spec_get_value r) (ret S o)
+
+  | red_spec_ref_get_value_ref_c : forall L S C r o, (* Step 5. *)
+      ref_base r = ref_base_type_env_loc L ->
+      red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o ->
+      red_spec S C (spec_get_value r) (ret S o)
+
+  (** Auxiliary: [spec_expr_get_value] as a combination of [red_expr] and [get_value] *)
+
+  | red_spec_expr_get_value : forall S C e o1 (y:specret value),
+      red_expr S C e o1 ->
+      red_spec S C (spec_expr_get_value_1 o1) y ->
+      red_spec S C (spec_expr_get_value e) y
+
+  | red_spec_expr_get_value_1 : forall S0 S C rv o (y:specret value),
+      red_spec S C (spec_get_value rv) y ->
+      red_spec S0 C (spec_expr_get_value_1 (out_ter S rv)) y
+
+
 .
 
