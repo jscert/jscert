@@ -15,7 +15,7 @@ Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
 (*Implicit Type B : builtin.*)
-Implicit Type T : type.
+Implicit Type ty : type.
 
 Implicit Type rt : restype.
 Implicit Type rv : resvalue.
@@ -109,10 +109,10 @@ Definition type_of v :=
     be equivalent to logical equality. The spec states:
 
     Definition value_same v1 v2 :=
-      let T1 := type_of v1 in
-      let T2 := type_of v2 in
-      ifb T1 <> T2 then False else
-      match T1 with
+      let ty1 := type_of v1 in
+      let ty2 := type_of v2 in
+      ifb ty1 <> ty2 then False else
+      match ty1 with
       | type_undef => True
       | type_null => True
       | type_number =>
@@ -1139,11 +1139,11 @@ Definition convert_prim_to_string w :=
 (** ** Auxiliary functions for comparisons *)
 
 (** Abstract equality comparison for values of the same type.
-    (the code assumes [v1] and [v2] to both have type [T].) 
+    (the code assumes [v1] and [v2] to both have type [ty].) 
     (11.9.3) *)
 
-Definition equality_test_for_same_type T v1 v2 :=
-  match T with
+Definition equality_test_for_same_type ty v1 v2 :=
+  match ty with
   | type_undef => true
   | type_null => true
   | type_number =>
@@ -1164,10 +1164,10 @@ Definition equality_test_for_same_type T v1 v2 :=
 (** Strict equality comparison (11.9.6) *)
 
 Definition strict_equality_test v1 v2 :=
-  let T1 := type_of v1 in
-  let T2 := type_of v2 in
-  ifb T1 = T2
-    then equality_test_for_same_type T1 v1 v2
+  let ty1 := type_of v1 in
+  let ty2 := type_of v2 in
+  ifb ty1 = ty2
+    then equality_test_for_same_type ty1 v1 v2
     else false.
 
 (** Inequality comparison for numbers *)

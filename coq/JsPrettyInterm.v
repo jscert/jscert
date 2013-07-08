@@ -106,7 +106,7 @@ Inductive ext_expr :=
   | expr_prepost_3 : unary_op -> res -> out -> ext_expr
   | expr_prepost_4 : value -> out -> ext_expr
   | expr_unary_op_neg_1 : out -> ext_expr
-  | expr_unary_op_bitwise_not_1 : int -> ext_expr
+  | expr_unary_op_bitwise_not_1 : special int -> ext_expr
   | expr_unary_op_not_1 : out -> ext_expr
   | expr_conditional_1 : out -> expr -> expr -> ext_expr
   | expr_conditional_1': out -> expr -> expr -> ext_expr
@@ -151,8 +151,6 @@ Inductive ext_expr :=
   | spec_to_string_1 : out -> ext_expr
   | spec_to_object : value -> ext_expr
 
-  | spec_to_int32 : value -> (int -> ext_expr) -> ext_expr
-  | spec_to_int32_1 : out -> (int -> ext_expr) -> ext_expr
   | spec_to_uint32 : value -> (int -> ext_expr) -> ext_expr
   | spec_to_uint32_1 : out -> (int -> ext_expr) -> ext_expr
   | spec_check_object_coercible : value -> ext_expr
@@ -667,6 +665,13 @@ with ext_prog :=
   | prog_1 : resvalue -> elements -> ext_prog
   | prog_2 : resvalue -> out -> elements -> ext_prog
   | prog_3 : out -> elements -> ext_prog
+
+
+(** Grammar of extended forms for specification functions *)
+
+with ext_spec :=
+  | spec_to_int32 : value -> ext_spec
+  | spec_to_int32_1 : out -> ext_spec
 .
 
 
@@ -739,7 +744,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_prepost_3 _ _ o => Some o
   | expr_prepost_4 _ o => Some o
   | expr_unary_op_neg_1 o => Some o
-  | expr_unary_op_bitwise_not_1 _ => None
+  | expr_unary_op_bitwise_not_1 (special_out o) => Some o
+  | expr_unary_op_bitwise_not_1 (special_val _ _) => None
   | expr_unary_op_not_1 o => Some o
   | expr_conditional_1 o _ _ => Some o
   | expr_conditional_1' o _ _ => None
@@ -782,8 +788,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_to_string_1 o => Some o
   | spec_to_object _ => None
 
-  | spec_to_int32 _ _ => None
-  | spec_to_int32_1 o _ => Some o
   | spec_to_uint32 _ _ => None
   | spec_to_uint32_1 o _ => Some o
   | spec_check_object_coercible _ => None
@@ -1229,6 +1233,12 @@ Definition out_of_ext_prog (p : ext_prog) : option out :=
   | prog_3 o _ => Some o
   end.
 
+Definition out_of_ext_spec (es : ext_spec) : option out :=
+  match es with
+  | spec_to_int32 _ => None
+  | spec_to_int32_1 o => Some o
+  end.
+
 
 (**************************************************************)
 (** ** Rules for propagating aborting expressions *)
@@ -1296,6 +1306,8 @@ Inductive abort_intercepted_expr : ext_expr -> Prop :=
       res_type R = restype_throw ->
       abort_intercepted_expr (spec_call_global_eval_3 (out_ter S R)).
 
+Inductive abort_intercepted_spec : ext_spec -> Prop :=
+  .
 
 (**************************************************************)
 (** ** Auxiliary definition used in identifier resolution *)

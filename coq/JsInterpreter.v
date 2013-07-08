@@ -16,7 +16,7 @@ Implicit Type l : object_loc.
 Implicit Type w : prim.
 Implicit Type v : value.
 Implicit Type r : ref.
-Implicit Type T : type.
+Implicit Type ty : type.
 
 Implicit Type rt : restype.
 Implicit Type rv : resvalue.
@@ -53,6 +53,7 @@ Implicit Type Z : Type.
 
 (**************************************************************)
 (** ** Structure of This File *)
+
 (* Definitions of the datatypes used.
  * Monadic constructors.
  * Functions corresponding to the [spec_*] of the semantics.
@@ -70,30 +71,20 @@ Implicit Type Z : Type.
   * [result_impossible] should not happen and is probably the result of a broken invariant.
   * [result_bottom] means that the computation taked too long and we run out of fuel.
 *)
+
 Inductive resultof (A : Type) :=
   | result_some : A -> resultof A
   | result_not_yet_implemented
   | result_impossible
   | result_bottom : state -> resultof A. (* We could put any information there.  They can be used to create step by step interpreter. *)
+
 Implicit Arguments result_some [[A]].
 Implicit Arguments result_not_yet_implemented [[A]].
 Implicit Arguments result_impossible [[A]].
 Implicit Arguments result_bottom [[A]].
 
-(* Some intermediate form of the semantics do not return values when succeeding,
-  but rather descriptors or other types.  This wrapper is used to describe their
-  return:
-   * [special_val] is their normal output.
-   * [special_out] is used when an exception was thrown when executing this
-    function.  This returned [out] has to abort.
-*)
-Inductive special (A : Type) :=
-  | special_val : state -> A -> special A
-  | special_out : out -> special A.
-Implicit Arguments special_val [[A]].
-Implicit Arguments special_out [[A]].
-
 (* This is the most common result type. *)
+
 Definition result := resultof out.
 
 Implicit Type W : result.
@@ -102,22 +93,28 @@ Implicit Type W : result.
   carries a result, only an [out_void] of something (or an error).  The
   following type is there to differentiate those functions from the
   others. *)
+
 Definition result_void := result.
 
 (* It can be useful to get details on why a stuck is obtained. *)
 (* The cases where [result_impossible] is directly used are the cases
   where it has been proven impossible to get it under normal condition.
   See [JsCorrectness.v] for more details. *)
+
 Definition impossible_because {A : Type} s : resultof A := result_impossible.
+
 Definition impossible_with_heap_because {A : Type} S s : resultof A := result_impossible.
 
 Definition result_special (A : Type) := resultof (special A).
+
 Definition result_out {A : Type} o : result_special A :=
   result_some (special_out o).
+
 Definition result_val {A : Type} S (a : A) : result_special A :=
   result_some (special_val S a).
 
 (* Coercion *)
+
 Coercion result_some_out o : resultof out := result_some o.
 
 (* Inhabited *)
@@ -1465,30 +1462,30 @@ Definition convert_twice {A : Type} (ifv : result -> (state -> A -> result) -> r
 Definition run_equal runs S (conv_number conv_primitive : state -> value -> result)
     v1 v2 : result :=
   let checkTypesThen S0 v1 v2 (K : type -> type -> result) :=
-    let T1 := type_of v1 in
-    let T2 := type_of v2 in
-    ifb T1 = T2 then
-      out_ter S0 (equality_test_for_same_type T1 v1 v2) : result
-    else K T1 T2 in
-  checkTypesThen S v1 v2 (fun T1 T2 =>
+    let ty1 := type_of v1 in
+    let ty2 := type_of v2 in
+    ifb ty1 = ty2 then
+      out_ter S0 (equality_test_for_same_type ty1 v1 v2) : result
+    else K ty1 ty2 in
+  checkTypesThen S v1 v2 (fun ty1 ty2 =>
     let dc_conv v1 F v2 :=
       if_value (F S v2) (fun S0 v2' =>
         runs_type_equal runs S0 conv_number conv_primitive v1 v2') in
     let so b :=
       out_ter S b in
-    ifb (T1 = type_null \/ T1 = type_undef) /\ (T2 = type_null \/ T2 = type_undef) then
+    ifb (ty1 = type_null \/ ty1 = type_undef) /\ (ty2 = type_null \/ ty2 = type_undef) then
       so true
-    else ifb T1 = type_number /\ T2 = type_string then
+    else ifb ty1 = type_number /\ ty2 = type_string then
       dc_conv v1 conv_number v2
-    else ifb T1 = type_string /\ T2 = type_number then
+    else ifb ty1 = type_string /\ ty2 = type_number then
       dc_conv v2 conv_number v1
-    else ifb T1 = type_bool then
+    else ifb ty1 = type_bool then
       dc_conv v2 conv_number v1
-    else ifb T2 = type_bool then
+    else ifb ty2 = type_bool then
       dc_conv v1 conv_number v2
-    else ifb (T1 = type_string \/ T1 = type_number) /\ T2 = type_object then
+    else ifb (ty1 = type_string \/ ty1 = type_number) /\ ty2 = type_object then
       dc_conv v1 conv_primitive v2
-    else ifb T1 = type_object /\ (T2 = type_string \/ T2 = type_number) then
+    else ifb ty1 = type_object /\ (ty2 = type_string \/ ty2 = type_number) then
       dc_conv v2 conv_primitive v1
     else so false).
 

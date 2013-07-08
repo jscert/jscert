@@ -331,3 +331,273 @@ Definition descriptor_with_writable_false Desc :=
 Definition descriptor_with_configurable_false Desc :=
   match Ad with descriptor_intro ov ow og os oe oc =>
                 descriptor_intro ov ow og os oe (Some false) end.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(*******************************************************************************)
+(*******************************************************************************)
+(***************************** LATER *******************************************)
+(*******************************************************************************)
+
+(*----LATER: (arthur)
+
+  (* 15.7.4.2: Number.prototype.toString([radix]) *)
+
+  (* Daniele: I guess we don't have the algorithm for representing numbers 
+     as strings with different radix. I'll just ignore this (i.e. always do
+     toString in base 10) *)
+
+  (* Daniele: I'm not convinced by this one :/ *)
+  
+  (* if [this] is not a number then throw Type Error exception *)
+  | red_spec_call_number_proto_to_string_not_number : forall S C s b o v args, 
+      v = execution_ctx_this_binding C ->
+      not (type_of v = type_number) -> (* Daniele: check last lines of [15.7.4.2]. *)
+      red_expr S C (spec_error native_error_type) o ->
+      red_expr S C (spec_call_prealloc prealloc_number_proto_to_string args) o
+
+  (* if [this] is a number we proceed to the next stages *)
+  | red_spec_call_number_proto_to_string_number : forall S C s b o v args, 
+      v = execution_ctx_this_binding C ->
+      type_of v = type_number -> 
+      red_expr S C (spec_call_number_proto_to_string_1 v args) o ->
+      red_expr S C (spec_call_prealloc prealloc_number_proto_to_string args) o
+
+  (* The [radix] parameter is not there: use 10 as default *)
+  | red_spec_call_number_proto_to_string_number_1_no_radix : forall S C v o args, 
+      args = nil ->
+      red_expr S C (spec_call_prealloc prealloc_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_number_proto_to_string_1 v args) o 
+
+  (* The [radix] parameter is undefined: use 10 as default *)
+  | red_spec_call_number_proto_to_string_number_1_undef_radix : forall S C v vr args o, 
+      arguments_from args (vr::nil) ->
+      vr = undef ->
+      red_expr S C (spec_call_prealloc prealloc_number_proto_to_string (value_prim (prim_number (JsNumber.of_int 10))::args)) o -> 
+      red_expr S C (spec_call_number_proto_to_string_1 v args) o 
+
+  (*  factorize the previous 2? *)
+
+  (* The [radix] is present *)
+  | red_spec_call_number_proto_to_string_number_1_radix : forall S C v vr args o o1,
+      arguments_from args (vr::nil) ->
+      not (vr = undef) ->
+      red_expr S C (spec_to_integer vr) o1 ->
+      red_expr S C (spec_call_number_proto_to_string_2 v o1) o -> 
+      red_expr S C (spec_call_number_proto_to_string_1 v args) o 
+ 
+  (* If the [radix] is 10 we do a simple toString *)
+  | red_spec_call_number_proto_to_string_2_radix_10 :forall S S' C v vr o,
+      vr = value_prim (prim_number (JsNumber.of_int 10)) -> 
+      red_expr S C (spec_to_string v) o ->
+      red_expr S C (spec_call_number_proto_to_string_2 v (out_ter S' vr)) o
+      
+  (* If the [radix] is out of range we throw a Range Error exception *)
+  | red_spec_call_number_proto_to_string_2_radix_out_of_range : forall S S' C v vr k o,
+      vr = value_prim (prim_number (JsNumber.of_int k)) ->
+      (k < 2 /\ k > 36) -> 
+      red_expr S C (spec_error native_error_type) o -> (* Should be Range Error instead of Type Error *)
+      red_expr S C (spec_call_number_proto_to_string_2 v (out_ter S' vr)) o
+  
+  (* If the [radix] is in range we do a simple toString 
+     TODO: in fact the number should be printed using that radix
+     implementation dependent) *)
+  | red_spec_call_number_proto_to_string_2_radix_in_range : forall S S' C v vr k o,
+      vr = value_prim (prim_number (JsNumber.of_int k)) ->
+      not (k < 2 /\ k > 36) -> 
+      red_expr S C (spec_to_string v) o -> (* This should be something different *)
+      red_expr S C (spec_call_number_proto_to_string_2 v (out_ter S' vr)) o
+
+
+
+  (** Throw Type Error Function Object Initialisation *)           
+  
+  (* Could we have this not a a reduction, but as simple function in JsInit? *)
+  | red_spec_error_type_error : forall O O1 code O2 S' A o1 S C o,
+      O = object_new prealloc_function_proto "Function" ->
+      O1 = object_with_invokation O None (Some prealloc_spec_call_default) None ->
+      (* TODO : Is this ok? TODO: make it compile*)
+      (* code = funcbody_intro (prog_stat (stat_throw (expr_new (expr_identifier "TypeError") nil))) "throw TypeError()" -> 
+      *)
+      O2 = object_with_details O1 (Some (env_loc_global_env_record::nil)) (Some nil) (Some code) None None None None ->
+      S' = object_write S prealloc_throw_type_error O2 ->
+      A = attributes_data_intro JsNumber.zero false false false ->
+      red_expr S' C (spec_object_define_own_prop prealloc_throw_type_error "length" A false) o1 ->
+      red_expr S C (spec_error native_error_type_1 o1) o ->
+      red_expr S C (spec_error native_error_type) o
+  
+  | red_spec_error_type_error_1 : forall O S' S0 S C v o,
+      object_binds S prealloc_throw_type_error O ->
+      S' = object_write S prealloc_throw_type_error (object_set_extensible O false) ->
+      red_expr S0 C (spec_error native_error_type_1 (out_ter S v)) (out_ter_void S')
+
+
+
+------*)
+
+
+(**------ begin under dvpt -------- 
+
+(* --which version to keep ??
+
+  (** For-in statement *)
+
+  | red_stat_for_in_2_null_or_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      (* todo: replace premise with   [is_null_or_undef v1] *)
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S undef)
+      
+  | red_stat_for_in_2_else : forall o1 S0 S C e1 t v1 o,
+      v1 <> null /\ v1 <> undef ->
+      (* todo: replace premise with  [~ is_null_or_undef v1] *)
+      red_expr S C (spec_to_object v1) o1 ->
+      red_stat S C (stat_for_in_3 e1 t o1) o ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) o  
+      
+      (* todo: rename rules below *)
+
+      (* todo: use notations : 
+        Open Scope set_scope.
+        x \in E   \{}  \{x}  E \u F    E = F \u \{x}   *)
+
+*)
+
+  (** For-in statement *)
+
+  | red_stat_for_in : forall o1 S0 S C e1 e2 t o,
+      red_expr S C (spec_expr_get_value e2) o1 ->
+      red_stat S C (stat_for_in_2 e1 t o1) o ->
+      red_stat S0 C (stat_for_in e1 e2 t) o
+
+  | red_stat_for_in_3_null_undef : forall S0 S C e1 t v1 o,
+      v1 = null \/ v1 = undef ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S v1)) (out_ter S ret_or_empty_empty)
+
+  | red_stat_for_in_4 : forall o1 S0 S C e1 t exprValue o,
+      exprValue <> null /\ exprValue <> undef ->
+      red_expr S C (spec_to_object exprValue) o1 ->
+      red_stat S C (stat_for_in_3 e1 t o1) o ->
+      red_stat S0 C (stat_for_in_2 e1 t (out_ter S exprValue)) o
+
+  | red_stat_for_in_6a_start : forall S0 S C e1 t l initProps o,
+      object_all_enumerable_properties S (value_object l) initProps ->
+      red_stat S C (stat_for_in_4 e1 t l None None initProps (@empty_impl prop_name)) o ->
+      red_stat S0 C (stat_for_in_3 e1 t (out_ter S l)) o
+
+  | red_stat_for_in_6a_done : forall S C e1 t l vret lhsRef initProps visitedProps currentProps,
+      object_all_enumerable_properties S (value_object l) currentProps ->
+      incl_impl currentProps visitedProps ->
+      red_stat S C (stat_for_in_4 e1 t l (Some vret) lhsRef initProps visitedProps) (out_ter S vret)
+
+  (* allow possibility to skip new added property in for-in loop *)
+  | red_stat_for_in_6a_skip_added_property : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
+      object_all_enumerable_properties S (value_object l) currentProps ->
+      x \in (remove_impl (remove_impl currentProps visitedProps) initProps) ->
+      let newVisitedProps := union_impl (single_impl x) visitedProps in
+      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps newVisitedProps) o ->
+      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
+
+  | red_stat_for_in_6a_select_x : forall S C e1 t l vret lhsRef initProps visitedProps currentProps x o,
+      object_all_enumerable_properties S (value_object l) currentProps ->
+      in_impl x (remove_impl currentProps visitedProps) ->
+      let newVisitedProps := union_impl (single_impl x) visitedProps in
+      red_stat S C (stat_for_in_5 e1 t l vret lhsRef initProps newVisitedProps x) o ->
+      red_stat S C (stat_for_in_4 e1 t l vret lhsRef initProps visitedProps) o
+
+  (* evaluate new lhdRef *)
+  | red_stat_for_in_6b_evaluate : forall S C e1 t l vret lhdRef initProps visitedProps x o1 o,
+      red_expr S C e1 o1 ->
+      red_stat S C (stat_for_in_6 e1 t l vret (Some o1) initProps visitedProps x) o ->
+      red_stat S C (stat_for_in_5 e1 t l vret lhdRef initProps visitedProps x) o
+
+  (* reuse earlier lhdRef *)
+  | red_stat_for_in_6b_reuse_old : forall S C e1 t l vret lhdRef initProps visitedProps x o,
+      red_stat S C (stat_for_in_6 e1 t l vret (Some lhdRef) initProps visitedProps x) o ->
+      red_stat S C (stat_for_in_5 e1 t l vret (Some lhdRef) initProps visitedProps x) o
+
+  | red_stat_for_in_6c : forall S0 S C e1 t l vret lhdRef initProps visitedProps x o1 o,
+      red_expr S C (spec_put_value lhdRef x) o1 ->
+      red_stat S C (stat_for_in_7 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps o1) o ->
+      red_stat S0 C (stat_for_in_6 e1 t l vret (Some (out_ter S lhdRef)) initProps visitedProps x) o
+
+  | red_stat_for_in_6d : forall S0 S C e1 t l vret lhdRef initProps visitedProps o1 o,
+      red_stat S C t o1 ->
+      red_stat S C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps o1) o ->
+      red_stat S0 C (stat_for_in_7 e1 t l vret lhdRef initProps visitedProps (out_ter_void S)) o
+
+
+(*-- todo: make compile following introduction of ret_or_empty (see JsSyntax) 
+
+  | red_stat_for_in_6e : forall S0 S C e1 t l vret lhdRef initProps visitedProps res o,
+      let vnew := match res with
+        | res_normal R => Some R
+        | _ => vret end
+      in
+      red_stat S C (stat_for_in_9 e1 t l vnew lhdRef initProps visitedProps res) o ->
+      red_stat S0 C (stat_for_in_8 e1 t l vret lhdRef initProps visitedProps (out_ter S res)) o
+
+  | red_stat_for_in_6f_break : forall S C e1 t l vret lhdRef initProps visitedProps label,
+      (* TODO: check break label is in current label set *)
+      red_stat S C (stat_for_in_9 e1 t l (Some vret) lhdRef initProps visitedProps (res_break label)) (out_ter S vret)
+
+  | red_stat_for_in_6g_exit : forall S C e1 t l vret lhdRef initProps visitedProps res,
+      (* TODO: check continue label is in current label set *)
+      (* TODO: use instead the res_type projection *)
+      ~ (is_res_break res) /\ ~ (is_res_continue res) /\ ~ (is_res_normal res) ->
+
+      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) (out_ter S res)
+
+  | red_stat_for_in_6g_continue : forall o1 S C e1 t l vret lhdRef initProps visitedProps res o,
+     (* TODO: check continue label is in current label set *)
+      ~ (is_res_break res) /\ ((is_res_continue res) \/ (is_res_normal res)) ->
+      red_stat S C (stat_for_in_4 e1 t l vret lhdRef initProps visitedProps) o ->
+      red_stat S C (stat_for_in_9 e1 t l vret lhdRef initProps visitedProps res) o  
+
+-- end todo *) 
+
+------ end under dvpt --------**)
+
+(*  | object_get_own_property_string : forall S l x An An',
+      object_class S l "String" ->
+      object_get_own_property_default S l x An ->
+      (If An <> full_descriptor_undef
+       then An' = An
+       else 
+         (If (prim_string x <> convert_prim_to_string (prim_number (JsNumber.absolute (convert_primitive_to_integer x)))) (* TODO: remove coercion *)
+          then An' = full_descriptor_undef
+          else (* TODO: make an auxiliary definition for this else branch *)
+            (exists s, exists (i:int),
+                 object_prim_value S l (prim_string s)
+              /\ JsNumber.of_int i = convert_primitive_to_integer x
+              /\ let len : int := String.length s in
+                 If (len <= i)
+                 then An' = full_descriptor_undef
+                 else (let s' := string_sub s i 1 in
+                       An' = attributes_data_intro s' false true false)
+          )
+      )) ->
+      object_get_own_property S l x An'.
+*)
+
+
+

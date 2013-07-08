@@ -698,9 +698,43 @@ Inductive out :=
 
 Definition out_void S := out_ter S res_empty.
 
+(** Internal functions may return values other than JS results,
+    or may trigger JS exceptions, or diverge. The type 
+    [special A] accounts for such results: [special_val S a]
+    describes a normal result as a pair of a heap [S] and a
+    value [a] of type [A], while [special_out o] describes 
+    an abrupt behavior [o]. *)
+
+Inductive special (T : Type) :=
+  | special_val : state -> T -> special T
+  | special_out : out -> special T.
+
+Implicit Arguments special_val [[T]].
+Implicit Arguments special_out [[T]].
+
+Coercion special_out : out >-> special.
+
+(* TODO: rename the definitions above directly *)
+
+Definition specret T := special T.
+Definition specret_val T S (a:T) := special_val (T:=T) S a.
+Definition specret_out T o := special_out (T:=T) o.
+Implicit Arguments specret_val [[T]].
+Implicit Arguments specret_out [[T]].
+
+(** [ret S a] is a shorthand for [special_val S a] *)
+
+Definition ret T S (a:T) := special_val S a.
+Implicit Arguments ret [[T]].
+
+(** [ret_void S] is a shorthand for [special_val S tt], 
+    used by specifications functions that do no return any value.  *)
+
+Definition ret_void S := special_val S tt.
+
 
 (**************************************************************)
-(** ** Auxiliary definition for DeclarationBindingnstantiation *)
+(** ** Auxiliary definition for DeclarationBindingInstantiation *)
 
 (** A code originates either from a function body, from global
     code, or from the argument of a call to eval. *)
