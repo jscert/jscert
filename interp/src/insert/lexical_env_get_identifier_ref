@@ -1,0 +1,2 @@
+    print_endline (\"Warning: lexical_env_get_identifier_ref fails to find \" ^ (Prheap.string_of_char_list x0));\\\n
+    result_val s (ref_create_value (Coq_value_prim Coq_prim_undef) x0 str)
