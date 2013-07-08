@@ -3,7 +3,6 @@ Require Import JsSyntax JsInterpreter JsInit.
 Require Import LibFix LibList.
 
 Require Export Shared.
-Require Export Ascii String.
 Require Export LibTactics LibLogic LibReflect LibList
   LibOperation LibStruct LibNat LibEpsilon LibFunc LibHeap.
 Require Flocq.Appli.Fappli_IEEE Flocq.Appli.Fappli_IEEE_bits.

@@ -141,6 +141,12 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                       -- Not Intl object tests
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description=\"Intl object tests\")) AND "
+                                      -- Not tests that require strict mode
+                                      ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
+                                      ++   "(SELECT id from test_groups where description=\"Tests that only work in strict mode\")) AND "
+                                      -- Only tests from Test262
+                                      ++ "test_id IN (select test_id from test_group_memberships where group_id IN "
+                                      ++   "(SELECT id from test_groups where description=\"Test262 Tests\")) AND "
                                       ++ (concat $ intersperse " AND "
                                           ((map (\_ -> "id NOT IN (select id from single_test_runs where stdout LIKE ? AND batch_id=?)") outs)
                                           ++(map (\_ -> "id NOT IN (select id from single_test_runs where stderr LIKE ? AND batch_id=?)") errs)))

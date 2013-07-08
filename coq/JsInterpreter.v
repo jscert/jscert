@@ -286,14 +286,12 @@ Definition if_some_or_default {A B : Type} (o : option B) (d : A) (K : B -> A) :
 Definition convert_option_attributes : option attributes -> option full_descriptor :=
   option_map (fun A => A : full_descriptor).
 
-Definition if_abort {A : Type} o (K : unit -> resultof A) : resultof A :=
+Definition if_abort {T} o (K : unit -> resultof T) : resultof T :=
   match o with
   | out_ter S0 R =>
-    match res_type R with
-    | restype_normal =>
+    ifb res_type R = restype_normal then
       impossible_with_heap_because S0 "[if_abort] received a normal result!"
-    | _ => K tt
-    end
+    else K tt
   | _ => K tt
   end.
 
