@@ -101,7 +101,7 @@ struct
       translate_file env.prog
     else
       translate_string env.prog in
-      JsInterpreter.run_prog env.runs_type env.state env.context prog;; 
+      JsInterpreter.execution_ctx_binding_inst env.runs_type env.state env.context JsSyntax.Coq_codetype_global None prog [];; 
   
   class environment e = object
     val env : env = e
@@ -145,7 +145,7 @@ let display env = try (match env#eval with
   | JsInterpreter.Coq_result_some out -> begin match out with
       | JsSyntax.Coq_out_div ->  env#clear, "Diverge"
       | JsSyntax.Coq_out_ter (state, res) -> 
-          print_endline (Prheap.prstate false state);
+          (*print_endline (Prheap.prstate false state);*)
           env#update state, print res
     end
   | JsInterpreter.Coq_result_not_yet_implemented -> env#clear, "Not yet implemented"
@@ -177,7 +177,4 @@ and command env str = Scanf.sscanf str "# %s %s " (fun s s' -> match s with
 
 let () =
   let env = Environment.create () in
-  command env "#help"
-(*
-  let (env, str) = display (env#load "test.js") in Printf.printf "%s\n\n< " str
-*);;
+  command env "#help";;
