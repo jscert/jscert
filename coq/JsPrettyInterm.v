@@ -57,11 +57,7 @@ Inductive ext_expr :=
 
   | expr_basic : expr -> ext_expr
 
-  (** Extended expressions for lists of expressions *)
 
-  | expr_list_then : (list value -> ext_expr) -> list expr -> ext_expr (* [expr_list_then k es] evaluates all the expressions of [es], then call [k] on the generated list of value. *)
-  | expr_list_then_1 : (list value -> ext_expr) -> list value -> list expr -> ext_expr (* [expr_list_then_1 k vs es] has already computed all the values [vs], and starts executing [es]. *)
-  | expr_list_then_2 : (list value -> ext_expr) -> list value -> out -> list expr -> ext_expr (* [expr_list_then_2 k vs o es] has evaluated the first of the expressions left, that has returned [o]. *)
 
   (** Extended expressions associated with primitive expressions *)
 
@@ -85,11 +81,11 @@ Inductive ext_expr :=
   | expr_access_4 : value -> out -> ext_expr
 
   | expr_new_1 : out -> list expr -> ext_expr (* The arguments too. *)
-  | expr_new_2 : value -> list value -> ext_expr (* The call has been executed. *)
+  | expr_new_2 : value -> (specret (list value)) -> ext_expr (* The call has been executed. *)
 
   | expr_call_1 : out -> bool -> list expr -> ext_expr
   | expr_call_2 : res -> bool -> list expr -> out -> ext_expr (* The function has been evaluated. *)
-  | expr_call_3 : res -> value -> bool -> list value -> ext_expr (* The arguments have been executed. *)
+  | expr_call_3 : res -> value -> bool -> (specret (list value)) -> ext_expr (* The arguments have been executed. *)
   | expr_call_4 : res -> object_loc -> bool -> list value -> ext_expr
   | expr_call_5 : object_loc -> bool -> list value -> out -> ext_expr (* The call has been executed. *)
 
@@ -675,8 +671,10 @@ with ext_spec :=
   | spec_to_int32_1 : out -> ext_spec
   | spec_to_uint32 : value -> ext_spec
   | spec_to_uint32_1 : out -> ext_spec
-
-
+  (** Extended expressions for lists of expressions *)
+  | expr_list_then : list expr -> ext_spec
+  | expr_list_then_1 : list value -> list expr -> ext_spec
+  | expr_list_then_2 : list value -> out -> list expr -> ext_spec 
 .
 
 
@@ -704,9 +702,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   match e with
   | expr_basic _ => None
 
-  | expr_list_then _ _ => None
-  | expr_list_then_1 _ _ _ => None
-  | expr_list_then_2 _ _ o _ => Some o
 
   | expr_object_0 o _ => Some o
   | expr_object_1 _ _ => None
@@ -1246,7 +1241,9 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_to_int32_1 o => Some o
   | spec_to_uint32 _ => None
   | spec_to_uint32_1 o => Some o
-
+  | expr_list_then _ => None
+  | expr_list_then_1 _ _ => None
+  | expr_list_then_2 _ o _ => Some o
   end.
 
 
