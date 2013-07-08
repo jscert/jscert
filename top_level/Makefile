@@ -22,4 +22,4 @@ lwt:
 	rm toplwt.cm*
 
 clean: 
-	rm *~ *.xml *.o
+	rm top *.o *.xml *~
