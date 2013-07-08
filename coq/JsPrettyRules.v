@@ -853,14 +853,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_new_2 v y)  o ->
       red_expr S0 C (expr_new_1 (out_ter S v) e2s) o
 
-  | red_expr_new_2_type_error : forall S C o v vs, (* Steps 4-5 *)
+  | red_expr_new_2_type_error : forall S S0 C o v vs, (* Steps 4-5 *)
       (type_of v <> type_object) \/ (exists l, v = value_object l /\ object_construct S l None) ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_new_2 v (ret S vs)) o
+      red_expr S0 C (expr_new_2 v (ret S vs)) o
       
-  | red_expr_new_2_construct : forall S C l vs v o, (* Step 6 *)
+  | red_expr_new_2_construct : forall S S0 C l vs v o, (* Step 6 *)
       red_expr S C (spec_construct l vs) o ->
-      red_expr S C (expr_new_2 (value_object l) (ret S vs)) o
+      red_expr S0 C (expr_new_2 (value_object l) (ret S vs)) o
 
   (** Call (11.2.3) *)
 
