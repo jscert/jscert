@@ -180,6 +180,7 @@ nofast: $(FAST_VO:.vo=_full.vo)
 REFGETVALUE=$(shell cat interp/src/insert/ref_get_value)
 RUNOBJECTMETHOD=$(shell cat interp/src/insert/run_object_method)
 RUNOBJECTHEAP=$(shell cat interp/src/insert/run_object_heap_set_extensible)
+ENVGETIDENTIFIER=$(shell cat interp/src/insert/lexical_env_get_identifier_ref)
 
 .v.vo : .depend
 	$(COQC) -dont-load-proofs -I coq -I $(TLC) $<
@@ -192,7 +193,8 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	sed -e $$'s|(\*\* val object_put_complete :|$(REFGETVALUE)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
 	sed -e $$'s|(\*\* val run_object_heap_set_extensible :|$(RUNOBJECTMETHOD)|' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
 	sed -e $$'s|type runs_type =|$(RUNOBJECTHEAP)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
-	mv interp/src/extract/JsInterpreter.ml.bak interp/src/extract/JsInterpreter.ml
+	sed -e $$'s|    result_val s (ref_create_value (Coq_value_prim Coq_prim_undef) x0 str)|$(ENVGETIDENTIFIER)|' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
+	rm interp/src/extract/JsInterpreter.ml.bak
 	sed -e 's| impossible| (*BISECT-IGNORE*) impossible|g' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreterBisect.ml
 	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
