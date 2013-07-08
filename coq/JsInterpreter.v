@@ -1844,7 +1844,7 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
 
 Definition is_syntactic_eval e :=
   match e with
-  | expr_literal (literal_string "eval") => true
+  | expr_literal (literal_string s) => decide (s = "eval")
   | _ => false
   end.
 
