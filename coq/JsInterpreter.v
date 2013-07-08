@@ -1118,9 +1118,8 @@ Definition call_object_new S v : result :=
     out_ter S' l
   end.
 
-Definition bool_proto_value_of_call S C : result :=
-  let v := execution_ctx_this_binding C in
-  if_some (run_value_viewable_as_prim "Boolean" S v) (fun vw =>
+Definition bool_proto_value_of_call S vthis : result :=
+  if_some (run_value_viewable_as_prim "Boolean" S vthis) (fun vw =>
     match vw with
     | Some (prim_bool b) => out_ter S b
     | _ => run_error S native_error_type
@@ -2420,11 +2419,11 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     out_ter S' l
 
   | prealloc_bool_proto_to_string =>
-    if_bool (bool_proto_value_of_call S C) (fun S b =>
+    if_bool (bool_proto_value_of_call S vthis) (fun S b =>
       out_ter S (convert_bool_to_string b))
 
   | prealloc_bool_proto_value_of =>
-    bool_proto_value_of_call S C
+    bool_proto_value_of_call S vthis
 
   | prealloc_number =>
     ifb args = nil then
