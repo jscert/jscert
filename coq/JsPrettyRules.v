@@ -735,7 +735,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_object_1_nil : forall S C l,
       red_expr S C (expr_object_1 l nil) (out_ter S l)
   
-  | red_expr_object_1_cons : forall S0 S C x l pn pb pds o, 
+  | red_expr_object_1_cons : forall S C x l pn pb pds o, 
       x = string_of_propname pn ->
       red_expr S C (expr_object_2 l x pb pds) o ->
       red_expr S C (expr_object_1 l ((pn,pb)::pds)) o
@@ -760,7 +760,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
 
-  | red_expr_object_2_set : forall S S0 C l x v pds o o1 bd args,
+  | red_expr_object_2_set : forall S C l x pds o o1 bd args,
       red_expr S C (spec_create_new_function_in C args bd) o1 ->
       red_expr S C (expr_object_3_set l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
@@ -770,12 +770,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
   
-  | red_expr_object_4_define_own_prop : forall S S0 C A l x v pds o o1,
+  | red_expr_object_4 : forall S S0 C A l x pds o o1,
       red_expr S C (spec_object_define_own_prop l x A false) o1 ->
       red_expr S C (expr_object_5 l pds o1) o ->
       red_expr S C (expr_object_4 l x A pds) o
 
-  | red_expr_object_5_next_property : forall S S0 rv C A l x v pds o,
+  | red_expr_object_5 : forall S S0 C rv l pds o,
       red_expr S C (expr_object_1 l pds) o ->
       red_expr S0 C (expr_object_5 l pds (out_ter S rv)) o   
 
@@ -1571,8 +1571,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Get (8.12.3) and (8.7.1)
       Note: rules are generalized so as to also handle the Put method on primitive values *)
   (* TODO_ARTHUR: Maybe it'd be bettter not to factorize the two sets of rules...
-           but copy-pasting is really ugly though.. 
-        TODO: is it correct? *)
+           but copy-pasting is really ugly though.. *)
 
   | red_spec_object_get_1_default : forall S C vthis l x o, (* Step 1 *)
       red_expr S C (spec_object_get_prop l x (spec_object_get_2 vthis l)) o ->
@@ -1592,11 +1591,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_get_3_accessor_undef : forall S C vthis l, (* Step 5 *)
       red_expr S C (spec_object_get_3 vthis l undef) (out_ter S undef) 
 
-  | red_spec_object_get_3_accessor_object : forall S C (lthis : object_loc) l lf o, (* Step 6 *)
-      (* TODO: I changed this rule as a term [vthis] of type [object_loc] 
-         appeared in it, which strongly looked as an error.  Please check it.  -- Martin. *)
-      red_expr S C (spec_call lf lthis nil) o ->
-      red_expr S C (spec_object_get_3 lthis l lf) o
+  | red_spec_object_get_3_accessor_object : forall S C vthis l lf o, (* Step 6 *)
+      red_expr S C (spec_call lf l nil) o ->
+      red_expr S C (spec_object_get_3 vthis l lf) o
       
   (** CanPut (8.12.4) *)
 

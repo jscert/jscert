@@ -13,19 +13,6 @@ prog_block
 
 === Arthur
 
-red_expr_object 
-red_expr_object_0 
-red_expr_object_1_nil 
-red_expr_object_1_cons 
-red_expr_object_2_val 
-red_expr_object_3_val 
-red_expr_object_2_get 
-red_expr_object_3_get 
-red_expr_object_2_set 
-red_expr_object_3_set 
-red_expr_object_4_define_own_prop 
-red_expr_object_5_next_property
-
 
 red_spec_to_int32 
 red_spec_to_int32_1 
