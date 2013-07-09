@@ -720,7 +720,8 @@ Definition prim_new_object S w : result :=
 
 Definition to_object S v : result :=
   match v with
-  | prim_null | prim_undef => run_error S native_error_type
+  | prim_null => run_error S native_error_type
+  | prim_undef => run_error S native_error_type
   | value_prim w => prim_new_object S w
   | value_object l => out_ter S l
   end.
@@ -1127,7 +1128,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
 
   | prealloc_bool =>
     let v := get_arg 0 args in
-    let b := convert_value_to_boolean v in
+    Let b := convert_value_to_boolean v in
     let O1 := object_new prealloc_bool_proto "Boolean" in
     let O := object_with_primitive_value O1 b in
     let '(l, S') := object_alloc S O in
@@ -1959,7 +1960,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
   run_expr_get_value runs S C e1 (fun S1 v1 =>
-    let b := convert_value_to_boolean v1 in
+    Let b := convert_value_to_boolean v1 in
     let e := if b then e2 else e3 in
     run_expr_get_value runs S1 C e out_ter).
 
@@ -2220,7 +2221,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_object_get_proto_of =>
     let v := get_arg 0 args in
     ifb type_of v <> type_object then
-      impossible_with_heap_because S "[run_call_prealloc], [prealloc_object_get_proto_of] case:  not an object."
+      run_error S native_error_type
     else
       out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
@@ -2403,7 +2404,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
 
   | prealloc_bool =>
     let v := get_arg 0 args in
-    let b := convert_value_to_boolean v in
+    Let b := convert_value_to_boolean v in
     let O1 := object_new prealloc_bool_proto "Boolean" in
     let O := object_with_primitive_value O1 b in
     let '(l, S') := object_alloc S O in

@@ -1423,8 +1423,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_to_object v) o
 
-  | red_spec_to_object_prim : forall S C w o v,
-      ~ (v = prim_undef \/ v = prim_null) ->
+  | red_spec_to_object_prim : forall S C w o,
+      ~ (w = prim_undef \/ w = prim_null) ->
       red_expr S C (spec_prim_new_object w) o ->
       red_expr S C (spec_to_object (value_prim w)) o
 
