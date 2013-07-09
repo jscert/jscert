@@ -2144,20 +2144,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   
   (** Entering eval code  (10.4.2) *)
         
-  | red_spec_entering_eval_code : forall C' S C (bdirect:bool) bd K o, (* Steps 1 - 2 *)
-      (* TODO : is the initial strictness of the context set to false? *)
-      C' = (If bdirect then C else execution_ctx_initial strictness_false) ->
-      red_expr S C' (spec_entering_eval_code_1 bd K) o ->
+  | red_spec_entering_eval_code : forall str C' S C (bdirect:bool) bd K o, (* Steps 1 - 2 *)
+      str = funcbody_is_strict bd || (bdirect && execution_ctx_strict C)->
+      C' = (If bdirect then C else execution_ctx_initial str) ->
+      red_expr S C' (spec_entering_eval_code_1 bd K str) o ->
       red_expr S C (spec_entering_eval_code bdirect bd K) o  
       
   | red_spec_entering_eval_code_1 : forall str lex S' C' o1 S C bd K o, (* Steps 3 - 4 *)
-      str = funcbody_is_strict bd ->
       (lex, S') = (If str then lexical_env_alloc_decl S (execution_ctx_lexical_env C)
                           else (execution_ctx_lexical_env C, S)) ->
       C' = (If str then (execution_ctx_with_lex_same C lex) else C) ->
       red_expr S' C' (spec_binding_inst codetype_eval None (funcbody_prog bd) nil) o1 -> 
       red_expr S' C' (spec_entering_eval_code_2 o1 K) o ->
-      red_expr S C (spec_entering_eval_code_1 bd K) o 
+      red_expr S C (spec_entering_eval_code_1 bd K str) o 
       
   | red_spec_entering_eval_code_2 : forall S0 C S K o, (* Call continuation *) 
       red_expr S C K o ->
