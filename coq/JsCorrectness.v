@@ -639,7 +639,6 @@ Ltac run_select_ifres H :=
   | if_primitive _ _ => constr:(if_primitive_out)
   | if_spec _ _ => constr:(if_spec_out)
   | if_spec_ter _ _ => constr:(if_spec_ter_out)
-  | if_spec_ter _ _ => constr:(if_spec_ter_out) 
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
   | _ => run_select_extra T
   end end.
@@ -1020,19 +1019,25 @@ Lemma run_object_heap_set_extensible_correct : forall b S l S',
   object_heap_set_extensible b S l S'.
 Admitted.
 
+Lemma build_error_correct : forall S C vproto vmsg o,
+  build_error S vproto vmsg = o ->
+  red_expr S C (spec_build_error vproto vmsg) o.
+Proof.
+  introv R. unfolds in R.
+  match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end.
+  destruct X as (l&S'). cases_if.
+  applys~ red_spec_build_error EQX. run_inv.
+   applys~ red_spec_build_error_1_no_msg.
+Qed.
+
 Lemma run_error_correct : forall S ne o C,
   run_error S ne = o ->
   red_expr S C (spec_error ne) o /\ abort o.
-Admitted. (* OLD
-  introv E. deal_with_regular_lemma E if_object_out; substs.
-  unfolds build_error. destruct S as [E L [l S]]. simpls. cases_if; tryfalse.
-   inverts HE. false~ Hnn.
-  unfolds build_error. destruct S as [E L [l' S]]. simpls.
-   split; [|discriminate]. introv. apply~ red_spec_error; [|apply~ red_spec_error_1].
-   apply~ red_spec_build_error. reflexivity.
-   cases_if. inverts HE.
-   apply~ red_spec_build_error_1_no_msg.
-Qed. *)
+Proof.
+  introv R. unfolds in R. run_pre as o1 R1. forwards R0: build_error_correct (rm R1).
+  applys_and red_spec_error R0. run_post. splits~. abort. run_inv. splits; [|prove_abort].
+  apply~ red_spec_error_1.
+Qed.
 
 Ltac run_simpl_run_error H T K ::=
   match T with run_error _ _ =>
@@ -1060,6 +1065,7 @@ Proof.
    applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E. splits*.
    inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
+
 
 (* TODO:  Waiting for the specification.
 Lemma object_has_prop_correct : forall runs,
@@ -1510,6 +1516,12 @@ Lemma creating_function_object_correct : forall runs S C names bd X str o,
   runs_type_correct runs ->
   creating_function_object runs S C names bd X str = o ->
   red_expr S C (spec_creating_function_object names bd X str) o.
+Admitted.
+
+Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco p args o,
+  runs_type_correct runs ->
+  execution_ctx_binding_inst runs S C ct funco p args = o ->
+  red_expr S C (spec_binding_inst ct funco p args) o.
 Admitted.
 
 (* TODO:  Complete *)
@@ -2196,6 +2208,12 @@ Proof.
      apply~ run_equal_correct.
 Qed.
 
-
-(* todo: run_javascript_correct *)
-
+Theorem run_javascript_correct : forall runs p o,
+  runs_type_correct runs ->
+  run_javascript runs p = o ->
+  red_javascript p o.
+Proof.
+  introv IH HR. unfolds in HR. run_pre as o1 R1.
+  forwards R: execution_ctx_binding_inst_correct IH (rm R1). (* Need more information there:  it should return a result_void. *)
+  (* applys~ red_javascript_intro R. *)
+Admitted.
