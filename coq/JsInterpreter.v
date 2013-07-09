@@ -235,7 +235,7 @@ Section InterpreterEliminations.
 
 Definition get_arg := get_nth undef.
 
-Definition destr_list {A B : Type} (l : list A) (d : B) f :=
+Definition destr_list (A B : Type) (l : list A) (d : B) f :=
   match l with
   | nil => d
   | cons a _ => f a
@@ -250,13 +250,13 @@ Definition if_empty_label {T} S R (K : unit -> resultof T) : resultof T :=
   else
     impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
 
-Definition if_some {A B : Type} (op : option A) (K : A -> resultof B) : resultof B :=
+Definition if_some (A B : Type) (op : option A) (K : A -> resultof B) : resultof B :=
   match op with
   | None => impossible_because "[if_some] called with [None]."
   | Some a => K a
   end.
 
-Definition if_result_some {A B : Type} (W : resultof A) (K : A -> resultof B) : resultof B :=
+Definition if_result_some (A B : Type) (W : resultof A) (K : A -> resultof B) : resultof B :=
   match W with
   | result_some a => K a
   | result_not_yet_implemented => result_not_yet_implemented
@@ -264,7 +264,7 @@ Definition if_result_some {A B : Type} (W : resultof A) (K : A -> resultof B) : 
   | result_bottom S0 => result_bottom S0
   end.
 
-Definition res_res {T} W : specres T :=
+Definition res_res {T:Type} W : specres T :=
   if_result_some W res_out.
 
 Definition if_ter W (K : state -> res -> result) : result :=
@@ -388,13 +388,13 @@ Definition if_primitive W (K : state -> prim -> result) : result :=
       impossible_with_heap_because S "[if_primitive] called on an object."
     end).
 
-Definition if_some_or_default {A B : Type} (o : option B) (d : A) (K : B -> A) : A :=
+Definition if_some_or_default (A B : Type) (o : option B) (d : A) (K : B -> A) : A :=
   morph_option d K o.
 
 Definition convert_option_attributes : option attributes -> option full_descriptor :=
   option_map (fun A => A : full_descriptor).
 
-Definition if_abort {T} o (K : unit -> resultof T) : resultof T :=
+Definition if_abort (T:Type) o (K : unit -> resultof T) : resultof T :=
   match o with
   | out_ter S0 R =>
     ifb res_type R = restype_normal then
@@ -403,7 +403,7 @@ Definition if_abort {T} o (K : unit -> resultof T) : resultof T :=
   | _ => K tt
   end.
 
-Definition if_spec {A B : Type} (W : specres A) (K : state -> A -> specres B) : specres B :=
+Definition if_spec (A B : Type) (W : specres A) (K : state -> A -> specres B) : specres B :=
   if_result_some W (fun sp =>
     match sp with
     | specret_val S0 a => K S0 a
@@ -412,14 +412,14 @@ Definition if_spec {A B : Type} (W : specres A) (K : state -> A -> specres B) : 
         res_out o)
     end).
 
-Definition if_ter_spec {T} W (K : state -> res -> specres T) : specres T :=
+Definition if_ter_spec (T:Type) W (K : state -> res -> specres T) : specres T :=
   if_result_some W (fun o =>
     match o with
     | out_ter S0 R => K S0 R
     | _ => res_out o
     end).
 
-Definition if_success_spec {T} W (K : state -> resvalue -> specres T) : specres T :=
+Definition if_success_spec (T:Type) W (K : state -> resvalue -> specres T) : specres T :=
   if_ter_spec W (fun S0 R =>
     match res_type R with
     | restype_normal =>
@@ -429,7 +429,7 @@ Definition if_success_spec {T} W (K : state -> resvalue -> specres T) : specres 
       res_out (out_ter S0 R)
     end).
 
-Definition if_value_spec {T} W (K : state -> value -> specres T) : specres T :=
+Definition if_value_spec (T:Type) W (K : state -> value -> specres T) : specres T :=
   if_success_spec W (fun S rv =>
     match rv with
     | resvalue_value v => K S v
@@ -437,7 +437,7 @@ Definition if_value_spec {T} W (K : state -> value -> specres T) : specres T :=
       impossible_with_heap_because S "[if_value_spec] called with non-value."
     end).
 
-Definition if_spec_ter {T} (W : specres T) (K : state -> T -> result) : result :=
+Definition if_spec_ter (T:Type) (W : specres T) (K : state -> T -> result) : result :=
   if_result_some W (fun sp =>
     match sp with
     | specret_val S0 a => K S0 a
@@ -446,7 +446,7 @@ Definition if_spec_ter {T} (W : specres T) (K : state -> T -> result) : result :
         result_some o)
     end).
 
-Definition if_spec_value {T} W (K : state -> value -> specres T) : specres T :=
+Definition if_spec_value (T:Type) W (K : state -> value -> specres T) : specres T :=
   if_success_spec W (fun S rv =>
     match rv with
     | resvalue_value v => K S v
@@ -1535,7 +1535,7 @@ Definition get_bitwise_op (op : binary_op) : option (int -> int -> int) :=
   end.
 
 
-Definition convert_twice {A : Type} (ifv : result -> (state -> A -> result) -> result) (KC : state -> value -> result) S v1 v2 (K : state -> A -> A -> result) :=
+Definition convert_twice (A : Type) (ifv : result -> (state -> A -> result) -> result) (KC : state -> value -> result) S v1 v2 (K : state -> A -> A -> result) :=
   ifv (KC S v1) (fun S1 vc1 =>
     ifv (KC S1 v2) (fun S2 vc2 =>
       K S2 vc1 vc2)).
