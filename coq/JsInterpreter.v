@@ -2417,11 +2417,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
 
   | prealloc_bool =>
     let v := get_arg 0 args in
-    Let b := convert_value_to_boolean v in
-    let O1 := object_new prealloc_bool_proto "Boolean" in
-    let O := object_with_primitive_value O1 b in
-    let '(l, S') := object_alloc S O in
-    out_ter S' l
+    out_ter S (convert_value_to_boolean v)
 
   | prealloc_bool_proto_to_string =>
     if_bool (bool_proto_value_of_call S vthis) (fun S b =>
