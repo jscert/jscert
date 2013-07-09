@@ -1920,9 +1920,12 @@ Proof.
      *)
 
   (* Break *)
+  (* Daniele: not sure if inverts is the right thing, but rewrite doesn't work since 
+     R seems to actually be "result_some_out (out_ter S (res_break l)) -- look at the
+     error msg you get by doing a rewrite *)
   inverts R. applys* red_stat_break.
   (* Continue *)
-  skip. (* old:     unmonad. apply~ red_stat_continue. *)
+  inverts R. applys* red_stat_continue.
   (* Try *)
     
      (*
