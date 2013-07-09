@@ -4120,6 +4120,5 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_get_value rv) y ->
       red_spec S0 C (spec_expr_get_value_1 (out_ter S rv)) y
 
-
 .
 

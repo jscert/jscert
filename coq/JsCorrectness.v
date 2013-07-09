@@ -1102,8 +1102,8 @@ Lemma ref_get_value_correct : forall runs S C rv o,
   red_expr S C (spec_get_value rv) o /\
     (~ abort o -> exists S' v, o = out_ter S' v).
 *)
-  runs_type_correct runs -> forall S C rv o,
-  ref_get_value runs S C rv = o ->
+  runs_type_correct runs ->
+  ref_get_value runs S C rv = o -> (* This [o] should now be a [specres] (use [spec_follow_spec] to express this property) *)
   red_spec S C (spec_get_value rv) (ret S o) /\
     (~ abort o -> exists S' v, o = out_ter S' v).
 
@@ -2031,42 +2031,6 @@ Proof.
         applys* runs_type_correct_stat_while.
    run_inv. applys red_stat_while_2_false.
 Admitted. (*faster*)
-
-
-(* OLD:
-   intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
-   unmonad.
-    forwards~ RC: IHe (rm HE).
-     apply~ red_spec_expr_get_value_conv_stat.
-      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
-    forwards~ RC: IHe (rm HE).
-     inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
-       applys~ red_spec_expr_get_value_1 H0.
-      abort_stat.
-     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
-       applys~ red_spec_expr_get_value_1 H0.
-      apply~ red_spec_expr_get_value_conv_stat_1. apply* red_spec_to_boolean.
-      apply~ red_spec_expr_get_value_conv_stat_2.
-      cases_if.
-       unmonad. forwards~ RCs: IHs (rm HR). applys~ red_stat_while_2_true RCs.
-        apply~ red_stat_while_3. destruct R as [Rt Rv Rl]; simpls.
-        tests: (Rt = restype_break).
-         cases_if in HE; inverts HE.
-          do 2 cases_if; apply~ red_stat_while_4_break.
-          apply~ red_stat_while_4_abrupt; try absurd_neg.
-        tests: (Rt = restype_continue).
-         cases_if in HE; inverts HE.
-          forwards~ RCw: IHw (rm H3).
-           do 2 cases_if; applys~ red_stat_while_4_continue RCw.
-          apply~ red_stat_while_4_abrupt; try absurd_neg.
-        tests: (Rt = restype_normal).
-         forwards~ (E1&E2): if_empty_label_out (rm HE). simpls. substs.
-         forwards~ RCw: IHw (rm E2).
-         do 2 cases_if; apply~ red_stat_while_4_continue.
-        destruct Rt; tryfalse; inverts HE; apply~ red_stat_while_4_abrupt; absurd_neg.
-       unmonad. apply~ red_stat_while_2_false.
-*)
 
 (*
 Lemma run_object_get_own_prop_correct : forall runs,

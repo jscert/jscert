@@ -212,7 +212,7 @@ Definition specres T := resultof (specret T).
 Definition res_out {T} o : specres T :=
   result_some (specret_out o).
 
-Definition result_val {T} S a : specres T :=
+Definition res_spec {T} S a : specres T :=
   result_some (specret_val S a).
 
 (* Coercion *)
@@ -263,6 +263,9 @@ Definition if_result_some {A B : Type} (W : resultof A) (K : A -> resultof B) : 
   | result_impossible => result_impossible
   | result_bottom S0 => result_bottom S0
   end.
+
+Definition res_res {T} W : specres T :=
+  if_result_some W res_out.
 
 Definition if_ter W (K : state -> res -> result) : result :=
   if_result_some W (fun o =>
@@ -344,7 +347,8 @@ Definition if_value W (K : state -> value -> result) : result :=
   if_success W (fun S rv =>
     match rv with
     | resvalue_value v => K S v
-    | _ => impossible_with_heap_because S "[if_value] called with non-value."
+    | _ =>
+      impossible_with_heap_because S "[if_value] called with non-value."
     end).
 
 Definition if_bool W (K : state -> bool -> result) : result :=
@@ -442,6 +446,14 @@ Definition if_spec_ter {T} (W : specres T) (K : state -> T -> result) : result :
         result_some o)
     end).
 
+Definition if_spec_value {T} W (K : state -> value -> specres T) : specres T :=
+  if_success_spec W (fun S rv =>
+    match rv with
+    | resvalue_value v => K S v
+    | _ =>
+      impossible_with_heap_because S "[if_value] called with non-value."
+    end).
+
 End InterpreterEliminations.
 
 Section LexicalEnvironments.
@@ -517,7 +529,7 @@ Definition object_has_prop runs S C l x : specres bool :=
     match B with
     | builtin_has_prop_default =>
       if_spec (runs_type_object_get_prop runs S C l x) (fun S1 D =>
-        result_val S1 (decide (D <> full_descriptor_undef)))
+        res_spec S1 (decide (D <> full_descriptor_undef)))
     end).
 
 Definition object_get_builtin runs S C B vthis l x : result :=
@@ -560,7 +572,7 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
   if_some (run_object_method object_get_own_prop_ S l) (fun B =>
     Let default := fun S' =>
       if_some (run_object_method object_properties_ S' l) (fun P =>
-        result_val S' (
+        res_spec S' (
           if_some_or_default (convert_option_attributes (Heap.read_option P x))
             (full_descriptor_undef) id))
     in match B with
@@ -570,13 +582,13 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
         if_spec (default S) (fun S1 D =>
           match D with
           | full_descriptor_undef =>
-            result_val S1 full_descriptor_undef
+            res_spec S1 full_descriptor_undef
           | full_descriptor_some A =>
             if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
               if_some lmapo (fun lmap =>
                 if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
                   let follow S' A :=
-                    result_val S' (full_descriptor_some A)
+                    res_spec S' (full_descriptor_some A)
                   in match D with
                      | full_descriptor_undef =>
                        follow S2 A
@@ -601,13 +613,13 @@ Definition run_object_get_prop runs S C l x : specres full_descriptor :=
           if_some (run_object_method object_proto_ S1 l) (fun proto =>
             match proto with
             | null =>
-              result_val S1 full_descriptor_undef
+              res_spec S1 full_descriptor_undef
             | value_object lproto =>
               runs_type_object_get_prop runs S1 C lproto x
             | value_prim _ =>
               impossible_with_heap_because S1 "Found a non-null primitive value as a prototype in [run_object_get_prop]."
             end)
-        ) else result_val S1 D)
+        ) else res_spec S1 D)
     end).
 
 Definition object_proto_is_prototype_of runs S l0 l : result :=
@@ -633,26 +645,26 @@ Definition object_can_put runs S C l x : specres bool :=
         if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
           match D with
           | attributes_accessor_of Aa =>
-            result_val S1 (decide (attributes_accessor_set Aa <> undef))
+            res_spec S1 (decide (attributes_accessor_set Aa <> undef))
           | attributes_data_of Ad =>
-            result_val S1 (attributes_data_writable Ad)
+            res_spec S1 (attributes_data_writable Ad)
           | full_descriptor_undef =>
             if_some (run_object_method object_proto_ S1 l) (fun vproto =>
                 match vproto with
                 | null =>
                   if_some (run_object_method object_extensible_ S1 l)
-                    (result_val S1)
+                    (res_spec S1)
                 | value_object lproto =>
                   if_spec (run_object_get_prop runs S1 C lproto x) (fun S2 D' =>
                     match D' with
                     | full_descriptor_undef =>
                       if_some (run_object_method object_extensible_ S2 l)
-                        (result_val S2)
+                        (res_spec S2)
                     | attributes_accessor_of Aa =>
-                      result_val S2 (decide (attributes_accessor_set Aa <> undef))
+                      res_spec S2 (decide (attributes_accessor_set Aa <> undef))
                     | attributes_data_of Ad =>
                       if_some (run_object_method object_extensible_ S2 l) (fun ext =>
-                        result_val S2 (
+                        res_spec S2 (
                           if ext then attributes_data_writable Ad
                           else false))
                   end)
@@ -762,7 +774,7 @@ Definition env_record_has_binding runs S C L x : specres bool :=
     S L (fun E _ =>
       match E with
       | env_record_decl Ed =>
-          result_val S (decide (decl_env_record_indom Ed x))
+          res_spec S (decide (decl_env_record_indom Ed x))
       | env_record_object l pt =>
           object_has_prop runs S C l x
       end) tt.
@@ -770,12 +782,12 @@ Definition env_record_has_binding runs S C L x : specres bool :=
 Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
   match X with
   | nil =>
-      result_val S (ref_create_value undef x str)
+    res_spec S (ref_create_value undef x str)
   | L :: X' =>
-      if_spec (env_record_has_binding runs S C L x) (fun S1 has =>
-        if has then
-          result_val S1 (ref_create_env_loc L x str)
-        else lexical_env_get_identifier_ref runs S C X' x str)
+    if_spec (env_record_has_binding runs S C L x) (fun S1 has =>
+      if has then
+        res_spec S1 (ref_create_env_loc L x str)
+      else lexical_env_get_identifier_ref runs S C X' x str)
   end.
 
 Definition object_delete runs S C l x str : result :=
@@ -847,24 +859,26 @@ Definition env_record_get_binding_value runs S C L x str : result :=
 
 (**************************************************************)
 
-Definition ref_get_value runs S C rv : result :=
+Definition ref_get_value runs S C rv : specres value :=
   match rv with
   | resvalue_empty =>
     impossible_with_heap_because S "[ref_get_value] received an empty result."
-  | resvalue_value v => out_ter S v
+  | resvalue_value v =>
+    res_spec S v
   | resvalue_ref r =>
     match ref_kind_of r with
     | ref_kind_null =>
       impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
-    | ref_kind_undef => run_error S native_error_ref
+    | ref_kind_undef =>
+      res_res (run_error S native_error_ref)
     | ref_kind_primitive_base | ref_kind_object =>
       match ref_base r with
       | ref_base_type_value v =>
         ifb ref_has_primitive_base r then
-           prim_value_get runs S C v (ref_name r)
+          if_spec_value (prim_value_get runs S C v (ref_name r)) res_spec
         else match v with
              | value_object l =>
-               run_object_get runs S C l (ref_name r)
+               if_spec_value (run_object_get runs S C l (ref_name r)) res_spec
              | value_prim _ =>
                impossible_with_heap_because S "[ref_get_value] received a primitive value whose kind is not primitive."
              end
@@ -876,10 +890,15 @@ Definition ref_get_value runs S C rv : result :=
       | ref_base_type_value v =>
         impossible_with_heap_because S "[ref_get_value] received a reference to an environnment record whose base type is a value."
       | ref_base_type_env_loc L =>
-        env_record_get_binding_value runs S C L (ref_name r) (ref_strict r)
+        if_spec_value (env_record_get_binding_value runs S C L (ref_name r) (ref_strict r))
+          res_spec
       end
     end
   end.
+
+Definition run_expr_get_value runs S C e : specres value :=
+  if_success_spec (runs_type_expr runs S C e) (fun S0 rv =>
+    ref_get_value runs S0 C rv).
 
 Definition object_put_complete runs B S C vthis l x v str : result_void :=
   match B with
@@ -970,19 +989,6 @@ Definition ref_put_value runs S C rv v : result_void :=
   | resvalue_empty =>
     impossible_with_heap_because S "[ref_put_value] received an empty result."
   end.
-
-Definition if_get_value_success_value runs S C rv (K : state -> value -> result) : result :=
-  if_success (ref_get_value runs S C rv) (fun S' rv' =>
-    match rv' with
-    | resvalue_value v => K S' v
-    | _ =>
-      impossible_with_heap_because S' "[if_get_value_success_value] did not received a value."
-    end).
-
-Definition run_expr_get_value runs S C e (K : state -> value -> result) : result :=
-  if_success (runs_type_expr runs S C e) (fun S0 rv =>
-    if_get_value_success_value runs S0 C rv K).
-
 
 Definition env_record_create_mutable_binding runs S C L x (deletable_opt : option bool) : result_void :=
   let deletable := unsome_default false deletable_opt in
@@ -1685,7 +1691,7 @@ Definition run_typeof_value S v :=
 Definition run_unary_op runs S C (op : unary_op) e : result :=
   ifb prepost_unary_op op then
     if_success (runs_type_expr runs S C e) (fun S1 rv1 =>
-      if_get_value_success_value runs S1 C rv1 (fun S2 v2 =>
+      if_spec_ter (ref_get_value runs S1 C rv1) (fun S2 v2 =>
         if_number (to_number runs S2 C v2) (fun S3 n1 =>
           if_some (run_prepost_op op) (fun po =>
             let '(number_op, is_pre) := po in
@@ -1722,13 +1728,13 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
           ifb ref_is_unresolvable r then
             out_ter S1 "undefined"
           else
-            if_get_value_success_value runs S1 C r (fun S2 v =>
+            if_spec_ter (ref_get_value runs S1 C r) (fun S2 v =>
               out_ter S2 (run_typeof_value S2 v))
         | resvalue_empty => impossible_with_heap_because S1 "Empty result for a `typeof' in [run_unary_op]."
         end)
 
     | _ => (* Regular operators *)
-      run_expr_get_value runs S C e (fun S1 v =>
+      if_spec_ter (run_expr_get_value runs S C e) (fun S1 v =>
         match op with
 
         | unary_op_void => out_ter S1 undef
@@ -1772,7 +1778,7 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
         init_object runs S2 C l pds') in
     match pb with
     | propbody_val e0 =>
-      run_expr_get_value runs S C e0 (fun S1 v0 =>
+      if_spec_ter (run_expr_get_value runs S C e0) (fun S1 v0 =>
         let A := attributes_data_intro v0 true true true in
         follows S1 A)
     | propbody_get bd =>
@@ -1796,20 +1802,20 @@ Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
     match eo with
     | None => follow S
     | Some e =>
-      run_expr_get_value runs S C e (fun S1 v =>
+      if_spec_ter (run_expr_get_value runs S C e) (fun S1 v =>
         if_spec_ter (identifier_res runs S1 C x) (fun S2 ir =>
           if_void (ref_put_value runs S2 C ir v) (fun S3 =>
             follow S3)))
     end
   end.
 
-Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr)
-  (K : state -> list value -> result) : result :=
+Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr) : specres (list value) :=
   match es with
-  | nil => K S1 (rev vs)
+  | nil =>
+    res_spec S1 (rev vs)
   | e :: es' =>
-    run_expr_get_value runs S1 C e (fun S2 v =>
-      run_list_expr runs S2 C (v :: vs) es' K)
+    if_spec (run_expr_get_value runs S1 C e) (fun S2 v =>
+      run_list_expr runs S2 C (v :: vs) es')
   end.
 
 Fixpoint run_block runs S C rv ts : result :=
@@ -1827,20 +1833,21 @@ Fixpoint run_block runs S C rv ts : result :=
 Definition run_expr_binary_op runs S C op e1 e2 : result :=
   match is_lazy_op op with
   | None =>
-    run_expr_get_value runs S C e1 (fun S1 v1 =>
-      run_expr_get_value runs S1 C e2 (fun S2 v2 =>
+    if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
+      if_spec_ter (run_expr_get_value runs S1 C e2) (fun S2 v2 =>
         run_binary_op runs S2 C op v1 v2))
   | Some b_ret =>
-    run_expr_get_value runs S C e1 (fun S1 v1 =>
+    if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
       let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then out_ter S1 v1
       else
-        run_expr_get_value runs S1 C e2 out_ter)
+        if_spec_ter (run_expr_get_value runs S1 C e2) (fun S2 v =>
+          out_ter S2 v))
   end.
 
 Definition run_expr_access runs S C e1 e2 : result :=
-  run_expr_get_value runs S C e1 (fun S1 v1 =>
-    run_expr_get_value runs S1 C e2 (fun S2 v2 =>
+  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
+    if_spec_ter (run_expr_get_value runs S1 C e2) (fun S2 v2 =>
       ifb v1 = prim_undef \/ v1 = prim_null then
         run_error S2 native_error_type
       else
@@ -1858,10 +1865,10 @@ Definition run_expr_assign runs S C (opo : option binary_op) e1 e2 : result :=
       end in
     match opo with
     | None =>
-      run_expr_get_value runs S1 C e2 follow
+      if_spec_ter (run_expr_get_value runs S1 C e2) follow
     | Some op =>
-      if_get_value_success_value runs S1 C rv1 (fun S2 v1 =>
-        run_expr_get_value runs S2 C e2 (fun S3 v2 =>
+      if_spec_ter (ref_get_value runs S1 C rv1) (fun S2 v1 =>
+        if_spec_ter (run_expr_get_value runs S2 C e2) (fun S3 v2 =>
           if_success (run_binary_op runs S3 C op v1 v2) follow))
     end).
 
@@ -1937,8 +1944,8 @@ Definition is_syntactic_eval e :=
 Definition run_expr_call runs S C e1 e2s : result :=
   let is_eval_direct := is_syntactic_eval e1 in
   if_success (runs_type_expr runs S C e1) (fun S1 rv =>
-    if_get_value_success_value runs S1 C rv (fun S2 f =>
-      run_list_expr runs S2 C nil e2s (fun S3 vs =>
+    if_spec_ter (ref_get_value runs S1 C rv) (fun S2 f =>
+      if_spec_ter (run_list_expr runs S2 C nil e2s) (fun S3 vs =>
         match f with
         | value_object l =>
           ifb ~ (is_callable S3 l) then run_error S3 native_error_type
@@ -1963,14 +1970,14 @@ Definition run_expr_call runs S C e1 e2s : result :=
         end))).
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
-  run_expr_get_value runs S C e1 (fun S1 v1 =>
+  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
     let b := convert_value_to_boolean v1 in
     let e := if b then e2 else e3 in
-    run_expr_get_value runs S1 C e out_ter).
+    if_spec_ter (run_expr_get_value runs S1 C e) out_ter).
 
 Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
-  run_expr_get_value runs S C e1 (fun S1 v =>
-    run_list_expr runs S1 C nil e2s (fun S2 args =>
+  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v =>
+    if_spec_ter (run_list_expr runs S1 C nil e2s) (fun S2 args =>
       match v with
       | value_object l =>
         if_some (run_object_method object_construct_ S2 l) (fun coo =>
@@ -1991,7 +1998,7 @@ Definition run_stat_label runs S C lab t : result :=
       (ifb res_label R1 = lab then res_value R1 else R1)).
 
 Definition run_stat_with runs S C e1 t2 : result :=
-  run_expr_get_value runs S C e1 (fun S1 v1 =>
+  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
     if_object (to_object S1 v1) (fun S2 l =>
       let lex := execution_ctx_lexical_env C in
       let '(lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
@@ -1999,7 +2006,7 @@ Definition run_stat_with runs S C e1 t2 : result :=
       runs_type_stat runs S3 C' t2)).
 
 Definition run_stat_if runs S C e1 t2 to : result :=
-  run_expr_get_value runs S C e1 (fun S1 v1 =>
+  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
     if (convert_value_to_boolean v1) then
       runs_type_stat runs S1 C t2
     else
@@ -2011,7 +2018,7 @@ Definition run_stat_if runs S C e1 t2 to : result :=
       end).
 
 Definition run_stat_while runs S C rv labs e1 t2 : result :=
-  run_expr_get_value runs S C e1 (fun S1 v1 =>
+  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
     if convert_value_to_boolean v1 then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
         Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
@@ -2060,7 +2067,7 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
     end).
 
 Definition run_stat_throw runs S C e : result :=
-  run_expr_get_value runs S C e (fun S1 v1 =>
+  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
     out_ter S1 (res_throw v1)).
 
 Definition run_stat_return runs S C eo : result :=
@@ -2068,7 +2075,7 @@ Definition run_stat_return runs S C eo : result :=
   | None =>
     out_ter S (res_return undef)
   | Some e =>
-    run_expr_get_value runs S C e (fun S1 v1 =>
+    if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
       out_ter S1 (res_return v1))
   end.
 
@@ -2127,7 +2134,7 @@ Definition run_stat runs S C t : result :=
   match t with
 
   | stat_expr e =>
-    run_expr_get_value runs S C e out_ter
+    if_spec_ter (run_expr_get_value runs S C e) out_ter
 
   | stat_var_decl xeos =>
     run_var_decl runs S C xeos
