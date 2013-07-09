@@ -19,7 +19,7 @@ Proof. reflexivity. Qed.
 Ltac let_get_fresh_binding_name K :=
   match K with (fun x => _) => let y := fresh x in y end.
 
-(** [changes] is like [change] except that it does not silently 
+(** [changes] is like [change] except that it does not silently
    fail to perform its task. Moreover, it does beta-unfolding *)
 
 Tactic Notation "changes" constr(E1) "with" constr(E2) "in" hyp(H) :=
@@ -29,48 +29,48 @@ Tactic Notation "changes" constr(E1) "with" constr(E2) :=
 Tactic Notation "changes" constr(E1) "with" constr(E2) "in" "*" :=
   asserts_rewrite (E1 = E2) in *; [ reflexivity | ].
 
-Tactic Notation "let_inline" "in" hyp(H) := 
-  match type of H with context [ let_binding ?v ?K ] => 
+Tactic Notation "let_inline" "in" hyp(H) :=
+  match type of H with context [ let_binding ?v ?K ] =>
      changes (let_binding v K) with (K v) in H
   end.
 
-Tactic Notation "let_simpl" "in" hyp(H) := 
-  match type of H with context [ let_binding ?v ?K ] => 
+Tactic Notation "let_simpl" "in" hyp(H) :=
+  match type of H with context [ let_binding ?v ?K ] =>
      let x := let_get_fresh_binding_name K in
-     set_eq x: v in H; 
-     let_inline in H
-  end.
-
-Tactic Notation "let_simpl" "in" hyp(H) "as" ident(x) := 
-  match type of H with context [ let_binding ?v ?K ] => 
      set_eq x: v in H;
      let_inline in H
   end.
 
-Tactic Notation "let_inline" := 
+Tactic Notation "let_simpl" "in" hyp(H) "as" ident(x) :=
+  match type of H with context [ let_binding ?v ?K ] =>
+     set_eq x: v in H;
+     let_inline in H
+  end.
+
+Tactic Notation "let_inline" :=
   match goal with
-  | |- context [ let_binding ?v ?K ] => 
+  | |- context [ let_binding ?v ?K ] =>
      changes (let_binding v K) with (K v)
   | H: context [ let_binding ?v ?K ] |- _ => let_inline in H
   end.
 
-Tactic Notation "let_simpl" := 
-  match goal with  
-  | |- context [ let_binding ?v ?K ] => 
+Tactic Notation "let_simpl" :=
+  match goal with
+  | |- context [ let_binding ?v ?K ] =>
      let x := let_get_fresh_binding_name K in
-     set_eq x: v; 
+     set_eq x: v;
      let_inline
   | H: context [ let_binding ?v ?K ] |- _ => let_simpl in H
   end.
 
-Tactic Notation "let_simpl" "as" ident(x) := 
-  match goal with  
-  | |- context [ let_binding ?v ?K ] => 
+Tactic Notation "let_simpl" "as" ident(x) :=
+  match goal with
+  | |- context [ let_binding ?v ?K ] =>
      set_eq x: v;
      let_inline
   | H: context [ let_binding ?v ?K ] |- _ => let_simpl in H as x
   end.
-  
+
 Definition let_binding_test_1 :
   (Let x := 3 in Let y := x + x in y + y) = 12.
 Proof.
@@ -87,7 +87,7 @@ Proof.
   let_simpl as z.
   subst x. subst z. reflexivity.
 Qed.
-  
+
 Definition let_binding_test_2 :
   (Let x := 3 in Let y := x + x in y + y) = 12 -> True.
 Proof.
@@ -101,9 +101,9 @@ Proof.
   let_simpl in H.
   let_simpl in H as z.
   subst x. subst z. auto.
-Qed.  
-  
-  
+Qed.
+
+
 
 
 
@@ -302,16 +302,19 @@ Definition if_not_throw W (K : state -> res -> result) : result :=
     | _ => K S0 R
     end).
 
-Definition if_any_or_throw W (K1 : result -> result) (K2 : state -> value -> result) : result :=
+Definition if_any_or_throw W (K1 : state -> res -> result)
+    (K2 : state -> value -> result) : result :=
   if_ter W (fun S R =>
     match res_type R with
     | restype_throw =>
       match res_value R with
-      | resvalue_value v => K2 S v
+      | resvalue_value v =>
+        if_empty_label S R (fun _ =>
+          K2 S v)
       | _ =>
         impossible_with_heap_because S "[if_any_or_throw] called with a non-value result."
       end
-    | _ => K1 W
+    | _ => K1 S R
     end).
 
 Definition if_success_or_return W (K1 : state -> result) (K2 : state -> resvalue -> result) : result :=
@@ -412,14 +415,14 @@ Definition if_spec (A B : Type) (W : specres A) (K : state -> A -> specres B) : 
         res_out o)
     end).
 
-Definition if_ter_spec (T:Type) W (K : state -> res -> specres T) : specres T :=
+Definition if_ter_spec T W (K : state -> res -> specres T) : specres T :=
   if_result_some W (fun o =>
     match o with
     | out_ter S0 R => K S0 R
     | _ => res_out o
     end).
 
-Definition if_success_spec (T:Type) W (K : state -> resvalue -> specres T) : specres T :=
+Definition if_success_spec T W (K : state -> resvalue -> specres T) : specres T :=
   if_ter_spec W (fun S0 R =>
     match res_type R with
     | restype_normal =>
@@ -429,7 +432,7 @@ Definition if_success_spec (T:Type) W (K : state -> resvalue -> specres T) : spe
       res_out (out_ter S0 R)
     end).
 
-Definition if_value_spec (T:Type) W (K : state -> value -> specres T) : specres T :=
+Definition if_value_spec T W (K : state -> value -> specres T) : specres T :=
   if_success_spec W (fun S rv =>
     match rv with
     | resvalue_value v => K S v
@@ -437,21 +440,37 @@ Definition if_value_spec (T:Type) W (K : state -> value -> specres T) : specres 
       impossible_with_heap_because S "[if_value_spec] called with non-value."
     end).
 
-Definition if_spec_ter (T:Type) (W : specres T) (K : state -> T -> result) : result :=
+Definition if_prim_spec T W (K : state -> prim -> specres T) : specres T :=
+  if_value_spec W (fun S v =>
+    match v with
+    | value_prim w => K S w
+    | value_object _ =>
+      impossible_with_heap_because S "[if_prim_spec] called with an object."
+    end).
+
+Definition if_number_spec T W (K : state -> number -> specres T) : specres T :=
+  if_prim_spec W (fun S w =>
+    match w with
+    | prim_number n => K S n
+    | _ =>
+      impossible_with_heap_because S "[if_number_spec] called with a non-number."
+    end).
+
+Definition if_string_spec T W (K : state -> string -> specres T) : specres T :=
+  if_prim_spec W (fun S w =>
+    match w with
+    | prim_string s => K S s
+    | _ =>
+      impossible_with_heap_because S "[if_string_spec] called with a non-string."
+    end).
+
+Definition if_spec_ter {T} (W : specres T) (K : state -> T -> result) : result :=
   if_result_some W (fun sp =>
     match sp with
     | specret_val S0 a => K S0 a
     | specret_out o =>
       if_abort o (fun _ =>
         result_some o)
-    end).
-
-Definition if_spec_value (T:Type) W (K : state -> value -> specres T) : specres T :=
-  if_success_spec W (fun S rv =>
-    match rv with
-    | resvalue_value v => K S v
-    | _ =>
-      impossible_with_heap_because S "[if_value] called with non-value."
     end).
 
 End InterpreterEliminations.
@@ -549,10 +568,10 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
           end
       end)
-  
+
   | builtin_get_function =>
     result_not_yet_implemented (* TODO:  Waiting for the specification *)
-  
+
   | builtin_get_args_obj =>
     result_not_yet_implemented (* TODO:  Waiting for the specification *)
 
@@ -872,10 +891,10 @@ Definition ref_get_value runs S C rv : specres value :=
       match ref_base r with
       | ref_base_type_value v =>
         ifb ref_has_primitive_base r then
-          if_spec_value (prim_value_get runs S C v (ref_name r)) res_spec
+          if_value_spec (prim_value_get runs S C v (ref_name r)) res_spec
         else match v with
              | value_object l =>
-               if_spec_value (run_object_get runs S C l (ref_name r)) res_spec
+               if_value_spec (run_object_get runs S C l (ref_name r)) res_spec
              | value_prim _ =>
                impossible_with_heap_because S "[ref_get_value] received a primitive value whose kind is not primitive."
              end
@@ -887,7 +906,7 @@ Definition ref_get_value runs S C rv : specres value :=
       | ref_base_type_value v =>
         impossible_with_heap_because S "[ref_get_value] received a reference to an environnment record whose base type is a value."
       | ref_base_type_env_loc L =>
-        if_spec_value (env_record_get_binding_value runs S C L (ref_name r) (ref_strict r))
+        if_value_spec (env_record_get_binding_value runs S C L (ref_name r) (ref_strict r))
           res_spec
       end
     end
@@ -1042,7 +1061,7 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
 Definition object_default_value runs S C l (prefo : option preftype) : result :=
   if_some (run_object_method object_default_value_ S l) (fun B =>
     match B with
-    
+
     | builtin_default_value_default =>
       let gpref := unsome_default preftype_number prefo in
       let lpref := other_preftypes gpref in
@@ -1063,7 +1082,7 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
       sub S gmeth (fun S' =>
         let lmeth := method_of_preftype lpref in
         sub S' lmeth (fun S'' => run_error S'' native_error_type))
-    
+
     end).
 
 Definition to_primitive runs S C v (prefo : option preftype) : result :=
@@ -1071,6 +1090,14 @@ Definition to_primitive runs S C v (prefo : option preftype) : result :=
   | value_prim w => out_ter S w
   | value_object l => object_default_value runs S C l prefo
   end.
+(* NEW (to be replaced after the semantics will have been updated):
+Definition to_primitive runs S C v (prefo : option preftype) : specres prim :=
+  match v with
+  | value_prim w => res_spec S w
+  | value_object l =>
+    if_prim_spec (object_default_value runs S C l prefo) res_spec
+  end.
+*)
 
 Definition to_number runs S C v : result :=
   match v with
@@ -1085,13 +1112,13 @@ Definition to_integer runs S C v : result :=
   if_number (to_number runs S C v) (fun S1 n =>
     out_ter S1 (convert_number_to_integer n)).
 
-Definition to_int32 runs S C v (K : state -> int -> result) : result :=
-  if_number (to_number runs S C v) (fun S' n =>
-    K S' (JsNumber.to_int32 n)).
+Definition to_int32 runs S C v : specres int :=
+  if_number_spec (to_number runs S C v) (fun S' n =>
+    res_spec S' (JsNumber.to_int32 n)).
 
-Definition to_uint32 runs S C v (K : state -> int -> result) : result :=
-  if_number (to_number runs S C v) (fun S' n =>
-    K S' (JsNumber.to_uint32 n)).
+Definition to_uint32 runs S C v : specres int :=
+  if_number_spec (to_number runs S C v) (fun S' n =>
+    res_spec S' (JsNumber.to_uint32 n)).
 
 Definition to_string runs S C v : result :=
   match v with
@@ -1537,10 +1564,22 @@ Definition get_bitwise_op (op : binary_op) : option (int -> int -> int) :=
   end.
 
 
-Definition convert_twice (A : Type) (ifv : result -> (state -> A -> result) -> result) (KC : state -> value -> result) S v1 v2 (K : state -> A -> A -> result) :=
+Definition convert_twice T T0
+    (ifv : resultof T0 -> (state -> T -> specres (T * T)) -> specres (T * T))
+    (KC : state -> value -> resultof T0) S v1 v2 : specres (T * T) :=
   ifv (KC S v1) (fun S1 vc1 =>
     ifv (KC S1 v2) (fun S2 vc2 =>
-      K S2 vc1 vc2)).
+      res_spec S2 (vc1, vc2))).
+
+Definition convert_twice' T
+    (ifv : result -> (state -> T -> specres (T * T)) -> specres (T * T))
+    (KC : state -> value -> result) S v1 v2
+    (K : state -> T -> T -> result) : result :=
+  (* As [convert_twice] uses [specres] and that we don't have time to convert
+    all intermediate functions, this function is there to backport the new
+    [convert_twice] with the old [if_*]. *)
+  if_spec_ter (convert_twice ifv KC S v1 v2) (fun S' (p : T * T) =>
+    let '(p1, p2) := p in K S' p1 p2).
 
 Definition run_equal runs S (conv_number conv_primitive : state -> value -> result)
     v1 v2 : result :=
@@ -1573,18 +1612,18 @@ Definition run_equal runs S (conv_number conv_primitive : state -> value -> resu
     else so false).
 
 Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
-  Let conv_primitive := fun S v =>
+  let conv_primitive := fun S v =>
     to_primitive runs S C v None in
-  Let convert_twice_primitive :=
-    convert_twice if_primitive conv_primitive in
-  Let conv_number := fun S v =>
+  let convert_twice_primitive :=
+    convert_twice' (@if_prim_spec (prim * prim)) conv_primitive in
+  let conv_number := fun S v =>
     to_number runs S C v in
-  Let convert_twice_number :=
-    convert_twice if_number conv_number in
-  Let conv_string := fun S v =>
+  let convert_twice_number :=
+    convert_twice' (@if_number_spec (number * number)) conv_number in
+  let conv_string := fun S v =>
     to_string runs S C v in
-  Let convert_twice_string :=
-    convert_twice if_string conv_string in
+  let convert_twice_string :=
+    convert_twice' (@if_string_spec (string * string)) conv_string in
 
   match op with
 
@@ -1609,14 +1648,14 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
   | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift =>
     if_some (get_shift_op op) (fun so =>
       let '(b_unsigned, F) := so in
-      (if b_unsigned then to_uint32 else to_int32) runs S C v1 (fun S1 k1 =>
-        to_uint32 runs S1 C v2 (fun S2 k2 =>
+      if_spec_ter ((if b_unsigned then to_uint32 else to_int32) runs S C v1) (fun S1 k1 =>
+        if_spec_ter (to_uint32 runs S1 C v2) (fun S2 k2 =>
           let k2' := JsNumber.modulo_32 k2 in
           out_ter S2 (JsNumber.of_int (F k1 k2')))))
 
   | binary_op_bitwise_and | binary_op_bitwise_or | binary_op_bitwise_xor =>
-    to_int32 runs S C v1 (fun S1 k1 =>
-      to_int32 runs S1 C v2 (fun S2 k2 =>
+    if_spec_ter (to_int32 runs S C v1) (fun S1 k1 =>
+      if_spec_ter (to_int32 runs S1 C v2) (fun S2 k2 =>
         if_some (get_bitwise_op op) (fun bo =>
           out_ter S2 (JsNumber.of_int (bo k1 k2)))))
 
@@ -1743,7 +1782,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
             out_ter S2 (JsNumber.neg n))
 
         | unary_op_bitwise_not =>
-          to_int32 runs S1 C v (fun S2 k =>
+          if_spec_ter (to_int32 runs S1 C v) (fun S2 k =>
             out_ter S2 (JsNumber.of_int (JsNumber.int32_bitwise_not k)))
 
         | unary_op_not =>
@@ -1876,8 +1915,9 @@ Definition run_expr_function runs S C fo args bd : result :=
     let lex := execution_ctx_lexical_env C in
     creating_function_object runs S C args bd lex (funcbody_is_strict bd)
   | Some fn =>
-    let '(lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
-    Let follow := fun L =>
+    Let p := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in (* TODO:  Let pair *)
+    let '(lex', S') := p in
+    let follow L :=
       if_some (pick_option (env_record_binds S' L)) (fun E =>
         if_void (env_record_create_immutable_binding S' L fn) (fun S1 =>
           if_object (creating_function_object runs S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
@@ -2038,29 +2078,29 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     else out_ter S1 rv).
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=
-  Let finally := fun res =>
+  Let finally := fun S1 R =>
     match t3o with
-    | None => res
+    | None => out_ter S1 R
     | Some t3 =>
-      if_ter res (fun S1 R =>
-        if_success (runs_type_stat runs S1 C t3) (fun S2 rv' =>
-          out_ter S2 R))
+      if_success (runs_type_stat runs S1 C t3) (fun S2 rv' =>
+        out_ter S2 R)
     end
   in
   if_any_or_throw (runs_type_stat runs S C t1) finally (fun S1 v =>
     match t2o with
-    | None => finally (out_ter S1 (res_throw v))
+    | None => finally S1 (res_throw v)
     | Some (x, t2) =>
-      let lex := execution_ctx_lexical_env C in
-      let '(lex', S') := lexical_env_alloc_decl S1 lex in
+      Let lex := execution_ctx_lexical_env C in
+      Let p := lexical_env_alloc_decl S1 lex in (* TODO: Let pair *)
+      let '(lex', S') := p in
       match lex' with
       | L :: oldlex =>
         if_void (env_record_create_set_mutable_binding
           runs S' C L x None v throw_irrelevant) (fun S2 =>
             let C' := execution_ctx_with_lex C lex' in
-            finally (runs_type_stat runs S2 C' t2))
+            if_ter (runs_type_stat runs S2 C' t2) finally)
       | nil =>
-        impossible_with_heap_because S1 "Empty lexical environnment in [run_stat_try]."
+        impossible_with_heap_because S' "Empty lexical environnment in [run_stat_try]."
       end
     end).
 
@@ -2239,7 +2279,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     | value_object l =>
       if_string (to_string runs S C (get_arg 1 args)) (fun S1 x =>
       if_spec_ter (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
-      from_prop_descriptor runs S2 C D))     
+      from_prop_descriptor runs S2 C D))
     | value_prim _ => run_error S native_error_type
     end
 

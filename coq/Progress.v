@@ -14,7 +14,7 @@ prog_block
 === Arthur
 
 
-red_stat_try 
+red_stat_try (* Done *)
 red_stat_try_1_no_throw 
 red_stat_try_1_throw_no_catch 
 red_stat_try_1_throw_catch 
@@ -229,38 +229,30 @@ red_spec_object_delete_args_obj_4
 
 === Daniele
 
-
-red_stat_continue 
-
-red_stat_break 
-red_stat_return_none 
-red_stat_return_some 
-red_stat_return_1 
 red_stat_with 
 red_stat_with_1 
+
 red_stat_label (* Stuck *)
 red_stat_label_1_normal 
 red_stat_label_1_break_eq 
+
 red_stat_throw 
 red_stat_throw_1
-red_expr_this 
-red_expr_identifier 
-red_expr_literal 
-red_expr_member 
-red_expr_access 
-red_expr_access_1 
-red_expr_access_2 
-red_expr_access_3 
-red_expr_access_4 
+
+
+red_expr_identifier (* stuck *)
+
 red_expr_delete 
 red_expr_delete_1_not_ref 
 red_expr_delete_1_ref_unresolvable 
 red_expr_delete_1_ref_property 
 red_expr_delete_2 
 red_expr_delete_1_ref_env_record 
+
 red_expr_conditional 
 red_expr_conditional_1 
 red_expr_conditional_2 
+
 red_expr_assign (* stuck *)
 red_expr_assign_1_simple 
 red_expr_assign_1_compound 
@@ -269,6 +261,7 @@ red_expr_assign_3_compound_op
 red_expr_assign_3'
 red_expr_assign_4_put_value 
 red_expr_assign_5_return 
+
 red_stat_var_decl_nil 
 red_stat_var_decl_cons 
 red_stat_var_decl_1 
@@ -283,7 +276,7 @@ red_stat_var_decl_item_3
 
 === Martin
 
-modify the interpreter to remove continuations, 
+modify the interpreter to remove continuations, (* They have been modified in the interpreter. *)
 then give back to Arthur for proofs.
   red_spec_convert_twice 
   red_spec_convert_twice_1 
@@ -392,11 +385,6 @@ red_spec_creating_function_object_2_strict
 red_spec_creating_function_object_3 
 red_spec_creating_function_object_4 
 
-red_expr_function_unnamed 
-red_expr_function_named 
-red_expr_function_named_1 
-red_expr_function_named_2 
-red_expr_function_named_3 
 red_spec_create_new_function_in 
 
 red_spec_object_get_1_function 
@@ -444,11 +432,6 @@ red_spec_lexical_env_get_identifier_ref_cons_1
 red_spec_lexical_env_get_identifier_ref_cons_2_true 
 red_spec_lexical_env_get_identifier_ref_cons_2_false 
 
-red_spec_error 
-red_spec_error_1 
-red_spec_error_or_cst_true 
-red_spec_error_or_cst_false 
-red_spec_error_or_void_true 
-red_spec_error_or_void_false 
 
-red_javascript_intro
+red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
+
