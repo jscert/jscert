@@ -156,6 +156,38 @@ red_spec_object_define_own_prop_args_obj_6
 
 === Daiva ===
 
+red_spec_call 
+red_spec_constructor 
+red_spec_call_1_prealloc 
+red_spec_construct_1_prealloc 
+
+red_expr_new 
+red_expr_new_1 
+red_expr_new_2_type_error 
+red_expr_new_2_construct 
+red_expr_call 
+red_expr_call_1 
+red_expr_call_2 
+red_expr_call_3 
+red_expr_call_3_callable 
+red_expr_call_4_prop 
+red_expr_call_4_env 
+red_expr_call_4_not_ref 
+red_expr_call_5_eval 
+red_expr_call_5_not_eval 
+
+red_spec_call_1_default 
+red_spec_call_default 
+red_spec_call_default_1 
+red_spec_call_default_2_body 
+red_spec_call_default_2_empty_body 
+red_spec_call_default_3_return 
+red_spec_call_default_3_normal 
+red_spec_construct_1_default 
+red_spec_construct_default 
+red_spec_construct_default_1 
+red_spec_function_construct_2 
+
 red_spec_call_object_call 
 red_spec_call_object_call_1_null_or_undef 
 red_spec_call_object_call_1_other 
@@ -245,26 +277,6 @@ red_spec_object_delete_args_obj_3
 red_spec_object_delete_args_obj_2_else 
 red_spec_object_delete_args_obj_4 
 
-red_spec_arguments_object_map 
-red_spec_arguments_object_map_1 
-red_spec_arguments_object_map_2_nil 
-red_spec_arguments_object_map_2_cons 
-red_spec_arguments_object_map_3_skip 
-red_spec_arguments_object_map_3_cont_skip 
-red_spec_arguments_object_map_3_cont_cont 
-red_spec_arguments_object_map_4 
-red_spec_arguments_object_map_5 
-red_spec_arguments_object_map_6 
-red_spec_arguments_object_map_7 
-red_spec_arguments_object_map_8_cons 
-red_spec_arguments_object_map_8_nil 
-red_spec_create_arguments_object 
-red_spec_create_arguments_object_1 
-red_spec_create_arguments_object_2_non_strict 
-red_spec_create_arguments_object_2_strict 
-red_spec_create_arguments_object_3 
-red_spec_create_arguments_object_4 
-
 === Daniele
 
 red_stat_expr 
@@ -323,8 +335,27 @@ red_stat_var_decl_item_3
 [later: unary ops, binary ops, do_while, switch]
 
 
-
 === Martin
+
+red_spec_arguments_object_map 
+red_spec_arguments_object_map_1 
+red_spec_arguments_object_map_2_nil 
+red_spec_arguments_object_map_2_cons 
+red_spec_arguments_object_map_3_skip 
+red_spec_arguments_object_map_3_cont_skip 
+red_spec_arguments_object_map_3_cont_cont 
+red_spec_arguments_object_map_4 
+red_spec_arguments_object_map_5 
+red_spec_arguments_object_map_6 
+red_spec_arguments_object_map_7 
+red_spec_arguments_object_map_8_cons 
+red_spec_arguments_object_map_8_nil 
+red_spec_create_arguments_object 
+red_spec_create_arguments_object_1 
+red_spec_create_arguments_object_2_non_strict 
+red_spec_create_arguments_object_2_strict 
+red_spec_create_arguments_object_3 
+red_spec_create_arguments_object_4 
 
 red_spec_prim_value_get 
 red_spec_prim_value_get_1 
@@ -351,10 +382,6 @@ red_spec_object_delete
 red_spec_object_default_value 
 red_spec_object_define_own_prop 
 red_spec_object_has_instance 
-red_spec_call 
-red_spec_constructor 
-red_spec_call_1_prealloc 
-red_spec_construct_1_prealloc 
 red_spec_object_get_prop_1_default 
 red_spec_object_get_prop_2_not_undef 
 red_spec_object_get_prop_2_undef 
@@ -414,36 +441,11 @@ red_spec_creating_function_object_2_strict
 red_spec_creating_function_object_3 
 red_spec_creating_function_object_4 
 
-red_expr_new 
-red_expr_new_1 
-red_expr_new_2_type_error 
-red_expr_new_2_construct 
-red_expr_call 
-red_expr_call_1 
-red_expr_call_2 
-red_expr_call_3 
-red_expr_call_3_callable 
-red_expr_call_4_prop 
-red_expr_call_4_env 
-red_expr_call_4_not_ref 
-red_expr_call_5_eval 
-red_expr_call_5_not_eval 
 red_expr_function_unnamed 
 red_expr_function_named 
 red_expr_function_named_1 
 red_expr_function_named_2 
 red_expr_function_named_3 
-red_spec_call_1_default 
-red_spec_call_default 
-red_spec_call_default_1 
-red_spec_call_default_2_body 
-red_spec_call_default_2_empty_body 
-red_spec_call_default_3_return 
-red_spec_call_default_3_normal 
-red_spec_construct_1_default 
-red_spec_construct_default 
-red_spec_construct_default_1 
-red_spec_function_construct_2 
 red_spec_create_new_function_in 
 
 red_spec_object_get_1_function 
