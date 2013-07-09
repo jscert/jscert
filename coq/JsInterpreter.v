@@ -532,7 +532,7 @@ Definition object_has_prop runs S C l x : specres bool :=
         res_spec S1 (decide (D <> full_descriptor_undef)))
     end).
 
-Definition object_get_builtin runs S C B vthis l x : result :=
+Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
   match B with
   | builtin_get_default =>
@@ -544,13 +544,7 @@ Definition object_get_builtin runs S C B vthis l x : result :=
       | attributes_accessor_of Aa =>
           match attributes_accessor_get Aa with
           | undef => out_ter S0 undef
-          | value_object lf =>
-              match vthis with
-              | value_object lthis =>
-                  runs_type_call runs S0 C lf lthis nil
-              | value_prim _ =>
-                impossible_with_heap_because S0 "The `this' argument of [object_get_builtin] is a primitive."
-              end
+          | value_object lf => runs_type_call runs S0 C lf l nil
           | value_prim _ =>
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
           end
@@ -738,7 +732,8 @@ Definition prim_new_object S w : result :=
 
 Definition to_object S v : result :=
   match v with
-  | prim_null | prim_undef => run_error S native_error_type
+  | prim_null => run_error S native_error_type
+  | prim_undef => run_error S native_error_type
   | value_prim w => prim_new_object S w
   | value_object l => out_ter S l
   end.
@@ -1139,7 +1134,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
 
   | prealloc_bool =>
     let v := get_arg 0 args in
-    let b := convert_value_to_boolean v in
+    Let b := convert_value_to_boolean v in
     let O1 := object_new prealloc_bool_proto "Boolean" in
     let O := object_with_primitive_value O1 b in
     let '(l, S') := object_alloc S O in
@@ -1282,8 +1277,8 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
                 | full_descriptor_some A =>
                   ifb attributes_configurable A then (
                     let A' := attributes_data_intro undef true true bconfig in
-                    if_void (object_define_own_prop runs S3 C prealloc_global fname A' true)
-                      follow
+                    if_bool (object_define_own_prop runs S3 C prealloc_global fname A' true)
+                      (fun S _ => follow S)
                   ) else ifb descriptor_is_accessor A
                     \/ attributes_writable A = false \/ attributes_enumerable A = false then
                       run_error S3 native_error_type
@@ -1468,23 +1463,23 @@ Definition from_prop_descriptor runs S C D : result :=
   | full_descriptor_undef => out_ter S undef
   | full_descriptor_some A =>
     if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 l =>
-      Let follow := fun S0 =>
+      Let follow := fun S0 _ =>
         let A1 := attributes_data_intro_all_true (attributes_enumerable A) in
-        if_void (object_define_own_prop runs S0 C l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' =>
+        if_bool (object_define_own_prop runs S0 C l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' _ =>
           let A2 := attributes_data_intro_all_true (attributes_configurable A) in
-          if_void (object_define_own_prop runs S0' C l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' =>
+          if_bool (object_define_own_prop runs S0' C l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' _ =>
             out_ter S' l))
       in match A with
       | attributes_data_of Ad =>
         let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
-        if_void (object_define_own_prop runs S1 C l "value" (descriptor_of_attributes A1) throw_false) (fun S2 =>
+        if_bool (object_define_own_prop runs S1 C l "value" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
           let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
-          if_void (object_define_own_prop runs S2 C l "writable" (descriptor_of_attributes A2) throw_false) follow)
+          if_bool (object_define_own_prop runs S2 C l "writable" (descriptor_of_attributes A2) throw_false) follow)
       | attributes_accessor_of Aa =>
         let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
-        if_void (object_define_own_prop runs S1 C l "get" (descriptor_of_attributes A1) throw_false) (fun S2 =>
+        if_bool (object_define_own_prop runs S1 C l "get" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
           let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
-          if_void (object_define_own_prop runs S2 C l "set" (descriptor_of_attributes A2) throw_false) follow)
+          if_bool (object_define_own_prop runs S2 C l "set" (descriptor_of_attributes A2) throw_false) follow)
       end)
   end.
 
@@ -1766,13 +1761,14 @@ Section Interpreter.
 (**************************************************************)
 (** Some spec cases *)
 
+Definition create_new_function_in runs S C args bd :=
+  creating_function_object runs S C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C).
+
 Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
-  Let create_new_function_in := fun S0 args bd =>
-    creating_function_object runs S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
   match pds return result with
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
-    let x := string_of_propname pn in
+    Let x := string_of_propname pn in
     Let follows := fun S1 A =>
       if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
         init_object runs S2 C l pds') in
@@ -1782,11 +1778,11 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
         let A := attributes_data_intro v0 true true true in
         follows S1 A)
     | propbody_get bd =>
-      if_value (create_new_function_in S nil bd) (fun S1 v0 =>
+      if_value (create_new_function_in runs S C nil bd) (fun S1 v0 =>
         let A := attributes_accessor_intro undef v0 true true in
         follows S1 A)
     | propbody_set args bd =>
-      if_value (create_new_function_in S args bd) (fun S1 v0 =>
+      if_value (create_new_function_in runs S C args bd) (fun S1 v0 =>
         let A := attributes_accessor_intro v0 undef true true in
         follows S1 A)
     end
@@ -1891,8 +1887,8 @@ Definition run_expr_function runs S C fo args bd : result :=
   end.
 
 Definition entering_eval_code runs S C direct bd K : result :=
-  let C' := if direct then C else execution_ctx_initial false in
-  let str := funcbody_is_strict bd in
+  let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
+  let C' := if direct then C else execution_ctx_initial str in
   let '(lex, S') :=
     if str
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
@@ -1971,7 +1967,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
   if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    let b := convert_value_to_boolean v1 in
+    Let b := convert_value_to_boolean v1 in
     let e := if b then e2 else e3 in
     if_spec_ter (run_expr_get_value runs S1 C e) out_ter).
 
@@ -2232,7 +2228,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_object_get_proto_of =>
     let v := get_arg 0 args in
     ifb type_of v <> type_object then
-      impossible_with_heap_because S "[run_call_prealloc], [prealloc_object_get_proto_of] case:  not an object."
+      run_error S native_error_type
     else
       out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
@@ -2258,7 +2254,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
                       descriptor_intro None None None None None (Some false)
                     in attributes_update A Desc
                   else A
-                in if_void (object_define_own_prop runs S1 C l x A' true) (fun S2 =>
+                in if_bool (object_define_own_prop runs S1 C l x A' true) (fun S2 _ =>
                   object_seal S2 xs')
               | full_descriptor_undef =>
                 impossible_with_heap_because S1 "[run_call_prealloc], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
@@ -2317,7 +2313,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
                       descriptor_intro None None None None None (Some false)
                     in attributes_update A' Desc
                   else A'
-                in if_void (object_define_own_prop runs S1 C l x A'' true) (fun S2 =>
+                in if_bool (object_define_own_prop runs S1 C l x A'' true) (fun S2 _ =>
                   object_freeze S2 xs')
               | full_descriptor_undef =>
                 impossible_with_heap_because S1 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
@@ -2415,7 +2411,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
 
   | prealloc_bool =>
     let v := get_arg 0 args in
-    let b := convert_value_to_boolean v in
+    Let b := convert_value_to_boolean v in
     let O1 := object_new prealloc_bool_proto "Boolean" in
     let O := object_with_primitive_value O1 b in
     let '(l, S') := object_alloc S O in

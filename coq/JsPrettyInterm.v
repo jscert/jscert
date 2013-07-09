@@ -291,7 +291,7 @@ Inductive ext_expr :=
   (** Extented expressions for eval *)
 
   | spec_entering_eval_code : bool -> funcbody -> ext_expr -> ext_expr
-  | spec_entering_eval_code_1 : funcbody -> ext_expr -> ext_expr
+  | spec_entering_eval_code_1 : funcbody -> ext_expr -> bool -> ext_expr
   | spec_entering_eval_code_2 : out -> ext_expr -> ext_expr
 
   | spec_call_global_eval : bool -> list value -> ext_expr
@@ -935,7 +935,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
 
   | spec_entering_eval_code _ _ _ => None
-  | spec_entering_eval_code_1 _ _ => None
+  | spec_entering_eval_code_1 _ _ _ => None
   | spec_entering_eval_code_2 o _ => Some o
 
   | spec_call_global_eval _ _ => None
