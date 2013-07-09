@@ -2144,20 +2144,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   
   (** Entering eval code  (10.4.2) *)
         
-  | red_spec_entering_eval_code : forall C' S C (bdirect:bool) bd K o, (* Steps 1 - 2 *)
-      (* TODO : is the initial strictness of the context set to false? *)
-      C' = (If bdirect then C else execution_ctx_initial strictness_false) ->
-      red_expr S C' (spec_entering_eval_code_1 bd K) o ->
+  | red_spec_entering_eval_code : forall str C' S C (bdirect:bool) bd K o, (* Steps 1 - 2 *)
+      str = funcbody_is_strict bd || (bdirect && execution_ctx_strict C)->
+      C' = (If bdirect then C else execution_ctx_initial str) ->
+      red_expr S C' (spec_entering_eval_code_1 bd K str) o ->
       red_expr S C (spec_entering_eval_code bdirect bd K) o  
       
   | red_spec_entering_eval_code_1 : forall str lex S' C' o1 S C bd K o, (* Steps 3 - 4 *)
-      str = funcbody_is_strict bd ->
       (lex, S') = (If str then lexical_env_alloc_decl S (execution_ctx_lexical_env C)
                           else (execution_ctx_lexical_env C, S)) ->
       C' = (If str then (execution_ctx_with_lex_same C lex) else C) ->
       red_expr S' C' (spec_binding_inst codetype_eval None (funcbody_prog bd) nil) o1 -> 
       red_expr S' C' (spec_entering_eval_code_2 o1 K) o ->
-      red_expr S C (spec_entering_eval_code_1 bd K) o 
+      red_expr S C (spec_entering_eval_code_1 bd K str) o 
       
   | red_spec_entering_eval_code_2 : forall S0 C S K o, (* Call continuation *) 
       red_expr S C K o ->
@@ -2232,8 +2231,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_spec_binding_inst_formal_params_1_not_declared : forall S0 S C args L x xs str v o o1, (* Step 4d iv *)
       red_expr S C (spec_env_record_create_mutable_binding L x None) o1 ->
-      (* TODO(Daiva): are we sure that deletable_opt above is None, meaning that the item
+      (* LATER(Daiva): are we sure that deletable_opt above is None, meaning that the item
          will not be deletable? it's worth testing in an implementation if you can delete an arg binding. *)
+      (* gds: I believe this is correct. I'm leaving the comment in, but changing to LATER because it's an interesting area to test later. *)
       red_expr S C (spec_binding_inst_formal_params_2 args L x xs str v o1) o ->
       red_expr S0 C (spec_binding_inst_formal_params_1 args L x xs str v (out_ter S false)) o
       
@@ -2288,9 +2288,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o ->
       red_expr S C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (full_descriptor_some A)) o
       
-  | red_spec_binding_inst_function_decls_4 : forall o1 L S C args fd fds str fo bconfig o, (* Step 5e iii *)
+  | red_spec_binding_inst_function_decls_4 : forall o1 L S0 S C args fd fds str fo bconfig b o, (* Step 5e iii *)
       red_expr S C (spec_binding_inst_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
-      red_expr S C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o
+      red_expr S0 C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig (out_ter S b)) o
 
   | red_spec_binding_inst_function_decls_3_false_type_error : forall o1 L S C args fd fds str fo A bconfig o, (* Step 5e iv *)
       attributes_configurable A = false -> 
@@ -2860,11 +2860,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_from_descriptor_2 l Ad o1) o ->
       red_expr S0 C (spec_from_descriptor_1 (attributes_data_of Ad) (out_ter S l)) o
 
-  | red_spec_from_descriptor_2_data : forall S0 S C Ad A' l o o1, (* step 3.b *)
+  | red_spec_from_descriptor_2_data : forall S0 S C Ad A' l b o o1, (* step 3.b *)
       A' = attributes_data_intro_all_true (attributes_data_writable Ad) ->
       red_expr S C (spec_object_define_own_prop l "writable" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_5 l Ad o1) o ->
-      red_expr S0 C (spec_from_descriptor_2 l Ad (out_void S)) o
+      red_expr S0 C (spec_from_descriptor_2 l Ad (out_ter S b)) o
 
   | red_spec_from_descriptor_1_accessor : forall S0 S C Aa A' l o o1, (* step 4.a *)
       A' = attributes_accessor_intro_all_true (attributes_accessor_get Aa) ->
@@ -2872,23 +2872,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_from_descriptor_3 l Aa o1) o ->
       red_expr S0 C (spec_from_descriptor_1 (attributes_accessor_of Aa) (out_ter S l)) o
 
-  | red_spec_from_descriptor_3_accessor : forall S0 S C Aa A' l o o1, (* step 4.b *)
+  | red_spec_from_descriptor_3_accessor : forall S0 S C Aa A' l b o o1, (* step 4.b *)
       A' = attributes_accessor_intro_all_true (attributes_accessor_set Aa) ->
       red_expr S C (spec_object_define_own_prop l "set" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_4 l Aa o1) o ->
-      red_expr S0 C (spec_from_descriptor_3 l Aa (out_void S)) o 
+      red_expr S0 C (spec_from_descriptor_3 l Aa (out_ter S b)) o 
 
-  | red_spec_from_descriptor_4 : forall S0 S C A A' l o o1, (* step 5 *)
+  | red_spec_from_descriptor_4 : forall S0 S C A A' l b o o1, (* step 5 *)
       A' = attributes_data_intro_all_true (attributes_enumerable A) -> 
       red_expr S C (spec_object_define_own_prop l "enumerable" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_5 l A o1) o ->
-      red_expr S0 C (spec_from_descriptor_4 l A (out_void S)) o 
+      red_expr S0 C (spec_from_descriptor_4 l A (out_ter S b)) o 
 
-  | red_spec_from_descriptor_5 : forall S0 S C A A' l o o1, (* step 6 *)
+  | red_spec_from_descriptor_5 : forall S0 S C A A' l b o o1, (* step 6 *)
       A' = attributes_data_intro_all_true (attributes_configurable A) ->
       red_expr S C (spec_object_define_own_prop l "configurable" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_6 l o1) o ->
-      red_expr S0 C (spec_from_descriptor_5 l A (out_void S)) o
+      red_expr S0 C (spec_from_descriptor_5 l A (out_ter S b)) o
 
   | red_spec_from_descriptor_6: forall S0 S C l, (* step 7 *)
       red_expr S0 C (spec_from_descriptor_6 l (out_void S)) (out_ter S l)
@@ -3199,9 +3199,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_seal_4 l xs o1) o -> 
       red_expr S C (spec_call_object_seal_3 l x xs (ret (T:=full_descriptor) S0 A)) (out_ter S false)
 
-  | red_spec_call_object_seal_4 : forall S0 S C l xs o, (* Step 2, loop *)
+  | red_spec_call_object_seal_4 : forall S0 S C l xs b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_seal_2 l xs) o ->
-      red_expr S0 C (spec_call_object_seal_4 l xs (out_void S)) o
+      red_expr S0 C (spec_call_object_seal_4 l xs (out_ter S b)) o
 
   | red_spec_call_object_seal_2_nil : forall S S' C l, (* Steps 3 and 4 *)
       object_heap_set_extensible false S l S' ->
@@ -3246,9 +3246,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_freeze_5 l xs o1) o ->
       red_expr S C (spec_call_object_freeze_4 l x xs A) o
 
-  | red_spec_call_object_freeze_5 : forall S0 S C xs l x o o1, (* Step 2, loop *)
+  | red_spec_call_object_freeze_5 : forall S0 S C xs l x b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_freeze_2 l xs) o ->
-      red_expr S0 C (spec_call_object_freeze_5 l xs (out_void S)) o
+      red_expr S0 C (spec_call_object_freeze_5 l xs (out_ter S b)) o
 
   | red_spec_call_object_freeze_2_nil : forall S S' C l b x o, (* Steps 4 and 5 *)
       object_heap_set_extensible false S l S' ->
@@ -3590,7 +3590,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       Note: behavior encoded using valueOf and conversion to string *)
 
   | red_spec_call_bool_proto_to_string : forall S C vthis args o1 o, 
-      (* TODO : check vthis value *)
+      (* LATER : check vthis value *)
       red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) o1 ->
       red_expr S C (spec_call_bool_proto_to_string_1 o1) o ->
       red_expr S C (spec_call_prealloc prealloc_bool_proto_to_string vthis args) o

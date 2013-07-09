@@ -1271,8 +1271,8 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
                 | full_descriptor_some A =>
                   ifb attributes_configurable A then (
                     let A' := attributes_data_intro undef true true bconfig in
-                    if_void (object_define_own_prop runs S3 C prealloc_global fname A' true)
-                      follow
+                    if_bool (object_define_own_prop runs S3 C prealloc_global fname A' true)
+                      (fun S _ => follow S)
                   ) else ifb descriptor_is_accessor A
                     \/ attributes_writable A = false \/ attributes_enumerable A = false then
                       run_error S3 native_error_type
@@ -1457,23 +1457,23 @@ Definition from_prop_descriptor runs S C D : result :=
   | full_descriptor_undef => out_ter S undef
   | full_descriptor_some A =>
     if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 l =>
-      Let follow := fun S0 =>
+      Let follow := fun S0 _ =>
         let A1 := attributes_data_intro_all_true (attributes_enumerable A) in
-        if_void (object_define_own_prop runs S0 C l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' =>
+        if_bool (object_define_own_prop runs S0 C l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' _ =>
           let A2 := attributes_data_intro_all_true (attributes_configurable A) in
-          if_void (object_define_own_prop runs S0' C l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' =>
+          if_bool (object_define_own_prop runs S0' C l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' _ =>
             out_ter S' l))
       in match A with
       | attributes_data_of Ad =>
         let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
-        if_void (object_define_own_prop runs S1 C l "value" (descriptor_of_attributes A1) throw_false) (fun S2 =>
+        if_bool (object_define_own_prop runs S1 C l "value" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
           let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
-          if_void (object_define_own_prop runs S2 C l "writable" (descriptor_of_attributes A2) throw_false) follow)
+          if_bool (object_define_own_prop runs S2 C l "writable" (descriptor_of_attributes A2) throw_false) follow)
       | attributes_accessor_of Aa =>
         let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
-        if_void (object_define_own_prop runs S1 C l "get" (descriptor_of_attributes A1) throw_false) (fun S2 =>
+        if_bool (object_define_own_prop runs S1 C l "get" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
           let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
-          if_void (object_define_own_prop runs S2 C l "set" (descriptor_of_attributes A2) throw_false) follow)
+          if_bool (object_define_own_prop runs S2 C l "set" (descriptor_of_attributes A2) throw_false) follow)
       end)
   end.
 
@@ -1880,8 +1880,8 @@ Definition run_expr_function runs S C fo args bd : result :=
   end.
 
 Definition entering_eval_code runs S C direct bd K : result :=
-  let C' := if direct then C else execution_ctx_initial false in
-  let str := funcbody_is_strict bd in
+  let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
+  let C' := if direct then C else execution_ctx_initial str in
   let '(lex, S') :=
     if str
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
@@ -2247,7 +2247,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
                       descriptor_intro None None None None None (Some false)
                     in attributes_update A Desc
                   else A
-                in if_void (object_define_own_prop runs S1 C l x A' true) (fun S2 =>
+                in if_bool (object_define_own_prop runs S1 C l x A' true) (fun S2 _ =>
                   object_seal S2 xs')
               | full_descriptor_undef =>
                 impossible_with_heap_because S1 "[run_call_prealloc], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
@@ -2306,7 +2306,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
                       descriptor_intro None None None None None (Some false)
                     in attributes_update A' Desc
                   else A'
-                in if_void (object_define_own_prop runs S1 C l x A'' true) (fun S2 =>
+                in if_bool (object_define_own_prop runs S1 C l x A'' true) (fun S2 _ =>
                   object_freeze S2 xs')
               | full_descriptor_undef =>
                 impossible_with_heap_because S1 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
