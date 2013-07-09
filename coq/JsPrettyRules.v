@@ -3747,51 +3747,60 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** ** Error prototype builtin functions *)
 
   (** Error.prototype.toString()  (15.11.4.4) *)
-  (* TODO: step 6 and 7 are redundant, right? *)
 
-  | red_spec_call_error_proto_to_string : forall S C args vthis o1 o, 
+  | red_spec_call_error_proto_to_string : forall S C args vthis o1 o, (* step 1 *)
       red_expr S C (spec_call_error_proto_to_string_1 vthis) o ->
       red_expr S C (spec_call_prealloc prealloc_error_proto_to_string vthis args) o
 
-  | red_spec_call_error_proto_to_string_1_not_object : forall S C v o, 
+  | red_spec_call_error_proto_to_string_1_not_object : forall S C v o, (* step 2 *)
       type_of v <> type_object ->
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_call_error_proto_to_string_1 v) o
 
-  | red_spec_call_error_proto_to_string_1_object : forall S C l o1 o, 
+  | red_spec_call_error_proto_to_string_1_object : forall S C l o1 o, (* step 3 *)
       red_expr S C (spec_object_get l "name") o1 ->  
       red_expr S C (spec_call_error_proto_to_string_2 l o1) o ->
       red_expr S C (spec_call_error_proto_to_string_1 l) o
 
-  | red_spec_call_error_proto_to_string_2_undef : forall S0 S C l o, 
+  | red_spec_call_error_proto_to_string_2_undef : forall S0 S C l o, (* step 4 if *)
       red_expr S C (spec_call_error_proto_to_string_3 l (out_ter S "Error")) o ->
       red_expr S0 C (spec_call_error_proto_to_string_2 l (out_ter S undef)) o
 
-  | red_spec_call_error_proto_to_string_2_not_undef : forall S0 S C l v o1 o, 
+  | red_spec_call_error_proto_to_string_2_not_undef : forall S0 S C l v o1 o, (* step 4 else *)
       v <> undef ->
       red_expr S C (spec_to_string v) o1 ->
       red_expr S C (spec_call_error_proto_to_string_3 l o1) o ->
       red_expr S0 C (spec_call_error_proto_to_string_2 l (out_ter S v)) o
 
-  | red_spec_call_error_proto_to_string_3 : forall S0 S C l sname o1 o, 
+  | red_spec_call_error_proto_to_string_3 : forall S0 S C l sname o1 o, (* step 5 *)
       red_expr S C (spec_object_get l "message") o1 ->  
       red_expr S C (spec_call_error_proto_to_string_4 l sname o1) o ->
       red_expr S0 C (spec_call_error_proto_to_string_3 l (out_ter S sname)) o
 
-  | red_spec_call_error_proto_to_string_4_undef : forall S0 S C l sname o, 
+  | red_spec_call_error_proto_to_string_4_undef : forall S0 S C l sname o, (* step 6 if *)
       red_expr S C (spec_call_error_proto_to_string_5 l sname (out_ter S "")) o ->
       red_expr S0 C (spec_call_error_proto_to_string_4 l sname (out_ter S undef)) o
 
-  | red_spec_call_error_proto_to_string_4_not_undef : forall S0 S C l sname v o1 o, 
+  | red_spec_call_error_proto_to_string_4_not_undef : forall S0 S C l sname v o1 o, (* step 6 else *)
       v <> undef ->
       red_expr S C (spec_to_string v) o1 ->
       red_expr S C (spec_call_error_proto_to_string_5 l sname o1) o ->
       red_expr S0 C (spec_call_error_proto_to_string_4 l sname (out_ter S v)) o
 
-  | red_spec_call_error_proto_to_string_5 : forall S0 S C l sname smsg s o, 
+  | red_spec_call_error_proto_to_string_5_undef : forall S0 S C l sname o, (* step 7 if *)
+      red_expr S C (spec_call_error_proto_to_string_6 l sname (out_ter S "")) o ->
+      red_expr S0 C (spec_call_error_proto_to_string_5 l sname (out_ter S undef)) o
+
+  | red_spec_call_error_proto_to_string_5_not_undef : forall S0 S C l sname v o1 o, (* step 7 else *)
+      v <> undef ->
+      red_expr S C (spec_to_string v) o1 ->
+      red_expr S C (spec_call_error_proto_to_string_6 l sname o1) o ->
+      red_expr S0 C (spec_call_error_proto_to_string_5 l sname (out_ter S v)) o
+
+  | red_spec_call_error_proto_to_string_6 : forall S0 S C l sname smsg s o, (* steps 8,9,10 *)
       s = (If sname = "" then smsg else If smsg = "" then sname 
            else (string_concat (string_concat sname ": ") smsg)) ->
-      red_expr S0 C (spec_call_error_proto_to_string_5 l sname (out_ter S smsg)) (out_ter S s)
+      red_expr S0 C (spec_call_error_proto_to_string_6 l sname (out_ter S smsg)) (out_ter S s)
 
 
   (*------------------------------------------------------------*)

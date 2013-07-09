@@ -523,6 +523,7 @@ Inductive ext_expr :=
   | spec_call_error_proto_to_string_3 : object_loc -> out -> ext_expr
   | spec_call_error_proto_to_string_4 : object_loc -> string -> out -> ext_expr
   | spec_call_error_proto_to_string_5 : object_loc -> string -> out -> ext_expr
+  | spec_call_error_proto_to_string_6 : object_loc -> string -> out -> ext_expr
 
 
   (** Special state for returning an outcome *)
@@ -1153,6 +1154,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_error_proto_to_string_3 _ o => Some o
   | spec_call_error_proto_to_string_4 _ _ o => Some o
   | spec_call_error_proto_to_string_5 _ _ o => Some o
+  | spec_call_error_proto_to_string_6 _ _ o => Some o
 
   | spec_returns o => Some o
   end.
