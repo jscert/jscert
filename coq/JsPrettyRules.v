@@ -3590,7 +3590,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       Note: behavior encoded using valueOf and conversion to string *)
 
   | red_spec_call_bool_proto_to_string : forall S C vthis args o1 o, 
-      (* TODO : check vthis value *)
+      (* LATER : check vthis value *)
       red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) o1 ->
       red_expr S C (spec_call_bool_proto_to_string_1 o1) o ->
       red_expr S C (spec_call_prealloc prealloc_bool_proto_to_string vthis args) o
