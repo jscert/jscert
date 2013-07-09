@@ -520,7 +520,7 @@ Definition object_has_prop runs S C l x : specres bool :=
         result_val S1 (decide (D <> full_descriptor_undef)))
     end).
 
-Definition object_get_builtin runs S C B vthis l x : result :=
+Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
   match B with
   | builtin_get_default =>
@@ -532,13 +532,7 @@ Definition object_get_builtin runs S C B vthis l x : result :=
       | attributes_accessor_of Aa =>
           match attributes_accessor_get Aa with
           | undef => out_ter S0 undef
-          | value_object lf =>
-              match vthis with
-              | value_object lthis =>
-                  runs_type_call runs S0 C lf lthis nil
-              | value_prim _ =>
-                impossible_with_heap_because S0 "The `this' argument of [object_get_builtin] is a primitive."
-              end
+          | value_object lf => runs_type_call runs S0 C lf l nil
           | value_prim _ =>
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
           end
