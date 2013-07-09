@@ -1933,7 +1933,11 @@ Proof.
   (* While *)
   skip. (* OLD: forwards~ RC: IHw R. apply~ red_stat_while.*)
   (* With *)
-  skip. (* TODO *)
+  unfolds in R. run red_stat_with using run_expr_get_value_correct.
+    applys* red_spec_expr_get_value_conv R1. destruct o1.
+      skip.
+      skip.
+    skip.
   (* Throw *)
   skip. (* OLD:
     unfolds in R. unmonad.
