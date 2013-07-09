@@ -47,11 +47,7 @@ let get_value_ref state r =
 		(JsInterpreter.runs max_int)
 		state (JsPreliminary.execution_ctx_initial false)
 		(JsSyntax.Coq_resvalue_ref r) with
-    | JsInterpreter.Coq_result_some (
-	   JsSyntax.Coq_out_ter (_,
-	     { JsSyntax.res_type = JsSyntax.Coq_restype_normal ;
-		   JsSyntax.res_value =
-			 JsSyntax.Coq_resvalue_value v })) ->
+ | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_val (_, v)) ->
 	   Some v
 	| _ -> None
 
