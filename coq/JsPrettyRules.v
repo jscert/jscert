@@ -1572,8 +1572,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Get (8.12.3) and (8.7.1)
       Note: rules are generalized so as to also handle the Put method on primitive values *)
   (* TODO_ARTHUR: Maybe it'd be bettter not to factorize the two sets of rules...
-           but copy-pasting is really ugly though.. 
-        TODO: is it correct? *)
+           but copy-pasting is really ugly though.. *)
 
   | red_spec_object_get_1_default : forall S C vthis l x o, (* Step 1 *)
       red_expr S C (spec_object_get_prop l x (spec_object_get_2 vthis l)) o ->
@@ -1593,11 +1592,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_get_3_accessor_undef : forall S C vthis l, (* Step 5 *)
       red_expr S C (spec_object_get_3 vthis l undef) (out_ter S undef) 
 
-  | red_spec_object_get_3_accessor_object : forall S C (lthis : object_loc) l lf o, (* Step 6 *)
-      (* TODO: I changed this rule as a term [vthis] of type [object_loc] 
-         appeared in it, which strongly looked as an error.  Please check it.  -- Martin. *)
-      red_expr S C (spec_call lf lthis nil) o ->
-      red_expr S C (spec_object_get_3 lthis l lf) o
+  | red_spec_object_get_3_accessor_object : forall S C vthis l lf o, (* Step 6 *)
+      red_expr S C (spec_call lf l nil) o ->
+      red_expr S C (spec_object_get_3 vthis l lf) o
       
   (** CanPut (8.12.4) *)
 

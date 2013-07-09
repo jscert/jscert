@@ -1827,19 +1827,9 @@ Lemma run_stat_correct : forall runs,
    follow_stat (run_stat runs).
 Proof.
   introv RC. intros S C t o R. unfolds in R. destruct t.
-
   (* Expression *)
-  skip.
-    (* OLD
-     apply~ red_stat_expr. unmonad.
-     (* Abort case *)
-     forwards~ RC: IHe (rm HE). applys~ red_spec_expr_get_value RC.
-      abort_expr.
-     (* Normal case *)
-     forwards~ RC: IHe (rm HE). applys~ red_spec_expr_get_value RC.
-      inverts HM as HM; simpl_after_regular_lemma; rm_variables;
-       apply~ red_spec_expr_get_value_1.
-    *)
+  run red_stat_expr. apply red_stat_expr_1.
+ 
   (* Label *)
   skip. (* TODO *)
   (* Block *)
