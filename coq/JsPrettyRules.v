@@ -644,12 +644,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_try_1_no_throw : forall S0 S C R co fo o,
       res_type R <> restype_throw ->
-      red_stat S0 C (stat_try_4 R fo) o ->
+      red_stat S C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) co fo) o
 
   | red_stat_try_1_throw_no_catch : forall S0 S C R fo o,
       res_type R = restype_throw ->
-      red_stat S0 C (stat_try_4 R fo) o ->
+      red_stat S C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) None fo) o
 
   | red_stat_try_1_throw_catch : forall v S0 S S' C lex lex' oldlex L x R t1 fo o1 o,
@@ -684,7 +684,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Debugger statement (12.15) *)
   
-  | res_stat_debugger : forall S C,
+  | red_stat_debugger : forall S C,
       red_stat S C stat_debugger (out_ter S res_empty)
 
 
