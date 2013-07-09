@@ -2233,7 +2233,13 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
   | prealloc_object_get_own_prop_descriptor =>
-    result_not_yet_implemented (* TODO:  Waiting for specification *)
+    match get_arg 0 args with
+    | value_object l =>
+      if_string (to_string runs S C (get_arg 1 args)) (fun S1 x =>
+      if_spec_ter (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
+      from_prop_descriptor runs S2 C D))     
+    | value_prim _ => run_error S native_error_type
+    end
 
   | prealloc_object_seal =>
     match get_arg 0 args with
