@@ -246,21 +246,24 @@ red_stat_throw_1
 
 red_expr_identifier (* stuck *)
 
-red_expr_member 
+
 red_expr_access 
 red_expr_access_1 
 red_expr_access_2 
 red_expr_access_3 
 red_expr_access_4 
+
 red_expr_delete 
 red_expr_delete_1_not_ref 
 red_expr_delete_1_ref_unresolvable 
 red_expr_delete_1_ref_property 
 red_expr_delete_2 
 red_expr_delete_1_ref_env_record 
+
 red_expr_conditional 
 red_expr_conditional_1 
 red_expr_conditional_2 
+
 red_expr_assign (* stuck *)
 red_expr_assign_1_simple 
 red_expr_assign_1_compound 
@@ -269,6 +272,7 @@ red_expr_assign_3_compound_op
 red_expr_assign_3'
 red_expr_assign_4_put_value 
 red_expr_assign_5_return 
+
 red_stat_var_decl_nil 
 red_stat_var_decl_cons 
 red_stat_var_decl_1 
