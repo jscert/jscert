@@ -590,6 +590,7 @@ Ltac run_select_ifres H :=
   | context [ if_bool ] => constr:(if_bool_out)
   | context [ if_string ] => constr:(if_string_out)
   | context [ if_number ] => constr:(if_number_out)
+  | context [ if_primitive ] => constr:(if_primitive_out)
   end.
 
 (** [run_select_proj] is used to obtain automatically
@@ -608,14 +609,12 @@ Ltac run_select_proj H :=
     the right correctness lemma for an auxiliary function *)
 
 Ltac run_select_lemma_run_expr_get_value T := fail.
-Ltac run_select_lemma_if_to_string T := fail.
 
 Ltac run_select_lemma H :=
   match type of H with
   | ?T = _ =>
     match constr:(tt) with
     | ?x => run_select_lemma_run_expr_get_value T
-    | ?x => run_select_lemma_if_to_string T
     end
   end.
 
@@ -711,7 +710,6 @@ Tactic Notation "run_apply" constr(Red) constr(o1) constr(R1) :=
     lemma *)
 
 Ltac run_post_run_expr_get_value := fail.
-Ltac run_post_if_to_string := fail.
 
 Ltac run_post_core :=
   let Er := fresh "Er" in
@@ -739,9 +737,11 @@ Ltac run_post_core :=
     let s := fresh "s" in go H s
   | H: if_number_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
+  | H: if_primitive_post _ _ _ |- _ =>
+    let m := fresh "m" in go H m
   | |- _ => run_post_run_expr_get_value
-  | |- _ => run_post_if_to_string
   end.
+
 
 Tactic Notation "run_post" :=
   run_post_core.
@@ -1325,11 +1325,15 @@ Qed. *)
 
 (** Conversions *)
 
+
+
+(* TODO: will change like if_number *)
 Definition if_to_primitive_post K o o1 :=
   (eqabort o1 o \/
     exists S, exists (w : prim), o1 = out_ter S w /\
       K S w = result_some o).
 
+(* TODO: will change like if_number *)
 Lemma if_to_primitive_correct : forall runs S C v prefo K o,
   runs_type_correct runs ->
   if_primitive (to_primitive runs S C v prefo) K = o -> exists o1,
@@ -1337,43 +1341,37 @@ Lemma if_to_primitive_correct : forall runs S C v prefo K o,
       if_to_primitive_post K o o1.
 Admitted.
 
-Definition if_to_number_post K o o1 :=
-  (eqabort o1 o \/
-    exists S, exists (n : number), o1 = out_ter S n /\
-      K S n = result_some o).
 
-Lemma if_to_number_correct : forall runs S C v K o,
+Lemma to_primitive_correct : forall runs S C v o pf,
   runs_type_correct runs ->
-  if_number (to_number runs S C v) K = o -> exists o1,
-    red_expr S C (spec_to_number v) o1 /\
-      if_to_number_post K o o1.
+  to_primitive runs S C v pf = o -> 
+  red_expr S C (spec_to_primitive v pf) o.
 Admitted.
 
-(* TODO:  to_int32, to_uint32 *)
-
-Definition if_to_string_post K o o1 :=
-  (eqabort o1 o \/
-    exists S, exists (s : string), o1 = out_ter S s /\
-      K S s = result_some o).
-
-Lemma if_to_string_correct : forall runs S C v K o,
+Lemma to_number_correct : forall runs S C v o,
   runs_type_correct runs ->
-  if_string (to_string runs S C v) K = o -> exists o1,
-    red_expr S C (spec_to_string v) o1 /\
-      if_to_string_post K o o1.
-Admitted. (* OLD
-  introv RC E. destruct v; simpls.
-   inverts E. splits*. apply~ red_spec_to_string_prim.
-   deal_with_regular_lemma E if_success_primitive_out; substs.
-    forwards~ DV: object_default_value_correct HE.
-     splits; [| intros; false ]. apply~ red_spec_to_string_object.
-       applys~ red_spec_to_primitive_pref_object DV.
-     apply~ red_expr_abort.
-    forwards~ DV: object_default_value_correct HE.
-     applys_and red_spec_to_string_object.
-      applys~ red_spec_to_primitive_pref_object DV.
-     splits*. apply~ red_spec_to_string_1.
-Qed. *)
+  to_number runs S C v = o -> 
+  red_expr S C (spec_to_number v) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct v.
+  run_inv. applys* red_spec_to_number_prim.
+  run red_spec_to_number_object using to_primitive_correct.
+  applys* red_spec_to_number_1.
+Qed.
+
+Lemma to_string_correct : forall runs S C v o,
+  runs_type_correct runs ->
+  to_string runs S C v = o -> 
+  red_expr S C (spec_to_string v) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct v.
+  run_inv. applys* red_spec_to_string_prim.
+  run red_spec_to_string_object using to_primitive_correct.
+  applys* red_spec_to_string_1.
+Qed.
+
+
+(* TODO:  to_int32, to_uint32 *)
 
 
 
@@ -1399,26 +1397,6 @@ Lemma run_expr_get_value_correct : forall runs,
 
 Admitted.
 *)
-
-Ltac run_select_lemma_run_expr_get_value T ::=
-  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
-
-
-
-Ltac run_select_lemma_if_to_string T ::=
-  match T with if_string (to_string _ _ _ _) _ => constr:(if_to_string_correct) end.
-
-Ltac run_post_if_to_string ::=
-  let Er := fresh "Er" in
-  let Ab := fresh "Ab" in
-  match goal with
-  | H: if_to_string_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let s := fresh "s" in
-    destruct H as [(Er&Ab)|(S1&s&O1&H)];
-    [ try abort_expr | try subst_hyp O1 ]
-  end.
 
 
 (**************************************************************)
@@ -1559,6 +1537,7 @@ Admitted. (* OLD
     forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
 Qed. *)
 
+
 Lemma create_new_function_in_correct : forall runs S C args bd o,
   runs_type_correct runs ->
   create_new_function_in runs S C args bd = o ->
@@ -1624,7 +1603,8 @@ Proof.
      abort_expr.
     applys red_expr_access_2.
       applys* red_spec_check_object_coercible_return.
-     run red_expr_access_3. applys* red_expr_access_4.
+     run red_expr_access_3 using to_string_correct.
+     applys* red_expr_access_4.
   (* member *)
   run_hyp R. apply~ red_expr_member.
   (* new *)

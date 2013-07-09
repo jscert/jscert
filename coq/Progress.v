@@ -12,29 +12,7 @@ unary/binary ops
 prog_block
 
 === Arthur
-
-
-red_spec_to_int32 
-red_spec_to_int32_1 
-red_spec_to_uint32 
-red_spec_to_uint32_1 
-red_spec_convert_twice 
-red_spec_convert_twice_1 
-red_spec_convert_twice_2 
-red_spec_expr_get_value_conv 
-red_spec_expr_get_value_conv_1 
-red_spec_expr_get_value_conv_2 
-red_spec_expr_get_value_conv 
-red_spec_expr_get_value_conv_1 
-red_spec_expr_get_value_conv_2 
-red_spec_list_then 
-red_spec_list_then_1_nil 
-red_spec_list_then_1_cons 
-red_spec_list_then_2 
-
-red_spec_returns 
-red_spec_to_primitive_pref_prim 
-red_spec_to_primitive_pref_object 
+ 
 red_spec_to_boolean 
 red_spec_to_number_prim 
 red_spec_to_number_object 
@@ -49,6 +27,8 @@ red_spec_to_object_prim
 red_spec_to_object_object 
 red_spec_check_object_coercible_undef_or_null 
 red_spec_check_object_coercible_return 
+red_spec_to_primitive_pref_prim 
+red_spec_to_primitive_pref_object 
 
 
 red_stat_try 
@@ -323,6 +303,21 @@ red_stat_var_decl_item_3
 
 
 === Martin
+
+modify the interpreter to remove continuations, 
+then give back to Arthur for proofs.
+  red_spec_convert_twice 
+  red_spec_convert_twice_1 
+  red_spec_convert_twice_2 
+  red_spec_to_int32 
+  red_spec_to_int32_1 
+  red_spec_to_uint32 
+  red_spec_to_uint32_1 
+  red_spec_list_then 
+  red_spec_list_then_1_nil 
+  red_spec_list_then_1_cons 
+  red_spec_list_then_2 
+
 
 red_spec_arguments_object_map 
 red_spec_arguments_object_map_1 
