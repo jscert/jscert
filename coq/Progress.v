@@ -14,7 +14,7 @@ prog_block
 === Arthur
 
 
-red_stat_try 
+red_stat_try (* Done *)
 red_stat_try_1_no_throw 
 red_stat_try_1_throw_no_catch 
 red_stat_try_1_throw_catch 
@@ -276,7 +276,7 @@ red_stat_var_decl_item_3
 
 === Martin
 
-modify the interpreter to remove continuations, 
+modify the interpreter to remove continuations, (* They have been modified in the interpreter. *)
 then give back to Arthur for proofs.
   red_spec_convert_twice 
   red_spec_convert_twice_1 
@@ -437,11 +437,16 @@ red_spec_lexical_env_get_identifier_ref_cons_1
 red_spec_lexical_env_get_identifier_ref_cons_2_true 
 red_spec_lexical_env_get_identifier_ref_cons_2_false 
 
-red_spec_error 
-red_spec_error_1 
+
+red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
+
+
+red_spec_error (* Done *)
+red_spec_error_1
 red_spec_error_or_cst_true 
 red_spec_error_or_cst_false 
 red_spec_error_or_void_true 
 red_spec_error_or_void_false 
 
-red_javascript_intro
+red_spec_build_error (* Done *)
+red_spec_build_error_1_no_msg
