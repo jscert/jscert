@@ -1349,6 +1349,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Special function *)
 
+  (* TODO: see if useful *)
   | red_spec_returns : forall S C o,
       red_expr S C (spec_returns o) o
 
