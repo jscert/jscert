@@ -7,33 +7,12 @@ switch
 do_while
 unary/binary ops
 
+=== Requires big changes (Arthur)
+
+prog_block
 
 === Arthur
 
-red_javascript_intro 
-red_prog_abort 
-red_prog_prog 
-red_prog_1_nil 
-red_prog_1_cons_stat 
-red_prog_2 
-red_prog_3 
-red_prog_1_cons_funcdecl
-red_stat_abort 
-red_stat_block 
-red_stat_block_1_nil 
-red_stat_block_1_cons 
-red_stat_block_2 
-red_stat_block_3 
-
-red_stat_try 
-red_stat_try_1_no_throw 
-red_stat_try_1_throw_no_catch 
-red_stat_try_1_throw_catch 
-red_stat_try_2_catch 
-red_stat_try_3_catch_result 
-red_stat_try_4_no_finally 
-red_stat_try_4_finally 
-red_stat_try_5_finally_result 
 red_expr_object 
 red_expr_object_0 
 red_expr_object_1_nil 
@@ -46,6 +25,7 @@ red_expr_object_2_set
 red_expr_object_3_set 
 red_expr_object_4_define_own_prop 
 red_expr_object_5_next_property
+
 
 red_spec_to_int32 
 red_spec_to_int32_1 
@@ -82,6 +62,17 @@ red_spec_to_object_prim
 red_spec_to_object_object 
 red_spec_check_object_coercible_undef_or_null 
 red_spec_check_object_coercible_return 
+
+
+red_stat_try 
+red_stat_try_1_no_throw 
+red_stat_try_1_throw_no_catch 
+red_stat_try_1_throw_catch 
+red_stat_try_2_catch 
+red_stat_try_3_catch_result 
+red_stat_try_4_no_finally 
+red_stat_try_4_finally 
+red_stat_try_5_finally_result 
 
 red_spec_to_descriptor_not_object 
 red_spec_to_descriptor_object 
@@ -506,3 +497,5 @@ red_spec_error_or_cst_true
 red_spec_error_or_cst_false 
 red_spec_error_or_void_true 
 red_spec_error_or_void_false 
+
+red_javascript_intro

@@ -1520,9 +1520,24 @@ Admitted.
 (**************************************************************)
 (** ** Main theorem *)
 
+
 Lemma run_elements_correct : forall runs,
   runs_type_correct runs -> forall rv,
   follow_elements rv (fun S C => run_elements runs S C rv).
+Proof.
+(* TODO: don't do it because the definition will need to change
+  in order to first process all but the last elements. *)
+(*
+  introv IH. intros rv S C les o HR. induction les.
+  simpls. run_inv. applys* red_prog_1_nil.
+  unfold run_elements' in HR.
+red_prog_1_cons_stat 
+red_prog_2 
+red_prog_3 
+red_prog_1_cons_funcdecl
+*)
+
+
 Admitted. (* OLD
   intros runs [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo] rv S C es S' res R.
   gen rv S C S' res R. induction es; simpls; introv R.
@@ -1552,11 +1567,48 @@ Admitted. (* OLD
     forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
 Qed. *)
 
+Definition create_new_function_in runs S C args bd :=
+  creating_function_object runs S C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C).
+
+Lemma create_new_function_in_correct : forall runs S C args bd o,
+  runs_type_correct runs ->
+  create_new_function_in runs S C args bd = o ->
+  red_expr S C (spec_create_new_function_in C args bd) o.
+Proof.
+  introv IH HR. unfolds in HR. applys red_spec_create_new_function_in.
+  applys* creating_function_object_correct. 
+Qed.
+
+Fixpoint init_object' runs S C l (pds : propdefs) {struct pds} : result :=
+  match pds return result with
+  | nil => out_ter S l
+  | (pn, pb) :: pds' =>
+    Let x := string_of_propname pn in
+    Let follows := fun S1 A =>
+      if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
+        init_object' runs S2 C l pds') in
+    match pb with
+    | propbody_val e0 =>
+      run_expr_get_value runs S C e0 (fun S1 v0 =>
+        let A := attributes_data_intro v0 true true true in
+        follows S1 A)
+    | propbody_get bd =>
+      if_value (create_new_function_in runs S C nil bd) (fun S1 v0 =>
+        let A := attributes_accessor_intro undef v0 true true in
+        follows S1 A)
+    | propbody_set args bd =>
+      if_value (create_new_function_in runs S C args bd) (fun S1 v0 =>
+        let A := attributes_accessor_intro v0 undef true true in
+        follows S1 A)
+    end
+  end.
+
 Lemma run_expr_correct : forall runs,
   runs_type_correct runs ->
    follow_expr (run_expr runs).
 Proof.
-  introv RC. intros S C e o R. unfolds in R. destruct e.
+  introv IH. intros S C e o R. unfolds in R.  
+  destruct e as [ | | | pds | | |  | | | | | | ].
   (* this *)
   run_inv. apply~ red_expr_this.
   (* identifier *)
@@ -1565,7 +1617,46 @@ Proof.
   (* literal *)
   run_inv. apply~ red_expr_literal.
   (* object *)
-  skip. (* TODO *)
+  Focus 1.
+  skip_rewrite (init_object = init_object') in R.
+  run_pre. lets* H: run_construct_prealloc_correct (rm O1).
+   applys* red_expr_object (rm H). run_post.
+  applys red_expr_object_0.
+  gen S0. induction pds as [|(pn&pb) pds]; intros.
+  simpls. run_inv. applys red_expr_object_1_nil.
+   skip. (*remove skip*)
+  simpls. let_simpl. let_simpl. 
+  asserts follows_correct: (forall S A, follows S A = o ->
+      red_expr S C (expr_object_4 l x A pds) o). 
+    subst follows. clears R. introv HR.
+    run_pre. lets* H: object_define_own_prop_correct (rm O1).
+Axiom red_expr_object_4_define_own_prop : forall S S0 C A l x pds o o1,
+      red_expr S C (spec_object_define_own_prop l x A false) o1 ->
+      red_expr S C (expr_object_5 l pds o1) o ->
+      red_expr S C (expr_object_4 l x A pds) o.
+     applys* red_expr_object_4_define_own_prop. run_post.
+Axiom red_expr_object_5_next_property : forall S S0 C rv l pds o,
+      red_expr S C (expr_object_1 l pds) o ->
+      red_expr S0 C (expr_object_5 l pds (out_ter S rv)) o.
+     applys* red_expr_object_5_next_property. 
+    clear EQfollows.
+Axiom red_expr_object_1_cons : forall S C x l pn pb pds o, 
+      x = string_of_propname pn ->
+      red_expr S C (expr_object_2 l x pb pds) o ->
+      red_expr S C (expr_object_1 l ((pn,pb)::pds)) o.
+  applys* red_expr_object_1_cons x.
+  destruct pb.
+    run red_expr_object_2_val. applys* red_expr_object_3_val. 
+    run_pre. lets* H: create_new_function_in_correct (rm O1).
+     applys* red_expr_object_2_get. run_post.
+     applys* red_expr_object_3_get. 
+    run_pre. lets* H: create_new_function_in_correct (rm O1).
+Axiom red_expr_object_2_set : forall S C l x pds o o1 bd args,
+      red_expr S C (spec_create_new_function_in C args bd) o1 ->
+      red_expr S C (expr_object_3_set l x o1 pds) o ->
+      red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o.
+     applys* red_expr_object_2_set. run_post.
+     applys* red_expr_object_3_set. 
   (* function *)
   skip. (* TODO *)
   (* Access *)
@@ -2124,4 +2215,6 @@ Proof.
      apply~ run_equal_correct.
 Qed.
 
+
+(* todo: run_javascript_correct *)
 

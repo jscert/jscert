@@ -732,7 +732,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_1 l pds) o ->
       red_expr S0 C (expr_object_0 (out_ter S l) pds) o
 
-  | red_expr_object_1_nil : forall S S C l,
+  | red_expr_object_1_nil : forall S C l,
       red_expr S C (expr_object_1 l nil) (out_ter S l)
   
   | red_expr_object_1_cons : forall S0 S C x l pn pb pds o, 
