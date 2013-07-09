@@ -1630,7 +1630,7 @@ Proof.
   (* this *)
   run_inv. apply~ red_expr_this.
   (* identifier *)
-    run_inv. apply~ red_expr_identifier. skip. (* TODO *)
+    run_inv. applys* red_expr_identifier. skip. (* TODO *)
   (* literal *)
   run_inv. apply~ red_expr_literal.
   (* object *)
@@ -1944,7 +1944,10 @@ Proof.
         apply~ red_stat_throw_1.
         *)
   (* Return *)
-  skip.
+  unfolds in R. destruct eo.   
+    run red_stat_return_some using run_expr_get_value_correct. apply* red_stat_return_1.
+    inverts* R. applys red_stat_return_none.
+
     (* OLD:
     destruct o; simpls; unmonad.
      forwards~ RC: IHe (rm HE). apply~ red_stat_return_some.
