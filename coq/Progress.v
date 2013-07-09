@@ -238,13 +238,14 @@ red_stat_if_1_false
 red_stat_if_1_false_implicit 
 
 red_stat_continue 
+
 red_stat_break 
 red_stat_return_none 
 red_stat_return_some 
 red_stat_return_1 
 red_stat_with 
 red_stat_with_1 
-red_stat_label 
+red_stat_label (* Stuck *)
 red_stat_label_1_normal 
 red_stat_label_1_break_eq 
 red_stat_throw 
@@ -267,7 +268,7 @@ red_expr_delete_1_ref_env_record
 red_expr_conditional 
 red_expr_conditional_1 
 red_expr_conditional_2 
-red_expr_assign 
+red_expr_assign (* stuck *)
 red_expr_assign_1_simple 
 red_expr_assign_1_compound 
 red_expr_assign_2_compound_get_value 

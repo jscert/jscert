@@ -1553,9 +1553,7 @@ Proof.
    (* applys~ red_spec_expr_get_value_conv R1. *)
   skip. (* TODO *)
   (* assign *)
-  unfolds in R.
-  (* run_pre as o1 R1. (* There is a probleme there with the final name of [R]. *)
-  run red_expr_assign. *)
+  unfolds in R. run red_expr_assign. let_simpl.      
   skip. (* TODO *)
 
 Admitted. 
@@ -1760,10 +1758,11 @@ Lemma run_stat_correct : forall runs,
 Proof.
   introv RC. intros S C t o R. unfolds in R. destruct t.
   (* Expression *)
-  run red_stat_expr. apply red_stat_expr_1.
- 
+  run red_stat_expr. apply red_stat_expr_1. 
   (* Label *)
-  skip. (* TODO *)
+  unfolds in R. applys* red_stat_label o. 
+    skip. (* Daniele: stuck *)
+    skip.
   (* Block *)
   skip. (* TODO *)
     (* Temp for arthur

@@ -2221,7 +2221,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_object_get_proto_of =>
     let v := get_arg 0 args in
     ifb type_of v <> type_object then
-      impossible_with_heap_because S "[run_call_prealloc], [prealloc_object_get_proto_of] case:  not an object."
+      run_error S native_error_type
     else
       out_ter S (resvalue_ref (ref_create_value v "prototype" false))
 
