@@ -434,6 +434,17 @@ Qed.
 
 
 
+Definition if_any_or_throw_post K1 K2 o o1 :=
+  (o1 = out_div /\ o = o1) \/
+  (exists S R, o1 = out_ter S R /\ 
+    (   (res_type R <> restype_throw /\ K1 o1 = result_some o)  
+     \/ (res_type R = restype_throw /\ exists v, res_value R = resvalue_value v /\ K2 S v = result_some o))).
+
+Lemma if_any_or_throw_out : forall W K1 K2 o,
+  if_any_or_throw W K1 K2 = result_some o ->
+  isout W (if_any_or_throw_post K1 K2 o).
+Admitted.
+
 (* proofs of old monadic lemmas, might be useful
 Lemma if_success_out : forall res K S R,
   if_success res K = out_ter S R ->
@@ -611,6 +622,8 @@ Tactic Notation "abort" :=
 
 (** [run_select_ifres] selects the appropriate "out" lemma *)
 
+Ltac run_select_extra T := fail.
+
 Ltac run_select_ifres H :=
   match type of H with ?T = _ => match T with
   | if_ter _ _ => constr:(if_ter_out)
@@ -625,7 +638,18 @@ Ltac run_select_ifres H :=
   | if_primitive _ _ => constr:(if_primitive_out)
   | if_spec _ _ => constr:(if_spec_out)
   | if_spec_ter _ _ => constr:(if_spec_ter_out)
+  | if_spec_ter _ _ => constr:(if_spec_ter_out) 
+  | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
+  | _ => run_select_extra T
   end end.
+
+(* template:
+Ltac run_select_extra T ::=
+  match T with
+  | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
+  end.
+*)
+
 
 (** [run_select_proj] is used to obtain automatically
     the right correctness lemma out of the correctness record *)
@@ -745,6 +769,8 @@ Tactic Notation "run_apply" constr(Red) constr(o1) constr(R1) :=
 
 Ltac run_post_run_expr_get_value := fail.
 
+Ltac run_post_extra := fail.
+
 Ltac run_post_core :=
   let Er := fresh "Er" in
   let Ab := fresh "Ab" in
@@ -787,9 +813,27 @@ Ltac run_post_core :=
     let S := fresh "S" in let a := fresh "a" in
     destruct H as [(Er&Ab)|(S&a&O1&H)];
     [ try abort | try subst_hyp O1 ]
+  | H: if_any_or_throw_post _ _ _ _ |- _ =>
+    let R := fresh "R" in
+    let N := fresh "N" in let v := fresh "v" in
+    let E := fresh "E" in
+    destruct H as [(Er&Ab)|(S&R&O1&[(N&H)|(N&v&E&H)])];
+    [ try subst_hyp Er; try subst_hyp Ab | try subst_hyp O1 | try subst_hyp O1 ]
   | |- _ => run_post_run_expr_get_value
+  | |- _ => run_post_extra
   end.
  
+
+(* template
+Ltac run_post_extra ::=
+  let Er := fresh "Er" in let Ab := fresh "Ab" in
+  let O1 := fresh "O1" in let S := fresh "S" in
+  match goal with
+  | H: if_any_or_throw_post _ _ _ _ |- _ => ...
+  end.
+
+*)
+
 
 Tactic Notation "run_post" :=
   run_post_core.
@@ -1791,8 +1835,8 @@ Hint Extern 1 (red_expr ?S ?C ?s ?o) =>
 
 
 
-(* temp for Arthur: first simplify to make proof easier, then backport *)
 Definition run_stat_try' runs S C t1 t2o t3o : result :=
+  (* LATER: why not make finally a function of S and R directly? *)
   Let finally := fun res =>
     match t3o with
     | None => res
@@ -1825,7 +1869,9 @@ Lemma run_stat_correct : forall runs,
   runs_type_correct runs ->
    follow_stat (run_stat runs).
 Proof.
-  introv RC. intros S C t o R. unfolds in R. destruct t.
+  introv RC. intros S C t o R. unfolds in R. 
+  destruct t as [ | | ls | ls | e t1 t2o | labs t e | labs e t | e t 
+     | e | eo | labo | labo | t co fo | | | eo | ]. 
   (* Expression *)
   run red_stat_expr using run_expr_get_value_correct.
   apply red_stat_expr_1. 
@@ -1921,26 +1967,43 @@ Proof.
 
   (* Break *)
   (* Daniele: not sure if inverts is the right thing, but rewrite doesn't work since 
-     R seems to actually be "result_some_out (out_ter S (res_break l)) -- look at the
+     R seems to actually be result_some_out (out_ter S (res_break l)) -- look at the
      error msg you get by doing a rewrite *)
   inverts R. applys* red_stat_break.
   (* Continue *)
   inverts R. applys* red_stat_continue.
   (* Try *)
-    
-     (*
-     skip_rewrite (run_stat_try = run_stat_try') in R.
-     rename o0 into co, o1 into fo.
-      unfolds in R. let_simpl.
-     *) skip.
-      (*  --does not work
-      asserts finally_correct: (forall S C R o, (* todo: could change the design so that out_ter S R  can be generalized to o1 *)
-       finally (result_some (out_ter S R)) = result_some o ->
-      red_stat S C (stat_try_4 R fo) o).
-       clear R. introv HR. subst finally. destruct fo.
-        run_pre. run_inv. applys red_stat_try_4_finally.
-      *)
-   
+  skip_rewrite (run_stat_try = run_stat_try') in R.
+  unfolds in R. let_simpl.
+   (*TODO Martin :changer la fonction finally pour qu'elle 
+     prenne S et R directement en argument, quitte a avoir
+     un peu plus de monades pour les appels, ça simplifiera grandement *)
+  asserts finally_correct: (forall S (R:res), 
+      finally (out_ter S R) = result_some o ->
+      red_stat S C (stat_try_4 R fo) o). 
+    subst finally. clear R. introv HR.
+    destruct fo.
+      simpls. run red_stat_try_4_finally.
+       applys* red_stat_try_5_finally_result.
+      run_inv. applys* red_stat_try_4_no_finally.
+    clear EQfinally.
+  run red_stat_try. abort.
+Axiom red_stat_try_1_no_throw : forall S0 S C R co fo o,
+      res_type R <> restype_throw ->
+      red_stat S C (stat_try_4 R fo) o ->
+      red_stat S0 C (stat_try_1 (out_ter S R) co fo) o.
+    applys* red_stat_try_1_no_throw. 
+    destruct co as [|c].
+      destruct p as [x t2]. let_simpl. let_simpl.
+       destruct p as [lex' S']. destruct lex'; tryfalse.
+       subst lex. run* red_stat_try_1_throw_catch 
+        using env_record_create_set_mutable_binding_correct.
+       match type of R with finally ?o1' = _ => sets_eq o1: o1' end.
+        applys red_stat_try_2_catch. 
+      (* TODO: Martin: fix the interpreter here. *) skip. skip.         
+      applys* red_stat_try_1_throw_no_catch. applys* finally_correct.
+      (* TODO: Martin: fix the interpreter here. *) skip.
+
   (* For-in *)
   skip. (* TODO *)
   (* For-in-var *)
