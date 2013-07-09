@@ -1880,8 +1880,8 @@ Definition run_expr_function runs S C fo args bd : result :=
   end.
 
 Definition entering_eval_code runs S C direct bd K : result :=
-  let C' := if direct then C else execution_ctx_initial false in
-  let str := funcbody_is_strict bd in
+  let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
+  let C' := if direct then C else execution_ctx_initial str in
   let '(lex, S') :=
     if str
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
