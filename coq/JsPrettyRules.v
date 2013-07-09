@@ -2288,9 +2288,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o ->
       red_expr S C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (full_descriptor_some A)) o
       
-  | red_spec_binding_inst_function_decls_4 : forall o1 L S C args fd fds str fo bconfig o, (* Step 5e iii *)
+  | red_spec_binding_inst_function_decls_4 : forall o1 L S0 S C args fd fds str fo bconfig b o, (* Step 5e iii *)
       red_expr S C (spec_binding_inst_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
-      red_expr S C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o
+      red_expr S0 C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig (out_ter S b)) o
 
   | red_spec_binding_inst_function_decls_3_false_type_error : forall o1 L S C args fd fds str fo A bconfig o, (* Step 5e iv *)
       attributes_configurable A = false -> 
@@ -2860,11 +2860,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_from_descriptor_2 l Ad o1) o ->
       red_expr S0 C (spec_from_descriptor_1 (attributes_data_of Ad) (out_ter S l)) o
 
-  | red_spec_from_descriptor_2_data : forall S0 S C Ad A' l o o1, (* step 3.b *)
+  | red_spec_from_descriptor_2_data : forall S0 S C Ad A' l b o o1, (* step 3.b *)
       A' = attributes_data_intro_all_true (attributes_data_writable Ad) ->
       red_expr S C (spec_object_define_own_prop l "writable" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_5 l Ad o1) o ->
-      red_expr S0 C (spec_from_descriptor_2 l Ad (out_void S)) o
+      red_expr S0 C (spec_from_descriptor_2 l Ad (out_ter S b)) o
 
   | red_spec_from_descriptor_1_accessor : forall S0 S C Aa A' l o o1, (* step 4.a *)
       A' = attributes_accessor_intro_all_true (attributes_accessor_get Aa) ->
@@ -2872,23 +2872,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_from_descriptor_3 l Aa o1) o ->
       red_expr S0 C (spec_from_descriptor_1 (attributes_accessor_of Aa) (out_ter S l)) o
 
-  | red_spec_from_descriptor_3_accessor : forall S0 S C Aa A' l o o1, (* step 4.b *)
+  | red_spec_from_descriptor_3_accessor : forall S0 S C Aa A' l b o o1, (* step 4.b *)
       A' = attributes_accessor_intro_all_true (attributes_accessor_set Aa) ->
       red_expr S C (spec_object_define_own_prop l "set" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_4 l Aa o1) o ->
-      red_expr S0 C (spec_from_descriptor_3 l Aa (out_void S)) o 
+      red_expr S0 C (spec_from_descriptor_3 l Aa (out_ter S b)) o 
 
-  | red_spec_from_descriptor_4 : forall S0 S C A A' l o o1, (* step 5 *)
+  | red_spec_from_descriptor_4 : forall S0 S C A A' l b o o1, (* step 5 *)
       A' = attributes_data_intro_all_true (attributes_enumerable A) -> 
       red_expr S C (spec_object_define_own_prop l "enumerable" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_5 l A o1) o ->
-      red_expr S0 C (spec_from_descriptor_4 l A (out_void S)) o 
+      red_expr S0 C (spec_from_descriptor_4 l A (out_ter S b)) o 
 
-  | red_spec_from_descriptor_5 : forall S0 S C A A' l o o1, (* step 6 *)
+  | red_spec_from_descriptor_5 : forall S0 S C A A' l b o o1, (* step 6 *)
       A' = attributes_data_intro_all_true (attributes_configurable A) ->
       red_expr S C (spec_object_define_own_prop l "configurable" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_6 l o1) o ->
-      red_expr S0 C (spec_from_descriptor_5 l A (out_void S)) o
+      red_expr S0 C (spec_from_descriptor_5 l A (out_ter S b)) o
 
   | red_spec_from_descriptor_6: forall S0 S C l, (* step 7 *)
       red_expr S0 C (spec_from_descriptor_6 l (out_void S)) (out_ter S l)
@@ -3199,9 +3199,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_seal_4 l xs o1) o -> 
       red_expr S C (spec_call_object_seal_3 l x xs (ret (T:=full_descriptor) S0 A)) (out_ter S false)
 
-  | red_spec_call_object_seal_4 : forall S0 S C l xs o, (* Step 2, loop *)
+  | red_spec_call_object_seal_4 : forall S0 S C l xs b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_seal_2 l xs) o ->
-      red_expr S0 C (spec_call_object_seal_4 l xs (out_void S)) o
+      red_expr S0 C (spec_call_object_seal_4 l xs (out_ter S b)) o
 
   | red_spec_call_object_seal_2_nil : forall S S' C l, (* Steps 3 and 4 *)
       object_heap_set_extensible false S l S' ->
@@ -3246,9 +3246,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_freeze_5 l xs o1) o ->
       red_expr S C (spec_call_object_freeze_4 l x xs A) o
 
-  | red_spec_call_object_freeze_5 : forall S0 S C xs l x o o1, (* Step 2, loop *)
+  | red_spec_call_object_freeze_5 : forall S0 S C xs l x b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_freeze_2 l xs) o ->
-      red_expr S0 C (spec_call_object_freeze_5 l xs (out_void S)) o
+      red_expr S0 C (spec_call_object_freeze_5 l xs (out_ter S b)) o
 
   | red_spec_call_object_freeze_2_nil : forall S S' C l b x o, (* Steps 4 and 5 *)
       object_heap_set_extensible false S l S' ->
