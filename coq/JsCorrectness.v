@@ -1616,12 +1616,12 @@ Proof.
     run red_expr_assign_4_put_value. applys* ref_put_value_correct.
     applys* red_expr_assign_5_return.
     clear EQfollow.
-  destruct o0.
-    (* ==> need to wait until martin changes run_get_value.
-    run_pre. applys red_expr_assign_1_compound o. run_post.
-      subst. skip.
-      skip.
-    skip.   *) skip.
+  destruct o0. 
+    run red_expr_assign_1_compound using ref_get_value_correct.
+      run red_expr_assign_2_compound_get_value using run_expr_get_value_correct. 
+        run red_expr_assign_3_compound_op.
+          skip. (* Daniele: intuitively it seems the goal may follow from R1, but... ?? *)
+          skip.          
     run red_expr_assign_1_simple using run_expr_get_value_correct.
     applys* follow_correct.
 
