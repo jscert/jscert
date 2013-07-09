@@ -1920,7 +1920,7 @@ Proof.
      *)
 
   (* Break *)
-  skip. (* old:    unmonad. apply~ red_stat_break. *)
+  inverts R. applys* red_stat_break.
   (* Continue *)
   skip. (* old:     unmonad. apply~ red_stat_continue. *)
   (* Try *)
