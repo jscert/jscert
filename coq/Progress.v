@@ -229,10 +229,6 @@ red_spec_object_delete_args_obj_4
 
 === Daniele
 
-red_stat_return_none 
-red_stat_return_some 
-red_stat_return_1 
-
 red_stat_with 
 red_stat_with_1 
 
@@ -245,13 +241,6 @@ red_stat_throw_1
 
 
 red_expr_identifier (* stuck *)
-
-
-red_expr_access 
-red_expr_access_1 
-red_expr_access_2 
-red_expr_access_3 
-red_expr_access_4 
 
 red_expr_delete 
 red_expr_delete_1_not_ref 
