@@ -1125,20 +1125,12 @@ Qed. *)
 
 (* Daniele: this is now broken, since the return type of spec_get_value changed *)
 
-Lemma ref_get_value_correct : forall runs S C rv o,
-(*
+Lemma ref_get_value_correct : forall runs rv,
   runs_type_correct runs ->
-  ref_get_value runs S C rv = o ->
-  red_expr S C (spec_get_value rv) o /\
-    (~ abort o -> exists S' v, o = out_ter S' v).
-*)
-  runs_type_correct runs ->
-  ref_get_value runs S C rv = o -> (* This [o] should now be a [specres] (use [spec_follow_spec] to express this property) *)
-  red_spec S C (spec_get_value rv) (ret S o) /\
-    (~ abort o -> exists S' v, o = out_ter S' v).
+  spec_follow_spec (spec_get_value rv) red_spec (fun S C => ref_get_value runs S C rv).
 
 Proof.
-(*
+(* OLD:
   introv RC E. destruct rv; tryfalse.
    inverts E. splits. apply~ red_spec_ref_get_value_value. intros. auto*.
    tests: (ref_is_property r).
@@ -1184,6 +1176,7 @@ Admitted.
 Definition eqspecabort T (y1:specret T) o :=
   exists o1, y1 = specret_out o1 /\ eqabort o1 o.
 
+(* TOFIX
 Definition run_expr_get_value_post K o y1 :=
   (eqspecabort y1 o \/
     exists S1, exists (v1 : value), y1 = ret S1 v1 /\
@@ -1196,7 +1189,6 @@ Lemma run_expr_get_value_correct : forall runs,
       run_expr_get_value_post K o y1. 
 Admitted.
 
-
 (*
 Lemma run_expr_get_value_correct : forall runs S C e K o,
   runs_type_correct runs ->
@@ -1205,6 +1197,7 @@ Lemma run_expr_get_value_correct : forall runs S C e K o,
       run_expr_get_value_post K o o1.
 Admitted.
 *)
+
 Ltac run_select_lemma_run_expr_get_value T ::=
   match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
 
@@ -1221,7 +1214,7 @@ Ltac run_post_run_expr_get_value ::=
     destruct H as [(o1&Eq&Er&Ab)|(S1&v1&O1&H)];
     [ try abort | try subst_hyp O1 ]
   end.
-
+*)
 
 
 
