@@ -1547,7 +1547,7 @@ Proof.
   unfolds in R.
   run_pre. applys* red_expr_call. run_post.
   unfolds in R.
-  run_pre. lets* H: ref_get_value_correct (rm O1).
+  run_pre. lets* H: ref_get_value_correct (rm R0).
   (*applys* red_expr_call_1.
   run_post.*)
   skip. (* TODO *)
