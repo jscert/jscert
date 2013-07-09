@@ -1326,14 +1326,22 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
         if_void (env_record_create_set_mutable_binding runs S1 C L vd (Some bconfig) undef str) bivd)
   end.
 
-Definition make_arg_getter S l x L : result :=
-  out_ter S l (* TODO:  This is temporary, waiting for the specification. *).
+Definition make_arg_getter runs S C x X : result :=
+  let xbd := "return " ++ x ++ ";" in
+  let bd := funcbody_intro 
+              (prog_intro true ((element_stat (stat_return 
+                (Some (expr_identifier x))))::nil)) xbd in
+  creating_function_object runs S C nil bd X true.
 
-Definition make_arg_setter S l x L : result :=
-  out_ter S l (* TODO:  This is temporary, waiting for the specification. *).
+Definition make_arg_setter runs S C x X : result :=
+  let xparam := x ++ "_arg" in
+  let xbd := x ++ " = " ++ xparam ++ ";" in
+  let bd := funcbody_intro 
+              (prog_intro true ((element_stat 
+                (expr_assign (expr_identifier x) None (expr_identifier xparam)))::nil)) xbd in
+  creating_function_object runs S C (xparam::nil) bd X true.
 
-
-Fixpoint arguments_object_map_loop runs S C l xs len args L str lmap xsmap : result_void :=
+Fixpoint arguments_object_map_loop runs S C l xs len args L X str lmap xsmap : result_void :=
   (* [len] should always be [length args]. *)
   match len with
   | O => (* args = nil *)
@@ -1346,7 +1354,7 @@ Fixpoint arguments_object_map_loop runs S C l xs len args L str lmap xsmap : res
         out_void (object_write S l O')))
   | S len' => (* args <> nil *)
     Let arguments_object_map_loop' := fun S xsmap =>
-      arguments_object_map_loop runs S C l xs len' (removelast args) L str lmap xsmap in
+      arguments_object_map_loop runs S C l xs len' (removelast args) L X str lmap xsmap in
     let A := attributes_data_intro_all_true (last args undef) in
     if_bool (object_define_own_prop runs S C l (convert_prim_to_string len') A false) (fun S1 b =>
       ifb len' >= length xs then
@@ -1356,24 +1364,24 @@ Fixpoint arguments_object_map_loop runs S C l xs len args L str lmap xsmap : res
         ifb str = true \/ In x xsmap then
           arguments_object_map_loop' S1 xsmap
         else
-          if_object (make_arg_getter S1 l x L) (fun S2 lgetter =>
-            if_object (make_arg_setter S2 l x L) (fun S3 lsetter =>
+          if_object (make_arg_getter runs S1 C x X) (fun S2 lgetter =>
+            if_object (make_arg_setter runs S2 C x X) (fun S3 lsetter =>
               let A' := attributes_accessor_intro (value_object lgetter) (value_object lsetter) false true in
               if_bool (object_define_own_prop runs S3 C lmap (convert_prim_to_string len') A' false) (fun S4 b' =>
                 arguments_object_map_loop' S4 (x :: xsmap)))))
       )
   end.
 
-Definition arguments_object_map runs S C l xs args L str : result_void :=
+Definition arguments_object_map runs S C l xs args L X str : result_void :=
   if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S' lmap =>
-    arguments_object_map_loop runs S' C l xs (length args) args L str lmap nil).
+    arguments_object_map_loop runs S' C l xs (length args) args L X str lmap nil).
 
-Definition create_arguments_object runs S C lf xs args L str : result :=
+Definition create_arguments_object runs S C lf xs args L X str : result :=
   let O := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
   let '(l, S') := object_alloc S O in
   let A := attributes_data_intro (JsNumber.of_int (length args)) true false true in
   if_bool (object_define_own_prop runs S' C l "length" A false) (fun S1 b =>
-    if_void (arguments_object_map runs S1 C l xs args L str) (fun S2 =>
+    if_void (arguments_object_map runs S1 C l xs args L X str) (fun S2 =>
       if str then (
         let vthrower := value_object prealloc_throw_type_error in
         let A := attributes_accessor_intro vthrower vthrower false false in
@@ -1388,7 +1396,8 @@ Definition create_arguments_object runs S C lf xs args L str : result :=
 Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
   let arguments := "arguments" in
   let str := prog_intro_strictness p in
-    if_object (create_arguments_object runs S C lf xs args L str) (fun S1 largs =>
+    if_object (create_arguments_object runs S C lf xs args L
+                   (execution_ctx_variable_env C) str) (fun S1 largs =>
       if str then
         if_void (env_record_create_immutable_binding S1 L arguments) (fun S2 =>
           env_record_initialize_immutable_binding S2 L arguments largs)
