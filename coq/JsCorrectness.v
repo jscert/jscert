@@ -346,6 +346,20 @@ Lemma if_value_out : forall W K o,
   isout W (if_value_post K o).
 Admitted.
 
+Print if_break.
+
+Definition if_break_post K o o1 :=
+     (o1 = out_div /\ o = o1)
+  \/ (exists S R, o1 = out_ter S R /\ 
+      (   (res_type R <> restype_break /\ o1 = o)
+       \/ (res_type R = restype_break /\ K S R = result_some o))).
+
+Lemma if_break_out : forall W K o,
+  if_break W K = o ->
+  isout W (if_break_post K o).
+Admitted.
+
+
 Definition if_void_post K o o1 :=
   eqabort o1 o \/
   exists S, o1 = out_void S /\ K S = result_some o.
@@ -586,6 +600,7 @@ Ltac run_select_ifres H :=
   | context [ if_success ] => constr:(if_success_out)
   | context [ if_value ] => constr:(if_value_out)
   | context [ if_void ] => constr:(if_void_out)
+  | context [ if_break ] => constr:(if_break_out)
   | context [ if_object ] => constr:(if_object_out)
   | context [ if_bool ] => constr:(if_bool_out)
   | context [ if_string ] => constr:(if_string_out)
@@ -729,6 +744,11 @@ Ltac run_post_core :=
   | H: if_void_post _ _ _ |- _ =>
     destruct H as [(Er&Ab)|(S&O1&H)];
     [ try abort | try subst_hyp O1 ]
+  | H: if_break_post _ _ _ |- _ =>
+    let R := fresh "R" in let E := fresh "E" in
+    let HT := fresh "HT" in
+    destruct H as [(Er&E)|(S&R&O1&[(HT&E)|(HT&H)])];
+    [ try abort | try subst_hyp O1 | try subst_hyp O1 ]
   | H: if_object_post _ _ _ |- _ =>
     let l := fresh "l" in go H l
   | H: if_bool_post _ _ _ |- _ =>
@@ -1560,16 +1580,21 @@ Proof.
    (* applys~ red_spec_expr_get_value_conv R1. *)
   skip. (* TODO *)
   (* assign *)
-(*
-  unfolds in R. run red_expr_assign. let_simpl. destruct o0.
+  unfolds in R. run red_expr_assign. let_simpl. 
+  rename rv into rv1.
+  asserts follow_correct: (forall S0 S v o, follow S v = o ->
+     red_expr S0 C (expr_assign_4 rv1 (ret S v)) o). 
+    subst follow. clear R. introv HR.
+    run red_expr_assign_4_put_value. applys* ref_put_value_correct.
+    applys* red_expr_assign_5_return.
+    clear EQfollow.
+  destruct o0.
+    (* ==> need to wait until martin changes run_get_value.
     run_pre. applys red_expr_assign_1_compound o. run_post.
       subst. skip.
       skip.
-    skip.   
-    run_pre. applys* red_expr_assign_1_simple o1. run_post.
-    applys* red_expr_assign_4_put_value o. skip.  
-*)
-  skip. (* TODO *)
+    skip.   *) skip.
+    run red_expr_assign_1_simple. applys* follow_correct.
 
 Admitted. 
 (* OLD:
@@ -1775,8 +1800,17 @@ Proof.
   (* Expression *)
   run red_stat_expr. apply red_stat_expr_1. 
   (* Label *)
-  unfolds in R. applys* red_stat_label o. 
-    skip. (* Daniele: stuck *)
+  unfolds in R.
+  Focus 1.
+  (* TODO: fix the interpreter: replace if_break with
+     if_break_or_normal in order to ensure
+     that we get a "rv" out of the R, otherwise the rule
+      red_stat_label_1_normal cannot apply. *)
+  (*
+  run red_stat_label.
+    subst.
+      lets: red_stat_label_1_normal.
+      *)
     skip.
   (* Block *)
   skip. (* TODO *)

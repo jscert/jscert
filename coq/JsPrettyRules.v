@@ -1326,7 +1326,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_assign_3' rv o1) o -> 
       red_expr S0 C (expr_assign_3 rv v1 op (ret S v2)) o
 
-| red_expr_assign_3': forall S0 S C v rv o, 
+  | red_expr_assign_3': forall S0 S C v rv o, 
       red_expr S C (expr_assign_4 rv (ret S v)) o ->
       red_expr S0 C (expr_assign_3' rv (out_ter S v)) o
 
