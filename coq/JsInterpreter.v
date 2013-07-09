@@ -616,6 +616,8 @@ Definition run_object_get_prop runs S C l x : specres full_descriptor :=
         ) else res_spec S1 D)
     end).
 
+
+(* LATER Object.prototype.isPrototypeOf(V) should take a value, not a location. Spec is fine. *)
 Definition object_proto_is_prototype_of runs S l0 l : result :=
   if_some (run_object_method object_proto_ S l) (fun B =>
     match B with
