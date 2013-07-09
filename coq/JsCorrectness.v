@@ -56,74 +56,50 @@ Implicit Type T : Type.
 (**************************************************************)
 (** Correctness Properties *)
 
-Definition follow_spec {T Te : Type}
+Definition follow_spec {T Te : Type} (* e.g. T = expr and Te = ext_expr *)
     (conv : T -> Te)
     (red : state -> execution_ctx -> Te -> out -> Prop)
     (run : state -> execution_ctx -> T -> result) := forall S C (e : T) o,
   run S C e = o -> red S C (conv e) o.
 
-(* Waiting for the rules to be updated.
-Inductive passing_output {Te A : Type}
-    (K : A -> Te) (red : state -> execution_ctx -> Te -> out -> Prop) C
-    : passing A -> result -> Prop :=
-  | passing_output_normal : forall S a o,
-    red S C (K a) o ->
-    passing_output K red C (passing_normal S a) o
-  | passing_output_abort : forall o,
-    passing_output K red C (passing_abort o) o.
-
-Definition follow_spec_passing {T Te A : Type}
-    (conv : T -> (A -> Te) -> Te)
-    (red : state -> execution_ctx -> Te -> out -> Prop)
-    (run : state -> execution_ctx -> T -> passing A) := forall S C (x : T) (p : passing A),
-  run S C x = p -> forall K S' R',
-  passing_output K red C p (out_ter S' R') ->
-  red S C (conv x K) (out_ter S' R') /\
-    (p = passing_abort (out_ter S' R') -> abort (out_ter S' R')).
-
-Definition follow_spec_inject {A : Type}
-    (conv : A -> value)
-    (red : out -> Prop)
-    (run : passing A) : Prop := (forall S a,
-  run = passing_normal S a ->
-  red (out_ter S (conv a))) /\ (forall S R,
-    run = passing_abort (out_ter S R) ->
-    red (out_ter S R) /\
-    abort (out_ter S R)).
-*)
+Definition spec_follow_spec {Te A : Type} (* e.g. Te = ext_spec *)
+    (conv : Te)
+    (red : state -> execution_ctx -> Te -> specret A -> Prop)
+    (run : state -> execution_ctx -> specres A) := forall S C sp,
+  run S C = result_some sp -> red S C conv sp.
 
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
 Definition follow_prog := follow_spec prog_basic red_prog.
 Definition follow_elements rv :=
   follow_spec (prog_1 rv) red_prog.
-Definition follow_call l vs (run : state -> execution_ctx -> value -> result) :=
-  forall S C v S' R,
-    run S C v = out_ter S' R ->
-    red_expr S C (spec_call l v vs) (out_ter S' R).
+Definition follow_call (run : state -> execution_ctx -> object_loc -> value -> list value -> result) :=
+  forall l vs,
+    follow_spec (fun v => spec_call l v vs) red_expr (fun S C v => run S C l v vs).
 Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
-  forall S C lo lv S' R,
-    run S lv (lo : object_loc) = out_ter S' R ->
-    (* Note that this function is related to [spec_function_has_instance_2] instead of
-      [spec_function_has_instance_1] as it's much more closer to the specification and
-      thus much easier to prove. *)
-    red_expr S C (spec_function_has_instance_2 lo lv) (out_ter S' R).
-Definition follow_stat_while ls e t :=
+  (* Note that this function is related to [spec_function_has_instance_2] instead of
+    [spec_function_has_instance_1] as it's much more closer to the specification and
+    thus much easier to prove. *)
+  forall lo,
+    follow_spec (spec_function_has_instance_2 lo) red_expr
+      (fun S C lv => run S lo lv).
+Definition follow_stat_while (run : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result) :=
+  forall ls e t,
   follow_spec
     (stat_while_1 ls e t)
-    red_stat.
-Definition follow_object_get_own_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
-  True. (* TODO *)
-(* OLD:
-Definition follow_object_get_own_prop l :=
-  follow_spec_passing (spec_object_get_own_prop l) red_expr. *)
+    red_stat (fun S C rv => run S C rv ls e t).
+Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
+  forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
+    (fun S C => run S C l x).
 Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
-  True. (* TODO *)
-(* OLD:
-Definition follow_object_get_prop l :=
-  follow_spec_passing (spec_object_get_prop l) red_expr. *)
-Definition follow_object_proto_is_prototype_of (_ : state -> object_loc -> object_loc -> result) :=
-  True. (* TODO *)
+  True. (* TODO:  Waiting for specification. *)
+(* LATER:  Definition follow_object_get_prop l x (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
+  spec_follow_spec (spec_object_get_prop l x) red_spec
+    (fun S C => run S C l x). *)
+Definition follow_object_proto_is_prototype_of (run : state -> object_loc -> object_loc -> result) :=
+  forall lthis,
+    follow_spec (spec_call_object_proto_is_prototype_of_2_3 lthis) red_expr
+      (fun S C l => run S lthis l).
 Definition follow_equal (_ : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result) :=
   True. (* TODO *)
 
@@ -132,23 +108,14 @@ Record runs_type_correct runs :=
     runs_type_correct_expr : follow_expr (runs_type_expr runs);
     runs_type_correct_stat : follow_stat (runs_type_stat runs);
     runs_type_correct_prog : follow_prog (runs_type_prog runs);
-    runs_type_correct_call : forall l vs,
-      follow_call l vs (fun S C vthis =>
-        runs_type_call runs S C l vthis vs);
+    runs_type_correct_call : follow_call (runs_type_call runs);
     runs_type_correct_function_has_instance :
       follow_function_has_instance (runs_type_function_has_instance runs);
-    runs_type_correct_stat_while : forall ls e t,
-      follow_stat_while ls e t (fun S C rv =>
-        runs_type_stat_while runs S C rv ls e t);
+    runs_type_correct_stat_while : follow_stat_while (runs_type_stat_while runs);
     runs_type_correct_object_get_own_prop :
-      follow_object_get_own_prop (runs_type_object_get_own_prop runs)
-    (* OLD: forall l,
-      follow_object_get_own_prop l (fun S C =>
-        runs_type_object_get_own_prop runs S C l) *);
+      follow_object_get_own_prop (runs_type_object_get_own_prop runs);
     runs_type_correct_object_get_prop :
-      follow_object_get_prop (runs_type_object_get_prop runs)
-      (* OLD: forall l,
-      follow_object_get_prop l (fun S C => runs_type_object_get_prop runs S C l)*);
+      follow_object_get_prop (runs_type_object_get_prop runs);
     runs_type_correct_object_proto_is_prototype_of :
       follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs);
     runs_type_correct_equal :
@@ -2004,12 +1971,10 @@ Proof.
 Qed.
 
 Lemma run_call_correct : forall runs,
-  runs_type_correct runs -> forall l (vs : list value),
-  follow_call l vs
-    (fun S C (vthis : value) =>
-      run_call runs S C l vthis vs).
+  runs_type_correct runs ->
+  follow_call (run_call runs).
 Proof.
-   introv RC. intros l vs S C v S' res R. unfolds in R.
+   intros runs RC lthis vs S' C v o R. unfolds in R.
 Admitted. (* OLD:
    intros l vs S C v S' res R. simpls. unfolds in R. unmonad.
    name_object_method. do 2 (destruct B as [B|]; tryfalse). destruct B; tryfalse.
@@ -2038,11 +2003,9 @@ Admitted. (* OLD:
 *)
 
 Lemma run_stat_while_correct : forall runs,
-  runs_type_correct runs -> forall (ls : label_set) e t,
-  follow_stat_while ls e t
-    (fun S C rv => run_stat_while runs S C rv ls e t).
+  runs_type_correct runs ->
+  follow_stat_while (run_stat_while runs).
 Proof.
-(* Daniele: broken
   intros runs IH ls e t S C rv o R. unfolds in R.
   run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
   applys* red_stat_while_1 (rm R2). run_post_expr_get_value_bool K.
@@ -2058,7 +2021,6 @@ Proof.
        rew_logic in *. applys* red_stat_while_4_continue.
         applys* runs_type_correct_stat_while.
    run_inv. applys red_stat_while_2_false.
-*)
 Admitted. (*faster*)
 
 
@@ -2199,7 +2161,7 @@ Proof.
      apply~ run_call_correct.
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
-     solve [unfolds*]. (* apply~ run_object_get_own_prop_correct. *)
+     skip. (* apply~ run_object_get_own_prop_correct. *)
      solve [unfolds*]. (* apply~ run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
      apply~ run_equal_correct.
