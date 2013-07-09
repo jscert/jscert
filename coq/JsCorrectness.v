@@ -841,6 +841,7 @@ Ltac run_simpl_base H K :=
   | ?x => run_hyp_core H K 
   end end.
 
+
 Ltac run_simpl_core H K :=
   run_simpl_base H K; run_inv.
 
@@ -1066,22 +1067,6 @@ Lemma prim_new_object_correct : forall S C w o,
   red_expr S C (spec_prim_new_object w) o.
 Proof. introv H. false. Qed.
 
-Lemma to_object_correct : forall S C v o,
-  to_object S v = o ->
-  red_expr S C (spec_to_object v) o.
-Admitted.
-
-Definition if_to_object_post K o o1 :=
-  (eqabort o1 o \/
-    exists S, exists (l : object_loc), o1 = out_ter S l /\
-      K S l = result_some o).
-
-Lemma if_to_object_correct : forall S C v K o,
-  if_object (to_object S v) K = o -> exists o1,
-    red_expr S C (spec_to_object v) o1 /\
-      if_to_object_post K o o1.
-Admitted.
-
 Lemma prim_value_get_correct : forall runs S C v x o,
   runs_type_correct runs ->
   prim_value_get runs S C v x = o ->
@@ -1246,107 +1231,22 @@ Lemma object_default_value_correct : forall runs S C l pref o,
   runs_type_correct runs ->
   object_default_value runs S C l pref = o ->
   red_expr S C (spec_object_default_value l pref) o.
-Admitted. (* OLD
-  introv RC E. unfolds in E. rewrite_morph_option; simpls; tryfalse.
-  forwards~ OM: run_object_method_correct (rm EQx).
-  applys~ red_spec_object_default_value OM. destruct~ b.
-   apply~ red_spec_object_default_value_1_default.
-    apply~ red_spec_object_default_value_2.
-    deal_with_regular_lemma E if_value_out; substs.
-     forwards~ (E&_): run_object_get_correct RC (rm HE).
-      applys~ red_spec_object_default_value_sub_1 E.
-      apply~ red_expr_abort.
-     forwards~ (E&?): run_object_get_correct RC (rm HE).
-      applys~ red_spec_object_default_value_sub_1 E.
-      rewrite_morph_option; simpls; tryfalse.
-      forwards~ RCa: run_callable_correct (rm EQx). destruct o.
-       forwards~ (E1&E2): if_empty_label_out (rm H0).
-        rewrite res_overwrite_value_if_empty_empty in E2. destruct v; simpls; tryfalse.
-        deal_with_regular_lemma E2 if_value_out; substs.
-         apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-          apply* RCa. apply~ red_expr_abort.
-         apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-          apply* RCa. destruct v.
-           inverts H1. apply~ red_spec_object_default_value_sub_3_prim.
-           apply~ red_spec_object_default_value_sub_3_object.
-            apply~ red_spec_object_default_value_3.
-            (* This part is a big copy-paste of the previous *)
-            deal_with_regular_lemma H1 if_value_out; substs.
-             forwards~ (E0&_): run_object_get_correct RC (rm HE0).
-              applys~ red_spec_object_default_value_sub_1 E0.
-              apply~ red_expr_abort.
-             forwards~ (E0&?): run_object_get_correct RC (rm HE0).
-              applys~ red_spec_object_default_value_sub_1 E0.
-              rewrite_morph_option; simpls; tryfalse.
-              forwards~ RCa0: run_callable_correct (rm EQx). destruct o1.
-               forwards~ (E3&E4): if_empty_label_out (rm H1).
-                rewrite res_overwrite_value_if_empty_empty in E4.
-                destruct v; simpls; tryfalse.
-                deal_with_regular_lemma E4 if_value_out; substs.
-                 apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-                  apply* RCa0. apply~ red_expr_abort.
-                 apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-                  apply* RCa0. destruct v.
-                   inverts H4. apply~ red_spec_object_default_value_sub_3_prim.
-                   apply~ red_spec_object_default_value_sub_3_object.
-                     forwards~ (?&?): run_error_correct (rm H4).
-                     apply~ red_spec_object_default_value_4.
-               forwards~ (?&?): run_error_correct (rm H1).
-                apply~ red_spec_object_default_value_sub_2_not_callable.
-                 apply~ red_spec_object_default_value_4.
-       apply~ red_spec_object_default_value_sub_2_not_callable.
-        (* This part is a big copy-paste of the previous *)
-        apply~ red_spec_object_default_value_3.
-        deal_with_regular_lemma H0 if_value_out; substs.
-         forwards~ (E0&_): run_object_get_correct RC (rm HE).
-          applys~ red_spec_object_default_value_sub_1 E0.
-          apply~ red_expr_abort.
-         forwards~ (E0&?): run_object_get_correct RC (rm HE).
-          applys~ red_spec_object_default_value_sub_1 E0.
-          rewrite_morph_option; simpls; tryfalse.
-          forwards~ RCa0: run_callable_correct (rm EQx). destruct o.
-           forwards~ (E3&E4): if_empty_label_out (rm H1).
-            rewrite res_overwrite_value_if_empty_empty in E4.
-            destruct v0; simpls; tryfalse.
-            deal_with_regular_lemma E4 if_value_out; substs.
-             apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-              apply* RCa0. apply~ red_expr_abort.
-             apply RC in HE. applys~ red_spec_object_default_value_sub_2_callable HE.
-              apply* RCa0. destruct v0.
-               inverts H2. apply~ red_spec_object_default_value_sub_3_prim.
-               apply~ red_spec_object_default_value_sub_3_object.
-                 forwards~ (?&?): run_error_correct (rm H2).
-                 apply~ red_spec_object_default_value_4.
-           forwards~ (?&?): run_error_correct (rm H1).
-            apply~ red_spec_object_default_value_sub_2_not_callable.
-             apply~ red_spec_object_default_value_4.
-Qed. *)
+Admitted. 
 
 
 (** Conversions *)
 
 
-
-(* TODO: will change like if_number *)
-Definition if_to_primitive_post K o o1 :=
-  (eqabort o1 o \/
-    exists S, exists (w : prim), o1 = out_ter S w /\
-      K S w = result_some o).
-
-(* TODO: will change like if_number *)
-Lemma if_to_primitive_correct : forall runs S C v prefo K o,
+Lemma to_primitive_correct : forall runs S C v o prefo,
   runs_type_correct runs ->
-  if_primitive (to_primitive runs S C v prefo) K = o -> exists o1,
-    red_expr S C (spec_to_primitive v prefo) o1 /\
-      if_to_primitive_post K o o1.
-Admitted.
-
-
-Lemma to_primitive_correct : forall runs S C v o pf,
-  runs_type_correct runs ->
-  to_primitive runs S C v pf = o -> 
-  red_expr S C (spec_to_primitive v pf) o.
-Admitted.
+  to_primitive runs S C v prefo = o -> 
+  red_expr S C (spec_to_primitive v prefo) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct v.
+  run_inv. applys* red_spec_to_primitive_pref_prim.
+  applys* red_spec_to_primitive_pref_object.
+  applys* object_default_value_correct.
+Qed.
 
 Lemma to_number_correct : forall runs S C v o,
   runs_type_correct runs ->
@@ -1369,6 +1269,36 @@ Proof.
   run red_spec_to_string_object using to_primitive_correct.
   applys* red_spec_to_string_1.
 Qed.
+
+Lemma to_integer_correct : forall runs S C v o,
+  runs_type_correct runs ->
+  to_integer runs S C v = o -> 
+  red_expr S C (spec_to_integer v) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_to_integer using to_number_correct.
+  applys* red_spec_to_integer_1.
+Qed.
+
+Lemma run_error_correct_2 : forall S (ne : native_error) o C,
+  run_error S ne = o -> red_expr S C (spec_error ne) o.
+Proof. intros. apply* run_error_correct. Qed.
+
+Lemma to_object_correct : forall S C v o,
+  to_object S v = o ->
+  red_expr S C (spec_to_object v) o.
+Proof.
+  hint run_error_correct_2, prim_new_object_correct.
+  introv HR. unfolds in HR. destruct v as [w|l].
+    destruct w.
+      applys* red_spec_to_object_undef_or_null. 
+      applys* red_spec_to_object_undef_or_null.
+      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
+      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
+      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
+    run_inv. applys* red_spec_to_object_object.
+Qed.
+
 
 
 (* TODO:  to_int32, to_uint32 *)
@@ -1431,7 +1361,9 @@ Axiom red_spec_expr_get_value_conv_2 : forall S0 S C v,
 (* Daniele: broken because of change of type in spec_expr_get_value  *)
 Lemma run_expr_get_value_post_to_bool : forall S C e o y1 (K1 K2:state->result),
   red_spec S C (spec_expr_get_value e) y1 ->
-  run_expr_get_value_post (fun S v => if convert_value_to_boolean v then K1 S else K2 S) o y1 ->
+  run_expr_get_value_post (fun S v => 
+   (*if convert_value_to_boolean v then K1 S else K2 S*)
+Let b := convert_value_to_boolean v in if b then K1 S else K2 S) o y1 ->
   exists (y2:specret value), red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y2 /\
     run_expr_get_value_bool_post K1 K2 o y2.
 Proof.

@@ -12,23 +12,6 @@ unary/binary ops
 prog_block
 
 === Arthur
- 
-red_spec_to_boolean 
-red_spec_to_number_prim 
-red_spec_to_number_object 
-red_spec_to_number_1 
-red_spec_to_integer 
-red_spec_to_integer_1 
-red_spec_to_string_prim 
-red_spec_to_string_object 
-red_spec_to_string_1 
-red_spec_to_object_undef_or_null 
-red_spec_to_object_prim 
-red_spec_to_object_object 
-red_spec_check_object_coercible_undef_or_null 
-red_spec_check_object_coercible_return 
-red_spec_to_primitive_pref_prim 
-red_spec_to_primitive_pref_object 
 
 
 red_stat_try 
@@ -363,7 +346,6 @@ red_spec_object_put
 red_spec_object_can_put 
 red_spec_object_has_prop 
 red_spec_object_delete 
-red_spec_object_default_value 
 red_spec_object_define_own_prop 
 red_spec_object_has_instance 
 red_spec_object_get_prop_1_default 
@@ -405,15 +387,6 @@ red_spec_object_delete_1_default
 red_spec_object_delete_2_undef 
 red_spec_object_delete_2_some_configurable 
 red_spec_object_delete_3_some_non_configurable 
-red_spec_object_default_value_1_default 
-red_spec_object_default_value_2 
-red_spec_object_default_value_3 
-red_spec_object_default_value_4 
-red_spec_object_default_value_sub_1 
-red_spec_object_default_value_sub_2_not_callable 
-red_spec_object_default_value_sub_2_callable 
-red_spec_object_default_value_sub_3_prim 
-red_spec_object_default_value_sub_3_object 
 
 red_spec_creating_function_object_proto 
 red_spec_creating_function_object_proto_1 
