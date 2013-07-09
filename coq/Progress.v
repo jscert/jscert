@@ -232,16 +232,20 @@ red_spec_object_delete_args_obj_4
 red_stat_return_none 
 red_stat_return_some 
 red_stat_return_1 
+
 red_stat_with 
 red_stat_with_1 
+
 red_stat_label (* Stuck *)
 red_stat_label_1_normal 
 red_stat_label_1_break_eq 
+
 red_stat_throw 
 red_stat_throw_1
-red_expr_this 
-red_expr_identifier 
-red_expr_literal 
+
+
+red_expr_identifier (* stuck *)
+
 red_expr_member 
 red_expr_access 
 red_expr_access_1 

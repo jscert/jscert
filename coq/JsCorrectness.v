@@ -1561,8 +1561,7 @@ Proof.
   (* this *)
   run_inv. apply~ red_expr_this.
   (* identifier *)
-  (* apply~ red_expr_identifier. *)
-  skip. (* TODO *)
+    run_inv. apply~ red_expr_identifier. skip. (* TODO *)
   (* literal *)
   run_inv. apply~ red_expr_literal.
   (* object *)
@@ -1836,12 +1835,15 @@ Proof.
      if_break_or_normal in order to ensure
      that we get a "rv" out of the R, otherwise the rule
       red_stat_label_1_normal cannot apply. *)
-  (*
-  run red_stat_label.
-    subst.
-      lets: red_stat_label_1_normal.
-      *)
+  
+  run red_stat_label. subst.
     skip.
+    cases_if.       
+      apply* red_stat_label_1_break_eq. skip.
+      skip.
+
+      
+
   (* Block *)
   skip. (* TODO *)
     (* Temp for arthur
