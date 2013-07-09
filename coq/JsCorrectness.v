@@ -846,12 +846,18 @@ Ltac run_inv :=
   unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
   repeat
   match goal with
+  | H: resvalue_value ?v = resvalue_value ?v |- _ => clear H
+  | H: resvalue_value _ = resvalue_value _ |- _ => inverts H
   | H: result_some ?o = result_some ?o |- _ => clear H
   | H: result_some _ = result_some _ |- _ => inverts H
   | H: out_ter ?S ?R = out_ter ?S ?R |- _ => clear H
   | H: out_ter _ _ = out_ter _ _ |- _ => inverts H
   | H: res_intro ?t ?v ?l = res_intro ?t ?v ?l |- _ => clear H
   | H: res_intro _ _ _ = res_intro _ _ _ |- _ => inverts H
+  | H: ret _ _ = _ |- _ => unfold ret in H
+  | H: _ = ret _ _ |- _ => unfold ret in H
+  | H: ret_void _ = _ |- _ => unfold ret_void in H
+  | H: _ = ret_void _ |- _ => unfold ret_void in H
   | H: specret_val ?S ?R = specret_val ?S ?R |- _ => clear H
   | H: specret_val _ _ = specret_val _ _ |- _ => inverts H
   | H: specret_out ?o = specret_out ?o |- _ => clear H
@@ -1597,6 +1603,12 @@ Proof.
      applys* red_expr_object_3_set. 
 Qed.
 
+
+Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
+  run_binary_op runs S C op v1 v2 = result_some o ->
+  red_expr S C (expr_binary_op_3 op v1 v2) o.
+Admitted.
+
 Lemma run_expr_correct : forall runs,
   runs_type_correct runs ->
    follow_expr (run_expr runs).
@@ -1654,20 +1666,21 @@ Proof.
   unfolds in R. 
   run red_expr_assign. let_simpl. 
   rename rv into rv1.
-  asserts follow_correct: (forall S0 S v o, follow S v = o ->
-     red_expr S0 C (expr_assign_4 rv1 (ret S v)) o). 
+  asserts follow_correct: (forall S0 S rv o, follow S rv = o ->
+     exists v, rv = resvalue_value v /\ red_expr S0 C (expr_assign_4 rv1 (ret S v)) o). 
     subst follow. clear R. introv HR.
+    destruct rv; tryfalse. exists v. split~.
     run red_expr_assign_4_put_value. applys* ref_put_value_correct.
     applys* red_expr_assign_5_return.
     clear EQfollow.
   destruct o0. 
     run red_expr_assign_1_compound using ref_get_value_correct.
       run red_expr_assign_2_compound_get_value using run_expr_get_value_correct. 
-        run red_expr_assign_3_compound_op.
-          skip. (* Daniele: intuitively it seems the goal may follow from R1, but... ?? *)
-          skip.          
+        run red_expr_assign_3_compound_op using run_binary_op_correct.
+        forwards (v&?&?): follow_correct (rm R). subst.
+        applys* red_expr_assign_3'.
     run red_expr_assign_1_simple using run_expr_get_value_correct.
-    applys* follow_correct.
+    forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
 
 Admitted. 
 (* OLD:
