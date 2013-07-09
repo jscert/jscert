@@ -302,16 +302,19 @@ Definition if_not_throw W (K : state -> res -> result) : result :=
     | _ => K S0 R
     end).
 
-Definition if_any_or_throw W (K1 : result -> result) (K2 : state -> value -> result) : result :=
+Definition if_any_or_throw W (K1 : state -> res -> result)
+    (K2 : state -> value -> result) : result :=
   if_ter W (fun S R =>
     match res_type R with
     | restype_throw =>
       match res_value R with
-      | resvalue_value v => K2 S v
+      | resvalue_value v =>
+        if_empty_label S R (fun _ =>
+          K2 S v)
       | _ =>
         impossible_with_heap_because S "[if_any_or_throw] called with a non-value result."
       end
-    | _ => K1 W
+    | _ => K1 S R
     end).
 
 Definition if_success_or_return W (K1 : state -> result) (K2 : state -> resvalue -> result) : result :=
@@ -2074,29 +2077,29 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     else out_ter S1 rv).
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=
-  Let finally := fun res =>
+  Let finally := fun S1 R =>
     match t3o with
-    | None => res
+    | None => out_ter S1 R
     | Some t3 =>
-      if_ter res (fun S1 R =>
-        if_success (runs_type_stat runs S1 C t3) (fun S2 rv' =>
-          out_ter S2 R))
+      if_success (runs_type_stat runs S1 C t3) (fun S2 rv' =>
+        out_ter S2 R)
     end
   in
   if_any_or_throw (runs_type_stat runs S C t1) finally (fun S1 v =>
     match t2o with
-    | None => finally (out_ter S1 (res_throw v))
+    | None => finally S1 (res_throw v)
     | Some (x, t2) =>
-      let lex := execution_ctx_lexical_env C in
-      let '(lex', S') := lexical_env_alloc_decl S1 lex in
+      Let lex := execution_ctx_lexical_env C in
+      Let p := lexical_env_alloc_decl S1 lex in (* TODO: Let pair *)
+      let '(lex', S') := p in
       match lex' with
       | L :: oldlex =>
         if_void (env_record_create_set_mutable_binding
           runs S' C L x None v throw_irrelevant) (fun S2 =>
             let C' := execution_ctx_with_lex C lex' in
-            finally (runs_type_stat runs S2 C' t2))
+            if_ter (runs_type_stat runs S2 C' t2) finally)
       | nil =>
-        impossible_with_heap_because S1 "Empty lexical environnment in [run_stat_try]."
+        impossible_with_heap_because S' "Empty lexical environnment in [run_stat_try]."
       end
     end).
 
