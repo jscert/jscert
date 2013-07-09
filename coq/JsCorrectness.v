@@ -1621,7 +1621,15 @@ Proof.
    (* applys~ red_spec_expr_get_value_conv R1. *)
   skip. (* TODO *)
   (* assign *)
-  unfolds in R. run red_expr_assign. let_simpl.      
+(*
+  unfolds in R. run red_expr_assign. let_simpl. destruct o0.
+    run_pre. applys red_expr_assign_1_compound o. run_post.
+      subst. skip.
+      skip.
+    skip.   
+    run_pre. applys* red_expr_assign_1_simple o1. run_post.
+    applys* red_expr_assign_4_put_value o. skip.  
+*)
   skip. (* TODO *)
 
 Admitted. 
