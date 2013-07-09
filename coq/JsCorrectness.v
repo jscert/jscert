@@ -695,8 +695,8 @@ Ltac prove_runs_type_correct :=
 Ltac run_pre_ifres H o1 R1 K :=
    let L := run_select_ifres H in
    let O1 := fresh "O1" in
-   lets (o1&O1&K): L (rm H); (* deconstruction of [isout]. *)
-   try run_hyp O1 as R1.
+   lets (o1&R1&K): L (rm H); (* deconstruction of [isout]. *)
+   try (rename R1 into O1; run_hyp O1 as R1).
 
 Ltac run_pre_lemma H o1 R1 K :=
   let L := run_select_lemma H in
@@ -821,13 +821,31 @@ Ltac run_check_current_out o :=
   (* TODO:  Complete *)
   end.
 
-(** [run_step L] combines [run_pre], [run_apply L] and calls
+(** [run_step Red] combines [run_pre], [run_apply Red] and calls
     [run_post] on the main reduction subgoal, followed
     with a cleanup using [run_inv] *)
 
 Ltac run_step Red :=
   let o1 := fresh "o1" in let R1 := fresh "R1" in
   run_pre as o1 R1;
+  match Red with ltac_wild => idtac | _ =>
+    let o := run_get_current_out tt in
+    run_apply Red o1 R1;
+    try (run_check_current_out o; run_post; run_inv)
+  end.
+
+(** [run_step_using Red Lem] combines [run_pre], 
+    a forward to exploit the correctness lemma [Lem], 
+    [run_apply Red] and calls
+    [run_post] on the main reduction subgoal, followed
+    with a cleanup using [run_inv] *)
+
+Ltac run_step_using Red Lem :=
+  let o1 := fresh "o1" in let O1 := fresh "O1" in
+  let R1 := fresh "R1" in
+  run_pre as o1 O1;
+  lets R1: Lem (rm O1);
+  try prove_runs_type_correct;
   match Red with ltac_wild => idtac | _ =>
     let o := run_get_current_out tt in
     run_apply Red o1 R1;
@@ -878,6 +896,13 @@ Tactic Notation "run" constr(Red) :=
 
 Tactic Notation "run" "*" constr(Red) :=
   run Red; auto*.
+
+Tactic Notation "run" constr(Red) "using" constr(Lem) :=
+  run_step_using Red Lem.
+
+Tactic Notation "run" "*" constr(Red) "using" constr(Lem) :=
+  run Red using Lem; auto*.
+
 
 Tactic Notation "runs" constr(Red) :=
   run Red; subst.
@@ -1567,9 +1592,6 @@ Admitted. (* OLD
     forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
 Qed. *)
 
-Definition create_new_function_in runs S C args bd :=
-  creating_function_object runs S C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C).
-
 Lemma create_new_function_in_correct : forall runs S C args bd o,
   runs_type_correct runs ->
   create_new_function_in runs S C args bd = o ->
@@ -1579,29 +1601,33 @@ Proof.
   applys* creating_function_object_correct. 
 Qed.
 
-Fixpoint init_object' runs S C l (pds : propdefs) {struct pds} : result :=
-  match pds return result with
-  | nil => out_ter S l
-  | (pn, pb) :: pds' =>
-    Let x := string_of_propname pn in
-    Let follows := fun S1 A =>
-      if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
-        init_object' runs S2 C l pds') in
-    match pb with
-    | propbody_val e0 =>
-      run_expr_get_value runs S C e0 (fun S1 v0 =>
-        let A := attributes_data_intro v0 true true true in
-        follows S1 A)
-    | propbody_get bd =>
-      if_value (create_new_function_in runs S C nil bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro undef v0 true true in
-        follows S1 A)
-    | propbody_set args bd =>
-      if_value (create_new_function_in runs S C args bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro v0 undef true true in
-        follows S1 A)
-    end
-  end.
+Axiom red_expr_object_4 : forall S C A l x pds o o1,
+      red_expr S C (spec_object_define_own_prop l x A false) o1 ->
+      red_expr S C (expr_object_5 l pds o1) o ->
+      red_expr S C (expr_object_4 l x A pds) o.
+
+Lemma init_object_correct : forall runs S C l (pds : propdefs) o,
+  runs_type_correct runs ->
+  init_object runs S C l pds = o ->
+  red_expr S C (expr_object_1 l pds) o.
+Proof.
+  introv IH. gen S. induction pds as [|(pn&pb) pds]; introv HR.
+  simpls. run_inv. applys red_expr_object_1_nil.
+  simpls. let_simpl. let_simpl. 
+  asserts follows_correct: (forall S A, follows S A = o ->
+      red_expr S C (expr_object_4 l x A pds) o). 
+    subst follows. clear HR. introv HR.
+    run red_expr_object_4 using object_define_own_prop_correct. 
+     applys* red_expr_object_5. 
+    clear EQfollows.
+  applys* red_expr_object_1_cons x.
+  destruct pb.
+    run red_expr_object_2_val. applys* red_expr_object_3_val. 
+    run red_expr_object_2_get using create_new_function_in_correct.
+     applys* red_expr_object_3_get.
+    run red_expr_object_2_set using create_new_function_in_correct.
+     applys* red_expr_object_3_set. 
+Qed.
 
 Lemma run_expr_correct : forall runs,
   runs_type_correct runs ->
@@ -1618,45 +1644,9 @@ Proof.
   run_inv. apply~ red_expr_literal.
   (* object *)
   Focus 1.
-  skip_rewrite (init_object = init_object') in R.
-  run_pre. lets* H: run_construct_prealloc_correct (rm O1).
-   applys* red_expr_object (rm H). run_post.
+  run red_expr_object using run_construct_prealloc_correct.
   applys red_expr_object_0.
-  gen S0. induction pds as [|(pn&pb) pds]; intros.
-  simpls. run_inv. applys red_expr_object_1_nil.
-   skip. (*remove skip*)
-  simpls. let_simpl. let_simpl. 
-  asserts follows_correct: (forall S A, follows S A = o ->
-      red_expr S C (expr_object_4 l x A pds) o). 
-    subst follows. clears R. introv HR.
-    run_pre. lets* H: object_define_own_prop_correct (rm O1).
-Axiom red_expr_object_4_define_own_prop : forall S S0 C A l x pds o o1,
-      red_expr S C (spec_object_define_own_prop l x A false) o1 ->
-      red_expr S C (expr_object_5 l pds o1) o ->
-      red_expr S C (expr_object_4 l x A pds) o.
-     applys* red_expr_object_4_define_own_prop. run_post.
-Axiom red_expr_object_5_next_property : forall S S0 C rv l pds o,
-      red_expr S C (expr_object_1 l pds) o ->
-      red_expr S0 C (expr_object_5 l pds (out_ter S rv)) o.
-     applys* red_expr_object_5_next_property. 
-    clear EQfollows.
-Axiom red_expr_object_1_cons : forall S C x l pn pb pds o, 
-      x = string_of_propname pn ->
-      red_expr S C (expr_object_2 l x pb pds) o ->
-      red_expr S C (expr_object_1 l ((pn,pb)::pds)) o.
-  applys* red_expr_object_1_cons x.
-  destruct pb.
-    run red_expr_object_2_val. applys* red_expr_object_3_val. 
-    run_pre. lets* H: create_new_function_in_correct (rm O1).
-     applys* red_expr_object_2_get. run_post.
-     applys* red_expr_object_3_get. 
-    run_pre. lets* H: create_new_function_in_correct (rm O1).
-Axiom red_expr_object_2_set : forall S C l x pds o o1 bd args,
-      red_expr S C (spec_create_new_function_in C args bd) o1 ->
-      red_expr S C (expr_object_3_set l x o1 pds) o ->
-      red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o.
-     applys* red_expr_object_2_set. run_post.
-     applys* red_expr_object_3_set. 
+  applys* init_object_correct.
   (* function *)
   skip. (* TODO *)
   (* Access *)

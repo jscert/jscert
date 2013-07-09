@@ -1760,13 +1760,14 @@ Section Interpreter.
 (**************************************************************)
 (** Some spec cases *)
 
+Definition create_new_function_in runs S C args bd :=
+  creating_function_object runs S C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C).
+
 Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
-  Let create_new_function_in := fun S0 args bd =>
-    creating_function_object runs S0 C args bd (execution_ctx_lexical_env C) (execution_ctx_strict C) in
   match pds return result with
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
-    let x := string_of_propname pn in
+    Let x := string_of_propname pn in
     Let follows := fun S1 A =>
       if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
         init_object runs S2 C l pds') in
@@ -1776,11 +1777,11 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
         let A := attributes_data_intro v0 true true true in
         follows S1 A)
     | propbody_get bd =>
-      if_value (create_new_function_in S nil bd) (fun S1 v0 =>
+      if_value (create_new_function_in runs S C nil bd) (fun S1 v0 =>
         let A := attributes_accessor_intro undef v0 true true in
         follows S1 A)
     | propbody_set args bd =>
-      if_value (create_new_function_in S args bd) (fun S1 v0 =>
+      if_value (create_new_function_in runs S C args bd) (fun S1 v0 =>
         let A := attributes_accessor_intro v0 undef true true in
         follows S1 A)
     end
