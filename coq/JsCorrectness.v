@@ -1461,6 +1461,18 @@ Lemma creating_function_object_correct : forall runs S C names bd X str o,
   red_expr S C (spec_creating_function_object names bd X str) o.
 Admitted.
 
+Lemma run_list_expr_correct : forall runs S C es y,
+  runs_type_correct runs ->
+  run_list_expr runs S C nil es = result_some y ->
+  red_spec S C (spec_list_then es) y.
+Proof.
+  introv IH HR.
+  apply red_spec_list_then.
+  gen HR. generalize (@nil value) as rv. gen S es.
+  induction es; introv HR.
+  simpls. unfolds in HR. run_inv. skip. skip.
+Admitted.
+
 (* TODO:  Complete *)
 
 (**************************************************************)
@@ -1587,17 +1599,28 @@ Proof.
   run_hyp R. apply~ red_expr_member.
   (* new *)
   unfolds in R.
+  Focus 1.
   run red_expr_new using run_expr_get_value_correct.
   skip. (* TODO *)
   (* call *)
   unfolds in R.
-  (* run_pre. applys* red_expr_call. run_post.
-  unfolds in R.
-  run_pre. lets* H: ref_get_value_correct (rm R0).
-  *)
+  Focus 1.
+  (*run (>> red_expr_call (is_syntactic_eval e)).*)
+  Axiom red_expr_call : forall S C e1 e2s o1 o2,
+  red_expr S C e1 o1 ->
+  red_expr S C (expr_call_1 o1 (is_syntactic_eval e1) e2s) o2 ->
+  red_expr S C (expr_call e1 e2s) o2.
+  run red_expr_call.
+  run red_expr_call_1. skip.
+  applys* ref_get_value_correct. 
+  run red_expr_call_2.
+  applys* run_list_expr_correct.
+  applys red_expr_abort.
+  subst*. simpl.
+  skip. skip. skip.
   (*applys* red_expr_call_1.
   run_post.*)
-  skip. (* TODO *)
+  (* TODO *)
   (* unary operators *)
   skip. (* TODO *)
   (* binary operators *)
