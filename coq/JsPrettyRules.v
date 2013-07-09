@@ -2231,8 +2231,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       
   | red_spec_binding_inst_formal_params_1_not_declared : forall S0 S C args L x xs str v o o1, (* Step 4d iv *)
       red_expr S C (spec_env_record_create_mutable_binding L x None) o1 ->
-      (* TODO(Daiva): are we sure that deletable_opt above is None, meaning that the item
+      (* LATER(Daiva): are we sure that deletable_opt above is None, meaning that the item
          will not be deletable? it's worth testing in an implementation if you can delete an arg binding. *)
+      (* gds: I believe this is correct. I'm leaving the comment in, but changing to LATER because it's an interesting area to test later. *)
       red_expr S C (spec_binding_inst_formal_params_2 args L x xs str v o1) o ->
       red_expr S0 C (spec_binding_inst_formal_params_1 args L x xs str v (out_ter S false)) o
       
