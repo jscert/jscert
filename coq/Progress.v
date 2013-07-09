@@ -396,11 +396,6 @@ red_spec_creating_function_object_2_strict
 red_spec_creating_function_object_3 
 red_spec_creating_function_object_4 
 
-red_expr_function_unnamed 
-red_expr_function_named 
-red_expr_function_named_1 
-red_expr_function_named_2 
-red_expr_function_named_3 
 red_spec_create_new_function_in 
 
 red_spec_object_get_1_function 
@@ -451,13 +446,3 @@ red_spec_lexical_env_get_identifier_ref_cons_2_false
 
 red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
 
-
-red_spec_error (* Done *)
-red_spec_error_1
-red_spec_error_or_cst_true 
-red_spec_error_or_cst_false 
-red_spec_error_or_void_true 
-red_spec_error_or_void_false 
-
-red_spec_build_error (* Done *)
-red_spec_build_error_1_no_msg

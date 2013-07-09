@@ -1634,12 +1634,19 @@ Proof.
   (* literal *)
   run_inv. apply~ red_expr_literal.
   (* object *)
-  Focus 1.
   run red_expr_object using run_construct_prealloc_correct.
   applys red_expr_object_0.
   applys* init_object_correct.
   (* function *)
-  skip. (* TODO *)
+  unfolds in R. destruct o0.
+   let_simpl. destruct p as (lex'&S'). destruct lex' as [|L lex']; simpls; tryfalse.
+    run_simpl. forwards: @pick_option_correct (rm E).
+    run* red_expr_function_named using env_record_create_immutable_binding_correct.
+    run red_expr_function_named_1 using creating_function_object_correct.
+    run red_expr_function_named_2 using env_record_initialize_immutable_binding_correct.
+    apply~ red_expr_function_named_3.
+   (* Unnamed *)
+   apply~ red_expr_function_unnamed. applys~ creating_function_object_correct IH.
   (* Access *)
   unfolds in R.
   run red_expr_access using run_expr_get_value_correct.

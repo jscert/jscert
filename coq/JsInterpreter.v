@@ -1915,8 +1915,9 @@ Definition run_expr_function runs S C fo args bd : result :=
     let lex := execution_ctx_lexical_env C in
     creating_function_object runs S C args bd lex (funcbody_is_strict bd)
   | Some fn =>
-    let '(lex', S') := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in
-    Let follow := fun L =>
+    Let p := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in (* TODO:  Let pair *)
+    let '(lex', S') := p in
+    let follow L :=
       if_some (pick_option (env_record_binds S' L)) (fun E =>
         if_void (env_record_create_immutable_binding S' L fn) (fun S1 =>
           if_object (creating_function_object runs S1 C args bd lex' (funcbody_is_strict bd)) (fun S2 l =>
