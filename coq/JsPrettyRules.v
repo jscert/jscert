@@ -231,13 +231,13 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Expression (12.4) *)
 
-| red_stat_expr : forall S C e o (y:specret value),
-     red_spec S C (spec_expr_get_value e) y ->
-     red_stat S C (stat_expr_1 y) o ->
-     red_stat S C (stat_expr e) o
+  | red_stat_expr : forall S C e o (y:specret value),
+       red_spec S C (spec_expr_get_value e) y ->
+       red_stat S C (stat_expr_1 y) o ->
+       red_stat S C (stat_expr e) o
 
-| red_stat_expr_1 : forall S0 S C v,
-     red_stat S0 C (stat_expr_1 (ret S v)) (out_ter S v)
+  | red_stat_expr_1 : forall S0 S C v,
+       red_stat S0 C (stat_expr_1 (ret S v)) (out_ter S v)
 
   (** If statement (12.5) *)
  
