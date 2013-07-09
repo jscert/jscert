@@ -605,7 +605,7 @@ Definition run_object_get_prop runs S C l x : specres full_descriptor :=
             | value_object lproto =>
               runs_type_object_get_prop runs S1 C lproto x
             | value_prim _ =>
-              impossible_with_heap_because S1 "Found a non-null primitive value as a prototype in [object_get_own_prop]."
+              impossible_with_heap_because S1 "Found a non-null primitive value as a prototype in [run_object_get_prop]."
             end)
         ) else result_val S1 D)
     end).
