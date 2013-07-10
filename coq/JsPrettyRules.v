@@ -3892,7 +3892,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_list_expr_1_nil : forall S C vs,
       red_spec S C (spec_list_expr_1 vs nil) (ret S vs)
 
-  | red_spec_list_expr_1_cons : forall S C vs es e o1 (y:specret (list value)) (y1:specret value),
+  | red_spec_list_expr_1_cons : forall S C vs es e y1 (y:specret (list value)),
       red_spec S C (spec_expr_get_value e) y1 ->
       red_spec S C (spec_list_expr_2 vs y1 es) y ->
       red_spec S C (spec_list_expr_1 vs (e::es)) y

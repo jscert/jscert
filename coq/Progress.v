@@ -28,17 +28,9 @@ red_spec_to_int32
 red_spec_to_int32_1 
 red_spec_to_uint32 
 red_spec_to_uint32_1 
-red_spec_list_then 
-red_spec_list_then_1_nil 
-red_spec_list_then_1_cons 
-red_spec_list_then_2 
 
 === internal
 
-red_spec_prim_value_get 
-red_spec_prim_value_get_1 
-red_spec_prim_value_put 
-red_spec_prim_value_put_1 
 red_spec_object_get 
 red_spec_object_get_prop 
 red_spec_object_put 
