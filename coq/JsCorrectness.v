@@ -642,7 +642,7 @@ Ltac run_select_ifres H :=
   | if_spec _ _ => constr:(if_spec_out)
   | if_spec_ter _ _ => constr:(if_spec_ter_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
-  | _ => run_select_extra T
+  | ?x => run_select_extra T
   end end.
 
 (* template:
@@ -655,28 +655,23 @@ Ltac run_select_extra T ::=
 
 (** [run_select_proj] is used to obtain automatically
     the right correctness lemma out of the correctness record *)
+ 
+Ltac run_select_proj_extra_1 T := fail.
+Ltac run_select_proj_extra_2 T := fail.
+Ltac run_select_proj_extra_3 T := fail.
+Ltac run_select_proj_extra_4 T := fail.
 
 Ltac run_select_proj H :=
-  match type of H with
-  | ?T = _ =>
+  match type of H with ?T = _ =>
   match T with
   | runs_type_expr _ _ _ _ => constr:(runs_type_correct_expr)
   | runs_type_stat _ _ _ _ => constr:(runs_type_correct_stat)
   | runs_type_prog _ _ _ _ => constr:(runs_type_correct_prog)
+  | ?x => run_select_proj_extra_1 T
+  | ?x => run_select_proj_extra_2 T
+  | ?x => run_select_proj_extra_3 T
+  | ?x => run_select_proj_extra_4 T
   end end.
-
-(** [run_select_lemma] is used to obtain automatically
-    the right correctness lemma for an auxiliary function *)
-
-Ltac run_select_lemma_run_expr_get_value T := fail.
-
-Ltac run_select_lemma H :=
-  match type of H with
-  | ?T = _ =>
-    match constr:(tt) with
-    | ?x => run_select_lemma_run_expr_get_value T
-    end
-  end.
 
 (** [run_hyp_select_ind_hyp] returns the induction hypothesis
     on [runs_type_correct] *)
@@ -720,27 +715,22 @@ Ltac prove_runs_type_correct :=
 
 Ltac run_pre_ifres H o1 R1 K :=
    let L := run_select_ifres H in
-   let O1 := fresh "O1" in
-   lets (o1&R1&K): L (rm H); (* deconstruction of [isout]. *)
-   try (rename R1 into O1; run_hyp O1 as R1).
-
-Ltac run_pre_lemma H o1 R1 K :=
-  let L := run_select_lemma H in
-  let T := fresh in rename H into T;
-  lets (o1&R1&K): L (rm T);
-  try prove_runs_type_correct.
+   lets (o1&R1&K): L (rm H). (* deconstruction of the "isout" *)
 
 Ltac run_pre_core H o1 R1 K :=
-  first
-  [ let L := run_select_lemma H in (* test if it's a lemma *)
-    first [ run_pre_lemma H o1 R1 K | fail 1 ]
-  | let L := run_select_ifres H in (* test if it's a proj *)
-    first [ run_pre_ifres H o1 R1 K | fail 1 ]
-  ].
+   run_pre_ifres H o1 R1 K;
+   let O1 := fresh "O1" in
+   try (rename R1 into O1; run_hyp O1 as R1).
 
 Tactic Notation "run_pre" hyp(H) "as" ident(o1) ident(R1) ident(K) :=
   let T := fresh in rename H into T;
   run_pre_core T o1 R1 K.
+
+Tactic Notation "run_pre_ifres" "as" ident(o1) ident(R1) :=
+  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  match goal with H: _ = result_some _ |- _ =>
+    let T := fresh in rename H into T;
+    run_pre_ifres T o1 R1 H end.
 
 Tactic Notation "run_pre" "as" ident(o1) ident(R1) :=
   unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
@@ -912,7 +902,7 @@ Ltac run_step Red :=
 Ltac run_step_using Red Lem :=
   let o1 := fresh "o1" in let O1 := fresh "O1" in
   let R1 := fresh "R1" in
-  run_pre as o1 O1;
+  run_pre_ifres as o1 O1;
   lets R1: Lem (rm O1);
   try prove_runs_type_correct;
   match Red with ltac_wild => idtac | _ =>
@@ -998,7 +988,6 @@ Tactic Notation "runs" "*" :=
     or: run_pre H as o1 R1 K. (* where H is the hypothesis *)
     or: run_pre_core H o1 R1 K. (* where H is the hypothesis *)
     or: run_pre_lemma H o1 R1 K. (* where H is the hypothesis *)
-    or: run_pre_ifres H o1 R1 K. (* where H is the hypothesis *)
   run_apply __my_red_lemma__ R1. (* where R1 is the red hypothesis *)
   run_post.
   run_inv.
@@ -1273,7 +1262,17 @@ Lemma run_expr_get_value_correct : forall runs S C e y,
   red_spec S C (spec_expr_get_value e) y.
 Admitted.
 
-(*
+
+Ltac run_select_proj_extra_1 T ::= 
+  match T with
+  | object_put _ _ _ _ _ _ _ => constr:(object_put_correct)
+  | ref_put_value _ _ _ _ _ => constr:(ref_put_value_correct)
+  | run_expr_get_value _ _ _ _ => constr:(run_expr_get_value_correct)
+  end.
+
+
+(* todo; deprecated
+
 Lemma run_expr_get_value_correct : forall runs S C e K o,
   runs_type_correct runs ->
   run_expr_get_value runs S C e K = o -> exists o1,
@@ -1283,7 +1282,6 @@ Admitted.
 *)
 
 (*
->>>>>>> Stashed changes
 Ltac run_select_lemma_run_expr_get_value T ::=
   match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
 
@@ -1378,6 +1376,14 @@ Proof.
   run red_spec_to_integer using to_number_correct.
   applys* red_spec_to_integer_1.
 Qed.
+
+Ltac run_select_proj_extra_2 T ::= 
+  match T with
+  | to_primitive _ _ _ _ _ => constr:(to_primitive_correct)
+  | to_number _ _ _ _ => constr:(to_number_correct)
+  | to_string _ _ _ _ => constr:(to_string_correct)
+  end.
+
 
 Lemma run_error_correct_2 : forall S (ne : native_error) o C,
   run_error S ne = o -> red_expr S C (spec_error ne) o.
@@ -1621,7 +1627,7 @@ Proof.
     clear EQfollows.
   applys* red_expr_object_1_cons x.
   destruct pb.
-  run red_expr_object_2_val using run_expr_get_value_correct.
+  run red_expr_object_2_val.
    applys* red_expr_object_3_val. 
     run red_expr_object_2_get using create_new_function_in_correct.
      applys* red_expr_object_3_get.
@@ -1663,21 +1669,21 @@ Proof.
    apply~ red_expr_function_unnamed. applys~ creating_function_object_correct IH.
   (* Access *)
   unfolds in R.
-  run red_expr_access using run_expr_get_value_correct.
-  run red_expr_access_1 using run_expr_get_value_correct. cases_if.
+  run red_expr_access.
+  run red_expr_access_1. cases_if.
     run. applys red_expr_access_2.
        applys* red_spec_check_object_coercible_undef_or_null.
      abort_expr.
     applys red_expr_access_2.
       applys* red_spec_check_object_coercible_return.
-     run red_expr_access_3 using to_string_correct.
+     run red_expr_access_3.
      applys* red_expr_access_4.
   (* member *)
   run_hyp R. apply~ red_expr_member.
   (* new *)
   unfolds in R.
   Focus 1.
-  run red_expr_new using run_expr_get_value_correct.
+  run red_expr_new.
   skip. (* TODO *)
   (* call *)
   unfolds in R.
@@ -1738,16 +1744,16 @@ Proof.
      exists v, rv = resvalue_value v /\ red_expr S0 C (expr_assign_4 rv1 (ret S v)) o). 
     subst follow. clear R. introv HR.
     destruct rv; tryfalse. exists v. split~.
-    run red_expr_assign_4_put_value. applys* ref_put_value_correct.
+    run red_expr_assign_4_put_value.
     applys* red_expr_assign_5_return.
     clear EQfollow.
   destruct o0. 
     run red_expr_assign_1_compound using ref_get_value_correct.
-      run red_expr_assign_2_compound_get_value using run_expr_get_value_correct. 
+      run red_expr_assign_2_compound_get_value. 
         run red_expr_assign_3_compound_op using run_binary_op_correct.
         forwards (v&?&?): follow_correct (rm R). subst.
         applys* red_expr_assign_3'.
-    run red_expr_assign_1_simple using run_expr_get_value_correct.
+    run red_expr_assign_1_simple.
     forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
 
 Admitted. 
@@ -1923,7 +1929,7 @@ Proof.
   destruct t as [ | | ls | ls | e t1 t2o | labs t e | labs e t | e t 
      | e | eo | labo | labo | t co fo | | | eo | ]. 
   (* Expression *)
-  run red_stat_expr using run_expr_get_value_correct.
+  run red_stat_expr.
   apply red_stat_expr_1. 
   (* Label *)
   unfolds in R.
@@ -1947,7 +1953,7 @@ Proof.
     applys red_stat_block. gen o. generalize resvalue_empty as rv.
     induction l; introv R; simpls.
     run_inv. applys* red_stat_block_1_nil.
-     --waiting for out lemma ... run red_stat_block_1_cons.
+     --waiting for out lemma.. run red_stat_block_1_cons.
 
     | red_stat_block_2 : forall S0 S C ts R rv o,
         res_type R <> restype_throw ->
@@ -1964,7 +1970,7 @@ Proof.
   skip. (* TODO *)
   (* If *)
   unfolds in R.
-  run red_stat_if using run_expr_get_value_correct.
+  run red_stat_if
   (* TODO ARTHUR: udpate proof, will probably not need line below
   run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
   *)
@@ -1976,17 +1982,17 @@ Proof.
       applys* red_stat_if_1_false. 
       run_inv. applys* red_stat_if_1_false_implicit.
       *)
-      skip.
   (* Do-while *)
   skip. (* TODO false.*)
   (* While *)
   skip. (* OLD: forwards~ RC: IHw R. apply~ red_stat_while.*)
   (* With *)
-  unfolds in R. run red_stat_with using run_expr_get_value_correct.
+  unfolds in R. skip. (*run red_stat_with.
     applys* red_spec_expr_get_value_conv R1. destruct o1.
       skip.
       skip.
     skip.
+    *)
   (* Throw *)
   skip. (* OLD:
     unfolds in R. unmonad.
@@ -2005,7 +2011,7 @@ Proof.
         *)
   (* Return *)
   unfolds in R. destruct eo.   
-    run red_stat_return_some using run_expr_get_value_correct. apply* red_stat_return_1.
+    run red_stat_return_some. apply* red_stat_return_1.
     inverts* R. applys red_stat_return_none.
 
     (* OLD:
