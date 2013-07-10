@@ -758,32 +758,14 @@ Definition run_value_viewable_as_prim s S v : option (option prim) :=
 (**************************************************************)
 (** Operations on environments *)
 
-Definition env_record_lookup Z (d : Z) S L (K : env_record -> Z) : Z :=
-  morph_option d K (Heap.read_option (state_env_record_heap S) L).
-
 Definition env_record_has_binding runs S C L x : result :=
-  env_record_lookup (fun _ =>
-    impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
-    S L (fun E _ =>
-      match E with
-      | env_record_decl Ed =>
-        out_ter S (decide (decl_env_record_indom Ed x))
-      | env_record_object l pt =>
-        object_has_prop runs S C l x
-      end) tt.
-
-(* NEW:
-Definition env_record_has_binding runs S C L x : specres bool :=
-  env_record_lookup (fun _ =>
-    impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
-    S L (fun E _ =>
-      match E with
-      | env_record_decl Ed =>
-        res_spec S (decide (decl_env_record_indom Ed x))
-      | env_record_object l pt =>
-        object_has_prop runs S C l x
-      end) tt.
-*)
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
+    | env_record_decl Ed =>
+      out_ter S (decide (decl_env_record_indom Ed x))
+    | env_record_object l pt =>
+      object_has_prop runs S C l x
+    end).
 
 Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
   match X with
@@ -847,9 +829,8 @@ Definition identifier_resolution runs S C x : specres ref :=
   lexical_env_get_identifier_ref runs S C X x str.
 
 Definition env_record_get_binding_value runs S C L x str : result :=
-  env_record_lookup (fun _ => impossible_with_heap_because S
-    "[env_record_lookup] failed in [env_record_get_binding_value].") S L (fun er _ =>
-    match er with
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
     | env_record_decl Ed =>
       if_some (Heap.read_option Ed x) (fun rm =>
         let '(mu, v) := rm in
@@ -861,7 +842,7 @@ Definition env_record_get_binding_value runs S C L x str : result :=
         if has then
           run_object_get runs S1 C l x
         else out_error_or_cst S1 str native_error_ref undef)
-    end) tt.
+    end).
 
 
 (**************************************************************)
@@ -965,10 +946,7 @@ Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
         let '(mu, v_old) := rm in
         ifb mutability_is_mutable mu then
           out_void (env_record_write_decl_env S L x mu v)
-        else if str then
-          run_error S native_error_type
-        else
-          out_ter S prim_undef)
+        else out_error_or_void S str native_error_type)
     | env_record_object l pt =>
       object_put runs S C l x v str
     end).
@@ -1852,6 +1830,28 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
     end
   end.
 
+(* TODO: new definition to be checked *)
+Definition run_var_decl_item runs S C x eo : result :=
+  match eo with
+    | None => out_ter S x
+    | Some e =>
+      if_spec_ter (identifier_resolution runs S C x) (fun S1 ir =>
+        if_spec_ter (run_expr_get_value runs S1 C e) (fun S2 v =>
+          if_void (ref_put_value runs S2 C ir v) (fun S3 =>
+            out_ter S3 x)))
+  end.
+
+(* TODO: new definition to be checked *)
+Fixpoint run_var_decl runs S C xeos : result :=
+  match xeos with
+  | nil => out_ter S res_empty
+  | (x, eo) :: xeos' => 
+     if_value (run_var_decl_item runs S C x eo) (fun S1 vname =>
+        run_var_decl runs S1 C xeos')
+  end.
+
+(* TODO: deprecated old definition to delete after above is checked
+
 Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
   match xeos with
   | nil => out_ter S res_empty
@@ -1868,6 +1868,7 @@ Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
             follow S3)))
     end
   end.
+*)
 
 Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr) : specres (list value) :=
   match es with
@@ -2056,14 +2057,16 @@ Definition run_stat_label runs S C lab t : result :=
 Definition run_stat_with runs S C e1 t2 : result :=
   if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
     if_object (to_object S1 v1) (fun S2 l =>
-      let lex := execution_ctx_lexical_env C in
-      let '(lex', S3) := lexical_env_alloc_object S2 lex l provide_this_true in
-      let C' := execution_ctx_with_lex_this C lex' l in
+      Let lex := execution_ctx_lexical_env C in
+      Let p := lexical_env_alloc_object S2 lex l provide_this_true in
+      let '(lex', S3) := p in (* todo: let pair *)
+      Let C' := execution_ctx_with_lex_this C lex' l in
       runs_type_stat runs S3 C' t2)).
 
 Definition run_stat_if runs S C e1 t2 to : result :=
   if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    if (convert_value_to_boolean v1) then
+    Let b := convert_value_to_boolean v1 in
+    if b then
       runs_type_stat runs S1 C t2
     else
       match to with
@@ -2075,7 +2078,8 @@ Definition run_stat_if runs S C e1 t2 to : result :=
 
 Definition run_stat_while runs S C rv labs e1 t2 : result :=
   if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    if convert_value_to_boolean v1 then
+    Let b := convert_value_to_boolean v1 in
+    if b then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
         Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
         let loop tt := runs_type_stat_while runs S2 C rv' labs e1 t2 in
