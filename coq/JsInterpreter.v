@@ -2527,8 +2527,8 @@ Definition run_call runs S C l vthis args : result :=
 Definition run_javascript runs p : result :=
   let S := state_initial in
   let p' := add_infos_prog strictness_false p in
-  let C := execution_ctx_initial (prog_intro_strictness p) in
-  if_void (execution_ctx_binding_inst runs S C codetype_global None p nil) (fun S' =>
+  let C := execution_ctx_initial (prog_intro_strictness p') in
+  if_void (execution_ctx_binding_inst runs S C codetype_global None p' nil) (fun S' =>
     runs_type_prog runs S' C p').
 
 
