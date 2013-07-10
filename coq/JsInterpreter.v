@@ -3,6 +3,50 @@ Require Import Shared.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 Require Import LibFix LibList.
 
+(* TODO/ move to shared*)
+
+(** [list_get_last ls] returns [None] if the list given is empty
+    or [Some (ls',x)] where [ls=ls'++x::nil] otherwise. *)
+
+Fixpoint lib_get_last (A:Type) (ls:list A) :=
+  match ls with
+  | nil => None
+  | a::ls' =>
+    match ls' with
+    | nil => Some (nil,a)
+    | _ => option_map (fun p => let '(ls',x) := p in (a::ls',x)) (lib_get_last ls')
+    end
+  end.
+
+Lemma lib_get_last_spec : forall (A:Type) (ls:list A),
+  match lib_get_last ls with
+  | None => (ls = nil)
+  | Some (ls',x) => (ls = LibList.append ls' (x::nil))
+  end.
+Proof.
+  intros. induction ls; simpl.
+  auto.
+  destruct ls as [|b ls].
+    rew_list*.
+    destruct (lib_get_last (b::ls)) as [(?&?)|]; simpls.
+      rew_list*. congruence.
+      congruence.
+Qed.
+
+Lemma lib_get_last_nil : forall (A:Type),
+  lib_get_last (@nil A) = None.
+Proof. auto. Qed.
+
+Lemma lib_get_last_cons : forall (A:Type) ls,
+  ls <> nil -> exists (x:A) (ls':list A),
+     lib_get_last ls = Some (ls',x) 
+  /\ ls = LibList.append ls' (x::nil).
+Proof. 
+  intros. lets M: (lib_get_last_spec ls).
+  destruct (lib_get_last ls) as [(ls'&x)|]. 
+    subst. exists* x ls'.
+    false.
+Qed.
 
 
 (**************************************************************)
