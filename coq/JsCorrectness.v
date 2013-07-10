@@ -888,7 +888,7 @@ Ltac run_post_core :=
     destruct H as [(Er&Ab)|(S&a&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_success_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "rv" in
+    let S := fresh "S" in let rv := fresh "rv" in
     destruct H as [(Er&Ab)|(S&rv&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_value_spec_post _ _ _ |- _ =>
@@ -896,19 +896,19 @@ Ltac run_post_core :=
     destruct H as [(Er&Ab)|(S&v&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_prim_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "w" in
+    let S := fresh "S" in let w := fresh "w" in
     destruct H as [(Er&Ab)|(S&w&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_bool_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "b" in
+    let S := fresh "S" in let b := fresh "b" in
     destruct H as [(Er&Ab)|(S&b&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_number_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "n" in
+    let S := fresh "S" in let n := fresh "n" in
     destruct H as [(Er&Ab)|(S&n&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_string_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "s" in
+    let S := fresh "S" in let s := fresh "s" in
     destruct H as [(Er&Ab)|(S&s&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_any_or_throw_post _ _ _ _ |- _ =>
@@ -1046,7 +1046,8 @@ Ltac run_simpl_core H K :=
   run_simpl_base H K; run_inv.
 
 Tactic Notation "run_simpl" ident(H) "as" ident(K) :=
-  run_simpl_core H K.
+  let T := fresh in rename H into T;
+  run_simpl_core T K.
 
 Tactic Notation "run_simpl" :=
   unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
