@@ -291,7 +291,7 @@ Inductive ext_expr :=
   (** Extented expressions for eval *)
 
   | spec_entering_eval_code : bool -> funcbody -> ext_expr -> ext_expr
-  | spec_entering_eval_code_1 : funcbody -> ext_expr -> ext_expr
+  | spec_entering_eval_code_1 : funcbody -> ext_expr -> bool -> ext_expr
   | spec_entering_eval_code_2 : out -> ext_expr -> ext_expr
 
   | spec_call_global_eval : bool -> list value -> ext_expr
@@ -523,6 +523,7 @@ Inductive ext_expr :=
   | spec_call_error_proto_to_string_3 : object_loc -> out -> ext_expr
   | spec_call_error_proto_to_string_4 : object_loc -> string -> out -> ext_expr
   | spec_call_error_proto_to_string_5 : object_loc -> string -> out -> ext_expr
+  | spec_call_error_proto_to_string_6 : object_loc -> string -> out -> ext_expr
 
 
   (** Special state for returning an outcome *)
@@ -748,7 +749,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_call_1 o _ _ => Some o
   | expr_call_2 _ _ _ (specret_out o) => Some o
   | expr_call_2 _ _ _ (specret_val _ _) => None
-  | expr_call_3 _ _ _ _ => None
+  | expr_call_3 _ _ _ y => out_of_specret y  
   | expr_call_4 _ _ _ _ => None
   | expr_call_5 _ _ _ o => Some o
 
@@ -935,7 +936,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
 
   | spec_entering_eval_code _ _ _ => None
-  | spec_entering_eval_code_1 _ _ => None
+  | spec_entering_eval_code_1 _ _ _ => None
   | spec_entering_eval_code_2 o _ => Some o
 
   | spec_call_global_eval _ _ => None
@@ -1153,6 +1154,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_error_proto_to_string_3 _ o => Some o
   | spec_call_error_proto_to_string_4 _ _ o => Some o
   | spec_call_error_proto_to_string_5 _ _ o => Some o
+  | spec_call_error_proto_to_string_6 _ _ o => Some o
 
   | spec_returns o => Some o
   end.

@@ -17,6 +17,108 @@ Tactic Notation "decompose" ident(E) "as" simple_intropattern(I) :=
   decompose_base E I.
 
 
+
+
+
+Definition let_binding (A B:Type) (v:A) (K:A->B) := K v.
+
+Notation "'Let' x ':=' v 'in' e" := (let_binding v (fun x => e))
+  (at level 69, x ident, right associativity,
+  format "'[v' '[' 'Let'  x  ':='  v  'in' ']'  '/'  '[' e ']' ']'").
+
+Lemma let_binding_unfold : forall (A B:Type) (v:A) (K:A->B),
+  let_binding v K = K v.
+Proof. reflexivity. Qed.
+
+Ltac let_get_fresh_binding_name K :=
+  match K with (fun x => _) => let y := fresh x in y end.
+
+(** [changes] is like [change] except that it does not silently
+   fail to perform its task. Moreover, it does beta-unfolding *)
+
+Tactic Notation "changes" constr(E1) "with" constr(E2) "in" hyp(H) :=
+  asserts_rewrite (E1 = E2) in H; [ reflexivity | ].
+Tactic Notation "changes" constr(E1) "with" constr(E2) :=
+  asserts_rewrite (E1 = E2); [ reflexivity | ].
+Tactic Notation "changes" constr(E1) "with" constr(E2) "in" "*" :=
+  asserts_rewrite (E1 = E2) in *; [ reflexivity | ].
+
+Tactic Notation "let_simpl" "in" hyp(H) :=
+  match type of H with context [ let_binding ?v ?K ] =>
+     changes (let_binding v K) with (K v) in H
+  end.
+
+Tactic Notation "let_name" "in" hyp(H) :=
+  match type of H with context [ let_binding ?v ?K ] =>
+     let x := let_get_fresh_binding_name K in
+     set_eq x: v in H;
+     let_simpl in H
+  end.
+
+Tactic Notation "let_name" "in" hyp(H) "as" ident(x) :=
+  match type of H with context [ let_binding ?v ?K ] =>
+     set_eq x: v in H;
+     let_simpl in H
+  end.
+
+Tactic Notation "let_simpl" :=
+  match goal with
+  | |- context [ let_binding ?v ?K ] =>
+     changes (let_binding v K) with (K v)
+  | H: context [ let_binding ?v ?K ] |- _ => let_simpl in H
+  end.
+
+Tactic Notation "let_name" :=
+  match goal with
+  | |- context [ let_binding ?v ?K ] =>
+     let x := let_get_fresh_binding_name K in
+     set_eq x: v;
+     let_simpl
+  | H: context [ let_binding ?v ?K ] |- _ => let_name in H
+  end.
+
+Tactic Notation "let_name" "as" ident(x) :=
+  match goal with
+  | |- context [ let_binding ?v ?K ] =>
+     set_eq x: v;
+     let_simpl
+  | H: context [ let_binding ?v ?K ] |- _ => let_name in H as x
+  end.
+
+Definition let_binding_test_1 :
+  (Let x := 3 in Let y := x + x in y + y) = 12.
+Proof.
+  dup 3.
+  (* One can compute with Let *)
+  reflexivity.
+  (* One can inline Let step by step *)
+  simpl. (* does nothing *)
+  let_simpl.
+  let_simpl.
+  reflexivity.
+  (* One can name the arguments of Let step by step *)
+  let_name.
+  let_name as z.
+  subst x. subst z. reflexivity.
+Qed.
+
+Definition let_binding_test_2 :
+  (Let x := 3 in Let y := x + x in y + y) = 12 -> True.
+Proof.
+  dup 2; intros H.
+  (* One can inline Let step by step *)
+  simpl in H. (* does nothing *)
+  let_simpl in H.
+  let_simpl in H.
+  auto.
+  (* One can name the arguments of Let step by step *)
+  let_name in H.
+  let_name in H as z.
+  subst x. subst z. auto.
+Qed.
+
+
+
 (**************************************************************)
 (** ** LATER: move to LibSet *)
 
