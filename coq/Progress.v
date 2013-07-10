@@ -6,23 +6,207 @@ Function.*
 switch
 do_while
 unary/binary ops
+argument objects
 
-=== Requires big changes (Arthur)
+
+=== Requires big changes (Daniele)
 
 prog_block
 
-=== Arthur
+
+=== expr/stat
+
+red_stat_with 
+red_stat_with_1 
+
+red_stat_throw 
+red_stat_throw_1
+
+red_expr_identifier 
+
+red_expr_delete 
+red_expr_delete_1_not_ref 
+red_expr_delete_1_ref_unresolvable 
+red_expr_delete_1_ref_property 
+red_expr_delete_2 
+red_expr_delete_1_ref_env_record 
+
+red_expr_conditional 
+red_expr_conditional_1 
+red_expr_conditional_2 
+
+red_expr_assign (* almost done *)
+red_stat_try (* almost done *)
+
+red_stat_var_decl_nil 
+red_stat_var_decl_cons 
+red_stat_var_decl_1 
+red_stat_var_decl_item_none 
+red_stat_var_decl_item_some 
+red_stat_var_decl_item_1 
+red_stat_var_decl_item_2 
+red_stat_var_decl_item_3 
+
+[later: unary ops, binary ops, do_while, switch]
 
 
-red_stat_try (* Done *)
-red_stat_try_1_no_throw 
-red_stat_try_1_throw_no_catch 
-red_stat_try_1_throw_catch 
-red_stat_try_2_catch 
-red_stat_try_3_catch_result 
-red_stat_try_4_no_finally 
-red_stat_try_4_finally 
-red_stat_try_5_finally_result 
+
+=== convert
+
+red_spec_convert_twice 
+red_spec_convert_twice_1 
+red_spec_convert_twice_2 
+red_spec_to_int32 
+red_spec_to_int32_1 
+red_spec_to_uint32 
+red_spec_to_uint32_1 
+red_spec_list_then 
+red_spec_list_then_1_nil 
+red_spec_list_then_1_cons 
+red_spec_list_then_2 
+
+=== internal
+
+red_spec_prim_value_get 
+red_spec_prim_value_get_1 
+red_spec_prim_value_put 
+red_spec_prim_value_put_1 
+red_spec_ref_put_value_value 
+red_spec_ref_put_value_ref_a_1 
+red_spec_ref_put_value_ref_a_2 
+red_spec_ref_put_value_ref_b 
+red_spec_ref_put_value_ref_c 
+red_spec_ref_get_value_value 
+red_spec_ref_get_value_ref_a 
+red_spec_ref_get_value_ref_b
+red_spec_ref_get_value_ref_c 
+red_spec_expr_get_value 
+red_spec_expr_get_value_1 
+
+red_spec_object_get 
+red_spec_object_get_prop 
+red_spec_object_put 
+red_spec_object_can_put 
+red_spec_object_has_prop 
+red_spec_object_delete 
+red_spec_object_define_own_prop 
+red_spec_object_has_instance 
+red_spec_object_get_prop_1_default 
+red_spec_object_get_prop_2_not_undef 
+red_spec_object_get_prop_2_undef 
+red_spec_object_get_prop_3_null 
+red_spec_object_get_prop_3_not_null 
+red_spec_object_get_1_default 
+red_spec_object_get_2_undef 
+red_spec_object_get_2_data 
+red_spec_object_get_2_accessor 
+red_spec_object_get_3_accessor_undef 
+red_spec_object_get_3_accessor_object 
+red_spec_object_can_put_1_default 
+red_spec_object_can_put_2_accessor 
+red_spec_object_can_put_2_data 
+red_spec_object_can_put_2_undef 
+red_spec_object_can_put_4_null 
+red_spec_object_can_put_4_not_null 
+red_spec_object_can_put_5_undef 
+red_spec_object_can_put_5_accessor 
+red_spec_object_can_put_5_data 
+red_spec_object_can_put_6_extens_false 
+red_spec_object_can_put_6_extens_true 
+red_spec_object_put_1_default 
+red_spec_object_put_1_false 
+red_spec_object_put_2_true 
+red_spec_object_put_2_true 
+red_spec_object_put_3_data_object 
+red_spec_object_put_3_data_prim 
+red_spec_object_put_3_not_data 
+red_spec_object_put_4_accessor 
+red_spec_object_put_4_not_accessor_object 
+red_spec_object_put_4_not_accessor_prim 
+red_spec_object_put_5_return 
+red_spec_object_has_prop_1_default 
+red_spec_object_has_prop_2 
+red_spec_object_delete_1_default 
+red_spec_object_delete_2_undef 
+red_spec_object_delete_2_some_configurable 
+red_spec_object_delete_3_some_non_configurable 
+
+red_spec_creating_function_object_proto 
+red_spec_creating_function_object_proto_1 
+red_spec_creating_function_object_proto_2 
+red_spec_creating_function_object 
+red_spec_creating_function_object_1 
+red_spec_creating_function_object_2_not_strict 
+red_spec_creating_function_object_2_strict 
+red_spec_creating_function_object_3 
+red_spec_creating_function_object_4 
+
+red_spec_create_new_function_in 
+
+red_spec_object_get_1_function 
+red_spec_function_get_1_error 
+red_spec_function_get_1_normal 
+red_spec_object_has_instance_1_prim 
+red_spec_object_has_instance_1_object 
+red_spec_function_has_instance_1_prim 
+red_spec_function_has_instance_1_object 
+red_spec_function_has_instance_2 
+red_spec_function_has_instance_3_null 
+red_spec_function_has_instance_3_eq 
+red_spec_function_has_instance_3_neq 
+
+=== environment
+
+red_spec_env_record_has_binding 
+red_spec_env_record_has_binding_1_decl 
+red_spec_env_record_has_binding_1_object 
+red_spec_env_record_create_mutable_binding 
+red_spec_env_record_create_mutable_binding_1_decl_indom 
+red_spec_env_record_create_mutable_binding_1_object 
+red_spec_env_record_create_mutable_binding_obj_2 
+red_spec_env_record_create_mutable_binding_obj_3 
+red_spec_env_record_set_mutable_binding 
+red_spec_env_record_set_mutable_binding_1_decl 
+red_spec_env_record_set_mutable_binding_1_object 
+red_spec_env_record_get_binding_value 
+red_spec_env_record_get_binding_value_1_decl 
+red_spec_env_record_get_binding_value_1_object 
+red_spec_env_record_get_binding_value_obj_2_false 
+red_spec_env_record_get_binding_value_obj_2_true 
+red_spec_env_record_delete_binding 
+red_spec_env_record_delete_binding_1_decl_indom 
+red_spec_env_record_delete_binding_1_decl_not_indom 
+red_spec_env_record_delete_binding_1_object 
+red_spec_env_record_implicit_this_value 
+red_spec_env_record_implicit_this_value_1_decl 
+red_spec_env_record_implicit_this_value_1_object 
+red_spec_env_record_create_immutable_binding 
+red_spec_env_record_initialize_immutable_binding 
+red_spec_env_record_create_set_mutable_binding 
+red_spec_env_record_create_set_mutable_binding_1 
+red_spec_lexical_env_get_identifier_ref_nil 
+red_spec_lexical_env_get_identifier_ref_cons 
+red_spec_lexical_env_get_identifier_ref_cons_1 
+red_spec_lexical_env_get_identifier_ref_cons_2_true 
+red_spec_lexical_env_get_identifier_ref_cons_2_false 
+
+
+red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
+
+
+=== errors
+
+red_spec_error 
+red_spec_error_1 
+red_spec_error_or_cst_true 
+red_spec_error_or_cst_false 
+red_spec_error_or_void_true 
+red_spec_error_or_void_false 
+
+red_javascript_intro
+
+
+=== descriptors
 
 red_spec_to_descriptor_not_object 
 red_spec_to_descriptor_object 
@@ -104,7 +288,7 @@ red_spec_object_define_own_prop_args_obj_2_true_undef
 red_spec_object_define_own_prop_args_obj_6 
 
 
-=== Daiva ===
+=== function
 
 red_spec_call 
 red_spec_constructor 
@@ -227,69 +411,9 @@ red_spec_object_delete_args_obj_3
 red_spec_object_delete_args_obj_2_else 
 red_spec_object_delete_args_obj_4 
 
-=== Daniele
-
-red_stat_with 
-red_stat_with_1 
-
-red_stat_label (* Stuck *)
-red_stat_label_1_normal 
-red_stat_label_1_break_eq 
-
-red_stat_throw 
-red_stat_throw_1
 
 
-red_expr_identifier (* stuck *)
-
-red_expr_delete 
-red_expr_delete_1_not_ref 
-red_expr_delete_1_ref_unresolvable 
-red_expr_delete_1_ref_property 
-red_expr_delete_2 
-red_expr_delete_1_ref_env_record 
-
-red_expr_conditional 
-red_expr_conditional_1 
-red_expr_conditional_2 
-
-red_expr_assign (* stuck *)
-red_expr_assign_1_simple 
-red_expr_assign_1_compound 
-red_expr_assign_2_compound_get_value 
-red_expr_assign_3_compound_op 
-red_expr_assign_3'
-red_expr_assign_4_put_value 
-red_expr_assign_5_return 
-
-red_stat_var_decl_nil 
-red_stat_var_decl_cons 
-red_stat_var_decl_1 
-red_stat_var_decl_item_none 
-red_stat_var_decl_item_some 
-red_stat_var_decl_item_1 
-red_stat_var_decl_item_2 
-red_stat_var_decl_item_3 
-
-[later: unary ops, binary ops, do_while, switch]
-
-
-=== Martin
-
-modify the interpreter to remove continuations, (* They have been modified in the interpreter. *)
-then give back to Arthur for proofs.
-  red_spec_convert_twice 
-  red_spec_convert_twice_1 
-  red_spec_convert_twice_2 
-  red_spec_to_int32 
-  red_spec_to_int32_1 
-  red_spec_to_uint32 
-  red_spec_to_uint32_1 
-  red_spec_list_then 
-  red_spec_list_then_1_nil 
-  red_spec_list_then_1_cons 
-  red_spec_list_then_2 
-
+=== can be skipped
 
 red_spec_arguments_object_map 
 red_spec_arguments_object_map_1 
@@ -310,128 +434,3 @@ red_spec_create_arguments_object_2_non_strict
 red_spec_create_arguments_object_2_strict 
 red_spec_create_arguments_object_3 
 red_spec_create_arguments_object_4 
-
-red_spec_prim_value_get 
-red_spec_prim_value_get_1 
-red_spec_prim_value_put 
-red_spec_prim_value_put_1 
-red_spec_ref_put_value_value 
-red_spec_ref_put_value_ref_a_1 
-red_spec_ref_put_value_ref_a_2 
-red_spec_ref_put_value_ref_b 
-red_spec_ref_put_value_ref_c 
-red_spec_ref_get_value_value 
-red_spec_ref_get_value_ref_a 
-red_spec_ref_get_value_ref_b
-red_spec_ref_get_value_ref_c 
-red_spec_expr_get_value 
-red_spec_expr_get_value_1 
-
-red_spec_object_get 
-red_spec_object_get_prop 
-red_spec_object_put 
-red_spec_object_can_put 
-red_spec_object_has_prop 
-red_spec_object_delete 
-red_spec_object_define_own_prop 
-red_spec_object_has_instance 
-red_spec_object_get_prop_1_default 
-red_spec_object_get_prop_2_not_undef 
-red_spec_object_get_prop_2_undef 
-red_spec_object_get_prop_3_null 
-red_spec_object_get_prop_3_not_null 
-red_spec_object_get_1_default 
-red_spec_object_get_2_undef 
-red_spec_object_get_2_data 
-red_spec_object_get_2_accessor 
-red_spec_object_get_3_accessor_undef 
-red_spec_object_get_3_accessor_object 
-red_spec_object_can_put_1_default 
-red_spec_object_can_put_2_accessor 
-red_spec_object_can_put_2_data 
-red_spec_object_can_put_2_undef 
-red_spec_object_can_put_4_null 
-red_spec_object_can_put_4_not_null 
-red_spec_object_can_put_5_undef 
-red_spec_object_can_put_5_accessor 
-red_spec_object_can_put_5_data 
-red_spec_object_can_put_6_extens_false 
-red_spec_object_can_put_6_extens_true 
-red_spec_object_put_1_default 
-red_spec_object_put_1_false 
-red_spec_object_put_2_true 
-red_spec_object_put_2_true 
-red_spec_object_put_3_data_object 
-red_spec_object_put_3_data_prim 
-red_spec_object_put_3_not_data 
-red_spec_object_put_4_accessor 
-red_spec_object_put_4_not_accessor_object 
-red_spec_object_put_4_not_accessor_prim 
-red_spec_object_put_5_return 
-red_spec_object_has_prop_1_default 
-red_spec_object_has_prop_2 
-red_spec_object_delete_1_default 
-red_spec_object_delete_2_undef 
-red_spec_object_delete_2_some_configurable 
-red_spec_object_delete_3_some_non_configurable 
-
-red_spec_creating_function_object_proto 
-red_spec_creating_function_object_proto_1 
-red_spec_creating_function_object_proto_2 
-red_spec_creating_function_object 
-red_spec_creating_function_object_1 
-red_spec_creating_function_object_2_not_strict 
-red_spec_creating_function_object_2_strict 
-red_spec_creating_function_object_3 
-red_spec_creating_function_object_4 
-
-red_spec_create_new_function_in 
-
-red_spec_object_get_1_function 
-red_spec_function_get_1_error 
-red_spec_function_get_1_normal 
-red_spec_object_has_instance_1_prim 
-red_spec_object_has_instance_1_object 
-red_spec_function_has_instance_1_prim 
-red_spec_function_has_instance_1_object 
-red_spec_function_has_instance_2 
-red_spec_function_has_instance_3_null 
-red_spec_function_has_instance_3_eq 
-red_spec_function_has_instance_3_neq 
-
-red_spec_env_record_has_binding 
-red_spec_env_record_has_binding_1_decl 
-red_spec_env_record_has_binding_1_object 
-red_spec_env_record_create_mutable_binding 
-red_spec_env_record_create_mutable_binding_1_decl_indom 
-red_spec_env_record_create_mutable_binding_1_object 
-red_spec_env_record_create_mutable_binding_obj_2 
-red_spec_env_record_create_mutable_binding_obj_3 
-red_spec_env_record_set_mutable_binding 
-red_spec_env_record_set_mutable_binding_1_decl 
-red_spec_env_record_set_mutable_binding_1_object 
-red_spec_env_record_get_binding_value 
-red_spec_env_record_get_binding_value_1_decl 
-red_spec_env_record_get_binding_value_1_object 
-red_spec_env_record_get_binding_value_obj_2_false 
-red_spec_env_record_get_binding_value_obj_2_true 
-red_spec_env_record_delete_binding 
-red_spec_env_record_delete_binding_1_decl_indom 
-red_spec_env_record_delete_binding_1_decl_not_indom 
-red_spec_env_record_delete_binding_1_object 
-red_spec_env_record_implicit_this_value 
-red_spec_env_record_implicit_this_value_1_decl 
-red_spec_env_record_implicit_this_value_1_object 
-red_spec_env_record_create_immutable_binding 
-red_spec_env_record_initialize_immutable_binding 
-red_spec_env_record_create_set_mutable_binding 
-red_spec_env_record_create_set_mutable_binding_1 
-red_spec_lexical_env_get_identifier_ref_nil 
-red_spec_lexical_env_get_identifier_ref_cons 
-red_spec_lexical_env_get_identifier_ref_cons_1 
-red_spec_lexical_env_get_identifier_ref_cons_2_true 
-red_spec_lexical_env_get_identifier_ref_cons_2_false 
-
-
-red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
-
