@@ -140,6 +140,8 @@ Definition out_from_retn (sp : retn) : out :=
 Coercion out_retn o : retn := specret_out o.
 Coercion result_out o : result := res_out o.
 
+Coercion res_to_res_void (W : result) : result_void := W.
+
 (* Inhabited *)
 
 Global Instance result_inhab : forall T, Inhab (resultof T).
@@ -188,16 +190,16 @@ Definition if_result_some (A B : Type) (W : resultof A) (K : A -> resultof B) : 
   | result_bottom S0 => result_bottom S0
   end.
 
-Definition if_result_some_out T W (K : out -> resultof T) : resultof T :=
+Definition if_out_some T W (K : out -> resultof T) : resultof T :=
   if_result_some W (fun sp => K (out_from_retn sp)).
 
 (* TODO: badly named *)
 Definition res_res T W : specres T :=
-  if_result_some_out W (fun o => res_out o).
+  if_out_some W (fun o => res_out o).
 Implicit Arguments res_res [[T]].
 
 Definition if_ter W (K : state -> res -> result) : result :=
-  if_result_some_out W (fun o =>
+  if_out_some W (fun o =>
     match o with
     | out_ter S0 R => K S0 R
     | _ => res_out o
@@ -353,7 +355,7 @@ Definition if_spec (A B : Type) (W : specres A) (K : state -> A -> specres B) : 
     end).
 
 Definition if_ter_spec T W (K : state -> res -> specres T) : specres T :=
-  if_result_some_out W (fun o =>
+  if_out_some W (fun o =>
     match o with
     | out_ter S0 R => K S0 R
     | _ => res_out o
@@ -1903,7 +1905,7 @@ Definition run_expr_access runs S C e1 e2 : result :=
 Definition run_expr_assign runs S C (opo : option binary_op) e1 e2 : result :=
   if_success (runs_type_expr runs S C e1) (fun S1 rv1 =>
     Let follow := fun S rv' =>
-      match rv' with
+      match rv' return result with
       | resvalue_value v =>
         if_void (ref_put_value runs S C rv1 v) (fun S' =>
          out_ter S' v)

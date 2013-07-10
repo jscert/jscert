@@ -17,7 +17,9 @@ Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
 
 
 
-
+Ltac tryfalse_nothing :=
+  try match goal with x: nothing |- _ => destruct x end;
+  tryfalse.
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -245,7 +247,7 @@ Definition eqabort o1 o :=
     an outcome that satisfies [Pred]. *)
 
 Definition isout W (Pred:out->Prop) :=
-  exists o1, W = result_some o1 /\ Pred o1.
+  exists o1, W = res_out o1 /\ Pred o1.
 
 Hint Unfold isout.
 
@@ -275,27 +277,27 @@ Proof. introv E. destruct* oa; tryfalse. Qed.
 
 (* Results *)
 
-Definition if_ter_post K o o1 :=
+Definition if_ter_post (K : _ -> _ -> result) o o1 :=
      (o1 = out_div /\ o = o1)
-  \/ (exists S R, o1 = out_ter S R /\ K S R = result_some o).
+  \/ (exists S R, o1 = out_ter S R /\ K S R = o).
 
 Lemma if_ter_out : forall W K o,
   if_ter W K = o ->
   isout W (if_ter_post K o).
 Proof.
-  introv H. destruct W as [o1| | | ]; simpls; tryfalse.
+  introv H. destruct W as [[|o1]| | | ]; simpls; tryfalse_nothing.
   exists o1. splits~. unfolds. destruct o1 as [|S R].
    inverts* H.
    jauto.
 Qed.
 
-Definition if_success_state_post rv0 K o o1 :=
+Definition if_success_state_post rv0 (K : _ -> _ -> result) o o1 :=
   (o1 = out_div /\ o = o1) \/
   (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = o1) \/
   (exists S R, o1 = out_ter S R /\ res_type R <> restype_throw /\
     o = out_ter S (res_overwrite_value_if_empty rv0 R)) \/
   exists S rv, o1 = out_ter S (res_normal rv) /\
-    K S (res_value (res_overwrite_value_if_empty rv0 rv)) = result_some o.
+    K S (res_value (res_overwrite_value_if_empty rv0 rv)) = res_out o.
 
 Lemma if_success_state_out : forall rv W K o,
   if_success_state rv W K = o ->
@@ -310,9 +312,9 @@ Proof.
    inverts H. branch 2. repeat eexists.
 Qed.
 
-Definition if_success_post K o o1 :=
+Definition if_success_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = result_some o.
+  exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = o.
 
 Lemma if_success_out : forall W K o,
   if_success W K = o ->
@@ -322,14 +324,14 @@ Admitted.
   (* Documentation: same with unfolding:
     Lemma if_success_out : forall W K o,
       if_success W K = o ->
-      exists o1, W = result_some o1 /\
+      exists o1, W = res_out o1 /\
        (   (o = o1 /\ abort o)
         \/ (exists S rv, o1 = out_ter S rv /\ K S rv = o)).
   *)
 
-Definition if_void_post K o o1 :=
+Definition if_void_post (K : _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S, o1 = out_void S /\ K S = result_some o.
+  exists S, o1 = out_void S /\ K S = o.
 
 Lemma if_void_out : forall W K o,
   if_void W K = o ->
@@ -339,15 +341,15 @@ Admitted.
 (* TODO: misssing 
     if_not_throw *)
 
-Definition if_any_or_throw_post K1 K2 o o1 :=
+Definition if_any_or_throw_post (K1 K2 : _ -> _ -> result) o o1 :=
   (o1 = out_div /\ o = o1) \/
   (exists S R, o1 = out_ter S R /\ 
-    (   (res_type R <> restype_throw /\ K1 S R = result_some o)  
+    (   (res_type R <> restype_throw /\ K1 S R = o)  
      \/ (res_type R = restype_throw /\ exists (v : value), res_value R = v
-           /\ res_label R = label_empty /\ K2 S v = result_some o))). (* Didn't worked when writing [exists (v : value), R = res_throw v]. *)
+           /\ res_label R = label_empty /\ K2 S v = o))). (* Didn't worked when writing [exists (v : value), R = res_throw v]. *)
 
 Lemma if_any_or_throw_out : forall W K1 K2 o,
-  if_any_or_throw W K1 K2 = result_some o ->
+  if_any_or_throw W K1 K2 = res_out o ->
   isout W (if_any_or_throw_post K1 K2 o).
 Admitted.
 
@@ -355,65 +357,65 @@ Admitted.
     if_success_or_return
     if_normal_continue_or_break *)
 
-Definition if_break_post K o o1 :=
+Definition if_break_post (K : _ -> _ -> result) o o1 :=
      (o1 = out_div /\ o = o1)
   \/ (exists S R, o1 = out_ter S R /\ 
       (   (res_type R <> restype_break /\ o1 = o)
-       \/ (res_type R = restype_break /\ K S R = result_some o))).
+       \/ (res_type R = restype_break /\ K S R = o))).
 
 Lemma if_break_out : forall W K o,
   if_break W K = o ->
   isout W (if_break_post K o).
 Admitted.
 
-Definition if_value_post K o o1 :=
+Definition if_value_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S v, o1 = out_ter S (res_val v) /\ K S v = result_some o.
+  exists S v, o1 = out_ter S (res_val v) /\ K S v = o.
 
 Lemma if_value_out : forall W K o,
   if_value W K = o ->
   isout W (if_value_post K o).
 Admitted.
 
-Definition if_bool_post K o o1 :=
+Definition if_bool_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = result_some o.
+  exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = o.
 
 Lemma if_bool_out : forall W K o,
   if_bool W K = o ->
   isout W (if_bool_post K o).
 Admitted.
 
-Definition if_object_post K o o1 :=
+Definition if_object_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = result_some o.
+  exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = o.
 
 Lemma if_object_out : forall W K o,
   if_object W K = o ->
   isout W (if_object_post K o).
 Admitted.
 
-Definition if_string_post K o o1 :=
+Definition if_string_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = result_some o.
+  exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = o.
 
 Lemma if_string_out : forall W K o,
   if_string W K = o ->
   isout W (if_string_post K o).
 Admitted.
 
-Definition if_number_post K o o1 :=
+Definition if_number_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = result_some o.
+  exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = o.
 
 Lemma if_number_out : forall W K o,
   if_number W K = o ->
   isout W (if_number_post K o).
 Admitted.
 
-Definition if_primitive_post K o o1 :=
+Definition if_primitive_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
-  exists S w, o1 = out_ter S (res_val (value_prim w)) /\ K S w = result_some o.
+  exists S w, o1 = out_ter S (res_val (value_prim w)) /\ K S w = o.
 
 Lemma if_primitive_out : forall W K o,
   if_primitive W K = o ->
@@ -443,12 +445,12 @@ Qed.
 (* TOOD:  missing 
     if_ter_spec*)
 
-Definition if_spec_ter_post T K o (y:specret T) :=
+Definition if_spec_ter_post T (K : _ -> _ -> result) o (y:specret T) :=
      (y = specret_out o /\ abort o)
-  \/ (exists S a, y = specret_val S a /\ K S a = result_some o).
+  \/ (exists S a, y = specret_val S a /\ K S a = o).
 
 Lemma if_spec_ter_out : forall T (W : specres T) K o,
-  if_spec_ter W K = result_some o -> 
+  if_spec_ter W K = o -> 
   exists y, W = result_some y /\ if_spec_ter_post K o y.
 Proof.
 (* TODO
@@ -466,7 +468,7 @@ Definition if_success_spec_post T K (y:specret T) o :=
 
 Lemma if_success_spec_out : forall T W K (y : specret T),
   if_success_spec W K = result_some y ->
-  exists o, W = result_some o /\ if_success_spec_post K y o.
+  exists (o : out), W = o /\ if_success_spec_post K y o.
 Admitted.
 
 Definition if_value_spec_post T K (y:specret T) o :=
@@ -475,7 +477,7 @@ Definition if_value_spec_post T K (y:specret T) o :=
 
 Lemma if_value_spec_out : forall T W K (y : specret T),
   if_value_spec W K = result_some y ->
-  exists o, W = result_some o /\ if_value_spec_post K y o.
+  exists (o : out), W = o /\ if_value_spec_post K y o.
 Admitted.
 
 Definition if_prim_spec_post T K (y:specret T) o :=
@@ -484,7 +486,7 @@ Definition if_prim_spec_post T K (y:specret T) o :=
 
 Lemma if_prim_spec_out : forall T W K (y : specret T),
   if_prim_spec W K = result_some y ->
-  exists o, W = result_some o /\ if_prim_spec_post K y o.
+  exists (o : out), W = o /\ if_prim_spec_post K y o.
 Admitted.
 
 Definition if_bool_spec_post T K (y:specret T) o :=
@@ -493,7 +495,7 @@ Definition if_bool_spec_post T K (y:specret T) o :=
 
 Lemma if_bool_spec_out : forall T W K (y : specret T),
   if_bool_spec W K = result_some y ->
-  exists o, W = result_some o /\ if_bool_spec_post K y o.
+  exists (o : out), W = o /\ if_bool_spec_post K y o.
 Admitted.
 
 Definition if_number_spec_post T K (y:specret T) o :=
@@ -502,7 +504,7 @@ Definition if_number_spec_post T K (y:specret T) o :=
 
 Lemma if_number_spec_out : forall T W K (y : specret T),
   if_number_spec W K = result_some y ->
-  exists o, W = result_some o /\ if_number_spec_post K y o.
+  exists (o : out), W = o /\ if_number_spec_post K y o.
 Admitted.
 
 Definition if_string_spec_post T K (y:specret T) o :=
@@ -511,7 +513,7 @@ Definition if_string_spec_post T K (y:specret T) o :=
 
 Lemma if_string_spec_out : forall T W K (y : specret T),
   if_string_spec W K = result_some y ->
-  exists o, W = result_some o /\ if_string_spec_post K y o.
+  exists (o : out), W = o /\ if_string_spec_post K y o.
 Admitted.
 
 
@@ -809,13 +811,13 @@ Tactic Notation "run_pre" hyp(H) "as" ident(o1) ident(R1) ident(K) :=
   run_pre_core T o1 R1 K.
 
 Tactic Notation "run_pre_ifres" "as" ident(o1) ident(R1) :=
-  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
   match goal with H: _ = result_some _ |- _ =>
     let T := fresh in rename H into T;
     run_pre_ifres T o1 R1 H end.
 
 Tactic Notation "run_pre" "as" ident(o1) ident(R1) :=
-  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
   match goal with H: _ = result_some _ |- _ =>
     let T := fresh in rename H into T;
     run_pre_core T o1 R1 H end.
@@ -940,13 +942,17 @@ Tactic Notation "run_post" :=
     by performing inversions on equalities. *)
 
 Ltac run_inv :=
-  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  unfold result_some_out in *; unfold res_to_res_void in * ; unfold out_retn in *; unfold result_out in *;
   repeat
   match goal with
   | H: resvalue_value ?v = resvalue_value ?v |- _ => clear H
   | H: resvalue_value _ = resvalue_value _ |- _ => inverts H
   | H: res_spec _ _ = _ |- _ => unfold res_spec in H
   | H: _ = res_spec _ _ |- _ => unfold res_spec in H
+  | H: res_out _ = _ |- _ => unfold res_out in H
+  | H: _ = res_out _ |- _ => unfold res_out in H
+  | H: res_ter _ _ = _ |- _ => unfold res_ter in H
+  | H: _ = res_ter _ _ |- _ => unfold res_ter in H
   | H: result_some ?o = result_some ?o |- _ => clear H
   | H: result_some _ = result_some _ |- _ => inverts H
   | H: out_ter ?S ?R = out_ter ?S ?R |- _ => clear H
@@ -957,10 +963,14 @@ Ltac run_inv :=
   | H: _ = ret _ _ |- _ => unfold ret in H
   | H: ret_void _ = _ |- _ => unfold ret_void in H
   | H: _ = ret_void _ |- _ => unfold ret_void in H
+  | H: res_void _ = _ |- _ => unfold res_void in H
+  | H: _ = res_void _ |- _ => unfold res_void in H
   | H: specret_val ?S ?R = specret_val ?S ?R |- _ => clear H
   | H: specret_val _ _ = specret_val _ _ |- _ => inverts H
   | H: specret_out ?o = specret_out ?o |- _ => clear H
   | H: specret_out _ = specret_out _ |- _ => inverts H
+  | H: out_from_retn ?sp = out_from_retn ?sp |- _ => clear H
+  | H: out_from_retn _ = out_from_retn _ |- _ => inverts H
   end.
 
 (** [runs_inv] is the same as [run_inv] followed by subst. *)
@@ -1050,7 +1060,7 @@ Tactic Notation "run_simpl" ident(H) "as" ident(K) :=
   run_simpl_core T K.
 
 Tactic Notation "run_simpl" :=
-  unfold result_some_out in * |- *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
   match goal with H: _ = result_some _ |- _ =>
     let H' := fresh in rename H into H';
     run_simpl_core H' H
@@ -1315,7 +1325,7 @@ Lemma res_res_run_error_correct : forall runs S C ne T (y:specret T),
   red_spec S C (spec_error_spec ne) y.
 Proof.
   introv IH HR. unfolds res_res. 
-  lets (y1&E&K): if_result_some_out (rm HR). inverts K. 
+  lets ([|y1]&E&K): if_result_some_out (rm HR); tryfalse_nothing. run_inv.
   lets (E2&Ab): run_error_correct' (rm E).
   applys* red_spec_error_spec.
   abort.
@@ -1332,11 +1342,11 @@ Definition ref_get_value' runs S C rv : specres value :=
       match ref_base r with
       | ref_base_type_value v =>
         ifb ref_has_primitive_base r then
-          if_value_spec (prim_value_get runs S C v (ref_name r)) res_spec
+          if_value_spec (prim_value_get runs S C v (ref_name r)) (@res_spec _)
         else 
           match v with
            | value_object l =>
-             if_value_spec (run_object_get runs S C l (ref_name r)) res_spec
+             if_value_spec (run_object_get runs S C l (ref_name r)) (@res_spec _)
            | value_prim _ =>
              impossible_with_heap_because S "[ref_get_value] received a primitive value whose kind is not primitive."
           end
@@ -1357,7 +1367,7 @@ Definition ref_get_value' runs S C rv : specres value :=
         impossible_with_heap_because S "[ref_get_value] received a reference to an environnment record whose base type is a value."
       | ref_base_type_env_loc L =>
         if_value_spec (env_record_get_binding_value runs S C L (ref_name r) (ref_strict r))
-          res_spec
+          (@res_spec _)
       end
     end
   end.
@@ -1509,7 +1519,8 @@ Proof.
   run_simpl. forwards B: @pick_option_correct (rm E).
   applys~ red_spec_env_record_create_mutable_binding B.
   destruct x0.
-   cases_if; run_inv. apply~ red_spec_env_record_create_mutable_binding_1_decl_indom.
+   cases_if; run_inv. let_simpl. run_inv.
+    apply~ red_spec_env_record_create_mutable_binding_1_decl_indom.
    run red_spec_env_record_create_mutable_binding_1_object
      using object_has_prop_correct. cases_if. let_simpl.
     run* red_spec_env_record_create_mutable_binding_obj_2
@@ -1545,7 +1556,7 @@ Lemma env_record_initialize_immutable_binding_correct : forall S C L x v o,
 Proof.
   introv HR. unfolds in HR.
   run_simpl. forwards B: @pick_option_correct (rm E). destruct x0; tryfalse.
-  run_simpl. forwards B': @pick_option_correct (rm E). cases_if. run_inv. substs.
+  run_simpl. forwards B': @pick_option_correct (rm E). cases_if. let_simpl. run_inv. substs.
   applys~ red_spec_env_record_initialize_immutable_binding B B'.
 Qed.
 
@@ -1667,7 +1678,7 @@ Admitted.
 Definition if_spec_ter_post_bool (K:state->bool->result) o (y:specret value) :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (b:bool), y = specret_val S (value_prim b)
-       /\ K S b = result_some o).
+       /\ K S b = o).
 
 Ltac run_post_if_spec_ter_post_bool H := (* todo: integrate into run_post *)
   let Ab := fresh "Ab" in
@@ -1703,7 +1714,7 @@ Qed.
 Definition if_spec_ter_post_object (K:state->object_loc->result) o (y:specret value) :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (l:object_loc), y = specret_val S (value_object l)
-       /\ K S l = result_some o).
+       /\ K S l = o).
 
 
 Lemma if_spec_ter_post_to_object : forall (K:state->object_loc->result) S C e o y1,
@@ -1896,7 +1907,7 @@ Qed.
 
 
 Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
-  run_binary_op runs S C op v1 v2 = result_some o ->
+  run_binary_op runs S C op v1 v2 = o ->
   red_expr S C (expr_binary_op_3 op v1 v2) o.
 Admitted.
 
@@ -2254,9 +2265,9 @@ Proof.
   run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
    applys* red_stat_if (rm R2). run_post_if_spec_ter_post_bool K.
    case_if.
-     applys* red_stat_if_1_true.
+     applys~ red_stat_if_1_true. apply~ RC.
      destruct t2o.
-       applys* red_stat_if_1_false. 
+       applys~ red_stat_if_1_false.  apply~ RC.
        run_inv. applys* red_stat_if_1_false_implicit.
   (* Do-while *)
   skip. (* TODO: wait until fixed.*)
@@ -2267,7 +2278,7 @@ Proof.
   run_pre. lets (y1&R2&K): if_spec_ter_post_to_object (rm R1) (rm R).
    applys* red_stat_with (rm R2). run_post_if_spec_ter_post_bool K.
   let_name. let_name. destruct p as [lex' S3]. let_name.
-  subst lex. applys* red_stat_with_1. subst C'. run_hyp*.
+  subst lex. applys* red_stat_with_1. subst C'. run_inv. run_hyp*.
   (* Throw *)
   unfolds in R.
   run red_stat_throw. applys* red_stat_throw_1.
@@ -2282,7 +2293,7 @@ Proof.
   (* Try *)
   unfolds in R. let_name.
   asserts finally_correct: (forall S (R:res), 
-      finally S R = result_some o ->
+      finally S R = o ->
       red_stat S C (stat_try_4 R fo) o). 
     subst finally. clear R. introv HR.
     destruct fo.
