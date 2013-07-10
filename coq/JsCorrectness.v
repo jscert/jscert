@@ -1889,7 +1889,7 @@ Proof.
     applys* red_expr_call_5_eval.
     skip. (* Need a lemma about run_eval correctness*)
     applys* red_expr_call_5_not_eval.
-    skip.  (* Need a lemma about spec_call *)
+    apply runs_type_correct_call in HR; trivial.
     clear EQfollow.
   destruct rv; tryfalse.
   applys* red_expr_call_4_not_ref.
