@@ -225,8 +225,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_var_decl_item_3 x o1) o ->
       red_stat S0 C (stat_var_decl_item_2 x r (ret S v)) o
   
-  | red_stat_var_decl_item_3 : forall S S0 C x rv,
-      red_stat S0 C (stat_var_decl_item_3 x (out_ter S rv)) (out_ter S x)
+  | red_stat_var_decl_item_3 : forall S S0 C x,
+      red_stat S0 C (stat_var_decl_item_3 x (out_void S)) (out_ter S x)
 
   (** Expression (12.4) *)
 
@@ -616,8 +616,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_label_1 (label_string slab) o1) o ->
       red_stat S C (stat_label slab t) o
 
-  | red_stat_label_1_normal : forall S0 S lab C rv,
-      red_stat S0 C (stat_label_1 lab (out_ter S rv)) (out_ter S rv)
+  | red_stat_label_1_normal : forall S0 S lab C R,
+      res_type R = restype_normal ->
+      red_stat S0 C (stat_label_1 lab (out_ter S R)) (out_ter S R)
 
   | red_stat_label_1_break_eq : forall S0 S C R rv lab,
       R = res_intro restype_break rv lab ->

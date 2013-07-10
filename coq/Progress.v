@@ -25,8 +25,6 @@ red_stat_throw_1
 
 red_expr_conditional (* needs conv *)
 
-red_stat_try (* almost done *)
-
 red_stat_var_decl_nil 
 red_stat_var_decl_cons 
 red_stat_var_decl_1 
