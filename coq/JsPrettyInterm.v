@@ -865,7 +865,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_object_put _ _ _ _ => None
   | spec_object_put_1 _ _ _ _ _ _ => None
   | spec_object_put_2 _ _ _ _ _ o => Some o
-  | spec_object_put_3 _ _ _ _ _ _ => None
+  | spec_object_put_3 _ _ _ _ _ y => out_of_specret y
   | spec_object_put_4 _ _ _ _ _ y => out_of_specret y
   | spec_object_put_5 o => Some o
 

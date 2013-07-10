@@ -881,19 +881,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
     if_bool (object_can_put runs S C l x) (fun S1 b =>
       if b then
         if_spec_ter (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
-          match D with
-
-          | attributes_data_of Ad =>
-            match vthis with
-            | value_object lthis =>
-              Let Desc := descriptor_intro (Some v) None None None None None in
-              if_success (object_define_own_prop runs S2 C l x Desc str) (fun S3 rv =>
-                out_void S3)
-            | value_prim wthis =>
-              out_error_or_void S str native_error_type
-            end
-
-          | _ =>
+          Let follow := fun _ : unit =>
             if_spec_ter (run_object_get_prop runs S2 C l x) (fun S3 D' =>
               match D' with
               | attributes_accessor_of Aa' =>
@@ -913,7 +901,20 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
                 | value_prim wthis =>
                   out_error_or_void S3 str native_error_type
                 end
-              end)
+              end) in
+          match D with
+
+          | attributes_data_of Ad =>
+            match vthis with
+            | value_object lthis =>
+              Let Desc := descriptor_intro (Some v) None None None None None in
+              if_success (object_define_own_prop runs S2 C l x Desc str) (fun S3 rv =>
+                out_void S3)
+            | value_prim wthis =>
+              out_error_or_void S2 str native_error_type
+            end
+
+          | _ => follow tt
 
           end)
         else
