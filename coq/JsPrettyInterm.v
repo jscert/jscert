@@ -61,6 +61,8 @@ Inductive ext_expr :=
 
   (** Extended expressions associated with primitive expressions *)
 
+  | expr_identifier_1 : specret ref -> ext_expr
+
   | expr_object_0 : out -> propdefs -> ext_expr
   | expr_object_1 : object_loc -> propdefs -> ext_expr
   | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr (* TODO: check the type! *)
@@ -270,11 +272,6 @@ Inductive ext_expr :=
   | spec_env_record_implicit_this_value : env_loc -> ext_expr
   | spec_env_record_implicit_this_value_1 : env_loc -> env_record -> ext_expr
 
-  (** Extended expressions for operations on lexical environments *)
-
-  | spec_lexical_env_get_identifier_ref : lexical_env -> prop_name -> bool -> ext_expr
-  | spec_lexical_env_get_identifier_ref_1 : env_loc -> lexical_env -> prop_name -> bool -> ext_expr
-  | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_expr
 
   (** Extended expressions for operations on property descriptors (8.10) *)
 
@@ -549,7 +546,7 @@ with ext_stat :=
 
   | stat_var_decl_1 : out -> list (string * option expr) -> ext_stat
   | stat_var_decl_item : (string * option expr) -> ext_stat
-  | stat_var_decl_item_1 : string -> out -> expr -> ext_stat
+  | stat_var_decl_item_1 : string -> specret ref -> expr -> ext_stat
   | stat_var_decl_item_2 : string -> ref -> (specret value) -> ext_stat
   | stat_var_decl_item_3 : string -> out -> ext_stat
 
@@ -683,6 +680,11 @@ with ext_spec :=
   | spec_expr_get_value : expr -> ext_spec
   | spec_expr_get_value_1 : out -> ext_spec
 
+  (** Extended expressions for operations on lexical environments *)
+
+  | spec_lexical_env_get_identifier_ref : lexical_env -> prop_name -> bool -> ext_spec
+  | spec_lexical_env_get_identifier_ref_1 : env_loc -> lexical_env -> prop_name -> bool -> ext_spec
+  | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_spec
 
 .
 
@@ -719,7 +721,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   match e with
   | expr_basic _ => None
 
-
+  | expr_identifier_1 y => out_of_specret y   
   | expr_object_0 o _ => Some o
   | expr_object_1 _ _ => None
   | expr_object_2 _ _ _ _ => None
@@ -744,7 +746,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | expr_new_1 (specret_out o) _ => Some o
   | expr_new_1 (specret_val _ _) _ => None
-  | expr_new_2 _ _ => None
+  | expr_new_2 _ y => out_of_specret y  
 
   | expr_call_1 o _ _ => Some o
   | expr_call_2 _ _ _ (specret_out o) => Some o
@@ -921,10 +923,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_env_record_implicit_this_value _ => None
   | spec_env_record_implicit_this_value_1 _ _ => None
-
-  | spec_lexical_env_get_identifier_ref _ _ _ => None
-  | spec_lexical_env_get_identifier_ref_1 _ _ _ _ => None
-  | spec_lexical_env_get_identifier_ref_2 _ _ _ _ o => Some o
 
   | spec_from_descriptor _ => None
   | spec_from_descriptor_1 _ o => Some o
@@ -1173,7 +1171,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
 
   | stat_var_decl_1 o _ => Some o
   | stat_var_decl_item _ => None
-  | stat_var_decl_item_1 _ o _ => Some o
+  | stat_var_decl_item_1 _ y _ => out_of_specret y
   | stat_var_decl_item_2 _ _ (specret_out o) => Some o
   | stat_var_decl_item_2 _ _ (specret_val _ _) => None
   | stat_var_decl_item_3 _ o => Some o
@@ -1289,7 +1287,9 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_get_value _ => None
   | spec_expr_get_value _ => None
   | spec_expr_get_value_1 o => Some o
-
+  | spec_lexical_env_get_identifier_ref _ _ _ => None
+  | spec_lexical_env_get_identifier_ref_1 _ _ _ _ => None
+  | spec_lexical_env_get_identifier_ref_2 _ _ _ _ o => Some o
   end.
 
 

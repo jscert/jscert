@@ -211,15 +211,15 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_var_decl_item_none : forall S C x, 
       red_stat S C (stat_var_decl_item (x,None)) (out_ter S x)
 
-  | red_stat_var_decl_item_some : forall S C x e o o1, 
-      red_expr S C (spec_identifier_resolution C x) o1 ->
-      red_stat S C (stat_var_decl_item_1 x o1 e) o ->
+  | red_stat_var_decl_item_some : forall S C x e y1 o, 
+      red_spec S C (spec_identifier_resolution C x) y1 ->
+      red_stat S C (stat_var_decl_item_1 x y1 e) o ->
       red_stat S C (stat_var_decl_item (x,Some e)) o
 
   | red_stat_var_decl_item_1 : forall S S0 C x e r y1 o, 
       red_spec S C (spec_expr_get_value e) y1 ->
       red_stat S C (stat_var_decl_item_2 x r y1) o ->
-      red_stat S0 C (stat_var_decl_item_1 x (out_ter S r) e) o
+      red_stat S0 C (stat_var_decl_item_1 x (ret S r) e) o
 
   | red_stat_var_decl_item_2 : forall S S0 C r v o o1 x,  
       red_expr S C (spec_put_value r v) o1 ->
@@ -709,9 +709,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Identifier (11.1.2) *)
 
-  | red_expr_identifier : forall S C x o,
-      red_expr S C (spec_identifier_resolution C x) o ->
+  | red_expr_identifier : forall S C x y1 o,
+      red_spec S C (spec_identifier_resolution C x) y1 ->
+      red_expr S C (expr_identifier_1 y1) o ->
       red_expr S C (expr_identifier x) o
+
+  | red_expr_identifier_1 : forall S0 S C r,
+      red_expr S0 C (expr_identifier_1 (ret S r)) (out_ter S r)
 
   (** Literal (11.1.3) *)
 
@@ -1522,6 +1526,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Constructor calls (returns value) *)
 
+  (* LATER: rename to "red_spec_construct" *)
   | red_spec_constructor : forall S C l B args o,
       object_method object_construct_ S l (Some B) ->
       red_expr S C (spec_construct_1 B l args) o ->
@@ -2111,33 +2116,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_env_record_create_set_mutable_binding_1 : forall S S0 C L x v str o,
       red_expr S C (spec_env_record_set_mutable_binding L x v str) o ->
       red_expr S0 C (spec_env_record_create_set_mutable_binding_1 (out_void S) L x v str) o
-
-
-  (*------------------------------------------------------------*)
-  (** ** Operations on lexical environments *)
-
-  (** Get identifier reference (10.2.2.1) *)
-
-  | red_spec_lexical_env_get_identifier_ref_nil : forall S C x str r,
-      r = ref_create_value undef x str ->
-      red_expr S C (spec_lexical_env_get_identifier_ref nil x str) (out_ter S r)
-
-  | red_spec_lexical_env_get_identifier_ref_cons : forall S C L lexs x str o,
-      red_expr S C (spec_lexical_env_get_identifier_ref_1 L lexs x str) o ->
-      red_expr S C (spec_lexical_env_get_identifier_ref (L::lexs) x str) o
-
-  | red_spec_lexical_env_get_identifier_ref_cons_1 : forall o1 S C L lexs x str o,
-      red_expr S C (spec_env_record_has_binding L x) o1 ->
-      red_expr S C (spec_lexical_env_get_identifier_ref_2 L lexs x str o1) o ->
-      red_expr S C (spec_lexical_env_get_identifier_ref_1 L lexs x str) o
-
-  | red_spec_lexical_env_get_identifier_ref_cons_2_true : forall S0 C L lexs x str S r,
-      r = ref_create_env_loc L x str ->
-      red_expr S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S true)) (out_ter S r)
-
-  | red_spec_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x str S o,
-      red_expr S C (spec_lexical_env_get_identifier_ref lexs x str) o ->
-      red_expr S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S false)) o
      
   (*------------------------------------------------------------*)
   (** ** Operations on execution contexts and entering of function code (10.4) *)
@@ -4126,6 +4104,33 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_expr_get_value_1 : forall S0 S C rv o (y:specret value),
       red_spec S C (spec_get_value rv) y ->
       red_spec S0 C (spec_expr_get_value_1 (out_ter S rv)) y
+
+  (*------------------------------------------------------------*)
+  (** ** Operations on lexical environments *)
+
+  (** Get identifier reference (10.2.2.1) *)
+
+  | red_spec_lexical_env_get_identifier_ref_nil : forall S C x str r,
+      r = ref_create_value undef x str ->
+      red_spec S C (spec_lexical_env_get_identifier_ref nil x str) (ret S r)
+
+  (* LATER: eliminate this intermediate form that is not useful at all *)
+  | red_spec_lexical_env_get_identifier_ref_cons : forall S C L lexs x str (y:specret ref),
+      red_spec S C (spec_lexical_env_get_identifier_ref_1 L lexs x str) y ->
+      red_spec S C (spec_lexical_env_get_identifier_ref (L::lexs) x str) y
+
+  | red_spec_lexical_env_get_identifier_ref_cons_1 : forall o1 S C L lexs x str (y:specret ref),
+      red_expr S C (spec_env_record_has_binding L x) o1 ->
+      red_spec S C (spec_lexical_env_get_identifier_ref_2 L lexs x str o1) y ->
+      red_spec S C (spec_lexical_env_get_identifier_ref_1 L lexs x str) y
+
+  | red_spec_lexical_env_get_identifier_ref_cons_2_true : forall S0 C L lexs x str S r,
+      r = ref_create_env_loc L x str ->
+      red_spec S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S true)) (ret S r)
+
+  | red_spec_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x str S (y:specret ref),
+      red_spec S C (spec_lexical_env_get_identifier_ref lexs x str) y ->
+      red_spec S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S false)) y
 
 .
 

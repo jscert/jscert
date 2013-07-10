@@ -772,7 +772,7 @@ Definition env_record_implicit_this_value S L : option value :=
         if provide_this then l else undef
       end)).
 
-Definition identifier_res runs S C x : specres ref :=
+Definition identifier_resolution runs S C x : specres ref :=
   let X := execution_ctx_lexical_env C in
   let str := execution_ctx_strict C in
   lexical_env_get_identifier_ref runs S C X x str.
@@ -1794,7 +1794,7 @@ Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
     | None => follow S
     | Some e =>
       if_spec_ter (run_expr_get_value runs S C e) (fun S1 v =>
-        if_spec_ter (identifier_res runs S1 C x) (fun S2 ir =>
+        if_spec_ter (identifier_resolution runs S1 C x) (fun S2 ir =>
           if_void (ref_put_value runs S2 C ir v) (fun S3 =>
             follow S3)))
     end
@@ -2083,7 +2083,7 @@ Definition run_expr runs S C e : result :=
     out_ter S (convert_literal_to_prim i)
 
   | expr_identifier x =>
-    if_spec_ter (identifier_res runs S C x) out_ter
+    if_spec_ter (identifier_resolution runs S C x) out_ter
 
   | expr_unary_op op e =>
     run_unary_op runs S C op e
