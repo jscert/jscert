@@ -1619,7 +1619,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_get_3 vthis l (attributes_accessor_get Aa)) o ->
       red_expr S0 C (spec_object_get_2 vthis l (dret S (attributes_accessor_of Aa))) o
 
-  | red_spec_object_get_3_accessor_undef : forall S C vthis l, (* Step 5 *)
+  |  red_spec_object_get_3_accessor_undef : forall S C vthis l, (* Step 5 *)
       red_expr S C (spec_object_get_3 vthis l undef) (out_ter S undef) 
 
   | red_spec_object_get_3_accessor_object : forall S C vthis l lf o, (* Step 6 *)
@@ -4181,10 +4181,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S0 C (spec_object_get_prop_2 l x (ret S (full_descriptor_some A))) 
         (ret S (full_descriptor_some A))
 
-  | red_spec_object_get_prop_2_undef : forall S S0 C l x vproto (y:specret full_descriptor), (* Step 3 *)
+  | red_spec_object_get_prop_2_undef : forall S0 S C l x vproto (y:specret full_descriptor), (* Step 3 *)
       object_proto S l vproto ->
       red_spec S C (spec_object_get_prop_3 l x vproto) y ->
-      red_spec S C (spec_object_get_prop_2 l x (ret S0 full_descriptor_undef)) y  
+      red_spec S0 C (spec_object_get_prop_2 l x (ret S full_descriptor_undef)) y  
 
   | red_spec_object_get_prop_3_null : forall S C l x, (* Step 4 *)
       red_spec S C (spec_object_get_prop_3 l x null) (dret S full_descriptor_undef)

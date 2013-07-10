@@ -105,8 +105,11 @@ Definition follow_stat_while (run : state -> execution_ctx -> resvalue -> label_
 Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
     (fun S C => run S C l x).
-Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
-  True. (* TODO:  Waiting for specification. *)
+Definition follow_object_get_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
+  forall S C l x y,
+  run S C l x = result_some y ->
+  red_spec S C (spec_object_get_prop l x) y.
+(* TODO: state this using follow_spec --or get rid of follow spec ?? *)
 (* LATER:  Definition follow_object_get_prop l x (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   spec_follow_spec (spec_object_get_prop l x) red_spec
     (fun S C => run S C l x). *)
@@ -740,6 +743,13 @@ Ltac run_select_proj H :=
   | runs_type_expr => constr:(runs_type_correct_expr)
   | runs_type_stat => constr:(runs_type_correct_stat)
   | runs_type_prog => constr:(runs_type_correct_prog)
+  | runs_type_call => constr:(runs_type_correct_call) 
+  | runs_type_function_has_instance => constr:(runs_type_correct_function_has_instance) 
+  | runs_type_stat_while => constr:(runs_type_correct_stat_while) 
+  | runs_type_object_get_own_prop => constr:(runs_type_correct_object_get_own_prop)
+  | runs_type_object_get_prop => constr:(runs_type_correct_object_get_prop)
+  | runs_type_object_proto_is_prototype_of => constr:(runs_type_correct_object_proto_is_prototype_of) 
+  | runs_type_equal => constr:(runs_type_correct_equal) 
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
   | ?x => run_select_proj_extra_3 HT
@@ -1199,14 +1209,43 @@ Admitted. (* OLD
    substs. splits; introv Eq; inverts Eq.
 Qed. *)
 
-Lemma object_get_builtin_correct : forall runs S C B vthis l x o,
+Lemma run_object_get_prop_correct : forall runs S C l x y,
+  runs_type_correct runs ->
+  run_object_get_prop runs S C l x = result_some y ->
+  red_spec S C (spec_object_get_prop l x) y.
+Proof.
+  introv IH HR. unfolds in HR. 
+  run. applys* red_spec_object_get_prop.
+   applys* run_object_method_correct. clear E.
+  destruct x0; tryfalse.
+  run red_spec_object_get_prop_1_default. case_if.
+   subst. run. applys red_spec_object_get_prop_2_undef.
+    applys* run_object_method_correct.
+    destruct x0; tryfalse.
+      destruct p; tryfalse. run_inv. applys red_spec_object_get_prop_3_null.
+      applys red_spec_object_get_prop_3_not_null. run_hyp*.
+  run_inv. destruct a; tryfalse.
+   applys* red_spec_object_get_prop_2_not_undef.
+Admitted. (*faster*)
+
+
+(*TODO: revisit this lemma when rules are fixed w.r.t. "vthis", 
+ which should maybe be a value --as it might be null?*)
+Lemma object_get_builtin_correct : forall runs S C B (vthis:object_loc) l x o,
   runs_type_correct runs ->
   object_get_builtin runs S C B vthis l x = o ->
   red_expr S C (spec_object_get_1 B vthis l x) o.
 Proof.
   introv IH HR. unfolds in HR. destruct B; tryfalse.
-Admitted.
-
+  run red_spec_object_get_1_default. destruct a as [|[Ad|Aa]].
+    run_inv. applys* red_spec_object_get_2_undef.
+    run_inv. applys* red_spec_object_get_2_data.
+    applys red_spec_object_get_2_accessor. 
+     destruct (attributes_accessor_get Aa); tryfalse.
+       destruct p; tryfalse. run_inv.
+        applys* red_spec_object_get_3_accessor_undef.
+       applys* red_spec_object_get_3_accessor_object. run_hyp*.
+Admitted. (* faster *)
 
 Lemma run_object_get_correct : forall runs S C l x o,
   runs_type_correct runs ->
@@ -1266,7 +1305,9 @@ Proof.
   introv IH HR. unfolds in HR.
   run red_spec_prim_value_get using to_object_correct.
   applys* red_spec_prim_value_get_1.
-  applys* object_get_builtin_correct.
+  (* TODO: problem with the "this" which is a value or object_loc ?
+  lets: object_get_builtin_correct.
+  *) skip.
 Qed.
 
 Lemma object_put_complete_correct : forall runs S C B vthis l x v str o,
@@ -2380,9 +2421,7 @@ Proof.
          applys* red_stat_while_5_not_break. case_if in K; run_inv.
            applys* red_stat_while_6_abort.
            applys* red_stat_while_6_normal.
-            applys* runs_type_correct_stat_while.
        rew_logic in *. applys* red_stat_while_4_continue.
-        applys* runs_type_correct_stat_while.
    run_inv. applys red_stat_while_2_false.
 Admitted. (*faster*)
 
@@ -2438,30 +2477,7 @@ Admitted. (* OLD:
 *)
 *)
 
-(*
-Lemma run_object_get_prop_correct : forall runs,
-  runs_type_correct runs -> forall l,
-  follow_object_get_prop l
-    (fun S C => run_object_get_prop runs S C l).
-Admitted. (* OLD:
-   introv E R. simpls. unfolds in E. unmonad_passing.
-   applys_and red_spec_object_get_prop R0. destruct x0.
-    applys_and red_spec_object_get_prop_1_default. unmonad_passing.
-     applys_and RC. cases_if.
-      subst x0. constructors_and. unmonad_passing.
-       applys_and red_spec_object_get_prop_2_undef R1. destruct x0; tryfalse.
-        destruct p0; subst p; inverts R. splits.
-         apply~ red_spec_object_get_prop_3_null.
-         absurd_neg.
-        unmonad. splits.
-         apply~ red_spec_object_get_prop_3_not_null. apply* RC0.
-         apply* RC0.
-      destruct x0; tryfalse. subst p. inverts R. constructors_and.
-       splits. apply~ red_spec_object_get_prop_2_not_undef. absurd_neg.
-     subst p. inverts R. applys_and RC.  splits. constructors.
-      forwards*: RC K. constructors.
-*)
-*)
+
 
 Lemma object_proto_is_prototype_of_correct : forall runs,
   runs_type_correct runs ->
@@ -2489,8 +2505,8 @@ Proof.
      apply~ run_call_correct.
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
-     skip. (* apply~ run_object_get_own_prop_correct. *)
-     solve [unfolds*]. (* apply~ run_object_get_prop_correct. *)
+     skip. (*apply~ run_object_get_own_prop_correct. *)
+     skip. (* solve [unfolds*]. apply~ run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
      apply~ run_equal_correct.
 Qed.
