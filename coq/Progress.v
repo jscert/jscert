@@ -144,17 +144,6 @@ red_spec_function_has_instance_3_neq
 
 === environment
 
-red_spec_env_record_has_binding 
-red_spec_env_record_has_binding_1_decl 
-red_spec_env_record_has_binding_1_object 
-red_spec_env_record_create_mutable_binding 
-red_spec_env_record_create_mutable_binding_1_decl_indom 
-red_spec_env_record_create_mutable_binding_1_object 
-red_spec_env_record_create_mutable_binding_obj_2 
-red_spec_env_record_create_mutable_binding_obj_3 
-red_spec_env_record_set_mutable_binding 
-red_spec_env_record_set_mutable_binding_1_decl 
-red_spec_env_record_set_mutable_binding_1_object 
 red_spec_env_record_get_binding_value 
 red_spec_env_record_get_binding_value_1_decl 
 red_spec_env_record_get_binding_value_1_object 
@@ -167,10 +156,6 @@ red_spec_env_record_delete_binding_1_object
 red_spec_env_record_implicit_this_value 
 red_spec_env_record_implicit_this_value_1_decl 
 red_spec_env_record_implicit_this_value_1_object 
-red_spec_env_record_create_immutable_binding 
-red_spec_env_record_initialize_immutable_binding 
-red_spec_env_record_create_set_mutable_binding 
-red_spec_env_record_create_set_mutable_binding_1 
 
 
 red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)

@@ -946,10 +946,7 @@ Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
         let '(mu, v_old) := rm in
         ifb mutability_is_mutable mu then
           out_void (env_record_write_decl_env S L x mu v)
-        else if str then
-          run_error S native_error_type
-        else
-          out_ter S prim_undef)
+        else out_error_or_void S str native_error_type)
     | env_record_object l pt =>
       object_put runs S C l x v str
     end).

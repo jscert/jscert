@@ -4,6 +4,18 @@ Require Import LibFix LibList.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 Require Import JsInterpreter JsPrettyInterm JsPrettyRules.
 
+(* TODO:  Move to Shared. *)
+
+Lemma decide_def : forall {P:Prop} `{Decidable P},
+  (decide P) = (If P then true else false).
+Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
+
+Lemma decide_cases : forall (P:Prop) `{Decidable P},
+  (P /\ decide P = true) \/ (~ P /\ decide P = false).
+Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
+
+
+
 
 
 
@@ -1348,7 +1360,19 @@ Lemma env_record_set_mutable_binding_correct : forall runs S C L x v str o,
   runs_type_correct runs ->
   env_record_set_mutable_binding runs S C L x v str = o ->
   red_expr S C (spec_env_record_set_mutable_binding L x v str) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR.
+  run_simpl. forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_set_mutable_binding B. destruct x0.
+   run_simpl. rewrite <- Heap.binds_equiv_read_option in E. destruct x0 as [mu ?].
+    applys~ red_spec_env_record_set_mutable_binding_1_decl E.
+    unfold mutability_is_mutable. cases_if in HR as D; run_inv;
+      rewrite decide_def in D; repeat cases_if.
+     apply~ red_spec_returns.
+     apply~ out_error_or_void_correct.
+   apply~ red_spec_env_record_set_mutable_binding_1_object.
+    applys~ object_put_correct HR.
+Qed.
 
 Lemma ref_put_value_correct : forall runs S C rv v o,
   runs_type_correct runs ->
@@ -1402,31 +1426,54 @@ Ltac run_post_run_expr_get_value ::=
 *)
 
 
-
 Lemma env_record_create_mutable_binding_correct : forall runs S C L x deletable_opt o,
   runs_type_correct runs ->
   env_record_create_mutable_binding runs S C L x deletable_opt = o ->
   red_expr S C (spec_env_record_create_mutable_binding L x deletable_opt) o.
 Proof.
-  introv IH HR. unfolds in HR. let_name.
-  (* run red_spec_env_record_create_mutable_binding. *)
-Admitted.
+  introv IH HR. unfolds in HR. let_simpl.
+  run_simpl. forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_create_mutable_binding B.
+  destruct x0.
+   cases_if; run_inv. apply~ red_spec_env_record_create_mutable_binding_1_decl_indom.
+   run red_spec_env_record_create_mutable_binding_1_object
+     using object_has_prop_correct. cases_if. let_simpl.
+    run* red_spec_env_record_create_mutable_binding_obj_2
+      using object_define_own_prop_correct.
+    apply~ red_spec_env_record_create_mutable_binding_obj_3.
+Qed.
 
 Lemma env_record_create_set_mutable_binding_correct : forall runs S C L x deletable_opt v str o,
   runs_type_correct runs ->
   env_record_create_set_mutable_binding runs S C L x deletable_opt v str = o ->
   red_expr S C (spec_env_record_create_set_mutable_binding L x deletable_opt v str) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_env_record_create_set_mutable_binding
+    using env_record_create_mutable_binding_correct.
+  forwards: env_record_set_mutable_binding_correct IH (rm HR).
+  apply~ red_spec_env_record_create_set_mutable_binding_1.
+Qed.
 
 Lemma env_record_create_immutable_binding_correct : forall S C L x o,
   env_record_create_immutable_binding S L x = o ->
   red_expr S C (spec_env_record_create_immutable_binding L x) o.
-Admitted.
+Proof.
+  introv HR. unfolds in HR.
+  run_simpl. forwards B: @pick_option_correct (rm E).
+  destruct x0; tryfalse. cases_if. run_inv.
+  applys~ red_spec_env_record_create_immutable_binding B.
+Qed.
 
 Lemma env_record_initialize_immutable_binding_correct : forall S C L x v o,
   env_record_initialize_immutable_binding S L x v = o ->
   red_expr S C (spec_env_record_initialize_immutable_binding L x v) o.
-Admitted.
+Proof.
+  introv HR. unfolds in HR.
+  run_simpl. forwards B: @pick_option_correct (rm E). destruct x0; tryfalse.
+  run_simpl. forwards B': @pick_option_correct (rm E). cases_if. run_inv. substs.
+  applys~ red_spec_env_record_initialize_immutable_binding B B'.
+Qed.
 
 Lemma object_default_value_correct : forall runs S C l pref o,
   runs_type_correct runs ->
@@ -1778,16 +1825,6 @@ Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   run_binary_op runs S C op v1 v2 = result_some o ->
   red_expr S C (expr_binary_op_3 op v1 v2) o.
 Admitted.
-
-Lemma decide_def : forall {P:Prop} `{Decidable P},
-  (decide P) = (If P then true else false).
-Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
-
-Lemma decide_cases : forall (P:Prop) `{Decidable P},
-  (P /\ decide P = true) \/ (~ P /\ decide P = false).
-Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
-
-
 
 Lemma env_record_has_binding_correct : forall runs S C L x o,
   runs_type_correct runs ->
