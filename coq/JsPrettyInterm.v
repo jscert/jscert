@@ -333,10 +333,6 @@ Inductive ext_expr :=
   
   | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> (specret full_descriptor) -> ext_expr
   
-  | spec_args_obj_get_own_prop_1 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> (specret full_descriptor) -> ext_expr
-  | spec_args_obj_get_own_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> object_loc -> full_descriptor -> full_descriptor -> ext_expr
-  | spec_args_obj_get_own_prop_3 : (full_descriptor -> ext_expr) -> full_descriptor -> out -> ext_expr
-  | spec_args_obj_get_own_prop_4 : (full_descriptor -> ext_expr) -> full_descriptor -> ext_expr
   
   | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> (specret full_descriptor) -> ext_expr
   | spec_args_obj_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> full_descriptor -> out -> ext_expr
@@ -698,6 +694,12 @@ with ext_spec :=
   (** Errors in the grammar of spec *) (* LATER: merge *)
   | spec_error_spec : native_error -> ext_spec
   | spec_error_spec_1 : out -> ext_spec
+
+  (* .. *)
+  | spec_args_obj_get_own_prop_1 : object_loc -> prop_name -> (specret full_descriptor) -> ext_spec
+  | spec_args_obj_get_own_prop_2 : object_loc -> prop_name -> object_loc -> full_descriptor -> (specret full_descriptor) -> ext_spec
+  | spec_args_obj_get_own_prop_3 : full_descriptor -> out -> ext_spec
+  | spec_args_obj_get_own_prop_4 : full_descriptor -> ext_spec
 .
 
 
@@ -857,7 +859,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_object_can_put _ _ => None
   | spec_object_can_put_1 _ _ _ => None
-  | spec_object_can_put_2 _ _ _ => None
+  | spec_object_can_put_2 _ _ y => out_of_specret y
   | spec_object_can_put_4 _ _ _ => None
   | spec_object_can_put_5 _ y => out_of_specret y
   | spec_object_can_put_6 _ _ => None
@@ -989,10 +991,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   
   | spec_args_obj_get_1 _ _ _ _ _ => None
   
-  | spec_args_obj_get_own_prop_1 _ _ _ _ => None
-  | spec_args_obj_get_own_prop_2 _ _ _ _ _ _ => None
-  | spec_args_obj_get_own_prop_3 _ _ o => Some o
-  | spec_args_obj_get_own_prop_4 _ _ => None
   
   | spec_args_obj_define_own_prop_1 _ _ _ _ _ _ => None
   | spec_args_obj_define_own_prop_2 _ _ _ _ _ _ o => Some o
@@ -1307,6 +1305,11 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_lexical_env_get_identifier_ref_2 _ _ _ _ o => Some o
   | spec_error_spec _ => None
   | spec_error_spec_1 o => Some o
+  | spec_args_obj_get_own_prop_1 _ _ _ => None
+  | spec_args_obj_get_own_prop_2 _ _ _ _ _ => None
+  | spec_args_obj_get_own_prop_3 _ o => Some o
+  | spec_args_obj_get_own_prop_4 _ => None
+
   end.
 
 
