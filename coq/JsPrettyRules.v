@@ -261,9 +261,9 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Do-while statement (12.6.1)
       -- See also the definition of [abort_intercepted_stat].
-      
-      !!!ARTHUR TODO!!! needs to be changed like while loops
-      *)
+  *)
+
+(* Daniele: old. Remove when new version (below) is accepted. 
 
   | red_stat_do_while : forall S C labs t1 e2 o,
       red_stat S C (stat_do_while_1 labs t1 e2 resvalue_empty) o ->
@@ -274,6 +274,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_2 labs t1 e2 rv o1) o ->
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o
 
+  (* Daniele: why is this called "true"? We are not evaluating the guard of the loop. *)
   | red_stat_do_while_2_true : forall rv o1 S0 S C labs t1 e2 rv_old R o,
       rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o ->
@@ -306,6 +307,62 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_do_while_5_true : forall S0 S C labs t1 e2 rv o,
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o ->
       red_stat S0 C (stat_do_while_5 labs t1 e2 rv (vret S true)) o
+*)
+
+  | red_stat_do_while : forall S C labs t1 e2 o,
+      red_stat S C (stat_do_while_1 labs t1 e2 resvalue_empty) o ->
+      red_stat S C (stat_do_while labs t1 e2) o
+
+  | red_stat_do_while_1 : forall S C labs t1 e2 rv o1 o,
+      red_stat S C t1 o1 ->
+      red_stat S C (stat_do_while_2 labs t1 e2 rv o1) o ->
+      red_stat S C (stat_do_while_1 labs t1 e2 rv) o
+
+  (* Daniele: why is this called "true"? We are not evaluating the guard of the loop. *)
+  | red_stat_do_while_2_true : forall rv o1 S0 S C labs t1 e2 rv_old R o,
+      rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
+      red_stat S C (stat_do_while_3 labs t1 e2 rv R) o ->
+      red_stat S0 C (stat_do_while_2 labs t1 e2 rv_old (out_ter S R)) o 
+
+  | red_stat_do_while_3_continue : forall S C labs t1 e2 rv R o,
+      res_type R = restype_continue /\ res_label_in R labs ->
+      red_stat S C (stat_do_while_6 labs t1 e2 rv) o ->
+      red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
+
+  | red_stat_do_while_3_not_continue : forall S C labs t1 e2 rv R o,
+      ~ (res_type R = restype_continue /\ res_label_in R labs) ->
+      red_stat S C (stat_do_while_4 labs t1 e2 rv R) o ->
+      red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
+
+  | red_stat_do_while_4_break : forall S C labs t1 e2 rv R,
+      res_type R = restype_break /\ res_label_in R labs ->
+      red_stat S C (stat_do_while_4 labs t1 e2 rv R) (out_ter S rv)
+
+  | red_stat_do_while_4_not_break : forall S C labs t1 e2 rv R o,
+      ~ (res_type R = restype_break /\ res_label_in R labs) ->
+      red_stat S C (stat_do_while_5 labs t1 e2 rv R) o ->
+      red_stat S C (stat_do_while_4 labs t1 e2 rv R) o
+
+  | red_stat_do_while_5_abort : forall S C labs t1 e2 rv R,
+      res_type R <> restype_normal ->
+      red_stat S C (stat_do_while_5 labs t1 e2 rv R) (out_ter S R)
+
+  | red_stat_do_while_5_normal : forall S C labs t1 e2 rv R o,
+      res_type R = restype_normal ->
+      red_stat S C (stat_do_while_6 labs t1 e2 rv) o ->
+      red_stat S C (stat_do_while_5 labs t1 e2 rv R) o
+ 
+  | red_stat_do_while_6 : forall S0 S C labs t1 e2 rv y1 o,
+      red_spec S C (spec_expr_get_value_conv spec_to_boolean e2) y1 ->
+      red_stat S C (stat_do_while_7 labs t1 e2 rv y1) o ->
+      red_stat S C (stat_do_while_6 labs t1 e2 rv) o
+
+  | red_stat_do_while_7_false : forall S0 S C labs t1 e2 rv,
+      red_stat S0 C (stat_do_while_7 labs t1 e2 rv (vret S false)) (out_ter S rv)
+
+  | red_stat_do_while_7_true : forall S0 S C labs t1 e2 rv o,
+      red_stat S C (stat_do_while_1 labs t1 e2 rv) o ->
+      red_stat S0 C (stat_do_while_7 labs t1 e2 rv (vret S true)) o
 
   (** While statement (12.6.2)
       -- See also the definition of [abort_intercepted_stat]. *)
