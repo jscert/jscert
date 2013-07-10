@@ -538,9 +538,10 @@ with ext_stat :=
   (** Extended statements associated with primitive statements *)
   | stat_expr_1: (specret value) -> ext_stat
 
-  | stat_block_1 : resvalue -> list stat -> ext_stat
-  | stat_block_2 : resvalue -> out -> list stat -> ext_stat
-  | stat_block_3 : out -> list stat -> ext_stat
+  | stat_block_1 : list stat -> ext_stat
+  | stat_block_1_1 : out -> ext_stat
+  | stat_block_2 : out -> stat -> ext_stat
+  | stat_block_3 : resvalue -> out -> ext_stat
 
   | stat_label_1 : label -> out -> ext_stat
 
@@ -1163,9 +1164,12 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_expr_1 (specret_val _ _) => None
   | stat_basic _ => None
 
-  | stat_block_1 _ _ => None
-  | stat_block_2 _ o _ => Some o
-  | stat_block_3 o _ => Some o
+  | stat_block_1 _ => None
+  | stat_block_1_1 o => Some o
+  | stat_block_2 o _ => Some o
+  | stat_block_3 _ o => Some o
+
+
 
   | stat_label_1 _ o => Some o
 
@@ -1320,9 +1324,15 @@ Inductive abort_intercepted_prog : ext_prog -> Prop :=
       abort_intercepted_prog (prog_2 rv (out_ter S R) els).
 
 Inductive abort_intercepted_stat : ext_stat -> Prop :=
+(*
   | abort_intercepted_stat_block_2 : forall lab S R rv ts,
       res_type R <> restype_throw ->
       abort_intercepted_stat (stat_block_2 rv (out_ter S R) ts)
+*)
+  | abort_intercepted_stat_block_3 : forall lab S R rv,
+      res_type R <> restype_throw ->
+      abort_intercepted_stat (stat_block_3 rv (out_ter S R))
+
   | abort_intercepted_stat_label_1 : forall lab rv S R,
       R = res_intro restype_break rv lab ->
       abort_intercepted_stat (stat_label_1 lab (out_ter S R))
