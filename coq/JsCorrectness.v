@@ -1844,13 +1844,10 @@ Proof.
     clear EQM.
   destruct A.
     let_name. run* red_spec_from_descriptor_1_data. congruence.
-skip. (* will remove *)
      let_name. run red_spec_from_descriptor_2_data. congruence.
-skip. (* will remove *)
      applys* M_correct.
     let_name. run red_spec_from_descriptor_1_accessor. congruence.
      let_name. run red_spec_from_descriptor_3_accessor. congruence.
-skip. (* will remove *)
      applys* M_correct.
 Admitted. (*faster*)
 

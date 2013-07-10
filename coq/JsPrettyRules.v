@@ -274,8 +274,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_2 labs t1 e2 rv o1) o ->
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o
 
-  (* Daniele: why is this called "true"? We are not evaluating the guard of the loop. *)
-  | red_stat_do_while_2_true : forall rv o1 S0 S C labs t1 e2 rv_old R o,
+  | red_stat_do_while_2 : forall rv o1 S0 S C labs t1 e2 rv_old R o,
       rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o ->
       red_stat S0 C (stat_do_while_2 labs t1 e2 rv_old (out_ter S R)) o 
@@ -318,8 +317,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_2 labs t1 e2 rv o1) o ->
       red_stat S C (stat_do_while_1 labs t1 e2 rv) o
 
-  (* Daniele: why is this called "true"? We are not evaluating the guard of the loop. *)
-  | red_stat_do_while_2_true : forall rv o1 S0 S C labs t1 e2 rv_old R o,
+  | red_stat_do_while_2 : forall rv o1 S0 S C labs t1 e2 rv_old R o,
       rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
       red_stat S C (stat_do_while_3 labs t1 e2 rv R) o ->
       red_stat S0 C (stat_do_while_2 labs t1 e2 rv_old (out_ter S R)) o 

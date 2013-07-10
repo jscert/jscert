@@ -110,16 +110,6 @@ red_spec_to_descriptor_6c_ok
 red_spec_to_descriptor_7_error 
 red_spec_to_descriptor_7_ok 
 
-red_spec_from_descriptor_undef 
-red_spec_from_descriptor_some 
-red_spec_from_descriptor_1_data 
-red_spec_from_descriptor_2_data 
-red_spec_from_descriptor_1_accessor 
-red_spec_from_descriptor_3_accessor 
-red_spec_from_descriptor_4 
-red_spec_from_descriptor_5 
-red_spec_from_descriptor_6
-
 red_spec_object_define_own_prop_1_default 
 red_spec_object_define_own_prop_2 
 red_spec_object_define_own_prop_3_undef_false 
