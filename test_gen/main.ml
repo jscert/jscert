@@ -21,9 +21,11 @@ let () =
         output_string channel "\n\n\n";
         ) test;
     List.iter (fun t ->
-      let jvs = open_out ("jvs" ^ (fresh ()) ^ ".js") in
-        output_string jvs (Jvs.statement "" t);
+      let jvs = open_out ("jvs" ^ (fresh ()) ^ ".js")
+      and ctx = EnvironmentContext.create () in
+        output_string jvs (Jvs.result (Statement.eval ctx t));
         output_string jvs "\n\n";
+        output_string jvs (Jvs.statement "" t);
         close_out jvs;
     ) test;;
     close_out channel;
