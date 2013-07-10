@@ -2002,7 +2002,7 @@ Proof.
   run red_expr_access_1. cases_if.
     run. applys red_expr_access_2.
       applys* red_spec_check_object_coercible_undef_or_null.
-      abort_expr.
+      skip. (* TODO: exploiter le fait que o est un abort / changer le code si besoin*)
     applys red_expr_access_2.
       applys* red_spec_check_object_coercible_return.
      run red_expr_access_3.
