@@ -1263,8 +1263,11 @@ Admitted. (* OLD
       inverts~ Hab.
 Qed. *)
 
-(* TODO:  Waiting for specification
-Lemma object_can_put_correct *)
+Lemma object_can_put_correct : forall runs S C l x o,
+  runs_type_correct runs ->
+  object_can_put runs S C l x = o ->
+  red_expr S C (spec_object_can_put l x) o.
+Admitted.
 
 Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
   runs_type_correct runs ->
@@ -1286,31 +1289,22 @@ Admitted.
 Lemma env_record_get_binding_value_correct : forall runs S C L rn rs o,
   runs_type_correct runs ->
   env_record_get_binding_value runs S C L rn rs = o ->
-  red_expr S C (spec_env_record_get_binding_value L rn rs) o /\
-    (~ abort o -> exists S' v, o = out_ter S' v).
-Admitted. (* OLD
-  introv RC E. do 2 unfolds in E. rewrite_morph_option; simpls; tryfalse.
-  rewrite <- Heap.binds_equiv_read_option in EQx.
-   applys_and red_spec_env_record_get_binding_value EQx. destruct e; simpls.
-    rewrite_morph_option; tryfalse. simpls.
-     rewrite <- Heap.binds_equiv_read_option in EQx0. destruct p.
-     applys_and red_spec_env_record_get_binding_value_1_decl EQx0.
-     do 2 cases_if; tryfalse.
-      forwards~ (RCe&Cre): out_error_or_cst_correct C0 E. splits*.
-      inverts E. splits*. apply~ red_spec_returns.
-    rewrite_morph_option; simpls.
-     forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0).
-      applys_and red_spec_env_record_get_binding_value_1_object HCn. cases_if.
-       applys_and red_spec_env_record_get_binding_value_obj_2_true.
-        forwards*: run_object_get_correct E.
-       applys_and red_spec_env_record_get_binding_value_obj_2_false.
-        forwards*: out_error_or_cst_correct E.
-     deal_with_regular_lemma E if_success_out; substs; tryfalse.
-      forwards~ (HCn&HCa): object_has_prop_correct (rm EQp0). forwards~ (RH&A): HCa.
-       applys_and red_spec_env_record_get_binding_value_1_object RH.
-       applys_and red_expr_abort A. splits~. absurd_neg.
-      cases_if; false.
-Qed. *)
+  red_expr S C (spec_env_record_get_binding_value L rn rs) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run_simpl. forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_get_binding_value B. destruct x.
+   run_simpl. rewrite <- Heap.binds_equiv_read_option in E. destruct x as [mu v].
+    applys~ red_spec_env_record_get_binding_value_1_decl E. do 2 cases_if.
+     apply~ out_error_or_cst_correct.
+     run_inv. apply~ red_spec_returns.
+   run red_spec_env_record_get_binding_value_1_object using object_has_prop_correct.
+    cases_if; run_inv.
+     apply~ red_spec_env_record_get_binding_value_obj_2_true.
+      applys~ run_object_get_correct HR.
+     apply~ red_spec_env_record_get_binding_value_obj_2_false.
+      applys~ out_error_or_cst_correct HR.
+Qed.
 
 
 Lemma ref_get_value_correct : forall runs S C rv y,
@@ -1880,6 +1874,40 @@ Qed.
 Lemma type_of_prim_not_object : forall w,
   type_of w <> type_object.
 Proof. destruct w; simpl; try congruence. Qed.
+
+Lemma object_delete_correct : forall runs S C l x str o,
+  runs_type_correct runs ->
+  object_delete runs S C l x str = o ->
+  red_expr S C (spec_object_delete l x str) o.
+Admitted.
+
+Lemma env_record_delete_binding : forall runs S C L x o,
+  runs_type_correct runs ->
+  env_record_delete_binding runs S C L x = o ->
+  red_expr S C (spec_env_record_delete_binding L x) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run_simpl. forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_delete_binding B. destruct x0.
+   sets_eq <- ero E: (Heap.read_option d x). destruct ero as [[mu ?]|].
+    rewrite <- Heap.binds_equiv_read_option in E. destruct mu; run_inv;
+     applys~ red_spec_env_record_delete_binding_1_decl_indom E; case_if*.
+    rewrite <- Heap.not_indom_equiv_read_option in E. run_inv.
+     applys~ red_spec_env_record_delete_binding_1_decl_not_indom E.
+   applys~ red_spec_env_record_delete_binding_1_object.
+    applys~ object_delete_correct HR.
+Qed.
+
+Lemma env_record_implicit_this_value_correct : forall S C L v,
+  env_record_implicit_this_value S L = Some v ->
+  red_expr S C (spec_env_record_implicit_this_value L) (out_ter S v).
+Proof.
+  introv HR. unfolds in HR.
+  run_simpl HR as H; tryfalse. inverts H. forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_implicit_this_value B. destruct n.
+   applys~ red_spec_env_record_implicit_this_value_1_decl.
+   applys~ red_spec_env_record_implicit_this_value_1_object.
+Qed.
 
 Lemma identifier_resolution_correct : forall runs S C x y,
   runs_type_correct runs ->
