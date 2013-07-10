@@ -1891,7 +1891,7 @@ Proof.
     applys* red_expr_call_5_eval.
     skip. (* Need a lemma about run_eval correctness*)
     applys* red_expr_call_5_not_eval.
-    skip.  (* Need a lemma about spec_call *)
+    apply runs_type_correct_call in HR; trivial.
     clear EQfollow.
   destruct rv; tryfalse.
   applys* red_expr_call_4_not_ref.
@@ -2021,6 +2021,31 @@ Hint Extern 1 (red_expr ?S ?C ?s ?o) =>
   match goal with H: _ = result_some o |- _ => run_hyp H end.
 
 
+Lemma run_var_decl_item_correct : forall runs S C x eo o,
+  runs_type_correct runs ->
+  run_var_decl_item runs S C x eo = o ->
+  red_stat S C (stat_var_decl_item (x,eo)) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct eo.
+  run red_stat_var_decl_item_some using identifier_resolution_correct.
+   run red_stat_var_decl_item_1. run red_stat_var_decl_item_2.
+   applys* red_stat_var_decl_item_3.
+  run_inv. applys* red_stat_var_decl_item_none.
+Qed.
+
+Lemma run_var_decl_correct : forall runs S C ls o,
+  runs_type_correct runs ->
+  run_var_decl runs S C ls = o ->
+  red_stat S C (stat_var_decl ls) o.
+Proof.
+  introv IH. gen S. induction ls as [|[x eo]]; introv HR.
+  simpls. run_inv. applys* red_stat_var_decl_nil.
+  simpls. run red_stat_var_decl_cons using run_var_decl_item_correct.
+   applys* red_stat_var_decl_1. 
+Qed.
+
+
+
 Lemma run_stat_correct : forall runs,
   runs_type_correct runs ->
    follow_stat (run_stat runs).
@@ -2029,50 +2054,25 @@ Proof.
   destruct t as [ | | ls | ls | e t1 t2o | labs t e | labs e t | e t 
      | e | eo | labo | labo | t co fo | | | eo | ]. 
   (* Expression *)
-  run red_stat_expr.
-  apply red_stat_expr_1. 
+  run red_stat_expr. apply red_stat_expr_1. 
   (* Label *)
-  unfolds in R.
-  (* TODO: fix the interpreter: replace if_break with
-     if_break_or_normal in order to ensure
-     that we get a "rv" out of the R, otherwise the rule
-      red_stat_label_1_normal cannot apply. *)
-  
-  run red_stat_label. subst.
-    skip.
-    cases_if.       
-      apply* red_stat_label_1_break_eq. skip.
-      skip.
-
-      
-
+  unfolds in R. run red_stat_label. 
+    tests HC: (res_is_normal R0).
+      inverts HC. run_inv. subst. applys* red_stat_label_1_normal.
+      subst. applys* red_stat_abort. intro M. inverts M. simpls. false.
+    case_if.
+      applys* red_stat_label_1_break_eq. destruct R0; simpls. fequal*.
+      applys* red_stat_abort. constructors. intro N. inverts N. false.
+       intro M. inverts M. simpls. false.
+      (* LATER: change interpreter to make it more faithful *)
   (* Block *)
-  skip. (* TODO *)
-    (* Temp for arthur
-    applys red_stat_block. gen o. generalize resvalue_empty as rv.
-    induction l; introv R; simpls.
-    run_inv. applys* red_stat_block_1_nil.
-     --waiting for out lemma.. run red_stat_block_1_cons.
-
-    | red_stat_block_2 : forall S0 S C ts R rv o,
-        res_type R <> restype_throw ->
-        red_stat S C (stat_block_3 (out_ter S (res_overwrite_value_if_empty rv R)) ts) o ->
-        red_stat S0 C (stat_block_2 rv (out_ter S R) ts) o
-
-    | red_stat_block_3 : forall S0 S C ts rv o,
-        red_stat S C (stat_block_1 rv ts) o ->
-        red_stat S0 C (stat_block_3 (out_ter S rv) ts) o
-    *)
-
-
+  skip. (* TODO : wait for changes to the rules *)
   (* Variable declaration *)
-  skip. (* TODO *)
+  applys* run_var_decl_correct.
   (* If *)
   unfolds in R.
 
-
-
-  (* TODO ARTHUR: udpate proof, will probably not need line below
+  (* TODO : Wait until "get_value_conv" is specified 
   run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
   *)
   skip.
@@ -2084,9 +2084,9 @@ Proof.
       run_inv. applys* red_stat_if_1_false_implicit.
       *)
   (* Do-while *)
-  skip. (* TODO false.*)
+  skip. (* TODO: wait until fixed.*)
   (* While *)
-  skip. (* OLD: forwards~ RC: IHw R. apply~ red_stat_while.*)
+  apply~ red_stat_while. applys* runs_type_correct_stat_while.
   (* With *)
   unfolds in R. skip. (*run red_stat_with.
     applys* red_spec_expr_get_value_conv R1. destruct o1.
