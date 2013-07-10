@@ -33,19 +33,6 @@ red_spec_to_uint32_1
 
 Arthur:
 
-red_spec_object_get 
-red_spec_object_get_prop 
-red_spec_object_get_prop_1_default 
-red_spec_object_get_prop_2_not_undef 
-red_spec_object_get_prop_2_undef 
-red_spec_object_get_prop_3_null 
-red_spec_object_get_prop_3_not_null 
-red_spec_object_get_1_default 
-red_spec_object_get_2_undef 
-red_spec_object_get_2_data 
-red_spec_object_get_2_accessor 
-red_spec_object_get_3_accessor_undef 
-red_spec_object_get_3_accessor_object 
 
 
 Martin:
