@@ -88,19 +88,6 @@ Implicit Arguments result_not_yet_implemented [[T]].
 Implicit Arguments result_impossible [[T]].
 Implicit Arguments result_bottom [[T]].
 
-(* This is the most common result type. *)
-
-Definition result := resultof out.
-
-Implicit Type W : result.
-
-(* In the semantics, some rules returns an [out] which actually never
-  carries a result, only an [out_void] of something (or an error).  The
-  following type is there to differentiate those functions from the
-  others. *)
-
-Definition result_void := result.
-
 (* It can be useful to get details on why a stuck is obtained. *)
 (* The cases where [result_impossible] is directly used are the cases
   where it has been proven impossible to get it under normal condition.
@@ -110,17 +97,50 @@ Definition impossible_because {T} s : resultof T := result_impossible.
 
 Definition impossible_with_heap_because {T} S s : resultof T := result_impossible.
 
+(* Some special reduction rules does not return a usual triple (called [out] here), but a
+  special value.  The following type is there to encapsulate that. *)
+
 Definition specres T := resultof (specret T).
 
-Definition res_out {T} o : specres T :=
+Definition res_out T o : specres T :=
   result_some (specret_out o).
+Implicit Arguments res_out [[T]].
 
-Definition res_spec {T} S a : specres T :=
+Definition res_spec T S a : specres T :=
   result_some (specret_val S a).
+
+(* [result] is the most common result type, returning an [out] each time. *)
+(* Note that this [out] does not necessarily (and hopefully rarely) aborts. *)
+Inductive nothing : Type :=.
+Definition retn := specret nothing.
+Definition result := resultof retn.
+Definition res_ter S R : result := res_out (out_ter S R).
+
+Implicit Type W : result.
+
+(* In the semantics, some rules returns an [out] which actually never
+  carries a result, only an [out_void] of something (or an error).  The
+  following type is there to differentiate those functions from the
+  others. *)
+(* It shall be replaced by a [specres unit]. *)
+Definition result_void := result.
+
+Definition res_void S : result_void := res_out (out_void S).
 
 (* Coercion *)
 
 Coercion result_some_out o : resultof out := result_some o.
+
+Definition out_from_retn (sp : retn) : out :=
+  match sp with
+  | specret_val _ n => nothing_rect _ n
+  | specret_out o => o
+  end.
+
+Coercion out_retn o : retn := specret_out o.
+Coercion result_out o : result := res_out o.
+
+Coercion res_to_res_void (W : result) : result_void := W.
 
 (* Inhabited *)
 
@@ -148,7 +168,7 @@ Definition destr_list (A B : Type) (l : list A) (d : B) f :=
 (**************************************************************)
 (** Monadic Constructors *)
 
-Definition if_empty_label {T} S R (K : unit -> resultof T) : resultof T :=
+Definition if_empty_label T S R (K : unit -> resultof T) : resultof T :=
   ifb res_label R = label_empty then K tt
   else
     impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
@@ -170,15 +190,19 @@ Definition if_result_some (A B : Type) (W : resultof A) (K : A -> resultof B) : 
   | result_bottom S0 => result_bottom S0
   end.
 
+Definition if_out_some T W (K : out -> resultof T) : resultof T :=
+  if_result_some W (fun sp => K (out_from_retn sp)).
+
 (* TODO: badly named *)
-Definition res_res {T:Type} W : specres T :=
-  if_result_some W res_out.
+Definition res_res T W : specres T :=
+  if_out_some W (fun o => res_out o).
+Implicit Arguments res_res [[T]].
 
 Definition if_ter W (K : state -> res -> result) : result :=
-  if_result_some W (fun o =>
+  if_out_some W (fun o =>
     match o with
     | out_ter S0 R => K S0 R
-    | _ => result_some o
+    | _ => res_out o
     end).
 
 Definition if_success_state rv W (K : state -> resvalue -> result) : result :=
@@ -330,7 +354,7 @@ Definition if_spec (A B : Type) (W : specres A) (K : state -> A -> specres B) : 
     end).
 
 Definition if_ter_spec T W (K : state -> res -> specres T) : specres T :=
-  if_result_some W (fun o =>
+  if_out_some W (fun o =>
     match o with
     | out_ter S0 R => K S0 R
     | _ => res_out o
@@ -394,10 +418,11 @@ Definition if_spec_ter {T} (W : specres T) (K : state -> T -> result) : result :
     | specret_val S0 a => K S0 a
     | specret_out o =>
       if_abort o (fun _ =>
-        result_some o)
+        res_out o)
     end).
 
 End InterpreterEliminations.
+Implicit Arguments res_res [[T]].
 
 Section LexicalEnvironments.
 
@@ -535,7 +560,7 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
               if_some lmapo (fun lmap =>
                 if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
                   Let follow := fun S' A =>
-                    res_spec S' (full_descriptor_some A) in 
+                    res_spec S' (full_descriptor_some A) in
                   match D with
                      | full_descriptor_undef =>
                        follow S2 A
@@ -573,7 +598,7 @@ Definition run_object_get_prop runs S C l x : specres full_descriptor :=
 (* LATER Object.prototype.isPrototypeOf(V) should take a value, not a location. Spec is fine. *)
 Definition object_proto_is_prototype_of runs S l0 l : result :=
   if_some (run_object_method object_proto_ S l) (fun B =>
-    match B with
+    match B return result with
     | null => out_ter S false
     | value_object l' =>
       ifb l' = l0
@@ -602,18 +627,18 @@ Definition object_can_put runs S C l x : result :=
                 match vproto with
                 | null =>
                   if_some (run_object_method object_extensible_ S1 l)
-                    (out_ter S1)
+                    (fun b => res_ter S1 b)
                 | value_object lproto =>
                   if_spec_ter (run_object_get_prop runs S1 C lproto x) (fun S2 D' =>
                     match D' with
                     | full_descriptor_undef =>
                       if_some (run_object_method object_extensible_ S2 l)
-                        (out_ter S2)
+                        (fun b => res_ter S2 b)
                     | attributes_accessor_of Aa =>
                       out_ter S2 (decide (attributes_accessor_set Aa <> undef))
                     | attributes_data_of Ad =>
                       if_some (run_object_method object_extensible_ S2 l) (fun ext =>
-                        out_ter S2 (
+                        res_ter S2 (
                           if ext then attributes_data_writable Ad
                           else false))
                   end)
@@ -622,44 +647,6 @@ Definition object_can_put runs S C l x : result :=
                 end)
           end)
       end).
-
-(* NEW:
-Definition object_can_put runs S C l x : specres bool :=
-  if_some (run_object_method object_can_put_ S l) (fun B =>
-      match B with
-      | builtin_can_put_default =>
-        if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
-          match D with
-          | attributes_accessor_of Aa =>
-            res_spec S1 (decide (attributes_accessor_set Aa <> undef))
-          | attributes_data_of Ad =>
-            res_spec S1 (attributes_data_writable Ad)
-          | full_descriptor_undef =>
-            if_some (run_object_method object_proto_ S1 l) (fun vproto =>
-                match vproto with
-                | null =>
-                  if_some (run_object_method object_extensible_ S1 l)
-                    (res_spec S1)
-                | value_object lproto =>
-                  if_spec (run_object_get_prop runs S1 C lproto x) (fun S2 D' =>
-                    match D' with
-                    | full_descriptor_undef =>
-                      if_some (run_object_method object_extensible_ S2 l)
-                        (res_spec S2)
-                    | attributes_accessor_of Aa =>
-                      res_spec S2 (decide (attributes_accessor_set Aa <> undef))
-                    | attributes_data_of Ad =>
-                      if_some (run_object_method object_extensible_ S2 l) (fun ext =>
-                        res_spec S2 (
-                          if ext then attributes_data_writable Ad
-                          else false))
-                  end)
-                | value_prim _ =>
-                  impossible_with_heap_because S1 "Non-null primitive get as a prototype value in [object_can_put]."
-                end)
-          end)
-      end).
-*)
 
 Definition object_define_own_prop runs S C l x Desc str : result :=
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
@@ -675,17 +662,17 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                Let A : attributes :=
                  ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
                  then (attributes_data_of_descriptor Desc : attributes)
-                 else attributes_accessor_of_descriptor Desc in 
+                 else attributes_accessor_of_descriptor Desc in
                if_some (pick_option (object_set_property S1 l x A)) (fun S2 =>
-                    result_some (out_ter S2 true))
+                 res_ter S2 true)
              | full_descriptor_some A, bext =>
                Let object_define_own_prop_write := fun S1 A =>
                  let A' := attributes_update A Desc in
                  if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
-                   result_some (out_ter S2 true))
+                   res_ter S2 true)
                  in
                ifb descriptor_contains A Desc then
-                 result_some (out_ter S1 true)
+                 res_ter S1 true
                else ifb attributes_change_enumerable_on_non_configurable A Desc then
                  reject S1
                else ifb descriptor_is_generic Desc then
@@ -693,31 +680,31 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                else ifb attributes_is_data A <> descriptor_is_data Desc then
                  if neg (attributes_configurable A) then
                    reject S1
-                 else 
+                 else
                    let A':=
                      match A return attributes with
                      | attributes_data_of Ad =>
                        attributes_accessor_of_attributes_data Ad
                      | attributes_accessor_of Aa =>
                        attributes_data_of_attributes_accessor Aa
-                     end in 
+                     end in
                    if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
                         object_define_own_prop_write S2 A')
                else match A with
                  | attributes_data_of Ad =>
                    ifb attributes_change_data_on_non_configurable Ad Desc then
                      reject S1
-                   else 
+                   else
                      object_define_own_prop_write S1 A
                  | attributes_accessor_of Aa =>
                    ifb attributes_change_accessor_on_non_configurable Aa Desc then
                      reject S1
-                   else 
+                   else
                      object_define_own_prop_write S1 A
                  end
              end))
       | builtin_define_own_prop_args_obj =>
-        result_some (out_ter S true) (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
+        res_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
     end).
 
 
@@ -759,7 +746,7 @@ Definition run_value_viewable_as_prim s S v : option (option prim) :=
 
 Definition env_record_has_binding runs S C L x : result :=
   if_some (pick_option (env_record_binds S L)) (fun E =>
-    match E with
+    match E return result with
     | env_record_decl Ed =>
       out_ter S (decide (decl_env_record_indom Ed x))
     | env_record_object l pt =>
@@ -774,7 +761,7 @@ Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
     if_bool_spec (env_record_has_binding runs S C L x) (fun S1 has =>
       if has then
         res_spec S1 (ref_create_env_loc L x str)
-      else 
+      else
         lexical_env_get_identifier_ref runs S1 C X' x str)
   end.
 
@@ -788,7 +775,7 @@ Definition object_delete runs S C l x str : result :=
         | full_descriptor_some A =>
           if attributes_configurable A then
             if_some (pick_option (object_rem_property S l x)) (fun S' =>
-              result_some (out_ter S' true))
+              res_ter S' true)
           else
             out_error_or_cst S str native_error_type false
         end)
@@ -800,7 +787,7 @@ Definition env_record_delete_binding runs S C L x : result :=
   if_some (pick_option (env_record_binds S L)) (fun E =>
     match E with
     | env_record_decl Ed =>
-      match Heap.read_option Ed x with
+      match Heap.read_option Ed x return result with
       | None =>
           out_ter S true
       | Some (mutability_deletable, v) =>
@@ -835,7 +822,7 @@ Definition env_record_get_binding_value runs S C L x str : result :=
         let '(mu, v) := rm in
         ifb mu = mutability_uninitialized_immutable then
           out_error_or_cst S str native_error_ref undef
-        else out_ter S v)
+        else res_ter S v)
     | env_record_object l pt =>
       if_bool (object_has_prop runs S C l x) (fun S1 has =>
         if has then
@@ -862,11 +849,11 @@ Definition ref_get_value runs S C rv : specres value :=
       match ref_base r with
       | ref_base_type_value v =>
         ifb ref_has_primitive_base r then
-          if_value_spec (prim_value_get runs S C v (ref_name r)) res_spec
-        else 
+          if_value_spec (prim_value_get runs S C v (ref_name r)) (@res_spec _)
+        else
           match v with
            | value_object l =>
-             if_value_spec (run_object_get runs S C l (ref_name r)) res_spec
+             if_value_spec (run_object_get runs S C l (ref_name r)) (@res_spec _)
            | value_prim _ =>
              impossible_with_heap_because S "[ref_get_value] received a primitive value whose kind is not primitive."
           end
@@ -879,7 +866,7 @@ Definition ref_get_value runs S C rv : specres value :=
         impossible_with_heap_because S "[ref_get_value] received a reference to an environnment record whose base type is a value."
       | ref_base_type_env_loc L =>
         if_value_spec (env_record_get_binding_value runs S C L (ref_name r) (ref_strict r))
-          res_spec
+          (@res_spec _)
       end
     end
   end.
@@ -944,7 +931,7 @@ Definition env_record_set_mutable_binding runs S C L x v str : result_void :=
       if_some (Heap.read_option Ed x) (fun rm =>
         let '(mu, v_old) := rm in
         ifb mutability_is_mutable mu then
-          out_void (env_record_write_decl_env S L x mu v)
+          res_void (env_record_write_decl_env S L x mu v)
         else out_error_or_void S str native_error_type)
     | env_record_object l pt =>
       object_put runs S C l x v str
@@ -959,7 +946,7 @@ Definition ref_put_value runs S C rv v : result_void :=
   | resvalue_value v => run_error S native_error_ref
   | resvalue_ref r =>
     ifb ref_is_unresolvable r then (
-      if ref_strict r then 
+      if ref_strict r then
         run_error S native_error_ref
       else
         object_put runs S C prealloc_global (ref_name r) v throw_false)
@@ -970,7 +957,7 @@ Definition ref_put_value runs S C rv v : result_void :=
       | ref_base_type_value (value_prim w) =>
         ifb ref_kind_of r = ref_kind_primitive_base then
           prim_value_put runs S C w (ref_name r) v (ref_strict r)
-        else 
+        else
           impossible_with_heap_because S "[ref_put_value] found a primitive base whose kind is not a primitive!"
       | ref_base_type_env_loc L =>
         env_record_set_mutable_binding runs S C L (ref_name r) v (ref_strict r)
@@ -988,7 +975,7 @@ Definition env_record_create_mutable_binding runs S C L x (deletable_opt : optio
         impossible_with_heap_because S "Already declared environnment record in [env_record_create_mutable_binding]."
       else
         Let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
-        out_void S'
+        res_void S'
     | env_record_object l pt =>
       if_bool (object_has_prop runs S C l x) (fun S1 has =>
         if has then
@@ -996,7 +983,7 @@ Definition env_record_create_mutable_binding runs S C L x (deletable_opt : optio
         else (
           Let A := attributes_data_intro undef true true deletable in
           if_success (object_define_own_prop runs S1 C l x A throw_true) (fun S2 rv =>
-            out_void S2)))
+            res_void S2)))
     end).
 
 Definition env_record_create_set_mutable_binding runs S C L x (deletable_opt : option bool) v str : result_void :=
@@ -1009,8 +996,8 @@ Definition env_record_create_immutable_binding S L x : result_void :=
     | env_record_decl Ed =>
       ifb decl_env_record_indom Ed x then
         impossible_with_heap_because S "Already declared environnment record in [env_record_create_immutable_binding]."
-      else 
-        out_void (env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
+      else
+        res_void (env_record_write_decl_env S L x mutability_uninitialized_immutable undef)
     | env_record_object _ _ =>
         impossible_with_heap_because S "[env_record_create_immutable_binding] received an environnment record object."
     end).
@@ -1022,8 +1009,8 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
       if_some (pick_option (Heap.binds Ed x)) (fun evs =>
         ifb evs = (mutability_uninitialized_immutable, undef) then
           Let S' := env_record_write_decl_env S L x mutability_immutable v in
-          out_void S'
-        else 
+          res_void S'
+        else
           impossible_with_heap_because S "Non suitable binding in [env_record_initialize_immutable_binding].")
     | env_record_object _ _ => impossible_with_heap_because S "[env_record_initialize_immutable_binding] received an environnment record object."
     end).
@@ -1121,7 +1108,7 @@ Definition call_object_new S v : result :=
 
 Definition bool_proto_value_of_call S vthis : result :=
   if_some (run_value_viewable_as_prim "Boolean" S vthis) (fun vw =>
-    match vw with
+    match vw return result with
     | Some (prim_bool b) => out_ter S b
     | _ => run_error S native_error_type
     end).
@@ -1211,7 +1198,7 @@ Definition run_call_default runs S C (lf : object_loc) : result :=
   Let follow := fun W =>
     if_success_or_return W
       (fun S' => out_ter S' undef) out_ter
-    in 
+    in
   Let default := out_ter S undef in
   if_some (run_object_method object_code_ S lf) (fun OC =>
        match OC with
@@ -1251,7 +1238,7 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
 
 Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
   match names with
-  | nil => out_void S
+  | nil => res_void S
   | argname :: names' =>
     Let v := hd undef args in
     if_bool (env_record_has_binding runs S C L argname) (fun S1 hb =>
@@ -1259,15 +1246,15 @@ Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list
         if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S'' =>
           binding_inst_formal_params runs S'' C L (tl args) names' str)
         in
-      if hb then 
+      if hb then
         follow S1
-      else 
+      else
         if_void (env_record_create_mutable_binding runs S1 C L argname None) follow)
   end.
 
 Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfig {struct fds} : result_void :=
   match fds with
-  | nil => out_void S
+  | nil => res_void S
   | fd :: fds' =>
       Let fbd := funcdecl_body fd in
       Let str_fd := funcbody_is_strict fbd in
@@ -1302,7 +1289,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
 
 Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : result_void :=
   match vds with
-  | nil => out_void S
+  | nil => res_void S
   | vd :: vds' =>
     Let bivd := fun S => binding_inst_var_decls runs S C L vds' bconfig str in
     if_bool (env_record_has_binding runs S C L vd) (fun S1 has =>
@@ -1314,16 +1301,16 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
 
 Definition make_arg_getter runs S C x X : result :=
   let xbd := "return " ++ x ++ ";" in
-  let bd := funcbody_intro 
-              (prog_intro true ((element_stat (stat_return 
+  let bd := funcbody_intro
+              (prog_intro true ((element_stat (stat_return
                 (Some (expr_identifier x))))::nil)) xbd in
   creating_function_object runs S C nil bd X true.
 
 Definition make_arg_setter runs S C x X : result :=
   let xparam := x ++ "_arg" in
   let xbd := x ++ " = " ++ xparam ++ ";" in
-  let bd := funcbody_intro 
-              (prog_intro true ((element_stat 
+  let bd := funcbody_intro
+              (prog_intro true ((element_stat
                 (expr_assign (expr_identifier x) None (expr_identifier xparam)))::nil)) xbd in
   creating_function_object runs S C (xparam::nil) bd X true.
 
@@ -1332,13 +1319,13 @@ Fixpoint arguments_object_map_loop runs S C l xs len args L X str lmap xsmap : r
   match len with
   | O => (* args = nil *)
     ifb xsmap = nil then
-      out_void S
+      res_void S
     else (
       if_some (pick_option (object_binds S l)) (fun O =>
         Let O' := object_for_args_object O lmap builtin_get_args_obj
                     builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj
                     builtin_delete_args_obj in
-        out_void (object_write S l O')))
+        res_void (object_write S l O')))
   | S len' => (* args <> nil *)
     Let arguments_object_map_loop' := fun S xsmap =>
       arguments_object_map_loop runs S C l xs len' (removelast args) L X str lmap xsmap in
@@ -1403,7 +1390,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
         if_bool (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
           Let follow2 := fun S' =>
             let vds := prog_vardecl p in
-            binding_inst_var_decls runs S' C L vds str (prog_intro_strictness p)
+            binding_inst_var_decls runs S' C L vds bconfig str
           in match ct, funco, bdefined with
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
@@ -1435,9 +1422,9 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
             if_void (execution_ctx_binding_inst runs S1 C' codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
             run_call_default runs S2 C' lf)))
         in
-      if str then 
+      if str then
         follow S vthis
-      else 
+      else
         match vthis with
         | value_object lthis => follow S vthis
         | null => follow S prealloc_global
@@ -1457,11 +1444,11 @@ Definition run_function_has_instance runs S lv vo : result :=
     if_some (run_object_method object_proto_ S lv) (fun vproto =>
       match vproto with
       | null =>
-        out_ter S false
+        res_ter S false
       | value_object proto =>
-        ifb proto = lo then 
-          out_ter S true
-        else 
+        ifb proto = lo then
+          res_ter S true
+        else
           runs_type_function_has_instance runs S proto lo
       | value_prim _ =>
         impossible_with_heap_because S "Primitive found in the prototype chain in [run_object_has_instance_loop]."
@@ -1657,7 +1644,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     if_spec_ter (to_int32 runs S C v1) (fun S1 k1 =>
       if_spec_ter (to_int32 runs S1 C v2) (fun S2 k2 =>
         if_some (get_bitwise_op op) (fun bo =>
-          out_ter S2 (JsNumber.of_int (bo k1 k2)))))
+          res_ter S2 (JsNumber.of_int (bo k1 k2)))))
 
   | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
     if_some (get_inequality_op op) (fun io =>
@@ -1696,7 +1683,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
       | _ => None
       end in
     if_bool (runs_type_equal runs S conv_number conv_primitive v1 v2) (fun S0 b0 =>
-      if_some (finalPass b0) (out_ter S0))
+      if_some (finalPass b0) (res_ter S0))
 
   | binary_op_strict_equal =>
     out_ter S (strict_equality_test v1 v2)
@@ -1844,7 +1831,7 @@ Definition run_var_decl_item runs S C x eo : result :=
 Fixpoint run_var_decl runs S C xeos : result :=
   match xeos with
   | nil => out_ter S res_empty
-  | (x, eo) :: xeos' => 
+  | (x, eo) :: xeos' =>
      if_value (run_var_decl_item runs S C x eo) (fun S1 vname =>
         run_var_decl runs S1 C xeos')
   end.
@@ -1917,7 +1904,7 @@ Definition run_expr_access runs S C e1 e2 : result :=
 Definition run_expr_assign runs S C (opo : option binary_op) e1 e2 : result :=
   if_success (runs_type_expr runs S C e1) (fun S1 rv1 =>
     Let follow := fun S rv' =>
-      match rv' with
+      match rv' return result with
       | resvalue_value v =>
         if_void (ref_put_value runs S C rv1 v) (fun S' =>
          out_ter S' v)
@@ -1980,14 +1967,14 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
         if_ter (runs_type_prog runs S1 C' p) (fun S2 R =>
           match res_type R with
           | restype_throw =>
-            out_ter S2 (res_throw (res_value R))
+            res_ter S2 (res_throw (res_value R))
           | restype_normal =>
             if_empty_label S2 R (fun _ =>
               match res_value R with
               | resvalue_value v =>
-                out_ter S2 v
+                res_ter S2 v
               | resvalue_empty =>
-                out_ter S2 undef
+                res_ter S2 undef
               | resvalue_ref r =>
                 impossible_with_heap_because S2 "Reference found in the result of an `eval' in [run_eval]."
               end)
@@ -2081,21 +2068,17 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     if b then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
         Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
-        let loop tt := runs_type_stat_while runs S2 C rv' labs e1 t2 in
+        let loop tt : result := runs_type_stat_while runs S2 C rv' labs e1 t2 in
         ifb res_type R <> restype_continue
              \/ ~ res_label_in R labs then (
-           ifb res_type R = restype_break /\ res_label_in R labs then (
-              result_some (out_ter S2 rv')
-           ) else (
-              ifb res_type R <> restype_normal then (
-                out_ter S2 R
-              ) else (
-                loop tt
-              )
+           ifb res_type R = restype_break /\ res_label_in R labs then
+              res_ter S2 rv'
+           else (
+              ifb res_type R <> restype_normal then
+                res_ter S2 R
+              else loop tt
            )
-        ) else (
-           loop tt
-        ))
+        ) else loop tt)
     else out_ter S1 rv).
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=
@@ -2312,7 +2295,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
           match xs with
           | nil =>
             if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
-              out_ter S1 l)
+              res_ter S1 l)
           | x :: xs' =>
             if_spec_ter (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
               match D with
@@ -2341,7 +2324,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
           match xs with
           | nil =>
             if_some (run_object_method object_extensible_ S l) (fun ext =>
-              out_ter S (neg ext))
+              res_ter S (neg ext))
           | x :: xs' =>
             if_spec_ter (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
               match D with
@@ -2365,7 +2348,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
           match xs with
           | nil =>
             if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
-              out_ter S1 l)
+              res_ter S1 l)
           | x :: xs' =>
             if_spec_ter (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
               match D with
@@ -2401,17 +2384,17 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
           match xs with
           | nil =>
             if_some (run_object_method object_extensible_ S l) (fun ext =>
-              out_ter S (neg ext))
+              res_ter S (neg ext))
           | x :: xs' =>
             if_spec_ter (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
               Let check_configurable := fun A =>
                 if attributes_configurable A then
-                  result_some (out_ter S0 false)
+                  res_ter S0 false
                 else object_is_frozen xs'
               in match D with
               | attributes_data_of Ad =>
                 if attributes_writable Ad then
-                  out_ter S0 false
+                  res_ter S0 false
                 else check_configurable Ad
               | attributes_accessor_of Aa =>
                 check_configurable Aa
@@ -2426,7 +2409,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     let v := get_arg 0 args in
     match v with
     | value_object l =>
-      if_some (run_object_method object_extensible_ S l) (out_ter S)
+      if_some (run_object_method object_extensible_ S l) (res_ter S)
     | value_prim _ => run_error S native_error_type
     end
 
@@ -2437,7 +2420,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       if_some (pick_option (object_binds S l)) (fun O =>
         let O1 := object_with_extension O false in
         let S' := object_write S l O1 in
-        out_ter S' l)
+        res_ter S' l)
     | value_prim _ => run_error S native_error_type
     end
 
@@ -2448,7 +2431,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     | _ =>
       if_object (to_object S vthis) (fun S1 l =>
         if_some (run_object_method object_class_ S l) (fun s =>
-          out_ter S1 ("[object " ++ s ++ "]")))
+          res_ter S1 ("[object " ++ s ++ "]")))
     end
 
   | prealloc_object_proto_value_of =>
@@ -2499,7 +2482,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_number_proto_value_of =>
     if_some (run_value_viewable_as_prim "Number" S vthis) (fun vw =>
       match vw with
-      | Some (prim_number n) => out_ter S n
+      | Some (prim_number n) => res_ter S n
       | _ => run_error S native_error_type
       end)
 
