@@ -237,21 +237,26 @@ Hint Unfold isout.
 
 (* Generic *)
 
+Lemma if_empty_label_out : forall T K S R (o : T),
+  if_empty_label S R K = result_some o ->
+  res_label R = label_empty /\ K tt = result_some o.
+Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
+
 Lemma if_some_out : forall (A B : Type) (oa : option A) K (b : B),
   if_some oa K = result_some b ->
   exists (a:A), oa = Some a /\ K a = result_some b.
 Proof. introv E. destruct* oa; tryfalse. Qed.
+
+Lemma if_result_some_out : forall (A B : Type) (W : resultof A) K (b : B),
+  if_result_some W K = result_some b ->
+  exists (y : A), W = result_some y /\ K y = result_some b.
+Proof. introv H. destruct* W; tryfalse. Qed.
 
 Lemma if_some_or_default_out : forall (A B : Type) (oa : option A) d K (b : B),
   if_some_or_default oa d K = b ->
      (oa = None /\ d = b)
   \/ (exists a, oa = Some a /\ K a = b).
 Proof. introv E. destruct* oa; tryfalse. Qed.
-
-Lemma if_empty_label_out : forall T K S R (o : T),
-  if_empty_label S R K = result_some o ->
-  res_label R = label_empty /\ K tt = result_some o.
-Proof. introv H. unfolds in H. cases_if; tryfalse. eexists; auto*. Qed.
 
 
 (* Results *)
@@ -300,24 +305,41 @@ Lemma if_success_out : forall W K o,
   isout W (if_success_post K o).
 Admitted.
 
-(* with unfolding:
-Lemma if_success_out : forall W K o,
-  if_success W K = o ->
-  exists o1, W = result_some o1 /\
-   (   (o = o1 /\ abort o)
-    \/ (exists S rv, o1 = out_ter S rv /\ K S rv = o)).
-*)
+  (* Documentation: same with unfolding:
+    Lemma if_success_out : forall W K o,
+      if_success W K = o ->
+      exists o1, W = result_some o1 /\
+       (   (o = o1 /\ abort o)
+        \/ (exists S rv, o1 = out_ter S rv /\ K S rv = o)).
+  *)
 
-Definition if_value_post K o o1 :=
+Definition if_void_post K o o1 :=
   eqabort o1 o \/
-  exists S v, o1 = out_ter S (res_val v) /\ K S v = result_some o.
+  exists S, o1 = out_void S /\ K S = result_some o.
 
-Lemma if_value_out : forall W K o,
-  if_value W K = o ->
-  isout W (if_value_post K o).
+Lemma if_void_out : forall W K o,
+  if_void W K = o ->
+  isout W (if_void_post K o).
 Admitted.
 
-Print if_break.
+(* TODO: misssing 
+    if_not_throw *)
+
+Definition if_any_or_throw_post K1 K2 o o1 :=
+  (o1 = out_div /\ o = o1) \/
+  (exists S R, o1 = out_ter S R /\ 
+    (   (res_type R <> restype_throw /\ K1 S R = result_some o)  
+     \/ (res_type R = restype_throw /\ exists (v : value), res_value R = v
+           /\ res_label R = label_empty /\ K2 S v = result_some o))). (* Didn't worked when writing [exists (v : value), R = res_throw v]. *)
+
+Lemma if_any_or_throw_out : forall W K1 K2 o,
+  if_any_or_throw W K1 K2 = result_some o ->
+  isout W (if_any_or_throw_post K1 K2 o).
+Admitted.
+
+(* TODO: misssing 
+    if_success_or_return
+    if_normal_continue_or_break *)
 
 Definition if_break_post K o o1 :=
      (o1 = out_div /\ o = o1)
@@ -330,25 +352,13 @@ Lemma if_break_out : forall W K o,
   isout W (if_break_post K o).
 Admitted.
 
-
-Definition if_void_post K o o1 :=
+Definition if_value_post K o o1 :=
   eqabort o1 o \/
-  exists S, o1 = out_void S /\ K S = result_some o.
+  exists S v, o1 = out_ter S (res_val v) /\ K S v = result_some o.
 
-Lemma if_void_out : forall W K o,
-  if_void W K = o ->
-  isout W (if_void_post K o).
-Admitted.
-
-(* Results and deconstruction (we don't factorize the defs below for readability) *)
-
-Definition if_object_post K o o1 :=
-  eqabort o1 o \/
-  exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = result_some o.
-
-Lemma if_object_out : forall W K o,
-  if_object W K = o ->
-  isout W (if_object_post K o).
+Lemma if_value_out : forall W K o,
+  if_value W K = o ->
+  isout W (if_value_post K o).
 Admitted.
 
 Definition if_bool_post K o o1 :=
@@ -358,6 +368,15 @@ Definition if_bool_post K o o1 :=
 Lemma if_bool_out : forall W K o,
   if_bool W K = o ->
   isout W (if_bool_post K o).
+Admitted.
+
+Definition if_object_post K o o1 :=
+  eqabort o1 o \/
+  exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = result_some o.
+
+Lemma if_object_out : forall W K o,
+  if_object W K = o ->
+  isout W (if_object_post K o).
 Admitted.
 
 Definition if_string_post K o o1 :=
@@ -387,13 +406,6 @@ Lemma if_primitive_out : forall W K o,
   isout W (if_primitive_post K o).
 Admitted.
 
-
-
-Lemma if_result_some_out : forall (A B : Type) (W : resultof A) K (b : B),
-  if_result_some W K = result_some b ->
-  exists (y : A), W = result_some y /\ K y = result_some b.
-Proof. introv H. destruct* W; tryfalse. Qed.
-
 Lemma if_abort_out : forall T o K (t : T),
   if_abort o K = result_some t ->
   abort o /\ K tt = result_some t.
@@ -414,6 +426,9 @@ Proof. skip.
 *)
 Qed.
 
+(* TOOD:  missing 
+    if_ter_spec*)
+
 Definition if_spec_ter_post T K o (y:specret T) :=
      (y = specret_out o /\ abort o)
   \/ (exists S a, y = specret_val S a /\ K S a = result_some o).
@@ -432,19 +447,6 @@ skip.
 Qed.
 
 
-
-
-Definition if_any_or_throw_post K1 K2 o o1 :=
-  (o1 = out_div /\ o = o1) \/
-  (exists S R, o1 = out_ter S R /\ 
-    (   (res_type R <> restype_throw /\ K1 S R = result_some o)  
-     \/ (res_type R = restype_throw /\ exists (v : value), res_value R = v
-           /\ res_label R = label_empty /\ K2 S v = result_some o))). (* Didn't worked when writing [exists (v : value), R = res_throw v]. *)
-
-Lemma if_any_or_throw_out : forall W K1 K2 o,
-  if_any_or_throw W K1 K2 = result_some o ->
-  isout W (if_any_or_throw_post K1 K2 o).
-Admitted.
 
 (* proofs of old monadic lemmas, might be useful
 Lemma if_success_out : forall res K S R,
@@ -1610,7 +1612,7 @@ Lemma init_object_correct : forall runs S C l (pds : propdefs) o,
 Proof.
   introv IH. gen S. induction pds as [|(pn&pb) pds]; introv HR.
   simpls. run_inv. applys red_expr_object_1_nil.
-  simpls. let_simpl. let_simpl. 
+  simpls. let_name. let_name. 
   asserts follows_correct: (forall S A, follows S A = o ->
       red_expr S C (expr_object_4 l x A pds) o). 
     subst follows. clear HR. introv HR.
@@ -1651,7 +1653,7 @@ Proof.
   applys* init_object_correct.
   (* function *)
   unfolds in R. destruct o0.
-   let_simpl. destruct p as (lex'&S'). destruct lex' as [|L lex']; simpls; tryfalse.
+   let_name. destruct p as (lex'&S'). destruct lex' as [|L lex']; simpls; tryfalse.
     run_simpl. forwards: @pick_option_correct (rm E).
     run* red_expr_function_named using env_record_create_immutable_binding_correct.
     run red_expr_function_named_1 using creating_function_object_correct.
@@ -1685,6 +1687,7 @@ Proof.
   red_expr S C e1 o1 ->
   red_expr S C (expr_call_1 o1 (is_syntactic_eval e1) e2s) o2 ->
   red_expr S C (expr_call e1 e2s) o2.
+  let_simpl.
   run red_expr_call.
   run red_expr_call_1 using ref_get_value_correct. 
   run red_expr_call_2 using run_list_expr_correct.
@@ -1696,7 +1699,7 @@ Proof.
   applys* red_expr_call_3.
   applys* run_error_correct_2.
   applys* red_expr_call_3_callable.
-  let_simpl.
+  let_name.
   asserts follows_correct: (forall vthis, follow vthis = o ->
       red_expr S3 C (expr_call_5 o0 (is_syntactic_eval e) a0 (out_ter S3 vthis)) o). 
     subst follow. clear R. introv HR. 
@@ -1729,7 +1732,7 @@ Proof.
   skip. (* TODO *)
   (* assign *)
   unfolds in R. 
-  run red_expr_assign. let_simpl. 
+  run red_expr_assign. let_name. 
   rename rv into rv1.
   asserts follow_correct: (forall S0 S rv o, follow S rv = o ->
      exists v, rv = resvalue_value v /\ red_expr S0 C (expr_assign_4 rv1 (ret S v)) o). 
@@ -2030,7 +2033,7 @@ Proof.
   (* Continue *)
   inverts R. applys* red_stat_continue.
   (* Try *)
-  unfolds in R. let_simpl.
+  unfolds in R. let_name.
   asserts finally_correct: (forall S (R:res), 
       finally S R = result_some o ->
       red_stat S C (stat_try_4 R fo) o). 
@@ -2043,7 +2046,7 @@ Proof.
   run red_stat_try. abort.
     applys* red_stat_try_1_no_throw. 
     destruct co as [c|].
-      destruct c as [x t2]. let_simpl. let_simpl.
+      destruct c as [x t2]. let_name. let_name.
        destruct p as [lex' S']. destruct lex'; tryfalse.
        subst lex. run* red_stat_try_1_throw_catch 
         using env_record_create_set_mutable_binding_correct.
@@ -2110,7 +2113,7 @@ Proof.
   run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
   applys* red_stat_while_1 (rm R2). run_post_expr_get_value_bool K.
     run red_stat_while_2_true.
-     let_simpl. applys red_stat_while_3 rv'. case_if; case_if*.
+     let_name. applys red_stat_while_3 rv'. case_if; case_if*.
      case_if in K.
        applys red_stat_while_4_not_continue. rew_logic*. case_if in K.
          run_inv. applys* red_stat_while_5_break.
