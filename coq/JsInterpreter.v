@@ -2068,7 +2068,8 @@ Definition run_stat_with runs S C e1 t2 : result :=
 
 Definition run_stat_if runs S C e1 t2 to : result :=
   if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    if (convert_value_to_boolean v1) then
+    Let b := convert_value_to_boolean v1 in
+    if b then
       runs_type_stat runs S1 C t2
     else
       match to with

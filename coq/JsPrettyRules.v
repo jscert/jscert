@@ -3903,10 +3903,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   (** ToPropertyDescriptor ( Obj ) - (passes a Descriptor to the continuation) (8.10.5) *)    
   (* TODO: make "o1" be last argument of the intermediate forms *)
 
-  | red_spec_to_descriptor_not_object : forall S C v o, (* Step 1 *)
+  | red_spec_to_descriptor_not_object : forall S C v (y:specret descriptor), (* Step 1 *)
       type_of v <> type_object ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S C (spec_to_descriptor v) (ret S o)
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S C (spec_to_descriptor v) y
 
   | red_spec_to_descriptor_object : forall S C l xs x Desc (y:specret descriptor), (* Step 2 *)
       Desc = descriptor_intro_empty ->
@@ -4006,10 +4006,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_5c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_5b (out_ter S true) l Desc) y 
 
-  | red_spec_to_descriptor_5c_error : forall S0 S C o o1 l v Desc, (* step 7b *)
+  | red_spec_to_descriptor_5c_error : forall S0 S C l v Desc (y:specret descriptor), (* step 7b *)
       ((is_callable S v = false) /\ (v <> undef)) ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S0 C (spec_to_descriptor_5c (out_ter S v) l Desc) (ret S0 o) 
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S0 C (spec_to_descriptor_5c (out_ter S v) l Desc) y
 
   | red_spec_to_descriptor_5c_ok : forall S0 S C l v Desc Desc' (y:specret descriptor), (* step 7c *)
       ~ ((is_callable S v = false) /\ (v <> undef)) ->
@@ -4031,10 +4031,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_6c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_6b (out_ter S true) l Desc) y 
 
-  | red_spec_to_descriptor_6c_error : forall S0 S C o o1 l v Desc, (* step 8b *)
+  | red_spec_to_descriptor_6c_error : forall S0 S C l v Desc (y:specret descriptor), (* step 8b *)
       ((is_callable S v = false) /\ (v <> undef)) ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) (ret S0 o) 
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) y
 
   | red_spec_to_descriptor_6c_ok : forall S0 S C l v Desc Desc' (y:specret descriptor), (* step 8c *)
       ~ ((is_callable S v = false) /\ (v <> undef)) ->
@@ -4042,10 +4042,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_7 l Desc') y ->
       red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) y 
 
-  | red_spec_to_descriptor_7_error : forall S C o l Desc, (* step 9 *)
+  | red_spec_to_descriptor_7_error : forall S C l Desc (y:specret descriptor), (* step 9 *)
       descriptor_inconsistent Desc ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S C (spec_to_descriptor_7 l Desc) (ret S o)
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S C (spec_to_descriptor_7 l Desc) y
 
   | red_spec_to_descriptor_7_ok : forall S C o l Desc, (* step 10 *)
       ~ descriptor_inconsistent Desc ->
@@ -4075,24 +4075,32 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_ref_get_value_value : forall S C v, (* Step 1 *)
       red_spec S C (spec_get_value v) (ret S v)
 
-  | red_spec_ref_get_value_ref_a : forall S C r o, (* Steps 2 and 3 *)
+  | red_spec_ref_get_value_ref_a : forall S C r (y:specret value), (* Steps 2 and 3 *)
       ref_is_unresolvable r ->
-      red_expr S C (spec_error native_error_ref) o ->
-      red_spec S C (spec_get_value r) (ret S o)
+      red_spec S C (spec_error_spec native_error_ref) y ->
+      red_spec S C (spec_get_value r) y
 
-  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o, (* Steps 2 and 4 *)
+  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o1 (y:specret value), (* Steps 2 and 4 *)
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
       ext_get = (If ref_has_primitive_base r
         then spec_prim_value_get
         else spec_object_get) -> (* It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
-      red_expr S C (ext_get v (ref_name r)) o ->
-      red_spec S C (spec_get_value r) (ret S o)
+      red_expr S C (ext_get v (ref_name r)) o1 ->
+      red_spec S C (spec_get_value_ref_b_1 o1) y ->
+      red_spec S C (spec_get_value r) y
+      
+  | red_spec_ref_get_value_ref_b_1 : forall S0 S C v,  (* LATER: could be made a generic conversion rule *)
+      red_spec S0 C (spec_get_value_ref_b_1 (out_ter S v)) (ret S v)
 
-  | red_spec_ref_get_value_ref_c : forall L S C r o, (* Step 5. *)
+  | red_spec_ref_get_value_ref_c : forall L S C r o1 (y:specret value), (* Step 5. *)
       ref_base r = ref_base_type_env_loc L ->
-      red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o ->
-      red_spec S C (spec_get_value r) (ret S o)
+      red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o1 ->
+      red_spec S C (spec_get_value_ref_c_1 o1) y ->
+      red_spec S C (spec_get_value r) y
+
+  | red_spec_ref_get_value_ref_c_1 : forall S0 S C v, (* LATER: could be made a generic conversion rule *)
+      red_spec S0 C (spec_get_value_ref_c_1 (out_ter S v)) (ret S v)
 
   (** Auxiliary: [spec_expr_get_value] as a combination of [red_expr] and [get_value] *)
 
@@ -4131,6 +4139,14 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x str S (y:specret ref),
       red_spec S C (spec_lexical_env_get_identifier_ref lexs x str) y ->
       red_spec S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S false)) y
+
+
+  (** Throw an error *) (* LATER:merge *)
+
+  | red_spec_error_spec : forall T S C ne o1 (y:specret T), 
+      red_expr S C (spec_error ne) o1 ->
+      red_spec S C (spec_error_spec_1 o1) y ->
+      red_spec S C (spec_error_spec ne) y 
 
 .
 

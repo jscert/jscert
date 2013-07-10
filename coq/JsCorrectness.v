@@ -880,7 +880,7 @@ Ltac run_post_core :=
     destruct H as [(Er&Ab)|(S&rv&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_value_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "v" in
+    let S := fresh "S" in let v := fresh "v" in
     destruct H as [(Er&Ab)|(S&v&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_prim_spec_post _ _ _ |- _ =>
@@ -1117,7 +1117,7 @@ Proof.
    applys~ red_spec_build_error_1_no_msg.
 Qed.
 
-Lemma run_error_correct : forall S ne o C,
+Lemma run_error_correct' : forall S ne o C,
   run_error S ne = o ->
   red_expr S C (spec_error ne) o /\ abort o.
 Proof.
@@ -1126,11 +1126,11 @@ Proof.
   apply~ red_spec_error_1.
 Qed.
 
-Lemma run_error_correct' : forall S ne o C,
+Lemma run_error_correct : forall S ne o C,
   run_error S ne = o ->
   red_expr S C (spec_error ne) o.
 Proof.
-  intros. applys* run_error_correct.
+  intros. applys* run_error_correct'.
 Qed.
 
 Ltac run_simpl_run_error H T K ::=
@@ -1146,7 +1146,8 @@ Lemma out_error_or_void_correct : forall S C str (ne : native_error) o,
     (~ abort o -> o = out_void S).
 Proof.
   introv E. unfolds in E. cases_if.
-   applys_and red_spec_error_or_void_true. forwards~ (RC&Cr): run_error_correct E. splits*.
+   applys_and red_spec_error_or_void_true. 
+   forwards~ (RC&Cr): run_error_correct' E. splits*.
    inverts E. splits~. apply~ red_spec_error_or_void_false.
 Qed.
 
@@ -1156,7 +1157,7 @@ Lemma out_error_or_cst_correct : forall S C str (ne : native_error) v o,
     (~ abort o -> o = out_ter S v).
 Proof.
   introv E. unfolds in E. cases_if.
-   applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct E. splits*.
+   applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct' E. splits*.
    inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
 
@@ -1301,41 +1302,119 @@ Admitted. (* OLD
 Qed. *)
 
 
+Lemma res_res_run_error_correct : forall runs S C ne T (y:specret T),
+  runs_type_correct runs ->
+  res_res (run_error S ne) = result_some y ->
+  red_spec S C (spec_error_spec ne) y.
+Proof.
+  introv IH HR. unfolds res_res. 
+  lets (y1&E&K): if_result_some_out (rm HR). inverts K. 
+  lets (E2&Ab): run_error_correct' (rm E).
+  applys* red_spec_error_spec.
+  abort.
+Qed.
+
+Definition ref_get_value' runs S C rv : specres value :=
+  match rv with
+  | resvalue_empty =>
+    impossible_with_heap_because S "[ref_get_value] received an empty result."
+  | resvalue_value v =>
+    res_spec S v
+  | resvalue_ref r =>
+    Let for_base_or_object := fun tt =>
+      match ref_base r with
+      | ref_base_type_value v =>
+        ifb ref_has_primitive_base r then
+          if_value_spec (prim_value_get runs S C v (ref_name r)) res_spec
+        else 
+          match v with
+           | value_object l =>
+             if_value_spec (run_object_get runs S C l (ref_name r)) res_spec
+           | value_prim _ =>
+             impossible_with_heap_because S "[ref_get_value] received a primitive value whose kind is not primitive."
+          end
+      | ref_base_type_env_loc L =>
+        impossible_with_heap_because S "[ref_get_value] received a reference to a value whose base type is an environnment record."
+      end
+     in
+    match ref_kind_of r with
+    | ref_kind_null =>
+      impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
+    | ref_kind_undef =>
+      res_res (run_error S native_error_ref)
+    | ref_kind_primitive_base | ref_kind_object =>
+      for_base_or_object tt
+    | ref_kind_env_record =>
+      match ref_base r with
+      | ref_base_type_value v =>
+        impossible_with_heap_because S "[ref_get_value] received a reference to an environnment record whose base type is a value."
+      | ref_base_type_env_loc L =>
+        if_value_spec (env_record_get_binding_value runs S C L (ref_name r) (ref_strict r))
+          res_spec
+      end
+    end
+  end.
+
+
+Lemma ref_kind_env_record_inv : forall r,
+  ref_kind_of r = ref_kind_env_record ->
+  exists L, ref_base r = ref_base_type_env_loc L.
+Proof.
+  introv E. unfolds ref_kind_of.
+  destruct (ref_base r).
+    destruct v; tryfalse. destruct p; tryfalse.
+    exists___*.
+Qed.
+
+Lemma ref_kind_base_object_inv : forall r,
+  (ref_kind_of r = ref_kind_primitive_base \/
+     ref_kind_of r = ref_kind_object) ->
+  exists v, ref_base r = ref_base_type_value v.
+Proof.
+  introv E. unfolds ref_kind_of.
+  destruct E; destruct (ref_base r); tryfalse;
+    destruct v; tryfalse; try solve [exists___*].
+Qed.
+
+
+
 Lemma ref_get_value_correct : forall runs S C rv y,
   runs_type_correct runs ->
-  ref_get_value runs S C rv = result_some y ->
+  ref_get_value' runs S C rv = result_some y ->
   red_spec S C (spec_get_value rv) y.
-(*
-  runs_type_correct runs -> forall S C rv o,
-  ref_get_value runs S C rv = o ->
-  red_spec S C (spec_get_value rv) (ret S o) /\
-    (~ abort o -> exists S' v, o = out_ter S' v).
-*)
-
 Proof.
-(* OLD:
-  introv RC E. destruct rv; tryfalse.
-   inverts E. splits. apply~ red_spec_ref_get_value_value. intros. auto*.
-   tests: (ref_is_property r).
-    destruct r as [rb rn rs]; destruct rb as [v|?]; try solve [inverts C; false].
-      split.
-       apply~ red_spec_ref_get_value_ref_b. reflexivity.
-        cases_if; destruct v as [()|l]; simpls; try (solve [inverts C0; false]);
-         cases_if; first [ applys~ prim_value_get_correct RC | applys~ run_object_get_correct RC ].
-       intro Rn. destruct v. destruct p; simpls; tryfalse;
-         try solve [ forwards~ (_&?): run_error_correct C E; false ]; cases_if; tryfalse.
-        simpls. cases_if. forwards~ (_&?): run_object_get_correct RC E.
-    forwards~ (E'&?): env_record_get_binding_value_correct E. splits~.
-     apply* red_spec_ref_get_value_ref_c.
-    destruct r as [rb rn rs]; destruct rb as [[()|l]|?]; simpls; tryfalse;
-      try (false C0; first [ solve [left~] | solve [right~] ]); split.
-     apply~ red_spec_ref_get_value_ref_a. constructors. apply~ run_error_correct.
-     introv Eq. forwards~ (_&?): run_error_correct C E. false.
-     apply~ red_spec_ref_get_value_ref_c. reflexivity.
-      applys~ env_record_get_binding_value_correct RC.
-     intros. forwards~ (_&?): env_record_get_binding_value_correct E.
-Qed.*) Admitted.
-
+  introv IH HR. unfolds in HR. destruct rv; tryfalse.
+  run_inv. applys* red_spec_ref_get_value_value.
+  let_name as M. 
+  asserts M_correct: (
+    (  ref_kind_of r = ref_kind_primitive_base 
+    \/ ref_kind_of r = ref_kind_object) ->
+    M tt = result_some y ->
+    red_spec S C (spec_get_value r) y).
+   clear HR. introv EQ HR. subst M.
+   asserts: (ref_is_property r). unfolds. destruct* EQ.
+   lets (v&Ev): ref_kind_base_object_inv EQ. rewrite Ev in HR.
+   unfolds ref_has_primitive_base. case_if.  
+     run* red_spec_ref_get_value_ref_b using prim_value_get_correct. case_if*. 
+      applys* red_spec_ref_get_value_ref_b_1.
+     destruct EQ; tryfalse. destruct v as [|l]; tryfalse.
+     run* red_spec_ref_get_value_ref_b using run_object_get_correct. case_if*. 
+      applys* red_spec_ref_get_value_ref_b_1.
+    clear EQM.
+  sets_eq k: (ref_kind_of r). destruct k; tryfalse.
+  (* case undef *)
+  applys* red_spec_ref_get_value_ref_a. unfolds*.
+   applys* res_res_run_error_correct.
+  (* case prim *)
+  applys* M_correct.
+  (* case object *)
+  applys* M_correct.
+  (* case env_record *)
+  lets (L&EQL): ref_kind_env_record_inv (sym_eq EQk).
+  rewrite EQL in HR.
+  run* red_spec_ref_get_value_ref_c using env_record_get_binding_value_correct.
+  applys* red_spec_ref_get_value_ref_c_1.
+Admitted. (*faster*)
 
 
 Lemma object_put_correct : forall runs S C l x v str o,
@@ -1364,7 +1443,7 @@ Admitted.
 
 Ltac run_select_proj_extra_ref HT ::= 
   match HT with
-  | run_error => constr:(run_error_correct')
+  | run_error => constr:(run_error_correct)
   | run_object_method => constr:(run_object_method_correct)
   | object_put => constr:(object_put_correct)
   | ref_put_value => constr:(ref_put_value_correct)
@@ -2081,21 +2160,6 @@ Proof.
 Qed.
 
 
-Definition run_stat_if' runs S C e1 t2 to : result :=
-  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    Let b := convert_value_to_boolean v1 in
-    if b then
-      runs_type_stat runs S1 C t2
-    else
-      match to with
-      | Some t3 =>
-        runs_type_stat runs S1 C t3
-      | None =>
-        out_ter S1 resvalue_empty
-      end).
-
-
-
 Lemma run_stat_correct : forall runs,
   runs_type_correct runs ->
    follow_stat (run_stat runs).
@@ -2120,7 +2184,6 @@ Proof.
   (* Variable declaration *)
   applys* run_var_decl_correct.
   (* If *)
-  skip_rewrite (run_stat_if = run_stat_if') in R.
   unfolds in R.
   run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
    applys* red_stat_if (rm R2). run_post_if_spec_ter_post_bool K.
@@ -2140,50 +2203,16 @@ Proof.
   let_name. let_name. destruct p as [lex' S3]. let_name.
   subst lex. applys* red_stat_with_1. subst C'. run_hyp*.
   (* Throw *)
-  skip. (* OLD:
-    unfolds in R. unmonad.
-     forwards~ RC: IHe (rm HE). apply~ red_stat_throw.
-      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
-     forwards~ RC: IHe (rm HE).
-      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-       apply~ red_stat_throw.
-        applys~ red_spec_expr_get_value RC.
-         applys~ red_spec_expr_get_value_1 H0.
-        abort_stat.
-       apply~ red_stat_throw.
-        applys~ red_spec_expr_get_value RC.
-         applys~ red_spec_expr_get_value_1 H0.
-        apply~ red_stat_throw_1.
-        *)
+  unfolds in R.
+  run red_stat_throw. applys* red_stat_throw_1.
   (* Return *)
   unfolds in R. destruct eo.   
     run red_stat_return_some. apply* red_stat_return_1.
     inverts* R. applys red_stat_return_none.
-
-    (* OLD:
-    destruct o; simpls; unmonad.
-     forwards~ RC: IHe (rm HE). apply~ red_stat_return_some.
-      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
-     forwards~ RC: IHe (rm HE).
-      inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-       apply~ red_stat_return_some.
-        applys~ red_spec_expr_get_value RC.
-         applys~ red_spec_expr_get_value_1 H0.
-        abort_stat.
-       apply~ red_stat_return_some.
-        applys~ red_spec_expr_get_value RC.
-         applys~ red_spec_expr_get_value_1 H0.
-        apply~ red_stat_return_1.
-     apply~ red_stat_return_none.
-     *)
-
   (* Break *)
-  (* Daniele: not sure if inverts is the right thing, but rewrite doesn't work since 
-     R seems to actually be result_some_out (out_ter S (res_break l)) -- look at the
-     error msg you get by doing a rewrite *)
-  inverts R. applys* red_stat_break.
+  run_inv. applys* red_stat_break.
   (* Continue *)
-  inverts R. applys* red_stat_continue.
+  run_inv. applys* red_stat_continue.
   (* Try *)
   unfolds in R. let_name.
   asserts finally_correct: (forall S (R:res), 
@@ -2202,10 +2231,10 @@ Proof.
        destruct p as [lex' S']. destruct lex'; tryfalse.
        subst lex. run* red_stat_try_1_throw_catch 
         using env_record_create_set_mutable_binding_correct.
-       run red_stat_try_2_catch. applys~ red_stat_try_3_catch_result finally_correct.
+       run red_stat_try_2_catch. 
+        applys~ red_stat_try_3_catch_result finally_correct.
       applys~ red_stat_try_1_throw_no_catch. applys~ finally_correct.
       rewrite <- R. fequal. destruct R0; simpls; substs~.
-
   (* For-in *)
   skip. (* TODO *)
   (* For-in-var *)
@@ -2279,41 +2308,6 @@ Proof.
    run_inv. applys red_stat_while_2_false.
 Admitted. (*faster*)
 
-
-(* OLD:
-   intros ls e t S C v S' res R. simpls. unfolds in R. apply~ red_stat_while_1.
-   unmonad.
-    forwards~ RC: IHe (rm HE).
-     apply~ red_spec_expr_get_value_conv_stat.
-      applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr/stat], two times *)
-    forwards~ RC: IHe (rm HE).
-     inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
-       applys~ red_spec_expr_get_value_1 H0.
-      abort_stat.
-     apply~ red_spec_expr_get_value_conv_stat. applys~ red_spec_expr_get_value RC.
-       applys~ red_spec_expr_get_value_1 H0.
-      apply~ red_spec_expr_get_value_conv_stat_1. apply* red_spec_to_boolean.
-      apply~ red_spec_expr_get_value_conv_stat_2.
-      cases_if.
-       unmonad. forwards~ RCs: IHs (rm HR). applys~ red_stat_while_2_true RCs.
-        apply~ red_stat_while_3. destruct R as [Rt Rv Rl]; simpls.
-        tests: (Rt = restype_break).
-         cases_if in HE; inverts HE.
-          do 2 cases_if; apply~ red_stat_while_4_break.
-          apply~ red_stat_while_4_abrupt; try absurd_neg.
-        tests: (Rt = restype_continue).
-         cases_if in HE; inverts HE.
-          forwards~ RCw: IHw (rm H3).
-           do 2 cases_if; applys~ red_stat_while_4_continue RCw.
-          apply~ red_stat_while_4_abrupt; try absurd_neg.
-        tests: (Rt = restype_normal).
-         forwards~ (E1&E2): if_empty_label_out (rm HE). simpls. substs.
-         forwards~ RCw: IHw (rm E2).
-         do 2 cases_if; apply~ red_stat_while_4_continue.
-        destruct Rt; tryfalse; inverts HE; apply~ red_stat_while_4_abrupt; absurd_neg.
-       unmonad. apply~ red_stat_while_2_false.
-*)
 
 (*
 Lemma run_object_get_own_prop_correct : forall runs,
