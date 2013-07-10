@@ -1721,11 +1721,6 @@ Proof.
   applys* creating_function_object_correct. 
 Qed.
 
-Axiom red_expr_object_4 : forall S C A l x pds o o1,
-      red_expr S C (spec_object_define_own_prop l x A false) o1 ->
-      red_expr S C (expr_object_5 l pds o1) o ->
-      red_expr S C (expr_object_4 l x A pds) o.
-
 Lemma init_object_correct : forall runs S C l (pds : propdefs) o,
   runs_type_correct runs ->
   init_object runs S C l pds = o ->
@@ -1756,15 +1751,28 @@ Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   red_expr S C (expr_binary_op_3 op v1 v2) o.
 Admitted.
 
+Lemma decide_def : forall {P:Prop} `{Decidable P},
+  (decide P) = (If P then true else false).
+Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
+
+Lemma decide_cases : forall (P:Prop) `{Decidable P},
+  (P /\ decide P = true) \/ (~ P /\ decide P = false).
+Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
+
+
+
 Lemma env_record_has_binding_correct : forall runs S C L x o,
   runs_type_correct runs ->
   env_record_has_binding runs S C L x = o ->
   red_expr S C (spec_env_record_has_binding L x) o.
 Proof.
-  introv IH HR. unfolds in HR. run_simpl. forwards B: @pick_option_correct (rm E).
+  introv IH HR. unfolds in HR. run_simpl. 
+  forwards B: @pick_option_correct (rm E).
   applys~ red_spec_env_record_has_binding B. destruct x0; run_inv.
-   apply~ red_spec_env_record_has_binding_1_decl. skip. (* TODO:  Arthur, here are some [rew_*] for you :) *)
-   apply~ red_spec_env_record_has_binding_1_object. apply* object_has_prop_correct.
+   apply~ red_spec_env_record_has_binding_1_decl. 
+    rewrite decide_def; auto.
+   apply~ red_spec_env_record_has_binding_1_object.
+    apply* object_has_prop_correct.
 Qed.
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,

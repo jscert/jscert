@@ -774,7 +774,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
   
-  | red_expr_object_4 : forall S S0 C A l x pds o o1,
+  | red_expr_object_4 : forall S C A l x pds o o1,
       red_expr S C (spec_object_define_own_prop l x A false) o1 ->
       red_expr S C (expr_object_5 l pds o1) o ->
       red_expr S C (expr_object_4 l x A pds) o
