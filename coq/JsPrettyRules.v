@@ -4082,6 +4082,53 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_own_prop_2_some_data : forall S C l x A, (* Step 2 through 8 *)
       red_spec S C (spec_object_get_own_prop_2 l x (Some A)) (ret S (full_descriptor_some A)) 
 
+
+
+
+  (* Arguments Object: GetOwnProperty (passes a fully-populated property descriptor to the continuation) (10.6) *) 
+
+  | red_spec_object_get_own_prop_args_obj : forall S C l x (y:specret full_descriptor) (y1:specret full_descriptor), (* Step 1 *)
+      red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y1 ->
+      red_spec S C (spec_args_obj_get_own_prop_1 l x y1) y ->
+      red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_args_obj l x) y   
+
+  | red_spec_object_get_own_prop_args_obj_1_undef : forall S0 S C l x, (* Step 2 *)
+      red_spec S0 C (spec_args_obj_get_own_prop_1 l x (ret S full_descriptor_undef)) (ret S full_descriptor_undef) 
+
+  | red_spec_object_get_own_prop_args_obj_1_attrs : forall lmap S0 S C l x A o  (y:specret full_descriptor) (y1:specret full_descriptor), (* Steps 3 - 4 *)
+      object_parameter_map S l (Some lmap) ->
+      red_spec S C (spec_object_get_own_prop lmap x) y1 ->
+      red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A y1) y -> 
+      red_spec S0 C (spec_args_obj_get_own_prop_1 l x (ret S (full_descriptor_some A))) y 
+
+  | red_spec_object_get_own_prop_args_obj_2_attrs : forall o1 S0 S C l x lmap A Amap o (y:specret full_descriptor), (* Step 5 *)
+      red_expr S C (spec_object_get (value_object lmap) x) o1 ->
+      red_spec S C (spec_args_obj_get_own_prop_3 A o1) y -> 
+      red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A (ret S0 (full_descriptor_some Amap))) y
+
+  | red_spec_object_get_own_prop_args_obj_3 : forall S C Ad S' v o (y:specret full_descriptor), (* Step 5 *)      
+      red_spec S' C (spec_args_obj_get_own_prop_4  (attributes_data_with_value Ad v)) y -> 
+      red_spec S C (spec_args_obj_get_own_prop_3  (attributes_data_of Ad) (out_ter S' v)) y
+      (* What happens if we have an accessor property descriptor? The spec assumes it is a data property descriptor. *)
+
+  | red_spec_object_get_own_prop_args_obj_2_undef : forall S0 S C l x lmap A o (y:specret full_descriptor), (* Step 5 else *)
+      red_spec S C (spec_args_obj_get_own_prop_4 A) y -> 
+      red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A (ret S0 full_descriptor_undef)) y  
+
+  | red_spec_object_get_own_prop_args_obj_4 : forall S C A, (* Step 6 *)
+      red_spec S C (spec_args_obj_get_own_prop_4 A) (ret S (full_descriptor_some A))    
+
+
+
+
+
+
+
+
+
+
+
+
   (** Get value on a reference (returns value) (8.7.1) *)
 
   | red_spec_ref_get_value_value : forall S C v, (* Step 1 *)
