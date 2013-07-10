@@ -749,7 +749,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_call_1 o _ _ => Some o
   | expr_call_2 _ _ _ (specret_out o) => Some o
   | expr_call_2 _ _ _ (specret_val _ _) => None
-  | expr_call_3 _ _ _ _ => None
+  | expr_call_3 _ _ _ y => out_of_specret y  
   | expr_call_4 _ _ _ _ => None
   | expr_call_5 _ _ _ o => Some o
 

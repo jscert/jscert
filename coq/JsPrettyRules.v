@@ -644,12 +644,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_try_1_no_throw : forall S0 S C R co fo o,
       res_type R <> restype_throw ->
-      red_stat S0 C (stat_try_4 R fo) o ->
+      red_stat S C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) co fo) o
 
   | red_stat_try_1_throw_no_catch : forall S0 S C R fo o,
       res_type R = restype_throw ->
-      red_stat S0 C (stat_try_4 R fo) o ->
+      red_stat S C (stat_try_4 R fo) o ->
       red_stat S0 C (stat_try_1 (out_ter S R) None fo) o
 
   | red_stat_try_1_throw_catch : forall v S0 S S' C lex lex' oldlex L x R t1 fo o1 o,
@@ -684,7 +684,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Debugger statement (12.15) *)
   
-  | res_stat_debugger : forall S C,
+  | red_stat_debugger : forall S C,
       red_stat S C stat_debugger (out_ter S res_empty)
 
 
@@ -840,7 +840,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_call_1 o1 is_eval_direct e2s) o2 ->
       red_expr S C (expr_call e1 e2s) o2
 
-  | red_expr_call_1 : forall o1 S0 S C rv is_eval_direct e2s y1 o, (* Step 2 *)
+  | red_expr_call_1 : forall S0 S C rv is_eval_direct e2s y1 o, (* Step 2 *)
       red_spec S C (spec_get_value rv) y1 ->
       red_expr S C (expr_call_2 rv is_eval_direct e2s y1) o ->
       red_expr S0 C (expr_call_1 (out_ter S rv) is_eval_direct e2s) o
@@ -850,15 +850,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_call_3 rv v is_eval_direct y1) o ->
       red_expr S0 C (expr_call_2 rv is_eval_direct e2s (ret S v)) o
 
-  | red_expr_call_3 : forall l S C o rv v is_eval_direct vs, (* Steps 4-5 *)
+  | red_expr_call_3 : forall l S0 S C o rv v is_eval_direct vs, (* Steps 4-5 *)
       (type_of v <> type_object) \/ (v = value_object l /\ ~ is_callable S l) ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (expr_call_3 rv v is_eval_direct (ret S vs)) o
+      red_expr S0 C (expr_call_3 rv v is_eval_direct (ret S vs)) o
       
-  | red_expr_call_3_callable : forall l S C o rv v is_eval_direct vs, (* Step 5 else *)
+  | red_expr_call_3_callable : forall l S0 S C o rv is_eval_direct vs, (* Step 5 else *)
       is_callable S l ->
       red_expr S C (expr_call_4 rv l is_eval_direct vs) o ->
-      red_expr S C (expr_call_3 rv (value_object l) is_eval_direct (ret S vs)) o
+      red_expr S0 C (expr_call_3 rv (value_object l) is_eval_direct (ret S vs)) o
 
   | red_expr_call_4_prop : forall v S C o r l is_eval_direct vs, (* Step 6a *)
       ref_is_property r -> 
@@ -876,7 +876,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_call_5  l is_eval_direct vs (out_ter S undef)) o ->
       red_expr S C (expr_call_4 (resvalue_value v) l is_eval_direct vs) o
    
-  | red_expr_call_5_eval : forall S0 S C l is_eval_direct vs v o, (* Step 8, special for eval *)
+  | red_expr_call_5_eval : forall S0 S C is_eval_direct vs v o, (* Step 8, special for eval *)
       red_expr S C (spec_call_global_eval is_eval_direct vs) o ->
       red_expr S0 C (expr_call_5 prealloc_global_eval is_eval_direct vs (out_ter S v)) o
    

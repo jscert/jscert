@@ -11,7 +11,7 @@ then
 	then
 		ARGS="${*}"
 	else
-		ARGS="coq/${*}"
+		ARGS="${*}"
 	fi
 else
    ARGS="coq/JsSyntax.v	coq/JsPreliminary.v coq/JsPrettyInterm.v	coq/JsPrettyRules.v coq/JsCorrectness.v coq/JsInit.v"
