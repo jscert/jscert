@@ -538,9 +538,8 @@ with ext_stat :=
   (** Extended statements associated with primitive statements *)
   | stat_expr_1: (specret value) -> ext_stat
 
-  | stat_block_1 : resvalue -> list stat -> ext_stat
-  | stat_block_2 : resvalue -> out -> list stat -> ext_stat
-  | stat_block_3 : out -> list stat -> ext_stat
+  | stat_block_1 : out -> stat -> ext_stat
+  | stat_block_2 : resvalue -> out -> ext_stat
 
   | stat_label_1 : label -> out -> ext_stat
 
@@ -644,9 +643,9 @@ with ext_spec :=
   | spec_convert_twice_2 : value -> out -> ext_spec
 
   (** Extended expressions for lists of expressions *)
-  | spec_list_then : list expr -> ext_spec
-  | spec_list_then_1 : list value -> list expr -> ext_spec
-  | spec_list_then_2 : list value -> (specret value) -> list expr -> ext_spec 
+  | spec_list_expr : list expr -> ext_spec
+  | spec_list_expr_1 : list value -> list expr -> ext_spec
+  | spec_list_expr_2 : list value -> (specret value) -> list expr -> ext_spec 
 
   | spec_to_descriptor : value -> ext_spec
   | spec_to_descriptor_1a : object_loc -> descriptor -> ext_spec
@@ -674,6 +673,8 @@ with ext_spec :=
   | spec_object_get_own_prop_2 : object_loc -> prop_name -> option attributes -> ext_spec
 
   | spec_get_value : resvalue -> ext_spec
+  | spec_get_value_ref_b_1 : out -> ext_spec
+  | spec_get_value_ref_c_1 : out -> ext_spec
 
   (** Shorthand for calling [red_expr] then [ref_get_value] *)
 
@@ -686,6 +687,9 @@ with ext_spec :=
   | spec_lexical_env_get_identifier_ref_1 : env_loc -> lexical_env -> prop_name -> bool -> ext_spec
   | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_spec
 
+  (** Errors in the grammar of spec *) (* LATER: merge *)
+  | spec_error_spec : native_error -> ext_spec
+  | spec_error_spec_1 : out -> ext_spec
 .
 
 
@@ -1164,8 +1168,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_basic _ => None
 
   | stat_block_1 _ _ => None
-  | stat_block_2 _ o _ => Some o
-  | stat_block_3 o _ => Some o
+  | stat_block_2 _ o => Some o
 
   | stat_label_1 _ o => Some o
 
@@ -1257,10 +1260,10 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_convert_twice _ _ => None
   | spec_convert_twice_1 o _ => Some o
   | spec_convert_twice_2 _ o => Some o
-  | spec_list_then _ => None
-  | spec_list_then_1 _ _ => None
-  | spec_list_then_2 _ (specret_out o) _ => Some o
-  | spec_list_then_2 _ (specret_val _ _) _ => None
+  | spec_list_expr _ => None
+  | spec_list_expr_1 _ _ => None
+  | spec_list_expr_2 _ (specret_out o) _ => Some o
+  | spec_list_expr_2 _ (specret_val _ _) _ => None
   | spec_to_descriptor _ => None
   | spec_to_descriptor_1a _ _ => None
   | spec_to_descriptor_1b o _ _ => Some o
@@ -1285,11 +1288,15 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_object_get_own_prop_1 _ _ _ => None
   | spec_object_get_own_prop_2 _ _ _ => None
   | spec_get_value _ => None
+  | spec_get_value_ref_b_1 o => Some o
+  | spec_get_value_ref_c_1 o => Some o
   | spec_expr_get_value _ => None
   | spec_expr_get_value_1 o => Some o
   | spec_lexical_env_get_identifier_ref _ _ _ => None
   | spec_lexical_env_get_identifier_ref_1 _ _ _ _ => None
   | spec_lexical_env_get_identifier_ref_2 _ _ _ _ o => Some o
+  | spec_error_spec _ => None
+  | spec_error_spec_1 o => Some o
   end.
 
 
@@ -1320,9 +1327,9 @@ Inductive abort_intercepted_prog : ext_prog -> Prop :=
       abort_intercepted_prog (prog_2 rv (out_ter S R) els).
 
 Inductive abort_intercepted_stat : ext_stat -> Prop :=
-  | abort_intercepted_stat_block_2 : forall lab S R rv ts,
-      res_type R <> restype_throw ->
-      abort_intercepted_stat (stat_block_2 rv (out_ter S R) ts)
+
+  | abort_intercepted_stat_block_2 : forall S R rv,
+      abort_intercepted_stat (stat_block_2 rv (out_ter S R))
   | abort_intercepted_stat_label_1 : forall lab rv S R,
       R = res_intro restype_break rv lab ->
       abort_intercepted_stat (stat_label_1 lab (out_ter S R))

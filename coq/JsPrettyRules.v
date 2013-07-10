@@ -172,26 +172,27 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** Block statement (12.1)
       -- See also the definition of [abort_intercepted_stat]. *)
 
-  | red_stat_block : forall S C ts o,
-      red_stat S C (stat_block_1 resvalue_empty ts) o ->
-      red_stat S C (stat_block ts) o
+  | red_stat_block_nil : forall S C, (* empty block, step 1 *)
+      red_stat S C (stat_block nil) (out_ter S resvalue_empty)
 
-  | red_stat_block_1_nil : forall S C rv,
-      red_stat S C (stat_block_1 rv nil) (out_ter S rv)
+  | red_stat_block_cons : forall S C rv t ts o1 o, (* step 1, and 2 (via abort rule) *)
+      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_block_1 o1 t) o ->
+      red_stat S C (stat_block (ts++(t::nil))) o
 
-  | red_stat_block_1_cons : forall S C rv t ts o1 o,
+  | red_stat_block_1 : forall S0 S C t rv o o1, (* step 3 *)
       red_stat S C t o1 ->
-      red_stat S C (stat_block_2 rv o1 ts) o ->
-      red_stat S C (stat_block_1 rv (t::ts)) o
+      red_stat S C (stat_block_2 rv o1) o ->
+      red_stat S0 C (stat_block_1 (out_ter S rv) t) o
 
-  | red_stat_block_2 : forall S0 S C ts R rv o,
+  | red_stat_block_2_throw : forall S0 S C R rv, (* step 4 *)
+      res_type R = restype_throw ->
+      red_stat S0 C (stat_block_2 rv (out_ter S R)) (out_ter S (res_throw (res_value R)))
+
+  | red_stat_block_2_not_throw : forall S0 S C R R' rv, (* steps 5 and 6 *)
       res_type R <> restype_throw ->
-      red_stat S C (stat_block_3 (out_ter S (res_overwrite_value_if_empty rv R)) ts) o ->
-      red_stat S0 C (stat_block_2 rv (out_ter S R) ts) o
-
-  | red_stat_block_3 : forall S0 S C ts rv o,
-      red_stat S C (stat_block_1 rv ts) o ->
-      red_stat S0 C (stat_block_3 (out_ter S rv) ts) o
+      R' = (res_overwrite_value_if_empty rv R) ->
+      red_stat S0 C (stat_block_2 rv (out_ter S R)) (out_ter S R')
 
   (** Variable declaration (12.2) *)
 
@@ -401,7 +402,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_with_1 t2 y1) o ->
       red_stat S C (stat_with e1 t2) o
 
-  | red_stat_with_1 : forall S0 S S' C t2 l o lex lex' s' C',
+  | red_stat_with_1 : forall S0 S S' C t2 l o lex lex' C',
       lex = execution_ctx_lexical_env C ->
       (lex',S') = lexical_env_alloc_object S lex l provide_this_true ->
       C' = execution_ctx_with_lex_this C lex' l ->
@@ -774,7 +775,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
   
-  | red_expr_object_4 : forall S S0 C A l x pds o o1,
+  | red_expr_object_4 : forall S C A l x pds o o1,
       red_expr S C (spec_object_define_own_prop l x A false) o1 ->
       red_expr S C (expr_object_5 l pds o1) o ->
       red_expr S C (expr_object_4 l x A pds) o
@@ -823,7 +824,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_new e1 e2s) o
 
   | red_expr_new_1 : forall S0 S C e2s v y1 o, (* Step 3 *)
-      red_spec S C (spec_list_then e2s) y1 ->
+      red_spec S C (spec_list_expr e2s) y1 ->
       red_expr S C (expr_new_2 v y1) o ->
       red_expr S0 C (expr_new_1 (ret S v) e2s) o
 
@@ -849,7 +850,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_call_1 (out_ter S rv) is_eval_direct e2s) o
  
   | red_expr_call_2 : forall S0 S C rv v e2s is_eval_direct y1 o, (* Step 3 *)
-      red_spec S C (spec_list_then e2s) y1 ->
+      red_spec S C (spec_list_expr e2s) y1 ->
       red_expr S C (expr_call_3 rv v is_eval_direct y1) o ->
       red_expr S0 C (expr_call_2 rv is_eval_direct e2s (ret S v)) o
 
@@ -1291,7 +1292,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_conditional_1 y1 e2 e3) o ->
       red_expr S C (expr_conditional e1 e2 e3) o
 
-  | red_expr_conditional_1 : forall S0 S C v e b e2 e3 y1 o,
+  | red_expr_conditional_1 : forall S0 S C e b e2 e3 y1 o,
       e = (If b = true then e2 else e3) ->
       red_spec S C (spec_expr_get_value e) y1 ->
       red_expr S C (expr_conditional_2 y1) o ->
@@ -3862,8 +3863,9 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S0 C (spec_expr_get_value_conv_2 o1) y ->
       red_spec S0 C (spec_expr_get_value_conv_1 K (ret S v)) y
 
-  | red_spec_expr_get_value_conv_2 : forall S0 S C v (y:specret value),
+  | red_spec_expr_get_value_conv_2 : forall S0 S C v,
       red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v)
+
 
 
 (*
@@ -3883,29 +3885,29 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** Reduction of lists of expressions *)
 
-  | red_spec_list_then : forall S C es (y:specret (list value)),
-      red_spec S C (spec_list_then_1 nil es) y ->
-      red_spec S C (spec_list_then es) y
+  | red_spec_list_expr : forall S C es (y:specret (list value)),
+      red_spec S C (spec_list_expr_1 nil es) y ->
+      red_spec S C (spec_list_expr es) y
 
-  | red_spec_list_then_1_nil : forall S C vs,
-      red_spec S C (spec_list_then_1 vs nil) (ret S vs)
+  | red_spec_list_expr_1_nil : forall S C vs,
+      red_spec S C (spec_list_expr_1 vs nil) (ret S vs)
 
-  | red_spec_list_then_1_cons : forall S C vs es e o1 (y:specret (list value)) (y1:specret value),
+  | red_spec_list_expr_1_cons : forall S C vs es e y1 (y:specret (list value)),
       red_spec S C (spec_expr_get_value e) y1 ->
-      red_spec S C (spec_list_then_2 vs y1 es) y ->
-      red_spec S C (spec_list_then_1 vs (e::es)) y
+      red_spec S C (spec_list_expr_2 vs y1 es) y ->
+      red_spec S C (spec_list_expr_1 vs (e::es)) y
 
-  | red_spec_list_then_2 : forall S0 S C v vs es (y:specret (list value)),
-      red_spec S C (spec_list_then_1 (vs&v) es) y ->
-      red_spec S0 C (spec_list_then_2 vs (ret S v) es) y
+  | red_spec_list_expr_2 : forall S0 S C v vs es (y:specret (list value)),
+      red_spec S C (spec_list_expr_1 (vs&v) es) y ->
+      red_spec S0 C (spec_list_expr_2 vs (ret S v) es) y
 
   (** ToPropertyDescriptor ( Obj ) - (passes a Descriptor to the continuation) (8.10.5) *)    
   (* TODO: make "o1" be last argument of the intermediate forms *)
 
-  | red_spec_to_descriptor_not_object : forall S C v o, (* Step 1 *)
+  | red_spec_to_descriptor_not_object : forall S C v (y:specret descriptor), (* Step 1 *)
       type_of v <> type_object ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S C (spec_to_descriptor v) (ret S o)
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S C (spec_to_descriptor v) y
 
   | red_spec_to_descriptor_object : forall S C l xs x Desc (y:specret descriptor), (* Step 2 *)
       Desc = descriptor_intro_empty ->
@@ -4005,10 +4007,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_5c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_5b (out_ter S true) l Desc) y 
 
-  | red_spec_to_descriptor_5c_error : forall S0 S C o o1 l v Desc, (* step 7b *)
+  | red_spec_to_descriptor_5c_error : forall S0 S C l v Desc (y:specret descriptor), (* step 7b *)
       ((is_callable S v = false) /\ (v <> undef)) ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S0 C (spec_to_descriptor_5c (out_ter S v) l Desc) (ret S0 o) 
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S0 C (spec_to_descriptor_5c (out_ter S v) l Desc) y
 
   | red_spec_to_descriptor_5c_ok : forall S0 S C l v Desc Desc' (y:specret descriptor), (* step 7c *)
       ~ ((is_callable S v = false) /\ (v <> undef)) ->
@@ -4030,10 +4032,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_6c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_6b (out_ter S true) l Desc) y 
 
-  | red_spec_to_descriptor_6c_error : forall S0 S C o o1 l v Desc, (* step 8b *)
+  | red_spec_to_descriptor_6c_error : forall S0 S C l v Desc (y:specret descriptor), (* step 8b *)
       ((is_callable S v = false) /\ (v <> undef)) ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) (ret S0 o) 
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) y
 
   | red_spec_to_descriptor_6c_ok : forall S0 S C l v Desc Desc' (y:specret descriptor), (* step 8c *)
       ~ ((is_callable S v = false) /\ (v <> undef)) ->
@@ -4041,10 +4043,10 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_7 l Desc') y ->
       red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) y 
 
-  | red_spec_to_descriptor_7_error : forall S C o l Desc, (* step 9 *)
+  | red_spec_to_descriptor_7_error : forall S C l Desc (y:specret descriptor), (* step 9 *)
       descriptor_inconsistent Desc ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_spec S C (spec_to_descriptor_7 l Desc) (ret S o)
+      red_spec S C (spec_error_spec native_error_type) y ->
+      red_spec S C (spec_to_descriptor_7 l Desc) y
 
   | red_spec_to_descriptor_7_ok : forall S C o l Desc, (* step 10 *)
       ~ descriptor_inconsistent Desc ->
@@ -4074,24 +4076,32 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_ref_get_value_value : forall S C v, (* Step 1 *)
       red_spec S C (spec_get_value v) (ret S v)
 
-  | red_spec_ref_get_value_ref_a : forall S C r o, (* Steps 2 and 3 *)
+  | red_spec_ref_get_value_ref_a : forall S C r (y:specret value), (* Steps 2 and 3 *)
       ref_is_unresolvable r ->
-      red_expr S C (spec_error native_error_ref) o ->
-      red_spec S C (spec_get_value r) (ret S o)
+      red_spec S C (spec_error_spec native_error_ref) y ->
+      red_spec S C (spec_get_value r) y
 
-  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o, (* Steps 2 and 4 *)
+  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o1 (y:specret value), (* Steps 2 and 4 *)
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
       ext_get = (If ref_has_primitive_base r
         then spec_prim_value_get
         else spec_object_get) -> (* It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
-      red_expr S C (ext_get v (ref_name r)) o ->
-      red_spec S C (spec_get_value r) (ret S o)
+      red_expr S C (ext_get v (ref_name r)) o1 ->
+      red_spec S C (spec_get_value_ref_b_1 o1) y ->
+      red_spec S C (spec_get_value r) y
+      
+  | red_spec_ref_get_value_ref_b_1 : forall S0 S C v,  (* LATER: could be made a generic conversion rule *)
+      red_spec S0 C (spec_get_value_ref_b_1 (out_ter S v)) (ret S v)
 
-  | red_spec_ref_get_value_ref_c : forall L S C r o, (* Step 5. *)
+  | red_spec_ref_get_value_ref_c : forall L S C r o1 (y:specret value), (* Step 5. *)
       ref_base r = ref_base_type_env_loc L ->
-      red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o ->
-      red_spec S C (spec_get_value r) (ret S o)
+      red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o1 ->
+      red_spec S C (spec_get_value_ref_c_1 o1) y ->
+      red_spec S C (spec_get_value r) y
+
+  | red_spec_ref_get_value_ref_c_1 : forall S0 S C v, (* LATER: could be made a generic conversion rule *)
+      red_spec S0 C (spec_get_value_ref_c_1 (out_ter S v)) (ret S v)
 
   (** Auxiliary: [spec_expr_get_value] as a combination of [red_expr] and [get_value] *)
 
@@ -4130,6 +4140,14 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x str S (y:specret ref),
       red_spec S C (spec_lexical_env_get_identifier_ref lexs x str) y ->
       red_spec S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S false)) y
+
+
+  (** Throw an error *) (* LATER:merge *)
+
+  | red_spec_error_spec : forall T S C ne o1 (y:specret T), 
+      red_expr S C (spec_error ne) o1 ->
+      red_spec S C (spec_error_spec_1 o1) y ->
+      red_spec S C (spec_error_spec ne) y 
 
 .
 
