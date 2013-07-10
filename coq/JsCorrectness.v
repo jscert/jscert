@@ -2151,13 +2151,14 @@ Proof.
    applys* run_object_method_correct. clear E.
   destruct B; tryfalse.
   run red_spec_object_delete_1_default. destruct a.
-    run_inv. applys red_spec_object_delete_2_undef.
+    run_inv. applys red_spec_object_delete_2_undef. (* This rule is erroneous, the conclusion should contains [S0] instead [S]. *)
     case_if.
       run. forwards B: @pick_option_correct (rm E).
         applys_eq* red_spec_object_delete_2_some_configurable 1.
           skip. (* will go *)
           skip. (* even problem *)
           skip. (* even problem *)
+          skip. (* Added for compilation. *)
       applys* red_spec_object_delete_3_some_non_configurable.
        applys* out_error_or_cst_correct.
 Admitted.
