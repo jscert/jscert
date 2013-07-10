@@ -90,7 +90,11 @@ let _ =
             (JsInterpreter.runs max_int)
             exp'
     with
-    | JsInterpreter.Coq_result_some o ->
+    | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
+		print_endline "\n\nA `nothing' object has been created.\n" ;
+		print_endline "\n\nFIXME:  this should be impossible!\n" ;
+		exit_if_test ()
+    | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_out o) ->
        begin
          match o with
          | JsSyntax.Coq_out_ter (state, res) ->
