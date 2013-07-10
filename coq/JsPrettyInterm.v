@@ -643,9 +643,9 @@ with ext_spec :=
   | spec_convert_twice_2 : value -> out -> ext_spec
 
   (** Extended expressions for lists of expressions *)
-  | spec_list_then : list expr -> ext_spec
-  | spec_list_then_1 : list value -> list expr -> ext_spec
-  | spec_list_then_2 : list value -> (specret value) -> list expr -> ext_spec 
+  | spec_list_expr : list expr -> ext_spec
+  | spec_list_expr_1 : list value -> list expr -> ext_spec
+  | spec_list_expr_2 : list value -> (specret value) -> list expr -> ext_spec 
 
   | spec_to_descriptor : value -> ext_spec
   | spec_to_descriptor_1a : object_loc -> descriptor -> ext_spec
@@ -1167,12 +1167,8 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_expr_1 (specret_val _ _) => None
   | stat_basic _ => None
 
-  | stat_block_1 _ => None
-  | stat_block_1_1 o => Some o
-  | stat_block_2 o _ => Some o
-  | stat_block_3 _ o => Some o
-
-
+  | stat_block_1 _ _ => None
+  | stat_block_2 _ o => Some o
 
   | stat_label_1 _ o => Some o
 
@@ -1264,10 +1260,10 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_convert_twice _ _ => None
   | spec_convert_twice_1 o _ => Some o
   | spec_convert_twice_2 _ o => Some o
-  | spec_list_then _ => None
-  | spec_list_then_1 _ _ => None
-  | spec_list_then_2 _ (specret_out o) _ => Some o
-  | spec_list_then_2 _ (specret_val _ _) _ => None
+  | spec_list_expr _ => None
+  | spec_list_expr_1 _ _ => None
+  | spec_list_expr_2 _ (specret_out o) _ => Some o
+  | spec_list_expr_2 _ (specret_val _ _) _ => None
   | spec_to_descriptor _ => None
   | spec_to_descriptor_1a _ _ => None
   | spec_to_descriptor_1b o _ _ => Some o

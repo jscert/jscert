@@ -172,7 +172,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** Block statement (12.1)
       -- See also the definition of [abort_intercepted_stat]. *)
 
-  | red_stat_block_nil : forall S C ts o, (* empty block, step 1 *)
+  | red_stat_block_nil : forall S C, (* empty block, step 1 *)
       red_stat S C (stat_block nil) (out_ter S resvalue_empty)
 
   | red_stat_block_cons : forall S C rv t ts o1 o, (* step 1, and 2 (via abort rule) *)
@@ -824,7 +824,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_new e1 e2s) o
 
   | red_expr_new_1 : forall S0 S C e2s v y1 o, (* Step 3 *)
-      red_spec S C (spec_list_then e2s) y1 ->
+      red_spec S C (spec_list_expr e2s) y1 ->
       red_expr S C (expr_new_2 v y1) o ->
       red_expr S0 C (expr_new_1 (ret S v) e2s) o
 
@@ -850,7 +850,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (expr_call_1 (out_ter S rv) is_eval_direct e2s) o
  
   | red_expr_call_2 : forall S0 S C rv v e2s is_eval_direct y1 o, (* Step 3 *)
-      red_spec S C (spec_list_then e2s) y1 ->
+      red_spec S C (spec_list_expr e2s) y1 ->
       red_expr S C (expr_call_3 rv v is_eval_direct y1) o ->
       red_expr S0 C (expr_call_2 rv is_eval_direct e2s (ret S v)) o
 
@@ -3885,21 +3885,21 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** Reduction of lists of expressions *)
 
-  | red_spec_list_then : forall S C es (y:specret (list value)),
-      red_spec S C (spec_list_then_1 nil es) y ->
-      red_spec S C (spec_list_then es) y
+  | red_spec_list_expr : forall S C es (y:specret (list value)),
+      red_spec S C (spec_list_expr_1 nil es) y ->
+      red_spec S C (spec_list_expr es) y
 
-  | red_spec_list_then_1_nil : forall S C vs,
-      red_spec S C (spec_list_then_1 vs nil) (ret S vs)
+  | red_spec_list_expr_1_nil : forall S C vs,
+      red_spec S C (spec_list_expr_1 vs nil) (ret S vs)
 
-  | red_spec_list_then_1_cons : forall S C vs es e o1 (y:specret (list value)) (y1:specret value),
+  | red_spec_list_expr_1_cons : forall S C vs es e o1 (y:specret (list value)) (y1:specret value),
       red_spec S C (spec_expr_get_value e) y1 ->
-      red_spec S C (spec_list_then_2 vs y1 es) y ->
-      red_spec S C (spec_list_then_1 vs (e::es)) y
+      red_spec S C (spec_list_expr_2 vs y1 es) y ->
+      red_spec S C (spec_list_expr_1 vs (e::es)) y
 
-  | red_spec_list_then_2 : forall S0 S C v vs es (y:specret (list value)),
-      red_spec S C (spec_list_then_1 (vs&v) es) y ->
-      red_spec S0 C (spec_list_then_2 vs (ret S v) es) y
+  | red_spec_list_expr_2 : forall S0 S C v vs es (y:specret (list value)),
+      red_spec S C (spec_list_expr_1 (vs&v) es) y ->
+      red_spec S0 C (spec_list_expr_2 vs (ret S v) es) y
 
   (** ToPropertyDescriptor ( Obj ) - (passes a Descriptor to the continuation) (8.10.5) *)    
   (* TODO: make "o1" be last argument of the intermediate forms *)

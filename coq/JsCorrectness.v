@@ -1780,10 +1780,10 @@ Admitted.
 Lemma run_list_expr_correct : forall runs S C es y,
   runs_type_correct runs ->
   run_list_expr runs S C nil es = result_some y ->
-  red_spec S C (spec_list_then es) y.
+  red_spec S C (spec_list_expr es) y.
 Proof.
   introv IH HR.
-  apply red_spec_list_then.
+  apply red_spec_list_expr.
   gen HR. generalize (@nil value) as rv. gen S es.
   induction es; introv HR.
   simpls. unfolds in HR. run_inv. skip. skip.
