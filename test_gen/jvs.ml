@@ -15,10 +15,29 @@ let literals tab = function
   | StringLiteral s -> "\034" ^ s ^ "\034"
   | RegularExpressionLiteral -> "null";;
 
-let rtarget = function
-  | Ident s -> s
-  | EmptyTarget -> "";;
+let primary = function
+  | Undefined -> "Undefined"
+  | Null -> "Null"
+  | Boolean b -> Printf.sprintf "Boolean %s" (if b then "true" else "false")
+  | Number f -> Printf.sprintf "Number %f" f
+  | String s -> Printf.sprintf "String %s" s
+  | _ -> failwith "primary";;
 
+let rtype = function
+  | Normal -> "Normal"
+  | Break -> "Break"
+  | Continue -> "Continue"
+  | Return -> "Return"
+  | Throw -> "Throw";;
+  
+let rvalue = function
+  | EmptyValue -> "EmptyValue"
+  | Value p -> Printf.sprintf "Value %s" (primary p)
+  | Reference r -> Printf.sprintf "Reference %s" r.name;;
+
+let rtarget = function
+  | Ident s -> Printf.sprintf "Ident %s" s
+  | EmptyTarget -> "EmptyTarget";;
 
 (* Expressions *)
 
@@ -101,3 +120,6 @@ and statement tab = function
   | ThrowStatement e -> Printf.sprintf "%sthrow %s" tab (expression (tab ^ tb) e)
   | TryStatement t -> (try_statement (tab ^ tb) t)
   | DebuggerStatement -> "DebuggerStatement";;
+
+let result res = Printf.sprintf "//{type = %s; value = %s; target = %s}"
+  (rtype res.rtype) (rvalue res.rvalue) (rtarget res.rtarget);;
