@@ -6,13 +6,6 @@ Require Import JsInterpreter JsPrettyInterm JsPrettyRules.
 
 
 
-Axiom red_expr_conditional_1 : forall S0 S C e b e2 e3 y1 o,
-      e = (If b = true then e2 else e3) ->
-      red_spec S C (spec_expr_get_value e) y1 ->
-      red_expr S C (expr_conditional_2 y1) o ->
-      red_expr S0 C (expr_conditional_1 (vret S b) e2 e3) o.
-
-
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -1097,96 +1090,6 @@ Tactic Notation "runs" "*" :=
 *)
 
 
-
-(************************************************************)
-(* Treatement of [spec_expr_get_value_conv] *)
-
-Definition if_spec_ter_post_bool (K:state->bool->result) o (y:specret value) :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (b:bool), y = specret_val S (value_prim b)
-       /\ K S b = result_some o).
-
-Ltac run_post_if_spec_ter_post_bool H := (* todo: integrate into run_post *)
-  let Ab := fresh "Ab" in
-  let Eq := fresh "Eq" in
-  let S1 := fresh "S" in
-  let b := fresh "b" in
-  let O1 := fresh "O1" in
-  destruct H as [(Er&Ab)|(S1&b&O1&H)];
-  [ try abort | try subst_hyp O1 ].
-
-
-
-(* todo: backport *)
-Axiom red_spec_expr_get_value_conv_2 : forall S0 S C v,
-      red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v).
-
-
-
-
-Lemma if_spec_ter_post_to_bool : forall (K:state->bool->result) S C e o y1,
-  red_spec S C (spec_expr_get_value e) y1 ->
-  if_spec_ter_post 
-   (fun S v => Let b := convert_value_to_boolean v in K S b) o y1 ->
-  exists y2,
-     red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y2
-  /\ if_spec_ter_post_bool K o y2.
-Proof. 
-  introv HR HP. run_post. 
-  exists y1. splits.
-    subst. apply* red_spec_expr_get_value_conv. abort.
-    subst. left. splits~.
-  exists (specret_val S1 (value_prim (convert_value_to_boolean a))). splits.
-    applys* red_spec_expr_get_value_conv.
-     applys* red_spec_expr_get_value_conv_1.
-     applys* red_spec_to_boolean.
-     applys* red_spec_expr_get_value_conv_2.
-    right. exists S1 __. split. reflexivity. auto.
-Qed.
-
-(************************************************************)
-(* -- DEPRECATED Treatement of [spec_expr_get_value_conv] 
- 
-Definition if_spec_ter_post_bool (K1 K2:state->result) o (y:specret value) :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (b:bool), y = specret_val S (value_prim b) /\
-       (   (b = true /\ K1 S = result_some o)
-        \/ (b = false /\ K2 S = result_some o))).
-
-Ltac run_post_if_spec_ter_post_bool H := (* todo: integrate into run_post *)
-  let Ab := fresh "Ab" in
-  let Eq := fresh "Eq" in
-  let S1 := fresh "S" in
-  let b := fresh "b" in
-  let O1 := fresh "O1" in
-  let EB := fresh "EB" in
-  destruct H as [(Er&Ab)|(S1&b&O1&[(EB&H)|(EB&H)])];
-  [ try abort
-  | try subst_hyp O1; try subst_hyp EB
-  | try subst_hyp O1; try subst_hyp EB ].
-
-Lemma if_spec_ter_post_to_bool : forall (K1 K2:state->result) S C e o y1,
-  red_spec S C (spec_expr_get_value e) y1 ->
-  if_spec_ter_post 
-   (fun S v => if convert_value_to_boolean v then K1 S else K2 S) o y1 ->
-  exists y2,
-     red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y2
-  /\ if_spec_ter_post_bool K1 K2 o y2.
-Proof. 
-  introv HR HP. run_post. 
-  exists y1. splits.
-    subst. apply* red_spec_expr_get_value_conv. abort.
-    subst. left. splits~.
-  exists (specret_val S1 (value_prim (convert_value_to_boolean a))). splits.
-    applys* red_spec_expr_get_value_conv.
-     applys* red_spec_expr_get_value_conv_1.
-     applys* red_spec_to_boolean.
-     applys* red_spec_expr_get_value_conv_2.
-    right. exists S1 __. split. reflexivity.
-     destruct (convert_value_to_boolean a); inverts* HP.
-Qed.
-*)
-
 (************************************************************)
 (* ** Correctness Lemmas *)
 
@@ -1635,16 +1538,86 @@ Admitted.
 *)
 
 
+
+
+(************************************************************)
+(* Treatement of [spec_expr_get_value_conv] *)
+
+Definition if_spec_ter_post_bool (K:state->bool->result) o (y:specret value) :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (b:bool), y = specret_val S (value_prim b)
+       /\ K S b = result_some o).
+
+Ltac run_post_if_spec_ter_post_bool H := (* todo: integrate into run_post *)
+  let Ab := fresh "Ab" in
+  let Eq := fresh "Eq" in
+  let S1 := fresh "S" in
+  let b := fresh "b" in
+  let O1 := fresh "O1" in
+  destruct H as [(Er&Ab)|(S1&b&O1&H)];
+  [ try abort | try subst_hyp O1 ].
+
+Lemma if_spec_ter_post_to_bool : forall (K:state->bool->result) S C e o y1,
+  red_spec S C (spec_expr_get_value e) y1 ->
+  if_spec_ter_post 
+   (fun S v => Let b := convert_value_to_boolean v in K S b) o y1 ->
+  exists y2,
+     red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y2
+  /\ if_spec_ter_post_bool K o y2.
+Proof. 
+  introv HR HP. run_post. 
+  exists y1. splits.
+    subst. apply* red_spec_expr_get_value_conv. abort.
+    subst. left. splits~.
+  exists (specret_val S1 (value_prim (convert_value_to_boolean a))). splits.
+    applys* red_spec_expr_get_value_conv.
+     applys* red_spec_expr_get_value_conv_1.
+     applys* red_spec_to_boolean.
+     applys* red_spec_expr_get_value_conv_2.
+    right. exists S1 __. split. reflexivity. auto.
+Qed.
+
+(* LATER: avoid the copy-paste, and rename the tactic *)
+
+Definition if_spec_ter_post_object (K:state->object_loc->result) o (y:specret value) :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (l:object_loc), y = specret_val S (value_object l)
+       /\ K S l = result_some o).
+
+
+Lemma if_spec_ter_post_to_object : forall (K:state->object_loc->result) S C e o y1,
+  red_spec S C (spec_expr_get_value e) y1 ->
+  if_spec_ter_post 
+   (fun S v => if_object (to_object S v) K) o y1 ->
+  exists y2,
+     red_spec S C (spec_expr_get_value_conv spec_to_object e) y2
+  /\ if_spec_ter_post_object K o y2.
+Proof. 
+  introv HR HP. run_post. 
+  exists y1. splits.
+    subst. apply* red_spec_expr_get_value_conv. abort.
+    subst. left. splits~.
+  run_pre. lets*: to_object_correct C (rm R1). run_post.
+    subst. exists (specret_out (T:=value) o1). split.
+      applys* red_spec_expr_get_value_conv. 
+       applys* red_spec_expr_get_value_conv_1. abort. 
+      left. splits~.
+    exists (specret_val S0 (value_object l)). split.
+      applys* red_spec_expr_get_value_conv. 
+       applys* red_spec_expr_get_value_conv_1.
+       applys* red_spec_expr_get_value_conv_2.
+      right. exists___*.
+Qed.
+
+
+
+
 (**************************************************************)
 (* Auxiliary results for [spec_expr_get_value_conv] *)
 
-Definition eqspecabort' T (y1:specret T) o :=
-  exists o1, y1 = specret_out o1 /\ eqabort o1 o.
 
 
 Hint Unfold eqabort. (* todo move *)
-
-
 
 
 Lemma run_construct_prealloc_correct : forall runs S C B args o,
@@ -2108,6 +2081,20 @@ Proof.
 Qed.
 
 
+Definition run_stat_if' runs S C e1 t2 to : result :=
+  if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
+    Let b := convert_value_to_boolean v1 in
+    if b then
+      runs_type_stat runs S1 C t2
+    else
+      match to with
+      | Some t3 =>
+        runs_type_stat runs S1 C t3
+      | None =>
+        out_ter S1 resvalue_empty
+      end).
+
+
 
 Lemma run_stat_correct : forall runs,
   runs_type_correct runs ->
@@ -2133,30 +2120,25 @@ Proof.
   (* Variable declaration *)
   applys* run_var_decl_correct.
   (* If *)
+  skip_rewrite (run_stat_if = run_stat_if') in R.
   unfolds in R.
-
-  (* TODO : Wait until "get_value_conv" is specified 
-  run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
-  *)
-  skip.
-  (*
-  applys* red_stat_if (rm R2). run_post_expr_get_value_bool K.
-    applys* red_stat_if_1_true. 
-    destruct o0.
-      applys* red_stat_if_1_false. 
-      run_inv. applys* red_stat_if_1_false_implicit.
-      *)
+  run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
+   applys* red_stat_if (rm R2). run_post_if_spec_ter_post_bool K.
+   case_if.
+     applys* red_stat_if_1_true.
+     destruct t2o.
+       applys* red_stat_if_1_false. 
+       run_inv. applys* red_stat_if_1_false_implicit.
   (* Do-while *)
   skip. (* TODO: wait until fixed.*)
   (* While *)
   apply~ red_stat_while. applys* runs_type_correct_stat_while.
   (* With *)
-  unfolds in R. skip. (*run red_stat_with.
-    applys* red_spec_expr_get_value_conv R1. destruct o1.
-      skip.
-      skip.
-    skip.
-    *)
+  unfolds in R.
+  run_pre. lets (y1&R2&K): if_spec_ter_post_to_object (rm R1) (rm R).
+   applys* red_stat_with (rm R2). run_post_if_spec_ter_post_bool K.
+  let_name. let_name. destruct p as [lex' S3]. let_name.
+  subst lex. applys* red_stat_with_1. subst C'. run_hyp*.
   (* Throw *)
   skip. (* OLD:
     unfolds in R. unmonad.
@@ -2231,7 +2213,7 @@ Proof.
   (* Debugger *)
   run_inv. apply red_stat_debugger.
   (* switch *)
-  skip. (* TODO *)
+  skip. (* TODO: wait for switch semantics to be double check *)
 Admitted.
 
 Lemma run_prog_correct : forall runs,

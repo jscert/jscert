@@ -401,7 +401,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_with_1 t2 y1) o ->
       red_stat S C (stat_with e1 t2) o
 
-  | red_stat_with_1 : forall S0 S S' C t2 l o lex lex' s' C',
+  | red_stat_with_1 : forall S0 S S' C t2 l o lex lex' C',
       lex = execution_ctx_lexical_env C ->
       (lex',S') = lexical_env_alloc_object S lex l provide_this_true ->
       C' = execution_ctx_with_lex_this C lex' l ->
@@ -1291,7 +1291,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_conditional_1 y1 e2 e3) o ->
       red_expr S C (expr_conditional e1 e2 e3) o
 
-  | red_expr_conditional_1 : forall S0 S C v e b e2 e3 y1 o,
+  | red_expr_conditional_1 : forall S0 S C e b e2 e3 y1 o,
       e = (If b = true then e2 else e3) ->
       red_spec S C (spec_expr_get_value e) y1 ->
       red_expr S C (expr_conditional_2 y1) o ->
@@ -3862,8 +3862,9 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S0 C (spec_expr_get_value_conv_2 o1) y ->
       red_spec S0 C (spec_expr_get_value_conv_1 K (ret S v)) y
 
-  | red_spec_expr_get_value_conv_2 : forall S0 S C v (y:specret value),
+  | red_spec_expr_get_value_conv_2 : forall S0 S C v,
       red_spec S0 C (spec_expr_get_value_conv_2 (out_ter S v)) (vret S v)
+
 
 
 (*
