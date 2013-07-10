@@ -656,37 +656,51 @@ Ltac run_select_extra T ::=
 (** [run_select_proj] is used to obtain automatically
     the right correctness lemma out of the correctness record *)
  
-Ltac run_select_proj_extra_1 T := fail.
-Ltac run_select_proj_extra_2 T := fail.
-Ltac run_select_proj_extra_3 T := fail.
-Ltac run_select_proj_extra_4 T := fail.
+Ltac run_select_proj_extra_1 HT := fail.
+Ltac run_select_proj_extra_2 HT := fail.
+Ltac run_select_proj_extra_3 HT := fail.
+Ltac run_select_proj_extra_4 HT := fail.
 
 Ltac run_select_proj H :=
-  match type of H with ?T = _ =>
-  match T with
-  | runs_type_expr _ _ _ _ => constr:(runs_type_correct_expr)
-  | runs_type_stat _ _ _ _ => constr:(runs_type_correct_stat)
-  | runs_type_prog _ _ _ _ => constr:(runs_type_correct_prog)
-  | ?x => run_select_proj_extra_1 T
-  | ?x => run_select_proj_extra_2 T
-  | ?x => run_select_proj_extra_3 T
-  | ?x => run_select_proj_extra_4 T
+  match type of H with ?T = _ => let HT := get_head T in
+  match HT with
+  | runs_type_expr => constr:(runs_type_correct_expr)
+  | runs_type_stat => constr:(runs_type_correct_stat)
+  | runs_type_prog => constr:(runs_type_correct_prog)
+  | ?x => run_select_proj_extra_1 HT
+  | ?x => run_select_proj_extra_2 HT
+  | ?x => run_select_proj_extra_3 HT
+  | ?x => run_select_proj_extra_4 HT
   end end.
 
-(** [run_hyp_select_ind_hyp] returns the induction hypothesis
-    on [runs_type_correct] *)
+(** [prove_runs_type_correct] discharges the trivial goal
+    that consists in invoking the induction hypothesis*)
 
-Ltac run_hyp_select_ind_hyp tt :=
-  match goal with IH: runs_type_correct _ |- _ => constr:(IH) end.
+Ltac prove_runs_type_correct :=
+  match goal with |- runs_type_correct _ => assumption end.
 
 (* [run_hyp H] exploits the induction hypothesis
    on [runs_type_correct] to the hypothesis [H] *)
 
 Ltac run_hyp_core H R :=
   let H' := fresh in rename H into H';
-  let IH := run_hyp_select_ind_hyp tt in
+  let Proj := run_select_proj H' in
+  lets R: Proj (rm H');
+  try prove_runs_type_correct.
+
+(** [select_ind_hyp] returns the induction hypothesis
+    on [runs_type_correct] *)
+
+Ltac select_ind_hyp tt :=
+  match goal with IH: runs_type_correct _ |- _ => constr:(IH) end.
+
+(* old run_hyp H:
+Ltac run_hyp_core H R :=
+  let H' := fresh in rename H into H';
+  let IH := select_ind_hyp tt in
   let Proj := run_select_proj H' in
   lets R: Proj IH (rm H').
+*)
 
 Tactic Notation "run_hyp" hyp(H) "as" simple_intropattern(R) :=
   run_hyp_core H R.
@@ -704,11 +718,6 @@ Tactic Notation "run_hyp" "*" hyp(H) :=
 Tactic Notation "run_hyp" "*" :=
   run_hyp; auto*.
 
-(** [prove_runs_type_correct] discharges the trivial goal
-    that consists in invoking the induction hypothesis*)
-
-Ltac prove_runs_type_correct :=
-  match goal with |- runs_type_correct _ => assumption end.
 
 (* [run_pre] exploits the appropriate "out" lemma, whether it comes
    from the correctness record or it is an auxiliary lemma. *)
@@ -839,6 +848,8 @@ Ltac run_inv :=
   match goal with
   | H: resvalue_value ?v = resvalue_value ?v |- _ => clear H
   | H: resvalue_value _ = resvalue_value _ |- _ => inverts H
+  | H: res_spec _ _ = _ |- _ => unfold res_spec in H
+  | H: _ = res_spec _ _ |- _ => unfold res_spec in H
   | H: result_some ?o = result_some ?o |- _ => clear H
   | H: result_some _ = result_some _ |- _ => inverts H
   | H: out_ter ?S ?R = out_ter ?S ?R |- _ => clear H
@@ -1028,6 +1039,13 @@ Proof.
   introv R. unfolds in R. run_pre as o1 R1. forwards R0: build_error_correct (rm R1).
   applys_and red_spec_error R0. run_post. splits~. abort. run_inv. splits; [|prove_abort].
   apply~ red_spec_error_1.
+Qed.
+
+Lemma run_error_correct' : forall S ne o C,
+  run_error S ne = o ->
+  red_expr S C (spec_error ne) o.
+Proof.
+  intros. applys* run_error_correct.
 Qed.
 
 Ltac run_simpl_run_error H T K ::=
@@ -1263,11 +1281,13 @@ Lemma run_expr_get_value_correct : forall runs S C e y,
 Admitted.
 
 
-Ltac run_select_proj_extra_1 T ::= 
-  match T with
-  | object_put _ _ _ _ _ _ _ => constr:(object_put_correct)
-  | ref_put_value _ _ _ _ _ => constr:(ref_put_value_correct)
-  | run_expr_get_value _ _ _ _ => constr:(run_expr_get_value_correct)
+Ltac run_select_proj_extra_1 HT ::= 
+  match HT with
+  | run_error => constr:(run_error_correct')
+  | run_object_method => constr:(run_object_method_correct)
+  | object_put => constr:(object_put_correct)
+  | ref_put_value => constr:(ref_put_value_correct)
+  | run_expr_get_value => constr:(run_expr_get_value_correct)
   end.
 
 
@@ -1377,11 +1397,11 @@ Proof.
   applys* red_spec_to_integer_1.
 Qed.
 
-Ltac run_select_proj_extra_2 T ::= 
-  match T with
-  | to_primitive _ _ _ _ _ => constr:(to_primitive_correct)
-  | to_number _ _ _ _ => constr:(to_number_correct)
-  | to_string _ _ _ _ => constr:(to_string_correct)
+Ltac run_select_proj_extra_2 HT ::= 
+  match HT with
+  | to_primitive => constr:(to_primitive_correct)
+  | to_number => constr:(to_number_correct)
+  | to_string => constr:(to_string_correct)
   end.
 
 
@@ -1544,6 +1564,19 @@ Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco p args o,
   red_expr S C (spec_binding_inst ct funco p args) o.
 Admitted.
 
+Ltac run_select_proj_extra_3 HT ::= 
+  match HT with
+  | run_construct_prealloc => constr:(run_construct_prealloc_correct)
+  | run_construct => constr:(run_construct_correct)
+  | run_call_default => constr:(run_call_default_correct)
+  | creating_function_object_proto => constr:(creating_function_object_proto_correct)
+  | creating_function_object => constr:(creating_function_object_correct)
+  | run_list_expr => constr:(run_list_expr_correct)
+  | execution_ctx_binding_inst => constr:(execution_ctx_binding_inst_correct)
+  end.
+
+
+
 (* TODO:  Complete *)
 
 (**************************************************************)
@@ -1641,6 +1674,36 @@ Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   red_expr S C (expr_binary_op_3 op v1 v2) o.
 Admitted.
 
+Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
+  runs_type_correct runs ->
+  lexical_env_get_identifier_ref runs S C lexs x str = result_some y ->
+  red_spec S C (spec_lexical_env_get_identifier_ref lexs x str) y.
+Proof.
+  introv IH. gen S C. induction lexs; introv HR.
+  simpls. unfolds res_spec. run_inv.
+   applys* red_spec_lexical_env_get_identifier_ref_nil.
+  simpls. 
+  applys red_spec_lexical_env_get_identifier_ref_cons.
+  run_pre. 
+  skip. 
+  (*
+lets: env_record_has_binding_correct.
+run red_spec_lexical_env_get_identifier_ref_cons_1.
+red_spec_lexical_env_get_identifier_ref_cons_2_true 
+red_spec_lexical_env_get_identifier_ref_cons_2_false 
+*)
+Qed.
+
+Lemma identifier_resolution_correct : forall runs S C x y,
+  runs_type_correct runs ->
+  identifier_resolution runs S C x = result_some y ->
+  red_spec S C (spec_identifier_resolution C x) y.
+Proof.
+  introv IH HR. 
+  unfolds spec_identifier_resolution, identifier_resolution.
+  applys* lexical_env_get_identifier_ref_correct. 
+Qed.
+
 Lemma run_expr_correct : forall runs,
   runs_type_correct runs ->
    follow_expr (run_expr runs).
@@ -1650,7 +1713,8 @@ Proof.
   (* this *)
   run_inv. apply~ red_expr_this.
   (* identifier *)
-    run_inv. applys* red_expr_identifier. skip. (* TODO *)
+  run_inv. run red_expr_identifier using identifier_resolution_correct.
+  applys* red_expr_identifier_1.
   (* literal *)
   run_inv. apply~ red_expr_literal.
   (* object *)
@@ -1659,21 +1723,19 @@ Proof.
   applys* init_object_correct.
   (* function *)
   unfolds in R. destruct o0.
-   let_name. destruct p as (lex'&S'). destruct lex' as [|L lex']; simpls; tryfalse.
-    run_simpl. forwards: @pick_option_correct (rm E).
-    run* red_expr_function_named using env_record_create_immutable_binding_correct.
-    run red_expr_function_named_1 using creating_function_object_correct.
-    run red_expr_function_named_2 using env_record_initialize_immutable_binding_correct.
-    apply~ red_expr_function_named_3.
-   (* Unnamed *)
-   apply~ red_expr_function_unnamed. applys~ creating_function_object_correct IH.
+    let_name. destruct p as (lex'&S'). destruct lex' as [|L lex']; simpls; tryfalse.
+     run_simpl. forwards: @pick_option_correct (rm E).
+     run* red_expr_function_named using env_record_create_immutable_binding_correct.
+     run red_expr_function_named_1 using creating_function_object_correct.
+     run red_expr_function_named_2 using env_record_initialize_immutable_binding_correct.
+     apply~ red_expr_function_named_3.
+    apply~ red_expr_function_unnamed. applys~ creating_function_object_correct IH.
   (* Access *)
-  unfolds in R.
-  run red_expr_access.
+  unfolds in R. run red_expr_access.
   run red_expr_access_1. cases_if.
     run. applys red_expr_access_2.
-       applys* red_spec_check_object_coercible_undef_or_null.
-     abort_expr.
+      applys* red_spec_check_object_coercible_undef_or_null.
+      abort_expr.
     applys red_expr_access_2.
       applys* red_spec_check_object_coercible_return.
      run red_expr_access_3.
@@ -1681,15 +1743,34 @@ Proof.
   (* member *)
   run_hyp R. apply~ red_expr_member.
   (* new *)
-  unfolds in R.
-  Focus 1.
-  run red_expr_new.
-  skip. (* TODO *)
+  unfolds in R. run red_expr_new.
+Axiom red_expr_new_1 : forall S0 S C e2s v y1 o, (* Step 3 *)
+      red_spec S C (spec_list_then e2s) y1 ->
+      red_expr S C (expr_new_2 v y1) o ->
+      red_expr S0 C (expr_new_1 (ret S v) e2s) o
+.
+  run red_expr_new_1. 
+    skip. (* will be fixed *)
+  destruct a; tryfalse.
+    applys* red_expr_new_2_type_error. 
+Lemma type_of_prim_not_object : forall w,
+  type_of w <> type_object.
+Proof. destruct w; simpl; try congruence. Qed.
+     left. applys type_of_prim_not_object. run_hyp*.
+Axiom red_expr_new_2_construct : forall S S0 C l vs o, (* Step 6 *)
+      red_expr S C (spec_construct l vs) o ->
+      red_expr S0 C (expr_new_2 (value_object l) (ret S vs)) o
+.
+    run. lets M: run_object_method_correct (rm E).
+    destruct x; tryfalse.
+      applys red_expr_new_2_construct. 
+       applys* red_spec_constructor.
+       applys* run_construct_correct.
+      applys* red_expr_new_2_type_error. run_hyp*.
   (* call *)
   unfolds in R.
   Focus 1.
-  (*run (>> red_expr_call (is_syntactic_eval e)).*)
-  Axiom red_expr_call : forall S C e1 e2s o1 o2,
+Axiom red_expr_call : forall S C e1 e2s o1 o2,
   red_expr S C e1 o1 ->
   red_expr S C (expr_call_1 o1 (is_syntactic_eval e1) e2s) o2 ->
   red_expr S C (expr_call e1 e2s) o2.
@@ -1970,7 +2051,9 @@ Proof.
   skip. (* TODO *)
   (* If *)
   unfolds in R.
-  run red_stat_if
+
+
+
   (* TODO ARTHUR: udpate proof, will probably not need line below
   run_pre. forwards* (y1&R2&K): run_expr_get_value_post_to_bool (rm R1) (rm R).
   *)
@@ -2283,6 +2366,9 @@ Theorem run_javascript_correct : forall runs p o,
   red_javascript p o.
 Proof.
   introv IH HR. unfolds in HR. run_pre as o1 R1.
+(*
   forwards R: execution_ctx_binding_inst_correct IH (rm R1). (* Need more information there:  it should return a result_void. *)
+*)
+skip.
   (* applys~ red_javascript_intro R. *)
 Admitted.

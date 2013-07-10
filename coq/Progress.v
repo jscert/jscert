@@ -184,11 +184,7 @@ red_spec_env_record_create_immutable_binding
 red_spec_env_record_initialize_immutable_binding 
 red_spec_env_record_create_set_mutable_binding 
 red_spec_env_record_create_set_mutable_binding_1 
-red_spec_lexical_env_get_identifier_ref_nil 
-red_spec_lexical_env_get_identifier_ref_cons 
-red_spec_lexical_env_get_identifier_ref_cons_1 
-red_spec_lexical_env_get_identifier_ref_cons_2_true 
-red_spec_lexical_env_get_identifier_ref_cons_2_false 
+
 
 
 red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
@@ -295,10 +291,6 @@ red_spec_constructor
 red_spec_call_1_prealloc 
 red_spec_construct_1_prealloc 
 
-red_expr_new 
-red_expr_new_1 
-red_expr_new_2_type_error 
-red_expr_new_2_construct 
 red_expr_call 
 red_expr_call_1 
 red_expr_call_2 
