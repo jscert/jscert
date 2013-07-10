@@ -1781,6 +1781,31 @@ Proof.
    apply~ red_spec_lexical_env_get_identifier_ref_cons_2_false.
 Qed.
 
+Lemma run_typeof_value_correct : forall S v,
+  run_typeof_value S v = typeof_value S v.
+Proof. intros. destruct v; simpl. auto. case_if; case_if*. Qed.
+
+Ltac run_select_proj_extra_4 HT ::= 
+  match HT with
+  | ref_get_value => constr:(ref_get_value_correct)
+  end.
+
+
+Hint Extern 1 (regular_unary_op _) =>
+    intros ?; false_invert.
+
+Lemma prepost_op_correct : forall u F ispre, 
+  run_prepost_op u = Some (F,ispre) ->
+  prepost_op u F ispre.
+Proof.
+  Hint Constructors prepost_op.
+  introv HR. destruct u; simpls; inverts* HR.
+Qed.
+
+Lemma type_of_prim_not_object : forall w,
+  type_of w <> type_object.
+Proof. destruct w; simpl; try congruence. Qed.
+
 Lemma identifier_resolution_correct : forall runs S C x y,
   runs_type_correct runs ->
   identifier_resolution runs S C x = result_some y ->
@@ -1831,36 +1856,19 @@ Proof.
   run_hyp R. apply~ red_expr_member.
   (* new *)
   unfolds in R. run red_expr_new.
-Axiom red_expr_new_1 : forall S0 S C e2s v y1 o, (* Step 3 *)
-      red_spec S C (spec_list_then e2s) y1 ->
-      red_expr S C (expr_new_2 v y1) o ->
-      red_expr S0 C (expr_new_1 (ret S v) e2s) o
-.
-  run red_expr_new_1. 
-    skip. (* will be fixed *)
-  (* destruct a; tryfalse.
+  run red_expr_new_1.
+  destruct a; tryfalse.
     applys* red_expr_new_2_type_error. 
-Lemma type_of_prim_not_object : forall w,
-  type_of w <> type_object.
-Proof. destruct w; simpl; try congruence. Qed.
      left. applys type_of_prim_not_object. run_hyp*.
-Axiom red_expr_new_2_construct : forall S S0 C l vs o, (* Step 6 *)
-      red_expr S C (spec_construct l vs) o ->
-      red_expr S0 C (expr_new_2 (value_object l) (ret S vs)) o
-.
     run. lets M: run_object_method_correct (rm E).
     destruct x; tryfalse.
       applys red_expr_new_2_construct. 
        applys* red_spec_constructor.
        applys* run_construct_correct.
-      applys* red_expr_new_2_type_error. run_hyp*. *)
+      applys* red_expr_new_2_type_error. run_hyp*.
   (* call *)
   unfolds in R.
   Focus 1.
-Axiom red_expr_call : forall S C e1 e2s o1 o2,
-  red_expr S C e1 o1 ->
-  red_expr S C (expr_call_1 o1 (is_syntactic_eval e1) e2s) o2 ->
-  red_expr S C (expr_call e1 e2s) o2.
   let_simpl.
   run red_expr_call.
   run red_expr_call_1 using ref_get_value_correct. 
@@ -1896,18 +1904,67 @@ Axiom red_expr_call : forall S C e1 e2s o1 o2,
   applys* follows_correct.
   skip.
   (* TODO *)
+
   (* unary operators *)
-  skip. (* TODO *)
+  unfolds in R. case_if as N. (*todo: other branch *)
+    run* red_expr_prepost. run red_expr_prepost_1_valid.
+     run red_expr_prepost_2. run. destruct x as [F ispre].
+     let_simpl. let_name. lets: prepost_op_correct (rm E).
+     run* red_expr_prepost_3. subst. applys* red_expr_prepost_4.
+    destruct u; try solve [ false n; constructors ].
+    (* delete *) 
+    run red_expr_delete. destruct rv; run_inv.
+      applys* red_expr_delete_1_not_ref. intro; false_invert. 
+      applys* red_expr_delete_1_not_ref. intro; false_invert. 
+      case_if; run_inv.
+        applys* red_expr_delete_1_ref_unresolvable.
+         unfolds ref_is_unresolvable, ref_kind_of. 
+         (* BUG in spec on  "ref_base r = null"
+         sets_eq ba: (ref_base r). destruct ba.
+          run red_expr_delete_1_ref_property.
+          applys* red_expr_delete_1_ref_property.
+           unfolds. unfold ref_kind_of. rewrite <- EQba.
+           destruct v; [destruct p|]; tryfalse; eauto.
+         *) (* TODO:bug if ref_base r = null: nothing applies *) skip.
+    (* void *)
+    run* red_expr_unary_op. applys red_expr_unary_op_1.  
+     applys* red_expr_unary_op_void.
+    (* typeof *)
+    run red_expr_typeof. destruct rv; tryfalse.
+      applys* red_expr_typeof_1_value. run_inv. applys* red_expr_typeof_2.
+        applys run_typeof_value_correct.
+      case_if.
+        run_inv. applys* red_expr_typeof_1_ref_unresolvable.
+        run* red_expr_typeof_1_ref_resolvable.
+         applys* red_expr_typeof_2. 
+         applys* run_typeof_value_correct.
+   (* add *)
+   run* red_expr_unary_op. applys red_expr_unary_op_1.  
+    applys red_expr_unary_op_add. run_hyp*.
+   (* neg *)
+   run* red_expr_unary_op. applys red_expr_unary_op_1.  
+    run red_expr_unary_op_neg. applys* red_expr_unary_op_neg_1.
+   (* bitwise not *)
+   run* red_expr_unary_op. applys red_expr_unary_op_1.  
+    run red_expr_unary_op_bitwise_not. 
+     (* TODO: spec_to_int32_correct. 
+    applys* red_expr_unary_op_bitwise_not_1.*)
+    skip. skip.
+   (* not *)
+   run* red_expr_unary_op. applys red_expr_unary_op_1.  
+   forwards* M: red_spec_to_boolean a.
+    applys* red_expr_unary_op_not. applys* red_expr_unary_op_not_1.
   (* binary operators *)
-  skip. (* TODO *)
+  skip. (* TODO : first need to fix the conversion functions *)
   (* conditionnal *)
-  unfolds in R. (* run red_expr_conditional. *)
-   (* applys~ red_spec_expr_get_value_conv R1. *)
-  skip. (* TODO *)
+  unfolds in R. run red_expr_conditional.
+  (* todo: need to handle get_value_conv properly, after conversion is fine *)
+  skip. 
+  let_simpl. let_name. unfolds vret. 
+    (* todo; pb if the value returned is not a boolean *)
+     skip.
   (* assign *)
-  unfolds in R. 
-  run red_expr_assign. let_name. 
-  rename rv into rv1.
+  unfolds in R. run red_expr_assign. let_name. rename rv into rv1.
   asserts follow_correct: (forall S0 S rv o, follow S rv = o ->
      exists v, rv = resvalue_value v /\ red_expr S0 C (expr_assign_4 rv1 (ret S v)) o). 
     subst follow. clear R. introv HR.
@@ -1925,134 +1982,7 @@ Axiom red_expr_call : forall S C e1 e2s o1 o2,
     forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
 
 Admitted. 
-(* OLD:
-    (* object *)
-    unfold call_object_new in R. destruct S as [SH SE [fl SF]]. unmonad; simpls.
-     (* Abort case *)
-     inverts HE. false~ Hnn.
-     (* Normal case *)
-     unmonad. skip. (* TODO:  Needs an intermediate lemma for [init_object]. *)
-    (* function *)
-    skip. (* TODO *)
-    (* new *)
-    skip. (* TODO *)
-    (* call *)
-    unmonad.
-     (* Abort case *)
-     forwards~ RC: IHe (rm HE). applys~ red_expr_call RC. abort_expr.
-     (* Normal case *)
-     forwards~ RC: IHe (rm HE). applys~ red_expr_call RC.
-     skip. (* TODO *)
-    (* unary_op *)
-    destruct~ u; simpls; cases_if; try solve [false~ n].
-     (* Delete *)
-     unmonad.
-      (* Abort case *)
-      forwards~ RC: IHe (rm HE). applys~ red_expr_delete RC. abort_expr.
-      (* Normal case *)
-      forwards~ RC: IHe (rm HE). applys~ red_expr_delete RC.
-      destruct rv; try solve [ inverts H0; apply~ red_expr_delete_1_not_ref; absurd_neg ].
-      cases_if.
-       inverts H0. apply* red_expr_delete_1_ref_unresolvable.
-       destruct r as [[rbv|rbel] rn rs]; simpls.
-        skip. (* TODO:  check in the interpreter that the reference base is neither null nor undefined. *)
-        apply~ red_expr_delete_1_ref_env_record. reflexivity.
-         skip. (* TODO:  Needs a lemma [env_record_delete_binding_correct]. *)
-     (* Void *)
-     unmonad.
-      (* Abort case *)
-      forwards~ RC: IHe (rm HE). apply~ red_expr_unary_op.
-       simpl. cases_if~; tryfalse.
-       applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr], two times *)
-      (* Normal case *)
-      forwards~ RC: IHe (rm HE).
-       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-        apply~ red_expr_unary_op.
-         simpl. cases_if~; tryfalse.
-         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
-         abort_expr.
-        apply~ red_expr_unary_op. simpl. cases_if~; tryfalse.
-         applys~ red_spec_expr_get_value RC. applys~ red_spec_expr_get_value_1 H0.
-         apply~ red_expr_unary_op_1. apply~ red_expr_unary_op_void.
-     (* TypeOf *)
-     skip. (* TODO *)
-     (* Post Incr *)
-     skip. (* TODO *)
-     (* Post Decr *)
-     skip. (* TODO *)
-     (* Pre Incr *)
-     skip. (* TODO *)
-     (* Pre Decr *)
-     skip. (* TODO *)
-     (* Add *)
-     skip. (* TODO *)
-     (* Neg *)
-     skip. (* TODO *)
-     (* Bitwise *)
-     skip. (* TODO *)
-     (* Not *)
-     skip. (* TODO *)
-    (* binary_op *)
-    unfolds in R. destruct~ b; simpls.
-     (* Mult *)
-     skip. (* TODO *)
-     (* Div *)
-     skip. (* TODO *)
-     (* Mod *)
-     skip. (* TODO *)
-     (* Add *)
-     skip. (* TODO *)
-     (* Sub *)
-     skip. (* TODO *)
-     (* Left shift *)
-     skip. (* TODO *)
-     (* Right shift *)
-     skip. (* TODO *)
-     (* Unsigned right shift *)
-     skip. (* TODO *)
-     (* Lesser *)
-     skip. (* TODO *)
-     (* Greater *)
-     skip. (* TODO *)
-     (* Lesser or equal *)
-     skip. (* TODO *)
-     (* Greater or equal *)
-     skip. (* TODO *)
-     (* Instance of *)
-     unmonad.
-      (* Abort case *)
-      forwards~ RC: IHe (rm HE). apply~ red_expr_binary_op.
-       applys~ red_spec_expr_get_value RC. skip. skip. (* Old [abort_expr], two times *)
-      (* Normal case *)
-      forwards~ RC1: IHe (rm HE).
-       inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-        apply~ red_expr_binary_op.
-         applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
-         abort_expr.
-        apply~ red_expr_binary_op.
-          applys~ red_spec_expr_get_value RC1. applys~ red_spec_expr_get_value_1 H0.
-         unmonad.
-          (* Abort case *)
-          forwards~ RC2: IHe (rm HE).
-           applys~ red_expr_binary_op_1.
-             applys~ red_spec_expr_get_value RC2. skip. skip. (* Old [abort_expr], two times *)
-          (* Normal case *)
-          forwards~ RC2: IHe (rm HE).
-           inverts HM as HM; simpl_after_regular_lemma; rm_variables.
-            apply~ red_expr_binary_op_1.
-              applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
-             abort_expr.
-            apply~ red_expr_binary_op_1.
-              applys~ red_spec_expr_get_value RC2. applys~ red_spec_expr_get_value_1 H1.
-            apply~ red_expr_binary_op_2. destruct v0.
-             forwards~ (RE&A): run_error_correct H2.
-              apply~ red_expr_binary_op_instanceof_non_object.
-              destruct p; discriminate.
-             rewrite_morph_option; tryfalse. simpls. rewrite_morph_option; simpls.
-              substs. apply~ red_expr_binary_op_instanceof_normal.
-               skip. (* TODO *)
-              substs. forwards~ (RE&A): run_error_correct H2.
-               unmonad. applys~ red_expr_binary_op_instanceof_non_instance R.
+(* TODO: for binary op:
      (* In *)
      skip. (* TODO *)
      (* Equal *)
@@ -2101,7 +2031,6 @@ Proof.
   apply red_stat_expr_1. 
   (* Label *)
   unfolds in R.
-  Focus 1.
   (* TODO: fix the interpreter: replace if_break with
      if_break_or_normal in order to ensure
      that we get a "rv" out of the R, otherwise the rule

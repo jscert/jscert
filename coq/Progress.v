@@ -5,7 +5,7 @@ Function.*
 
 switch
 do_while
-unary/binary ops
+binary ops
 argument objects
 
 Monadic constructors.
@@ -23,20 +23,8 @@ red_stat_with_1
 red_stat_throw 
 red_stat_throw_1
 
-red_expr_identifier 
+red_expr_conditional (* needs conv *)
 
-red_expr_delete 
-red_expr_delete_1_not_ref 
-red_expr_delete_1_ref_unresolvable 
-red_expr_delete_1_ref_property 
-red_expr_delete_2 
-red_expr_delete_1_ref_env_record 
-
-red_expr_conditional 
-red_expr_conditional_1 
-red_expr_conditional_2 
-
-red_expr_assign (* almost done *)
 red_stat_try (* almost done *)
 
 red_stat_var_decl_nil 
