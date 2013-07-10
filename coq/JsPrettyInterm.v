@@ -934,9 +934,9 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_from_descriptor _ => None
   | spec_from_descriptor_1 _ o => Some o
-  | spec_from_descriptor_2 _ _ o => None
+  | spec_from_descriptor_2 _ _ o => Some o
   | spec_from_descriptor_3 _ _ o => Some o
-  | spec_from_descriptor_4 _ _ o => None
+  | spec_from_descriptor_4 _ _ o => Some o
   | spec_from_descriptor_5 _ _ o => Some o
   | spec_from_descriptor_6 _ o => Some o
 

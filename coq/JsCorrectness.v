@@ -1338,6 +1338,9 @@ Proof.
 Qed.
 
 
+
+(*************************************************************)
+
 Lemma env_record_get_binding_value_correct : forall runs S C L rn rs o,
   runs_type_correct runs ->
   env_record_get_binding_value runs S C L rn rs = o ->
@@ -1371,46 +1374,6 @@ Proof.
   abort.
 Qed.
 
-Definition ref_get_value' runs S C rv : specres value :=
-  match rv with
-  | resvalue_empty =>
-    impossible_with_heap_because S "[ref_get_value] received an empty result."
-  | resvalue_value v =>
-    res_spec S v
-  | resvalue_ref r =>
-    Let for_base_or_object := fun tt =>
-      match ref_base r with
-      | ref_base_type_value v =>
-        ifb ref_has_primitive_base r then
-          if_value_spec (prim_value_get runs S C v (ref_name r)) (@res_spec _)
-        else 
-          match v with
-           | value_object l =>
-             if_value_spec (run_object_get runs S C l (ref_name r)) (@res_spec _)
-           | value_prim _ =>
-             impossible_with_heap_because S "[ref_get_value] received a primitive value whose kind is not primitive."
-          end
-      | ref_base_type_env_loc L =>
-        impossible_with_heap_because S "[ref_get_value] received a reference to a value whose base type is an environnment record."
-      end
-     in
-    match ref_kind_of r with
-    | ref_kind_null =>
-      impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
-    | ref_kind_undef =>
-      res_res (run_error S native_error_ref)
-    | ref_kind_primitive_base | ref_kind_object =>
-      for_base_or_object tt
-    | ref_kind_env_record =>
-      match ref_base r with
-      | ref_base_type_value v =>
-        impossible_with_heap_because S "[ref_get_value] received a reference to an environnment record whose base type is a value."
-      | ref_base_type_env_loc L =>
-        if_value_spec (env_record_get_binding_value runs S C L (ref_name r) (ref_strict r))
-          (@res_spec _)
-      end
-    end
-  end.
 
 
 Lemma ref_kind_env_record_inv : forall r,
@@ -1437,7 +1400,7 @@ Qed.
 
 Lemma ref_get_value_correct : forall runs S C rv y,
   runs_type_correct runs ->
-  ref_get_value' runs S C rv = result_some y ->
+  ref_get_value runs S C rv = result_some y ->
   red_spec S C (spec_get_value rv) y.
 Proof.
   introv IH HR. unfolds in HR. destruct rv; tryfalse.
@@ -1517,6 +1480,7 @@ Ltac run_select_proj_extra_ref HT ::=
   | object_put => constr:(object_put_correct)
   | ref_put_value => constr:(ref_put_value_correct)
   | run_expr_get_value => constr:(run_expr_get_value_correct)
+  | object_define_own_prop => constr:(object_define_own_prop_correct)
   end.
 
 
@@ -1563,8 +1527,7 @@ Proof.
     apply~ red_spec_env_record_create_mutable_binding_1_decl_indom.
    run red_spec_env_record_create_mutable_binding_1_object
      using object_has_prop_correct. cases_if. let_simpl.
-    run* red_spec_env_record_create_mutable_binding_obj_2
-      using object_define_own_prop_correct.
+    run* red_spec_env_record_create_mutable_binding_obj_2.
     apply~ red_spec_env_record_create_mutable_binding_obj_3.
 Qed.
 
@@ -1776,11 +1739,12 @@ Qed.
 Hint Unfold eqabort. (* todo move *)
 
 
+
 Lemma run_construct_prealloc_correct : forall runs S C B args o,
   runs_type_correct runs ->
   run_construct_prealloc runs S C B args = o ->
   red_expr S C (spec_construct_prealloc B args) o.
-Admitted.
+Admitted. 
 
 Lemma run_construct_default_correct : forall runs S C l args o,
   runs_type_correct runs ->
@@ -1847,7 +1811,41 @@ Ltac run_select_proj_extra_3 HT ::=
 
 
 
-(* TODO:  Complete *)
+
+(**************************************************************)
+(** ** Property descriptors *)
+
+
+Lemma from_prop_descriptor_correct : forall runs S0 S C D o,
+  runs_type_correct runs ->
+  from_prop_descriptor runs S C D = o ->
+  red_expr S0 C (spec_from_descriptor (ret S D)) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct D.
+  run_inv. applys* red_spec_from_descriptor_undef.
+  run* red_spec_from_descriptor_some.
+  rename a into A.
+  let_name as M. asserts M_correct: (forall S0 S b o,
+    M S b = o ->
+    red_expr S0 C (spec_from_descriptor_4 l A (out_ter S b)) o).
+   clear HR S o. introv HR. subst M.
+    let_name. run* red_spec_from_descriptor_4. congruence.
+    let_name. run* red_spec_from_descriptor_5. congruence.
+    applys* red_spec_from_descriptor_6.
+    clear EQM.
+  destruct A.
+    let_name. run* red_spec_from_descriptor_1_data. congruence.
+skip. (* will remove *)
+     let_name. run red_spec_from_descriptor_2_data. congruence.
+skip. (* will remove *)
+     applys* M_correct.
+    let_name. run red_spec_from_descriptor_1_accessor. congruence.
+     let_name. run red_spec_from_descriptor_3_accessor. congruence.
+skip. (* will remove *)
+     applys* M_correct.
+Admitted. (*faster*)
+
+
 
 (**************************************************************)
 (** ** Main theorem *)
@@ -1994,11 +1992,132 @@ Lemma type_of_prim_not_object : forall w,
   type_of w <> type_object.
 Proof. destruct w; simpl; try congruence. Qed.
 
+Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
+  if_some (run_object_method object_get_own_prop_ S l) (fun B =>
+    Let default := fun S' =>
+      if_some (run_object_method object_properties_ S' l) (fun P =>
+        res_spec S' (
+          if_some_or_default (convert_option_attributes (Heap.read_option P x))
+            (full_descriptor_undef) id))
+      in 
+    match B with
+      | builtin_get_own_prop_default =>
+        default S
+      | builtin_get_own_prop_args_obj =>
+        if_spec (default S) (fun S1 D =>
+          match D with
+          | full_descriptor_undef =>
+            res_spec S1 full_descriptor_undef
+          | full_descriptor_some A =>
+            if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
+              if_some lmapo (fun lmap =>
+                if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
+                  Let follow := fun S' A =>
+                    res_spec S' (full_descriptor_some A) in
+                  match D with
+                     | full_descriptor_undef =>
+                       follow S2 A
+                     | full_descriptor_some Amap =>
+                       if_value_spec (run_object_get runs S2 C lmap x) (fun S3 v =>
+                         match A with
+                         | attributes_data_of Ad =>
+                           follow S3 (attributes_data_with_value Ad v)
+                         | attributes_accessor_of Aa =>
+                           impossible_with_heap_because S3 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens."
+                         end)
+                     end)))
+          end)
+      end).
+
+
+Axiom red_spec_object_get_own_prop : forall S C l x B (y:specret full_descriptor),
+      object_method object_get_own_prop_ S l B ->
+      red_spec S C (spec_object_get_own_prop_1 B l x) y ->
+      red_spec S C (spec_object_get_own_prop l x) y
+.
+Axiom red_spec_object_get_own_prop_1_default : forall S C l x P Ao (y:specret full_descriptor), (* Beginning of steps 1 and 3 *)
+      object_properties S l P -> (* TODO: combine this line and the next one using an auxiliary def *)
+      Ao = Heap.read_option P x ->
+      red_spec S C (spec_object_get_own_prop_2 l x Ao) y ->
+      red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y  
+.
+
 (* TODO: move to the right place *)
-Axiom run_object_get_own_prop_correct : forall runs S C l x y,
+Lemma run_object_get_own_prop_correct : forall runs S C l x y,
   runs_type_correct runs -> 
-  runs_type_object_get_own_prop runs S C l x = result_some y ->
+  run_object_get_own_prop runs S C l x = result_some y ->
   red_spec S C (spec_object_get_own_prop l x) y.
+Proof.
+  introv IH HR. unfolds in HR. run.
+  applys* red_spec_object_get_own_prop.  
+    applys* run_object_method_correct. clear E.
+  let_name as M. asserts M_correct: (forall S y,
+    M S = result_some y ->
+    red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y).
+    clears HR S. subst. introv HR. run.
+     applys* red_spec_object_get_own_prop_1_default.
+       applys* run_object_method_correct. clear E.
+     destruct (Heap.read_option x1 x).
+       applys* red_spec_object_get_own_prop_2_some_data.
+       applys* red_spec_object_get_own_prop_2_none. 
+    clear EQM.
+  destruct x0.
+  (* default *)
+Focus 1.
+  subst*.
+  (* argument object *)
+  skip. (*TODO*)
+Admitted. (*faster*)
+
+(*OLD
+Lemma run_object_get_own_prop_correct : forall runs,
+  runs_type_correct runs -> forall l,
+  follow_object_get_own_prop l
+    (fun S C => run_object_get_own_prop runs S C l).
+Admitted. 
+   introv E R. simpls. unfolds in E. unmonad_passing.
+    applys_and red_spec_object_get_own_prop R0. name_passing_def.
+    asserts Co: (forall K o,
+        passing_output K red_expr C p0 o ->
+        red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o /\
+          (p0 = passing_abort o -> abort o)).
+      introv R1. unmonad_passing.
+      applys_and red_spec_object_get_own_prop_1_default R2.
+      rewrite <- E in R1. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R1.
+       splits. apply~ red_spec_object_get_own_prop_2_some_data. absurd_neg.
+       splits. apply~ red_spec_object_get_own_prop_2_none. absurd_neg.
+    destruct x0.
+     inverts E0. apply* Co.
+     applys_and red_spec_object_get_own_prop_args_obj. applys_and Co. clear EQp0.
+      unmonad_passing. destruct x0.
+       substs. inverts R. splits.
+        constructors. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
+        absurd_neg.
+       rewrite H. constructors_and. unmonad_passing.
+        destruct x0; simpls; try solve [ substs; inverts R ].
+        applys_and red_spec_object_get_own_prop_args_obj_1_attrs R1.
+        unmonad_passing.
+         applys_and RC. constructors_and. destruct x0.
+          applys_and red_spec_object_get_own_prop_args_obj_2_undef.
+           applys_and red_spec_object_get_own_prop_args_obj_4.
+           inverts~ R; tryfalse. inverts~ H0. splits~. absurd_neg.
+          unmonad_passing.
+           forwards~ G: run_object_get_correct Eo. constructors~.
+            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a.
+             applys_and red_spec_object_get_own_prop_args_obj_3.
+              applys_and red_spec_object_get_own_prop_args_obj_4.
+              inverts~ R; tryfalse. splits. inverts~ H0. absurd_neg.
+             subst p. inverts R.
+           subst p. inverts R. symmetry in H3. rewrite H3 in H0. inverts H0.
+            forwards~ G: run_object_get_correct H3. constructors~.
+            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. splits~.
+            apply~ red_expr_abort.
+           subst p. inverts R. false* No.
+         applys_and RC. rewrite H0 in R. inverts R. splits. constructors.
+          forwards*: RC K. constructors.
+       substs. inverts R. splits. constructors.
+        forwards*: Co K. constructors.
+*)
 
 
 Lemma object_delete_correct : forall runs S C l x str o,
@@ -2010,8 +2129,7 @@ Proof.
   applys* red_spec_object_delete.
    applys* run_object_method_correct. clear E.
   destruct B; tryfalse.
-  run red_spec_object_delete_1_default using run_object_get_own_prop_correct.
-  destruct a.
+  run red_spec_object_delete_1_default. destruct a.
     run_inv. applys red_spec_object_delete_2_undef.
     case_if.
       run. forwards B: @pick_option_correct (rm E).
@@ -2434,58 +2552,6 @@ Proof.
        rew_logic in *. applys* red_stat_while_4_continue. run_hyp*.
    run_inv. applys red_stat_while_2_false.
 Admitted. (*faster*)
-
-
-(*
-Lemma run_object_get_own_prop_correct : forall runs,
-  runs_type_correct runs -> forall l,
-  follow_object_get_own_prop l
-    (fun S C => run_object_get_own_prop runs S C l).
-Admitted. (* OLD:
-   introv E R. simpls. unfolds in E. unmonad_passing.
-    applys_and red_spec_object_get_own_prop R0. name_passing_def.
-    asserts Co: (forall K o,
-        passing_output K red_expr C p0 o ->
-        red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o /\
-          (p0 = passing_abort o -> abort o)).
-      introv R1. unmonad_passing.
-      applys_and red_spec_object_get_own_prop_1_default R2.
-      rewrite <- E in R1. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R1.
-       splits. apply~ red_spec_object_get_own_prop_2_some_data. absurd_neg.
-       splits. apply~ red_spec_object_get_own_prop_2_none. absurd_neg.
-    destruct x0.
-     inverts E0. apply* Co.
-     applys_and red_spec_object_get_own_prop_args_obj. applys_and Co. clear EQp0.
-      unmonad_passing. destruct x0.
-       substs. inverts R. splits.
-        constructors. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
-        absurd_neg.
-       rewrite H. constructors_and. unmonad_passing.
-        destruct x0; simpls; try solve [ substs; inverts R ].
-        applys_and red_spec_object_get_own_prop_args_obj_1_attrs R1.
-        unmonad_passing.
-         applys_and RC. constructors_and. destruct x0.
-          applys_and red_spec_object_get_own_prop_args_obj_2_undef.
-           applys_and red_spec_object_get_own_prop_args_obj_4.
-           inverts~ R; tryfalse. inverts~ H0. splits~. absurd_neg.
-          unmonad_passing.
-           forwards~ G: run_object_get_correct Eo. constructors~.
-            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a.
-             applys_and red_spec_object_get_own_prop_args_obj_3.
-              applys_and red_spec_object_get_own_prop_args_obj_4.
-              inverts~ R; tryfalse. splits. inverts~ H0. absurd_neg.
-             subst p. inverts R.
-           subst p. inverts R. symmetry in H3. rewrite H3 in H0. inverts H0.
-            forwards~ G: run_object_get_correct H3. constructors~.
-            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. splits~.
-            apply~ red_expr_abort.
-           subst p. inverts R. false* No.
-         applys_and RC. rewrite H0 in R. inverts R. splits. constructors.
-          forwards*: RC K. constructors.
-       substs. inverts R. splits. constructors.
-        forwards*: Co K. constructors.
-*)
-*)
 
 
 

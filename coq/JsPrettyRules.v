@@ -2853,12 +2853,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (**  FromPropertyDescriptor ( Desc ) - return Object (8.10.4) *)    
 
   | red_spec_from_descriptor_undef : forall S0 S C, (* step 1 *)
-      red_expr S C (spec_from_descriptor (ret S0 full_descriptor_undef)) (out_ter S undef) 
+      red_expr S0 C (spec_from_descriptor (ret S full_descriptor_undef)) (out_ter S undef) 
 
   | red_spec_from_descriptor_some : forall S0 S C A o o1, (* step 2 *)
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
       red_expr S C (spec_from_descriptor_1 A o1) o -> 
-      red_expr S C (spec_from_descriptor (ret S0 (full_descriptor_some A))) o
+      red_expr S0 C (spec_from_descriptor (ret S (full_descriptor_some A))) o
                
   | red_spec_from_descriptor_1_data : forall S0 S C Ad A' l o o1, (* step 3.a *)
       A' = attributes_data_intro_all_true (attributes_data_value Ad) -> 
@@ -2869,7 +2869,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_from_descriptor_2_data : forall S0 S C Ad A' l b o o1, (* step 3.b *)
       A' = attributes_data_intro_all_true (attributes_data_writable Ad) ->
       red_expr S C (spec_object_define_own_prop l "writable" (descriptor_of_attributes A') throw_false) o1 ->
-      red_expr S C (spec_from_descriptor_5 l Ad o1) o ->
+      red_expr S C (spec_from_descriptor_4 l Ad o1) o ->
       red_expr S0 C (spec_from_descriptor_2 l Ad (out_ter S b)) o
 
   | red_spec_from_descriptor_1_accessor : forall S0 S C Aa A' l o o1, (* step 4.a *)
@@ -2896,8 +2896,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_from_descriptor_6 l o1) o ->
       red_expr S0 C (spec_from_descriptor_5 l A (out_ter S b)) o
 
-  | red_spec_from_descriptor_6: forall S0 S C l, (* step 7 *)
-      red_expr S0 C (spec_from_descriptor_6 l (out_void S)) (out_ter S l)
+  | red_spec_from_descriptor_6 : forall S0 S C l b, (* step 7 *)
+      red_expr S0 C (spec_from_descriptor_6 l (out_ter S b)) (out_ter S l)
 
 
 (**************************************************************)
