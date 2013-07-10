@@ -446,6 +446,59 @@ Proof.
 skip.
 Qed.
 
+Definition if_success_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (rv : resvalue), o = out_ter S rv /\ K S rv = result_some y).
+
+Lemma if_success_spec_out : forall T W K (y : specret T),
+  if_success_spec W K = result_some y ->
+  exists o, W = result_some o /\ if_success_spec_post K y o.
+Admitted.
+
+Definition if_value_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (v : value), o = out_ter S v /\ K S v = result_some y).
+
+Lemma if_value_spec_out : forall T W K (y : specret T),
+  if_value_spec W K = result_some y ->
+  exists o, W = result_some o /\ if_value_spec_post K y o.
+Admitted.
+
+Definition if_prim_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (w : prim), o = out_ter S w /\ K S w = result_some y).
+
+Lemma if_prim_spec_out : forall T W K (y : specret T),
+  if_prim_spec W K = result_some y ->
+  exists o, W = result_some o /\ if_prim_spec_post K y o.
+Admitted.
+
+Definition if_bool_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (b : bool), o = out_ter S b /\ K S b = result_some y).
+
+Lemma if_bool_spec_out : forall T W K (y : specret T),
+  if_bool_spec W K = result_some y ->
+  exists o, W = result_some o /\ if_bool_spec_post K y o.
+Admitted.
+
+Definition if_number_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (n : number), o = out_ter S n /\ K S n = result_some y).
+
+Lemma if_number_spec_out : forall T W K (y : specret T),
+  if_number_spec W K = result_some y ->
+  exists o, W = result_some o /\ if_number_spec_post K y o.
+Admitted.
+
+Definition if_string_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (s : string), o = out_ter S s /\ K S s = result_some y).
+
+Lemma if_string_spec_out : forall T W K (y : specret T),
+  if_string_spec W K = result_some y ->
+  exists o, W = result_some o /\ if_string_spec_post K y o.
+Admitted.
 
 
 (* proofs of old monadic lemmas, might be useful
@@ -641,6 +694,12 @@ Ltac run_select_ifres H :=
   | if_primitive _ _ => constr:(if_primitive_out)
   | if_spec _ _ => constr:(if_spec_out)
   | if_spec_ter _ _ => constr:(if_spec_ter_out)
+  | if_success_spec _ _ => constr:(if_success_spec_out)
+  | if_value_spec _ _ => constr:(if_value_spec_out)
+  | if_prim_spec _ _ => constr:(if_prim_spec_out)
+  | if_bool_spec _ _ => constr:(if_bool_spec_out)
+  | if_number_spec _ _ => constr:(if_number_spec_out)
+  | if_string_spec _ _ => constr:(if_string_spec_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
   | ?x => run_select_extra T
   end end.
@@ -813,6 +872,30 @@ Ltac run_post_core :=
   | H: if_spec_ter_post _ _ _ |- _ =>
     let S := fresh "S" in let a := fresh "a" in
     destruct H as [(Er&Ab)|(S&a&O1&H)];
+    [ try abort | try subst_hyp O1 ]
+  | H: if_success_spec_post _ _ _ |- _ =>
+    let S := fresh "S" in let a := fresh "rv" in
+    destruct H as [(Er&Ab)|(S&rv&O1&H)];
+    [ try abort | try subst_hyp O1 ]
+  | H: if_value_spec_post _ _ _ |- _ =>
+    let S := fresh "S" in let a := fresh "v" in
+    destruct H as [(Er&Ab)|(S&v&O1&H)];
+    [ try abort | try subst_hyp O1 ]
+  | H: if_prim_spec_post _ _ _ |- _ =>
+    let S := fresh "S" in let a := fresh "w" in
+    destruct H as [(Er&Ab)|(S&w&O1&H)];
+    [ try abort | try subst_hyp O1 ]
+  | H: if_bool_spec_post _ _ _ |- _ =>
+    let S := fresh "S" in let a := fresh "b" in
+    destruct H as [(Er&Ab)|(S&b&O1&H)];
+    [ try abort | try subst_hyp O1 ]
+  | H: if_number_spec_post _ _ _ |- _ =>
+    let S := fresh "S" in let a := fresh "n" in
+    destruct H as [(Er&Ab)|(S&n&O1&H)];
+    [ try abort | try subst_hyp O1 ]
+  | H: if_string_spec_post _ _ _ |- _ =>
+    let S := fresh "S" in let a := fresh "s" in
+    destruct H as [(Er&Ab)|(S&s&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_any_or_throw_post _ _ _ _ |- _ =>
     let R := fresh "R" in
@@ -1751,7 +1834,7 @@ Axiom red_expr_new_1 : forall S0 S C e2s v y1 o, (* Step 3 *)
 .
   run red_expr_new_1. 
     skip. (* will be fixed *)
-  destruct a; tryfalse.
+  (* destruct a; tryfalse.
     applys* red_expr_new_2_type_error. 
 Lemma type_of_prim_not_object : forall w,
   type_of w <> type_object.
@@ -1766,7 +1849,7 @@ Axiom red_expr_new_2_construct : forall S S0 C l vs o, (* Step 6 *)
       applys red_expr_new_2_construct. 
        applys* red_spec_constructor.
        applys* run_construct_correct.
-      applys* red_expr_new_2_type_error. run_hyp*.
+      applys* red_expr_new_2_type_error. run_hyp*. *)
   (* call *)
   unfolds in R.
   Focus 1.
