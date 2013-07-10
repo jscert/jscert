@@ -167,13 +167,9 @@ Inductive ext_expr :=
   (** Extended expressions for operations on objects *)
 
   (* todo *)
-  | spec_object_get_prop : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_prop_1 : builtin_get_prop -> object_loc -> prop_name -> (full_descriptor -> ext_expr) -> ext_expr
-  | spec_object_get_prop_2 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> (specret full_descriptor) -> ext_expr
-  | spec_object_get_prop_3 : object_loc -> prop_name -> (full_descriptor -> ext_expr) -> value -> ext_expr
   | spec_object_get : value -> prop_name -> ext_expr
   | spec_object_get_1 : builtin_get -> value -> object_loc -> prop_name -> ext_expr
-  | spec_object_get_2 : object_loc -> object_loc -> full_descriptor -> ext_expr
+  | spec_object_get_2 : object_loc -> object_loc -> specret full_descriptor -> ext_expr
   | spec_object_get_3 : object_loc -> object_loc -> value -> ext_expr
 
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
@@ -182,19 +178,19 @@ Inductive ext_expr :=
   (* Daiva: Not needed? *)
   (*| spec_object_can_put_3 : object_loc -> prop_name -> bool -> ext_expr*)
   | spec_object_can_put_4 : object_loc -> prop_name -> value -> ext_expr
-  | spec_object_can_put_5 : object_loc -> full_descriptor -> ext_expr
+  | spec_object_can_put_5 : object_loc -> specret full_descriptor -> ext_expr
   | spec_object_can_put_6 : attributes_data -> bool -> ext_expr
 
   | spec_object_put : value -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_1 : builtin_put -> value -> object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_2 : value -> object_loc -> prop_name -> value -> bool -> out -> ext_expr
-  | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> (specret full_descriptor) -> ext_expr
-  | spec_object_put_4 : value -> object_loc -> prop_name -> value -> bool -> full_descriptor -> ext_expr
+  | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> specret full_descriptor -> ext_expr
+  | spec_object_put_4 : value -> object_loc -> prop_name -> value -> bool -> specret full_descriptor -> ext_expr
   | spec_object_put_5 : out -> ext_expr
 
   | spec_object_has_prop : object_loc -> prop_name -> ext_expr
   | spec_object_has_prop_1 : builtin_has_prop -> object_loc -> prop_name -> ext_expr
-  | spec_object_has_prop_2 : full_descriptor -> ext_expr
+  | spec_object_has_prop_2 : specret full_descriptor -> ext_expr
 
   | spec_object_delete : object_loc -> prop_name -> bool -> ext_expr
   | spec_object_delete_1 : builtin_delete -> object_loc -> prop_name -> bool -> ext_expr
@@ -312,7 +308,7 @@ Inductive ext_expr :=
   | spec_binding_inst_function_decls :  list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> ext_expr
   | spec_binding_inst_function_decls_1 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
   | spec_binding_inst_function_decls_2 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_inst_function_decls_3 : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> full_descriptor -> ext_expr
+  | spec_binding_inst_function_decls_3 : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> specret full_descriptor -> ext_expr
   | spec_binding_inst_function_decls_4 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_inst_function_decls_5 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> ext_expr
   | spec_binding_inst_function_decls_6 : list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
@@ -672,6 +668,11 @@ with ext_spec :=
   | spec_object_get_own_prop_1 : builtin_get_own_prop -> object_loc -> prop_name -> ext_spec
   | spec_object_get_own_prop_2 : object_loc -> prop_name -> option attributes -> ext_spec
 
+  | spec_object_get_prop : object_loc -> prop_name -> ext_spec
+  | spec_object_get_prop_1 : builtin_get_prop -> object_loc -> prop_name -> ext_spec
+  | spec_object_get_prop_2 : object_loc -> prop_name -> specret full_descriptor -> ext_spec
+  | spec_object_get_prop_3 : object_loc -> prop_name -> value -> ext_spec
+
   | spec_get_value : resvalue -> ext_spec
   | spec_get_value_ref_b_1 : out -> ext_spec
   | spec_get_value_ref_c_1 : out -> ext_spec
@@ -842,32 +843,28 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_eq1 _ _ => None
   | spec_eq2 _ _ _ => None
 
-  | spec_object_get_prop _ _ _ => None
-  | spec_object_get_prop_1 _ _ _ _ => None
-  | spec_object_get_prop_2 _ _ _ _ => None
-  | spec_object_get_prop_3 _ _ _ _ => None
   | spec_object_get _ _ => None
   | spec_object_get_1 _ _ _ _ => None
-  | spec_object_get_2 _ _ _ => None
+  | spec_object_get_2 _ _ y => out_of_specret y
   | spec_object_get_3 _ _ _ => None
 
   | spec_object_can_put _ _ => None
   | spec_object_can_put_1 _ _ _ => None
   | spec_object_can_put_2 _ _ _ => None
   | spec_object_can_put_4 _ _ _ => None
-  | spec_object_can_put_5 _ _ => None
+  | spec_object_can_put_5 _ y => out_of_specret y
   | spec_object_can_put_6 _ _ => None
 
   | spec_object_put _ _ _ _ => None
   | spec_object_put_1 _ _ _ _ _ _ => None
   | spec_object_put_2 _ _ _ _ _ o => Some o
   | spec_object_put_3 _ _ _ _ _ _ => None
-  | spec_object_put_4 _ _ _ _ _ _ => None
+  | spec_object_put_4 _ _ _ _ _ y => out_of_specret y
   | spec_object_put_5 o => Some o
 
   | spec_object_has_prop _ _ => None
   | spec_object_has_prop_1 _ _ _ => None
-  | spec_object_has_prop_2 _ => None
+  | spec_object_has_prop_2 y => out_of_specret y
 
   | spec_object_delete _ _ _ => None
   | spec_object_delete_1 _ _ _ _ => None
@@ -960,7 +957,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_binding_inst_function_decls _ _ _ _ _ => None
   | spec_binding_inst_function_decls_1 _ _ _ _ _ _ o => Some o
   | spec_binding_inst_function_decls_2 _ _ _ _ _ _ _ o => Some o
-  | spec_binding_inst_function_decls_3 _ _ _ _ _ _ _ => None
+  | spec_binding_inst_function_decls_3 _ _ _ _ _ _ y => out_of_specret y
   | spec_binding_inst_function_decls_4 _ _ _ _ _ _ _ o => Some o
   | spec_binding_inst_function_decls_5 _ _ _ _ _ _ _ => None
   | spec_binding_inst_function_decls_6 _ _ _ _ _ o => Some o
@@ -1287,6 +1284,10 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_object_get_own_prop _ _ => None
   | spec_object_get_own_prop_1 _ _ _ => None
   | spec_object_get_own_prop_2 _ _ _ => None
+  | spec_object_get_prop _ _ => None
+  | spec_object_get_prop_1 _ _ _ => None
+  | spec_object_get_prop_2 _ _ y => out_of_specret y
+  | spec_object_get_prop_3 _ _ _ => None
   | spec_get_value _ => None
   | spec_get_value_ref_b_1 o => Some o
   | spec_get_value_ref_c_1 o => Some o
