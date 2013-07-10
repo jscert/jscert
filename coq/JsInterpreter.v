@@ -2079,7 +2079,8 @@ Definition run_stat_if runs S C e1 t2 to : result :=
 
 Definition run_stat_while runs S C rv labs e1 t2 : result :=
   if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    if convert_value_to_boolean v1 then
+    Let b := convert_value_to_boolean v1 in
+    if b then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
         Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
         let loop tt := runs_type_stat_while runs S2 C rv' labs e1 t2 in
