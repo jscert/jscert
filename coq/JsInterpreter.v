@@ -1919,12 +1919,6 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
   | v => out_ter S v
   end.
 
-Definition is_syntactic_eval e :=
-  match e with
-  | expr_literal (literal_string s) => decide (s = "eval")
-  | _ => false
-  end.
-
 Definition run_expr_call runs S C e1 e2s : result :=
   Let is_eval_direct := is_syntactic_eval e1 in
   if_success (runs_type_expr runs S C e1) (fun S1 rv =>

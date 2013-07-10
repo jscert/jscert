@@ -792,6 +792,7 @@ Definition ref_has_primitive_base r :=
 Definition ref_is_property r :=
   let k := ref_kind_of r in
      k = ref_kind_primitive_base
+  \/ k = ref_kind_null
   \/ k = ref_kind_object.
   
 Definition ref_is_value r v :=
@@ -1250,9 +1251,7 @@ Definition regular_unary_op op :=
   match op with
   | unary_op_typeof
   | unary_op_delete => False
-  | _ => If prepost_unary_op op
-           then False
-           else True
+  | _ => ~ prepost_unary_op op
   end.
 
 (**************************************************************)
@@ -1405,6 +1404,14 @@ Definition string_of_native_error (ne : native_error) :=
 
 (**************************************************************)
 (** ** Auxiliary definition used in the reduction of [eval] *)
+
+(** [is_syntactic_eval e] characterizes direct calls to eval *)
+
+Definition is_syntactic_eval e :=
+  match e with
+  | expr_literal (literal_string s) => decide (s = "eval")
+  | _ => false
+  end.
 
 (** Axiomatized parsing relation for eval *)
 

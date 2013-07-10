@@ -822,9 +822,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_new_1 y1 e2s) o ->
       red_expr S C (expr_new e1 e2s) o
 
-  | red_expr_new_1 : forall S0 S C e1 rv e2s v y1 o, (* Step 3 *)
+  | red_expr_new_1 : forall S0 S C e2s v y1 o, (* Step 3 *)
       red_spec S C (spec_list_then e2s) y1 ->
-      red_expr S C (expr_new_2 v y1)  o ->
+      red_expr S C (expr_new_2 v y1) o ->
       red_expr S0 C (expr_new_1 (ret S v) e2s) o
 
   | red_expr_new_2_type_error : forall S S0 C o v vs, (* Steps 4-5 *)
@@ -832,16 +832,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S0 C (expr_new_2 v (ret S vs)) o
       
-  | red_expr_new_2_construct : forall S S0 C l vs v o, (* Step 6 *)
+  | red_expr_new_2_construct : forall S S0 C l vs o, (* Step 6 *)
       red_expr S C (spec_construct l vs) o ->
       red_expr S0 C (expr_new_2 (value_object l) (ret S vs)) o
 
   (** Call (11.2.3) *)
 
-  | red_expr_call : forall is_eval_direct S C e1 e2s o1 o2, (* Step 1 *)
-      is_eval_direct = isTrue (e1 = expr_literal (literal_string "eval")) ->
+  | red_expr_call : forall S C e1 e2s o1 o2,
       red_expr S C e1 o1 ->
-      red_expr S C (expr_call_1 o1 is_eval_direct e2s) o2 ->
+      red_expr S C (expr_call_1 o1 (is_syntactic_eval e1) e2s) o2 ->
       red_expr S C (expr_call e1 e2s) o2
 
   | red_expr_call_1 : forall S0 S C rv is_eval_direct e2s y1 o, (* Step 2 *)
@@ -1015,7 +1014,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_typeof_2 y1) o ->
       red_expr S0 C (expr_typeof_1 (out_ter S r)) o
 
-  | red_expr_typeof_2 : forall S0 S s C v o,
+  | red_expr_typeof_2 : forall S0 S s C v,
       s = typeof_value S v ->
       red_expr S0 C (expr_typeof_2 (ret S v)) (out_ter S s)
 
