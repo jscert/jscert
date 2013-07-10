@@ -26,6 +26,11 @@ Notation "'Let' x ':=' v 'in' e" := (let_binding v (fun x => e))
   (at level 69, x ident, right associativity,
   format "'[v' '[' 'Let'  x  ':='  v  'in' ']'  '/'  '[' e ']' ']'").
 
+Notation "'Let' x ':' A ':=' v 'in' e" := (let_binding (v:A) (fun x:A => e))
+  (at level 69, x ident, right associativity,
+  format "'[v' '[' 'Let'  x  ':'  A  ':='  v  'in' ']'  '/'  '[' e ']' ']'").
+
+
 Lemma let_binding_unfold : forall (A B:Type) (v:A) (K:A->B),
   let_binding v K = K v.
 Proof. reflexivity. Qed.

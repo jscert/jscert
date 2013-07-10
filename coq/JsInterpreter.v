@@ -3,11 +3,6 @@ Require Import Shared.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 Require Import LibFix LibList.
 
-(* todo: move to Shared*)
-
-Notation "'Let' x ':' A ':=' v 'in' e" := (let_binding (v:A) (fun x:A => e))
-  (at level 69, x ident, right associativity,
-  format "'[v' '[' 'Let'  x  ':'  A  ':='  v  'in' ']'  '/'  '[' e ']' ']'").
 
 
 (**************************************************************)
@@ -840,17 +835,12 @@ Definition ref_get_value runs S C rv : specres value :=
   | resvalue_value v =>
     res_spec S v
   | resvalue_ref r =>
-    match ref_kind_of r with
-    | ref_kind_null =>
-      impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
-    | ref_kind_undef =>
-      res_res (run_error S native_error_ref)
-    | ref_kind_primitive_base | ref_kind_object =>
+    Let for_base_or_object := fun tt =>
       match ref_base r with
       | ref_base_type_value v =>
         ifb ref_has_primitive_base r then
           if_value_spec (prim_value_get runs S C v (ref_name r)) (@res_spec _)
-        else
+        else 
           match v with
            | value_object l =>
              if_value_spec (run_object_get runs S C l (ref_name r)) (@res_spec _)
@@ -860,6 +850,14 @@ Definition ref_get_value runs S C rv : specres value :=
       | ref_base_type_env_loc L =>
         impossible_with_heap_because S "[ref_get_value] received a reference to a value whose base type is an environnment record."
       end
+     in
+    match ref_kind_of r with
+    | ref_kind_null =>
+      impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
+    | ref_kind_undef =>
+      res_res (run_error S native_error_ref)
+    | ref_kind_primitive_base | ref_kind_object =>
+      for_base_or_object tt
     | ref_kind_env_record =>
       match ref_base r with
       | ref_base_type_value v =>
@@ -870,6 +868,7 @@ Definition ref_get_value runs S C rv : specres value :=
       end
     end
   end.
+
 
 Definition run_expr_get_value runs S C e : specres value :=
   if_success_spec (runs_type_expr runs S C e) (fun S0 rv =>
@@ -1486,19 +1485,21 @@ Definition from_prop_descriptor runs S C D : result :=
           Let A2 := attributes_data_intro_all_true (attributes_configurable A) in
           if_bool (object_define_own_prop runs S0' C l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' _ =>
             out_ter S' l))
-      in match A with
+        in 
+      match A with
       | attributes_data_of Ad =>
         Let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
         if_bool (object_define_own_prop runs S1 C l "value" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
           Let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
           if_bool (object_define_own_prop runs S2 C l "writable" (descriptor_of_attributes A2) throw_false) follow)
       | attributes_accessor_of Aa =>
-        Let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
+        Let A1 := attributes_accessor_intro_all_true (attributes_accessor_get Aa) in
         if_bool (object_define_own_prop runs S1 C l "get" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
-          Let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
+          Let A2 := attributes_accessor_intro_all_true (attributes_accessor_set Aa) in
           if_bool (object_define_own_prop runs S2 C l "set" (descriptor_of_attributes A2) throw_false) follow)
       end)
   end.
+
 
 End LexicalEnvironments.
 
