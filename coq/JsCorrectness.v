@@ -107,11 +107,9 @@ Definition follow_stat_while (run : state -> execution_ctx -> resvalue -> label_
 Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
     (fun S C => run S C l x).
-Definition follow_object_get_prop (_ : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
-  True. (* TODO:  Waiting for specification. *)
-(* LATER:  Definition follow_object_get_prop l x (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
-  spec_follow_spec (spec_object_get_prop l x) red_spec
-    (fun S C => run S C l x). *)
+Definition follow_object_get_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
+  forall l x, spec_follow_spec (spec_object_get_prop l x) red_spec
+    (fun S C => run S C l x).
 Definition follow_object_proto_is_prototype_of (run : state -> object_loc -> object_loc -> result) :=
   forall lthis,
     follow_spec (spec_call_object_proto_is_prototype_of_2_3 lthis) red_expr
@@ -731,9 +729,10 @@ Ltac run_select_extra T ::=
 (** [run_select_proj] is used to obtain automatically
     the right correctness lemma out of the correctness record *)
  
+Ltac run_select_proj_extra_error HT := fail.
 Ltac run_select_proj_extra_ref HT := fail.
 Ltac run_select_proj_extra_conversions HT := fail.
-Ltac run_select_proj_extra_3 HT := fail.
+Ltac run_select_proj_extra_construct HT := fail.
 Ltac run_select_proj_extra_get_value HT := fail.
 
 Ltac run_select_proj H :=
@@ -742,9 +741,10 @@ Ltac run_select_proj H :=
   | runs_type_expr => constr:(runs_type_correct_expr)
   | runs_type_stat => constr:(runs_type_correct_stat)
   | runs_type_prog => constr:(runs_type_correct_prog)
+  | ?x => run_select_proj_extra_error HT
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
-  | ?x => run_select_proj_extra_3 HT
+  | ?x => run_select_proj_extra_construct HT
   | ?x => run_select_proj_extra_get_value HT
   end end.
 
@@ -1184,30 +1184,22 @@ Proof.
    inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
 
+Ltac run_select_proj_extra_error HT ::=
+  match HT with
+  | run_error => constr:(run_error_correct)
+  | run_object_method => constr:(run_object_method_correct)
+  end.
+
 Lemma object_has_prop_correct : forall runs S C l x o,
   runs_type_correct runs ->
   object_has_prop runs S C l x = o ->
   red_expr S C (spec_object_has_prop l x) o.
-Admitted. (* OLD
-  introv RC E. unfolds in E. name_object_method.
-  destruct B as [B|]; simpls.
-   forwards~ BC: run_object_method_correct (rm EQB).
-    destruct B. forwards [(S'&?&?&E')|(?&Ep&?)]: @passing_defined_out (rm E);
-      simpl_after_regular_lemma.
-     inverts E'. splits; introv Eq; inverts Eq.
-      applys red_spec_object_has_prop BC.
-      apply red_spec_object_has_prop_1_default. apply~ RC.
-      rewrite H. constructors. apply~ red_spec_object_has_prop_2.
-       rewrite decide_spec. cases_if~; rew_refl.
-        rewrite~ isTrue_true.
-        rewrite~ isTrue_false.
-     substs. splits; introv Eq; inverts Eq. apply RC in Ep. splits.
-      applys red_spec_object_has_prop BC.
-       apply red_spec_object_has_prop_1_default. apply Ep.
-       constructors.
-      applys~ Ep spec_object_has_prop_2. constructors.
-   substs. splits; introv Eq; inverts Eq.
-Qed. *)
+Proof.
+  introv IH HR. unfolds in HR. run_simpl. run_hyp E as M.
+  applys~ red_spec_object_has_prop M. destruct x0.
+  run red_spec_object_has_prop_1_default using runs_type_correct_object_get_prop.
+  apply~ red_spec_object_has_prop_2. rewrite decide_def. repeat cases_if~.
+Qed.
 
 Lemma object_get_builtin_correct : forall runs S C B vthis l x o,
   runs_type_correct runs ->
@@ -1471,8 +1463,6 @@ Admitted.
 
 Ltac run_select_proj_extra_ref HT ::= 
   match HT with
-  | run_error => constr:(run_error_correct)
-  | run_object_method => constr:(run_object_method_correct)
   | object_put => constr:(object_put_correct)
   | ref_put_value => constr:(ref_put_value_correct)
   | run_expr_get_value => constr:(run_expr_get_value_correct)
@@ -1793,7 +1783,7 @@ Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco p args o,
   red_expr S C (spec_binding_inst ct funco p args) o.
 Admitted.
 
-Ltac run_select_proj_extra_3 HT ::= 
+Ltac run_select_proj_extra_construct HT ::= 
   match HT with
   | run_construct_prealloc => constr:(run_construct_prealloc_correct)
   | run_construct => constr:(run_construct_correct)
@@ -2499,8 +2489,8 @@ Proof.
      apply~ run_call_correct.
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
-     skip. (* apply~ run_object_get_own_prop_correct. *)
-     solve [unfolds*]. (* apply~ run_object_get_prop_correct. *)
+     skip. (* TODO:  Use run_object_get_own_prop_correct *)
+     skip. (* Todo:  Use run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
      apply~ run_equal_correct.
 Qed.

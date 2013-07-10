@@ -75,8 +75,6 @@ red_spec_object_put_4_accessor
 red_spec_object_put_4_not_accessor_object 
 red_spec_object_put_4_not_accessor_prim 
 red_spec_object_put_5_return 
-red_spec_object_has_prop_1_default 
-red_spec_object_has_prop_2 
 
 
 === others
