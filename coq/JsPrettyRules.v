@@ -2251,10 +2251,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_formal_params_3 args L x xs str v) o ->
       red_expr S0 C (spec_binding_inst_formal_params_1 args L x xs str v (out_ter S true)) o
       
-  | red_spec_binding_inst_formal_params_3 : forall o1 S0 S C args L x xs str v o, (* Step 4d v *)
+  | red_spec_binding_inst_formal_params_3 : forall o1 S C args L x xs str v o, (* Step 4d v *)
       red_expr S C (spec_env_record_set_mutable_binding L x v str) o1 ->
       red_expr S C (spec_binding_inst_formal_params_4 args L xs str o1) o ->
-      red_expr S0 C (spec_binding_inst_formal_params_3 args L x xs str v) o
+      red_expr S C (spec_binding_inst_formal_params_3 args L x xs str v) o
 
   | red_spec_binding_inst_formal_params_4 : forall S0 S C args L xs str o1 o, (* Step 4d loop *)
       red_expr S C (spec_binding_inst_formal_params args L xs str) o ->
