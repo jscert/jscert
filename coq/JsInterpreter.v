@@ -521,8 +521,8 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
           out_ter S0 (attributes_data_value Ad)
       | attributes_accessor_of Aa =>
           match attributes_accessor_get Aa with
-          | undef => out_ter S0 undef
           | value_object lf => runs_type_call runs S0 C lf l nil
+          | undef => out_ter S0 undef
           | value_prim _ =>
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
           end
@@ -584,10 +584,10 @@ Definition run_object_get_prop runs S C l x : specres full_descriptor :=
         ifb D = full_descriptor_undef then (
           if_some (run_object_method object_proto_ S1 l) (fun proto =>
             match proto with
-            | null =>
-              res_spec S1 full_descriptor_undef
             | value_object lproto =>
               runs_type_object_get_prop runs S1 C lproto x
+            | null =>
+              res_spec S1 full_descriptor_undef
             | value_prim _ =>
               impossible_with_heap_because S1 "Found a non-null primitive value as a prototype in [run_object_get_prop]."
             end)

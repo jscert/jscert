@@ -33,37 +33,11 @@ red_spec_to_uint32_1
 
 Arthur:
 
-red_spec_object_get 
-red_spec_object_get_prop 
-red_spec_object_get_prop_1_default 
-red_spec_object_get_prop_2_not_undef 
-red_spec_object_get_prop_2_undef 
-red_spec_object_get_prop_3_null 
-red_spec_object_get_prop_3_not_null 
-red_spec_object_get_1_default 
-red_spec_object_get_2_undef 
-red_spec_object_get_2_data 
-red_spec_object_get_2_accessor 
-red_spec_object_get_3_accessor_undef 
-red_spec_object_get_3_accessor_object 
 
 
 Martin:
 
 red_spec_object_put 
-red_spec_object_can_put 
-red_spec_object_has_prop 
-red_spec_object_can_put_1_default 
-red_spec_object_can_put_2_accessor 
-red_spec_object_can_put_2_data 
-red_spec_object_can_put_2_undef 
-red_spec_object_can_put_4_null 
-red_spec_object_can_put_4_not_null 
-red_spec_object_can_put_5_undef 
-red_spec_object_can_put_5_accessor 
-red_spec_object_can_put_5_data 
-red_spec_object_can_put_6_extens_false 
-red_spec_object_can_put_6_extens_true 
 red_spec_object_put_1_default 
 red_spec_object_put_1_false 
 red_spec_object_put_2_true 
@@ -75,8 +49,6 @@ red_spec_object_put_4_accessor
 red_spec_object_put_4_not_accessor_object 
 red_spec_object_put_4_not_accessor_prim 
 red_spec_object_put_5_return 
-red_spec_object_has_prop_1_default 
-red_spec_object_has_prop_2 
 
 
 === others
