@@ -1335,7 +1335,22 @@ Lemma object_put_complete_correct : forall runs S C B vthis l x v str o,
   runs_type_correct runs ->
   object_put_complete runs B S C vthis l x v str = o ->
   red_expr S C (spec_object_put_1 B vthis l x v str) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR. destruct B.
+  run red_spec_object_put_1_default using object_can_put_correct. cases_if.
+   run red_spec_object_put_2_true. let_name.
+    asserts follows_correct: (forall o, True ->
+      follow tt = o ->
+      red_expr S0 C (spec_object_put_3 vthis l x v str (specret_val S2 a)) o).
+      clear HR. introv N E. substs. skip. (* TODO *)
+     destruct a as [|[Ad|Aa]]; try solve [apply~ follows_correct].
+     clear EQfollow follow follows_correct.
+     destruct vthis as [wthis|lthis].
+      apply~ red_spec_object_put_3_data_prim. apply~ out_error_or_void_correct.
+      let_simpl. run* red_spec_object_put_3_data_object
+        using object_define_own_prop_correct. apply~ red_spec_object_put_5_return.
+   apply~ red_spec_object_put_2_false. apply~ out_error_or_void_correct.
+Qed.
 
 Lemma prim_value_put_correct : forall runs S C w x v str o,
   runs_type_correct runs ->

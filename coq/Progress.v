@@ -37,18 +37,13 @@ Arthur:
 
 Martin:
 
-red_spec_object_put 
-red_spec_object_put_1_default 
-red_spec_object_put_1_false 
-red_spec_object_put_2_true 
-red_spec_object_put_2_true 
-red_spec_object_put_3_data_object 
-red_spec_object_put_3_data_prim 
 red_spec_object_put_3_not_data 
 red_spec_object_put_4_accessor 
 red_spec_object_put_4_not_accessor_object 
 red_spec_object_put_4_not_accessor_prim 
-red_spec_object_put_5_return 
+
+Implementing the new stat_block, and code do_while, following while.
+Merging if_success* (in a branch)
 
 
 === others

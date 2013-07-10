@@ -1682,9 +1682,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put_2 vthis l x v throw o1) o ->
       red_expr S C (spec_object_put_1 builtin_put_default vthis l x v throw) o  
 
-  | red_spec_object_put_1_false : forall S C vthis l x v throw o, (* Steps 1.a and 1.b *)
+  | red_spec_object_put_2_false : forall S0 S C vthis l x v throw o, (* Steps 1.a and 1.b *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
-      red_expr S C (spec_object_put_2 vthis l x v throw (out_ter S false)) o
+      red_expr S0 C (spec_object_put_2 vthis l x v throw (out_ter S false)) o
 (*
   | red_spec_object_put_2_true : forall S C vthis l x v throw o, (* Step 2 *)
       red_expr S C (spec_object_get_own_prop l x (spec_object_put_3 vthis l x v throw)) o ->      
@@ -1692,26 +1692,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 *)
 
   (* Daniele: descriptor or full_descriptor?! *)
-  | red_spec_object_put_2_true : forall S C vthis l x v throw o (y:specret full_descriptor), (* Step 2 *)
+  | red_spec_object_put_2_true : forall S0 S C vthis l x v throw o (y:specret full_descriptor), (* Step 2 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
-      red_expr S C (spec_object_put_3 vthis l x v throw y) o ->      
-      red_expr S C (spec_object_put_2 vthis l x v throw (out_ter S true)) o
+      red_expr S C (spec_object_put_3 vthis l x v throw y) o ->
+      red_expr S0 C (spec_object_put_2 vthis l x v throw (out_ter S true)) o
 
 
   | red_spec_object_put_3_data_object : forall S0 S C (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 3 *)
       Desc = descriptor_intro (Some v) None None None None None ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
-      red_expr S C (spec_object_put_3 lthis l x v throw (ret (T:=full_descriptor) S0 (attributes_data_of Ad))) o
+      red_expr S0 C (spec_object_put_3 lthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
   | red_spec_object_put_3_data_prim : forall S0 S C (wthis:prim) l x v throw Ad o, (* Step 3, for prim values *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
-      red_expr S C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S0 (attributes_data_of Ad))) o
+      red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
       red_spec S C (spec_object_get_prop l x) y1 ->
       red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
-      red_expr S C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S0 (attributes_accessor_of Aa))) o
+      red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S (attributes_accessor_of Aa))) o
       (* According to the spec, it should be every cases that are not [attributes_data_of].  
         There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
 
@@ -1734,8 +1734,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_4 wthis l x v throw (dret S (attributes_data_of Ad))) o
 
-  | red_spec_object_put_5_return : forall S C rv, (* Steps 3.c and 7 *)
-      red_expr S C (spec_object_put_5 (out_ter S rv)) (out_void S)
+  | red_spec_object_put_5_return : forall S0 S C rv, (* Steps 3.c and 7 *)
+      red_expr S0 C (spec_object_put_5 (out_ter S rv)) (out_void S)
 
   (** HasProperty (8.12.6) *)
 
@@ -1763,12 +1763,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       attributes_configurable A = true ->
       object_rem_property S l x S' ->
       make_delete_event S' l x ev ->
-      red_expr S C (spec_object_delete_2 l x throw (ret S0 (full_descriptor_some A))) (out_ter (state_with_new_event S' ev) true)
+      red_expr S0 C (spec_object_delete_2 l x throw (ret S (full_descriptor_some A))) (out_ter (state_with_new_event S' ev) true)
 
   | red_spec_object_delete_3_some_non_configurable : forall S0 S C l x throw A o, (* Steps 4 and 5 *)
       attributes_configurable A = false ->
       red_expr S C (spec_error_or_cst throw native_error_type false) o ->
-      red_expr S C (spec_object_delete_2 l x throw (ret S0 (full_descriptor_some A))) o 
+      red_expr S0 C (spec_object_delete_2 l x throw (ret S (full_descriptor_some A))) o 
 
   (** DefaultValue (8.12.8)
       Note: rules are better factorized than the specification *)
