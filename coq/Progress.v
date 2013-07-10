@@ -13,11 +13,17 @@ Monadic constructors.
 
 
 
-=== Requires big changes (Daniele)
+=== Requires
 
-prog_block
+new program for prog_block
+new program for do_while
 
+get rid of the events in pretty rules (with a flag)
 
+=== CHECK:
+
+red_spec_object_define_own_prop_5_generic 
+  => the negation of the condition does not appear in the others; is it correct?
 
 === convert
 
@@ -104,28 +110,6 @@ red_spec_to_descriptor_6c_error
 red_spec_to_descriptor_6c_ok 
 red_spec_to_descriptor_7_error 
 red_spec_to_descriptor_7_ok 
-
-red_spec_object_define_own_prop_1_default 
-red_spec_object_define_own_prop_2 
-red_spec_object_define_own_prop_3_undef_false 
-red_spec_object_define_own_prop_3_undef_true 
-red_spec_object_define_own_prop_3_includes 
-red_spec_object_define_own_prop_3_not_include 
-red_spec_object_define_own_prop_4_reject 
-red_spec_object_define_own_prop_4_not_reject 
-red_spec_object_define_own_prop_5_generic 
-red_spec_object_define_own_prop_5_a 
-red_spec_object_define_own_prop_6a_reject 
-red_spec_object_define_own_prop_6a_accept 
-red_spec_object_define_own_prop_5_b 
-red_spec_object_define_own_prop_6b_false_reject 
-red_spec_object_define_own_prop_6b_false_accept 
-red_spec_object_define_own_prop_5_c 
-red_spec_object_define_own_prop_6c_1 
-red_spec_object_define_own_prop_6c_2 
-red_spec_object_define_own_prop_write 
-red_spec_object_define_own_prop_reject 
-
 
 === function
 
@@ -232,13 +216,6 @@ red_spec_make_arg_setter
 red_spec_object_get_args_obj 
 red_spec_object_get_args_obj_1_undef 
 red_spec_object_get_args_obj_1_attrs 
-red_spec_object_get_own_prop_args_obj 
-red_spec_object_get_own_prop_args_obj_1_undef 
-red_spec_object_get_own_prop_args_obj_1_attrs 
-red_spec_object_get_own_prop_args_obj_2_attrs 
-red_spec_object_get_own_prop_args_obj_3 
-red_spec_object_get_own_prop_args_obj_2_undef 
-red_spec_object_get_own_prop_args_obj_4 
 red_spec_object_delete_args_obj 
 red_spec_object_delete_args_obj_1 
 red_spec_object_delete_args_obj_2_if 
@@ -248,7 +225,15 @@ red_spec_object_delete_args_obj_4
 
 
 
-=== can be skipped
+=== can be skipped ===
+
+red_spec_object_get_own_prop_args_obj 
+red_spec_object_get_own_prop_args_obj_1_undef 
+red_spec_object_get_own_prop_args_obj_1_attrs 
+red_spec_object_get_own_prop_args_obj_2_attrs 
+red_spec_object_get_own_prop_args_obj_3 
+red_spec_object_get_own_prop_args_obj_2_undef 
+red_spec_object_get_own_prop_args_obj_4 
 
 red_spec_arguments_object_map 
 red_spec_arguments_object_map_1 

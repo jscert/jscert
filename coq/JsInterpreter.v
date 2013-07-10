@@ -687,6 +687,7 @@ Definition object_can_put runs S C l x : result :=
           end)
       end).
 
+
 Definition object_define_own_prop runs S C l x Desc str : result :=
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
     match B with
@@ -717,6 +718,7 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                else ifb descriptor_is_generic Desc then
                  object_define_own_prop_write S1 A
                else ifb attributes_is_data A <> descriptor_is_data Desc then
+                 (* LATER: restore version with negation:
                  if neg (attributes_configurable A) then
                    reject S1
                  else
@@ -729,7 +731,21 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                      end in
                    if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
                         object_define_own_prop_write S2 A')
-               else match A with
+                  *)
+                 (if (attributes_configurable A) then
+                   Let A':=
+                     match A return attributes with
+                     | attributes_data_of Ad =>
+                       attributes_accessor_of_attributes_data Ad
+                     | attributes_accessor_of Aa =>
+                       attributes_data_of_attributes_accessor Aa
+                     end in
+                   if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
+                        object_define_own_prop_write S2 A')
+                 else
+                   reject S1)
+               else ifb descriptor_is_accessor Desc then
+                 match A with
                  | attributes_data_of Ad =>
                    ifb attributes_change_data_on_non_configurable Ad Desc then
                      reject S1
@@ -741,6 +757,9 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                    else
                      object_define_own_prop_write S1 A
                  end
+               else
+                (* TODO: check this is true *)
+                impossible_with_heap_because S "cases are mutually exclusives in [defineOwnProperty]"
              end))
       | builtin_define_own_prop_args_obj =>
         res_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)

@@ -891,7 +891,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_object_define_own_prop _ _ _ _ => None
   | spec_object_define_own_prop_1 _ _ _ _ _ => None
-  | spec_object_define_own_prop_2 _ _ _ _ _ => None
+  | spec_object_define_own_prop_2 _ _ _ _ y => out_of_specret y
   | spec_object_define_own_prop_3 _ _ _ _ _ _ => None
   | spec_object_define_own_prop_4 _ _ _ _ _ => None
   | spec_object_define_own_prop_5 _ _ _ _ _ => None

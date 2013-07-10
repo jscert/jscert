@@ -1185,7 +1185,7 @@ Proof.
    inverts E. splits~. apply~ red_spec_error_or_void_false.
 Qed.
 
-Lemma out_error_or_cst_correct : forall S C str (ne : native_error) v o,
+Lemma out_error_or_cst_correct' : forall S C str (ne : native_error) v o,
   out_error_or_cst S str ne v = o ->
   red_expr S C (spec_error_or_cst str ne v) o /\
     (~ abort o -> o = out_ter S v).
@@ -1194,6 +1194,18 @@ Proof.
    applys_and red_spec_error_or_cst_true. forwards~ (RC&Cr): run_error_correct' E. splits*.
    inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
+
+(* LATER: clean up redundant proof for the direct case *)
+Lemma out_error_or_cst_correct : forall S C str ne v o,
+  out_error_or_cst S str ne v = o ->
+  red_expr S C (spec_error_or_cst str ne v) o.
+Proof.
+  introv HR. unfolds in HR. case_if.
+  applys* red_spec_error_or_cst_true.
+    applys* run_error_correct.
+  run_inv. applys* red_spec_error_or_cst_false.
+Qed.
+
 
 Ltac run_select_proj_extra_error HT ::=
   match HT with
@@ -1286,11 +1298,66 @@ Proof.
     apply~ red_spec_object_can_put_2_accessor. rewrite decide_def. repeat cases_if~.
 Qed.
 
+
+
+
 Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
   runs_type_correct runs ->
   object_define_own_prop runs S C l x Desc str = o ->
   red_expr S C (spec_object_define_own_prop l x Desc str) o.
+Proof.
+  introv IH HR. unfolds in HR. run. 
+  (* LATER: create a tactic for the pattern of the next two lines *)
+  applys* red_spec_object_define_own_prop.
+   applys* run_object_method_correct. clear E.
+  destruct x0.
+  (* default *)
+  run red_spec_object_define_own_prop_1_default.
+  let_name as rej. asserts Rej: (forall S o,
+      rej S = o ->
+      red_expr S C (spec_object_define_own_prop_reject str) o). 
+    clear HR S o. introv HR. subst.
+    applys* red_spec_object_define_own_prop_reject.
+    applys* out_error_or_cst_correct.
+    clear EQrej.
+  run. applys* red_spec_object_define_own_prop_2.
+    applys* run_object_method_correct. clear E. 
+  destruct a.
+    case_if.
+      let_name. run. forwards B: @pick_option_correct (rm E).
+       applys* red_spec_object_define_own_prop_3_undef_true A. 
+       case_if; case_if*.
+      subst. applys* red_spec_object_define_own_prop_3_undef_false.
+    let_name as wri. asserts Wri: (forall S A o,
+        wri S A = res_out o ->
+        red_expr S C (spec_object_define_own_prop_write l x A Desc str) o).
+      clear HR S o. introv HR. subst.
+      run. forwards B: @pick_option_correct (rm E).
+       applys* red_spec_object_define_own_prop_write.
+      clear EQwri.
+    case_if.
+      run_inv. applys* red_spec_object_define_own_prop_3_includes.
+      applys* red_spec_object_define_own_prop_3_not_include.
+      case_if.
+        run_inv. applys* red_spec_object_define_own_prop_4_reject.
+        applys* red_spec_object_define_own_prop_4_not_reject. case_if.
+          applys* red_spec_object_define_own_prop_5_generic. case_if.
+            applys* red_spec_object_define_own_prop_5_a. case_if;
+             [ | applys* red_spec_object_define_own_prop_6a_reject].
+  let_name. run. forwards B: @pick_option_correct (rm E).
+   applys* red_spec_object_define_own_prop_6a_accept A'.
+   case_if. destruct a; inverts n2.
+     applys red_spec_object_define_own_prop_5_b. rewrite* <- H0.
+      case_if.
+        applys* red_spec_object_define_own_prop_6b_false_reject.
+        applys* red_spec_object_define_own_prop_6b_false_accept.
+     applys* red_spec_object_define_own_prop_5_c. case_if. 
+       applys* red_spec_object_define_own_prop_6c_1.
+       applys* red_spec_object_define_own_prop_6c_2.  
+  (* arguments object *)
+  skip. (* TODO: implement *)
 Admitted.
+
 
 Lemma prim_new_object_correct : forall S C w o,
   prim_new_object S w = o ->

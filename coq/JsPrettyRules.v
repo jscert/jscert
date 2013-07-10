@@ -1827,7 +1827,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_define_own_prop_2 : forall S0 S C l x Desc throw An bext o, (* Step 2 *)
       object_extensible S l bext ->
       red_expr S C (spec_object_define_own_prop_3 l x Desc throw An bext) o ->
-      red_expr S C (spec_object_define_own_prop_2 l x Desc throw (ret S0 An)) o (* This [An] is a [full_descriptor]:  why not calling it [D]? -- Martin *)
+      red_expr S0 C (spec_object_define_own_prop_2 l x Desc throw (ret S An)) o (* This [An] is a [full_descriptor]:  why not calling it [D]? -- Martin *)
 
   | red_spec_object_define_own_prop_3_undef_false : forall S C l x Desc throw o, (* Step 3 *)
       red_expr S C (spec_object_define_own_prop_reject throw) o ->
