@@ -199,7 +199,6 @@ Definition if_success := if_success_state resvalue_empty.
     | restype_normal =>
       if_empty_label S0 R (fun _ =>
         K S0 (res_value R))
-    | restype_throw => W
     | _ =>
       out_ter S0 R
     end).

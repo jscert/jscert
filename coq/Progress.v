@@ -39,11 +39,6 @@ red_spec_prim_value_get
 red_spec_prim_value_get_1 
 red_spec_prim_value_put 
 red_spec_prim_value_put_1 
-red_spec_ref_put_value_value 
-red_spec_ref_put_value_ref_a_1 
-red_spec_ref_put_value_ref_a_2 
-red_spec_ref_put_value_ref_b 
-red_spec_ref_put_value_ref_c 
 red_spec_object_get 
 red_spec_object_get_prop 
 red_spec_object_put 

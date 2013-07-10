@@ -172,77 +172,27 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** Block statement (12.1)
       -- See also the definition of [abort_intercepted_stat]. *)
 
-(* Daniele: old
-  | red_stat_block : forall S C ts o,
-      red_stat S C (stat_block_1 resvalue_empty ts) o ->
-      red_stat S C (stat_block ts) o
+  | red_stat_block_nil : forall S C ts o, (* empty block, step 1 *)
+      red_stat S C (stat_block nil) (out_ter S resvalue_empty)
 
-  | red_stat_block_1_nil : forall S C rv,
-      red_stat S C (stat_block_1 rv nil) (out_ter S rv)
+  | red_stat_block_cons : forall S C rv t ts o1 o, (* step 1, and 2 (via abort rule) *)
+      red_stat S C (stat_block ts) o1 ->
+      red_stat S C (stat_block_1 o1 t) o ->
+      red_stat S C (stat_block (ts++(t::nil))) o
 
-  | red_stat_block_1_cons : forall S C rv t ts o1 o,
+  | red_stat_block_1 : forall S0 S C t rv o o1, (* step 3 *)
       red_stat S C t o1 ->
-      red_stat S C (stat_block_2 rv o1 ts) o ->
-      red_stat S C (stat_block_1 rv (t::ts)) o
+      red_stat S C (stat_block_2 rv o1) o ->
+      red_stat S0 C (stat_block_1 (out_ter S rv) t) o
 
-  | red_stat_block_2 : forall S0 S C ts R rv o,
-      res_type R <> restype_throw ->
-      red_stat S C (stat_block_3 (out_ter S (res_overwrite_value_if_empty rv R)) ts) o ->
-      red_stat S0 C (stat_block_2 rv (out_ter S R) ts) o
-
-  | red_stat_block_3 : forall S0 S C ts rv o,
-      red_stat S C (stat_block_1 rv ts) o ->
-      red_stat S0 C (stat_block_3 (out_ter S rv) ts) o
-*)
-
-  (* Daniele: this rule is probably redundant *)
-  | red_stat_block : forall S C ts o,
-      red_stat S C (stat_block_1 ts) o ->
-      red_stat S C (stat_block ts) o
-
-  (* Nil *)
-  | red_stat_block_1_nil : forall S C, (* step 1 *)
-      red_stat S C (stat_block_1 nil) (out_ter S resvalue_empty)
-
-  (* Statement *)
-  | red_stat_block_1_single : forall S C t o1 o, (* step 1 *)
-      red_stat S C t o1 ->
-      red_stat S C (stat_block_1_1 o1) o ->
-      red_stat S C (stat_block_1 (t::nil)) o
-
-  | red_stat_block_1_single'_exception : forall S S0 R C t, (* step 2 *)
+  | red_stat_block_2_throw : forall S0 S C R rv, (* step 4 *)
       res_type R = restype_throw ->
-      red_stat S0 C (stat_block_1_1 (out_ter S R)) (out_ter S (res_throw (res_value R)))
+      red_stat S0 C (stat_block_2 rv (out_ter S R)) (out_ter S (res_throw (res_value R)))
 
-  | red_stat_block_1_single'_not_exception : forall S0 S C R, (* step 3 *)
-      res_type R <> restype_throw ->
-      red_stat S0 C (stat_block_1_1 (out_ter S R)) (out_ter S R)
-
-  (* StatementList *)
-  | red_stat_block_1_cons : forall S C t ts o1 o, (* step 1 *)
-      red_stat S C (stat_block_1 ts) o1 ->
-      red_stat S C (stat_block_2 o1 t) o ->
-      red_stat S C (stat_block_1 (ts++t::nil)) o
-
-  | red_stat_block_2_abrupt : forall S0 S C R t, (* step 2 *)
-      ~ res_is_normal R ->
-      red_stat S0 C (stat_block_2 (out_ter S R) t) (out_ter S R)
-
-  | red_stat_block_2_not_abrupt : forall S0 S C t R o o1, (* step 3 *)
-      res_is_normal R ->
-      red_stat S C t o1 ->
-      red_stat S C (stat_block_3 (res_value R) o1) o ->
-      red_stat S0 C (stat_block_2 (out_ter S R) t) o
-
-  | red_stat_block_3_exception : forall S0 S C R rv, (* step 4 *)
-      res_type R = restype_throw ->
-      red_stat S0 C (stat_block_3 rv (out_ter S R)) (out_ter S (res_throw (res_value R)))
-
-  | red_stat_block_3_not_exception : forall S0 S C R R' rv, (* steps 5 and 6 *)
+  | red_stat_block_2_not_throw : forall S0 S C R R' rv, (* steps 5 and 6 *)
       res_type R <> restype_throw ->
       R' = (res_overwrite_value_if_empty rv R) ->
-      red_stat S0 C (stat_block_3 rv (out_ter S R)) (out_ter S R')
-
+      red_stat S0 C (stat_block_2 rv (out_ter S R)) (out_ter S R')
 
   (** Variable declaration (12.2) *)
 
