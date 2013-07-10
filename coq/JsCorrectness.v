@@ -1686,15 +1686,38 @@ Proof.
   red_expr S C (expr_call_1 o1 (is_syntactic_eval e1) e2s) o2 ->
   red_expr S C (expr_call e1 e2s) o2.
   run red_expr_call.
-  run red_expr_call_1. skip.
-  applys* ref_get_value_correct. 
-  run red_expr_call_2.
-  applys* run_list_expr_correct.
-  applys red_expr_abort.
-  subst*. simpl.
-  skip. skip. skip.
-  (*applys* red_expr_call_1.
-  run_post.*)
+  run red_expr_call_1 using ref_get_value_correct. 
+  run red_expr_call_2 using run_list_expr_correct.
+  destruct a.
+  applys* red_expr_call_3. left.
+  destruct p; intros H; inversion H. 
+  applys* run_error_correct_2.
+  case_if.
+  applys* red_expr_call_3.
+  applys* run_error_correct_2.
+  applys* red_expr_call_3_callable.
+  let_simpl.
+  asserts follows_correct: (forall vthis, follow vthis = o ->
+      red_expr S3 C (expr_call_5 o0 (is_syntactic_eval e) a0 (out_ter S3 vthis)) o). 
+    subst follow. clear R. introv HR. 
+    case_if. subst.
+    applys* red_expr_call_5_eval.
+    skip. (* Need a lemma about run_eval correctness*)
+    applys* red_expr_call_5_not_eval.
+    skip.  (* Need a lemma about spec_call *)
+    clear EQfollow.
+  destruct rv; tryfalse.
+  applys* red_expr_call_4_not_ref.
+  assert (exists x, ref_base r = x).
+     exists (ref_base r). trivial.
+  destruct H. rewrite H in *.
+  destruct x. 
+  case_if.
+  applys* red_expr_call_4_prop.
+  applys* red_expr_call_4_env.
+  skip. (* lemma about implicit this *)
+  applys* follows_correct.
+  skip.
   (* TODO *)
   (* unary operators *)
   skip. (* TODO *)
