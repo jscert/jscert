@@ -1,70 +1,23 @@
-=== LATER
-
-Object.*
-Function.*
-
-switch
-do_while
-binary ops
-
-argument objects
-
-Monadic constructors.
 
 
-
-=== Requires
-
-new program for prog_block
-new program for do_while
-
-get rid of the events in pretty rules (with a flag)
-
+====================
 === CHECK:
 
 red_spec_object_define_own_prop_5_generic 
   => the negation of the condition does not appear in the others; is it correct?
 
-=== convert
 
-red_spec_convert_twice 
-red_spec_convert_twice_1 
-red_spec_convert_twice_2 
-red_spec_to_int32 
-red_spec_to_int32_1 
-red_spec_to_uint32 
-red_spec_to_uint32_1 
+==> get rid of the events in pretty rules (with a flag)
 
-=== internal
+
+====================
 
 Arthur:
-
-
-
-Martin:
 
 red_spec_object_put_3_not_data 
 red_spec_object_put_4_accessor 
 red_spec_object_put_4_not_accessor_object 
 red_spec_object_put_4_not_accessor_prim 
-
-Implementing the new stat_block, and code do_while, following while.
-Merging if_success* (in a branch)
-
-
-=== others
-
-red_spec_creating_function_object_proto 
-red_spec_creating_function_object_proto_1 
-red_spec_creating_function_object_proto_2 
-red_spec_creating_function_object 
-red_spec_creating_function_object_1 
-red_spec_creating_function_object_2_not_strict 
-red_spec_creating_function_object_2_strict 
-red_spec_creating_function_object_3 
-red_spec_creating_function_object_4 
-
-red_spec_create_new_function_in 
 
 red_spec_object_get_1_function 
 red_spec_function_get_1_error 
@@ -76,9 +29,15 @@ red_spec_function_has_instance_1_prim
 red_spec_function_has_instance_1_object 
 
 
-red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
-
-=== descriptors
+red_spec_creating_function_object_proto 
+red_spec_creating_function_object_proto_1 
+red_spec_creating_function_object_proto_2 
+red_spec_creating_function_object 
+red_spec_creating_function_object_1 
+red_spec_creating_function_object_2_not_strict 
+red_spec_creating_function_object_2_strict 
+red_spec_creating_function_object_3 
+red_spec_creating_function_object_4 
 
 red_spec_to_descriptor_not_object 
 red_spec_to_descriptor_object 
@@ -111,7 +70,36 @@ red_spec_to_descriptor_6c_ok
 red_spec_to_descriptor_7_error 
 red_spec_to_descriptor_7_ok 
 
-=== function
+red_spec_create_new_function_in 
+
+red_javascript_intro 
+(* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
+
+red_spec_convert_twice 
+red_spec_convert_twice_1 
+red_spec_convert_twice_2 
+red_spec_to_int32 
+red_spec_to_int32_1 
+red_spec_to_uint32 
+red_spec_to_uint32_1 
+
+switch
+do_while
+binary ops
+
+====================
+
+Martin:
+
+new program for prog_block
+
+new program for do_while
+
+
+Implementing the new stat_block, and code do_while, following while.
+
+Merging if_success* (in a branch)
+
 
 red_spec_call 
 red_spec_constructor 
@@ -211,18 +199,6 @@ red_spec_binding_inst_7
 red_spec_binding_inst_6_no_arguments 
 red_spec_binding_inst_8 
 
-red_spec_make_arg_getter 
-red_spec_make_arg_setter 
-red_spec_object_get_args_obj 
-red_spec_object_get_args_obj_1_undef 
-red_spec_object_get_args_obj_1_attrs 
-red_spec_object_delete_args_obj 
-red_spec_object_delete_args_obj_1 
-red_spec_object_delete_args_obj_2_if 
-red_spec_object_delete_args_obj_3 
-red_spec_object_delete_args_obj_2_else 
-red_spec_object_delete_args_obj_4 
-
 
 
 === can be skipped ===
@@ -268,3 +244,48 @@ red_spec_object_define_own_prop_args_obj_4_not_false
 red_spec_object_define_own_prop_args_obj_2_true_undef 
 red_spec_object_define_own_prop_args_obj_6 
 
+red_spec_make_arg_getter 
+red_spec_make_arg_setter 
+
+red_spec_object_get_args_obj 
+red_spec_object_get_args_obj_1_undef 
+red_spec_object_get_args_obj_1_attrs 
+red_spec_object_delete_args_obj 
+red_spec_object_delete_args_obj_1 
+red_spec_object_delete_args_obj_2_if 
+red_spec_object_delete_args_obj_3 
+red_spec_object_delete_args_obj_2_else 
+red_spec_object_delete_args_obj_4 
+
+
+
+
+
+
+
+
+
+==============================================
+
+*) Say that we formalize all of the core language (out of libraries).
+   About JS-specific functions from library: 
+   work in progress (almost all specified, no jscert-to-jsref proof yet)
+
+*) Section 4:
+-- count the number pages of ES5 that we actually cover
+
+*) Section 6:
+Section 6 needs to be filled (without using too much space)
+-- section 6.1: not sure it brings new information compared with what's been said before
+
+*) Section 5: 
+-- Figure 7 contains "Fixpoint build_runs max_step" which is redundant with the previous def
+-- Figure 4 needs to inline the definition of "vret", which is not defined
+-- There is undefined reference to "abort"; 
+-- An example what how the abort rule propagates exceptions (we don't have to show the generic abort rule though, we can just say that all abort rules are actually factorized as one, see pretty-big-step paper for details).
+
+*) running spellchecker on paper
+
+*) try to see if \paragraph would look nicer than \stitle
+
+*) to release Coq scripts, we'll need a script for hiding LATER and TODO (using a regexp)
