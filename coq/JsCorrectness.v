@@ -1761,26 +1761,15 @@ Lemma env_record_has_binding_correct : forall runs S C L x o,
   runs_type_correct runs ->
   env_record_has_binding runs S C L x = o ->
   red_expr S C (spec_env_record_has_binding L x) o.
-Admitted.
-
-Fixpoint lexical_env_get_identifier_ref' runs S C X x str : specres ref :=
-  match X with
-  | nil =>
-    res_spec S (ref_create_value undef x str)
-  | L :: X' =>
-    if_bool_spec (env_record_has_binding runs S C L x) (fun S1 has =>
-      if has then
-        res_spec S1 (ref_create_env_loc L x str)
-      else 
-        lexical_env_get_identifier_ref' runs S1 C X' x str)
-  end.
+Proof.
+  introv IH HR. unfolds in HR. skip.
+Qed.
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
   runs_type_correct runs ->
   lexical_env_get_identifier_ref runs S C lexs x str = result_some y ->
   red_spec S C (spec_lexical_env_get_identifier_ref lexs x str) y.
 Proof.
-  skip_rewrite (lexical_env_get_identifier_ref = lexical_env_get_identifier_ref').
   introv IH. gen S C. induction lexs; introv HR.
   simpls. run_inv.
    applys* red_spec_lexical_env_get_identifier_ref_nil.
@@ -2470,3 +2459,5 @@ Proof.
 skip.
   (* applys~ red_javascript_intro R. *)
 Admitted.
+
+

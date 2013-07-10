@@ -794,7 +794,7 @@ Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
       if has then
         res_spec S1 (ref_create_env_loc L x str)
       else 
-        lexical_env_get_identifier_ref runs S C X' x str)
+        lexical_env_get_identifier_ref runs S1 C X' x str)
   end.
 
 Definition object_delete runs S C l x str : result :=
