@@ -223,7 +223,6 @@ Definition if_success := if_success_state resvalue_empty.
     | restype_normal =>
       if_empty_label S0 R (fun _ =>
         K S0 (res_value R))
-    | restype_throw => W
     | _ =>
       out_ter S0 R
     end).
@@ -1391,7 +1390,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
         if_bool (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
           Let follow2 := fun S' =>
             let vds := prog_vardecl p in
-            binding_inst_var_decls runs S' C L vds str (prog_intro_strictness p)
+            binding_inst_var_decls runs S' C L vds bconfig str
           in match ct, funco, bdefined with
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
@@ -2511,8 +2510,8 @@ Definition run_call runs S C l vthis args : result :=
 Definition run_javascript runs p : result :=
   let S := state_initial in
   let p' := add_infos_prog strictness_false p in
-  let C := execution_ctx_initial (prog_intro_strictness p) in
-  if_void (execution_ctx_binding_inst runs S C codetype_global None p nil) (fun S' =>
+  let C := execution_ctx_initial (prog_intro_strictness p') in
+  if_void (execution_ctx_binding_inst runs S C codetype_global None p' nil) (fun S' =>
     runs_type_prog runs S' C p').
 
 

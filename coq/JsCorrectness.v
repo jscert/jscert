@@ -1213,67 +1213,22 @@ Lemma object_get_builtin_correct : forall runs S C B vthis l x o,
   runs_type_correct runs ->
   object_get_builtin runs S C B vthis l x = o ->
   red_expr S C (spec_object_get_1 B vthis l x) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct B; tryfalse.
 Admitted.
+
 
 Lemma run_object_get_correct : forall runs S C l x o,
   runs_type_correct runs ->
   run_object_get runs S C l x = o ->
-  red_expr S C (spec_object_get l x) o /\
-    (~ abort o -> exists S' v, o = out_ter S' v). (* Needed for [ref_get_value_correct]. *)
-Admitted. (* OLD
-  introv RC E.
-  unfolds in E.
-  name_object_method.
-  destruct B as [B|]; simpls; tryfalse.
-  forwards OM: run_object_method_correct (rm EQB).
-  lets [_ _ _ _ _ _ _ RCo _ _] : RC.
-  forwards H: (rm RCo) l.
-  unfolds follow_object_get_prop.
-  unfolds follow_spec_passing.
-  destruct B; simpls; tryfalse.
-  sets_eq p: (runs_type_object_get_prop runs S0 C0 l x).
-  splits.
-    applys~ red_spec_object_get (rm OM).
-     destruct p.
-      apply red_spec_object_get_1_default.
-      applys~ H.
-      rewrite <- EQp. simpls. clear EQp. apply passing_output_normal.
-      destruct f; simpls; inverts E.
-        apply red_spec_object_get_2_undef.
-        destruct a; simpls.
-          inverts H1. applys~ red_spec_object_get_2_data.
-          applys red_spec_object_get_2_accessor.
-           destruct (attributes_accessor_get a).
-             destruct p; inverts H1.
-              apply red_spec_object_get_3_accessor_undef.
-             apply red_spec_object_get_3_accessor_object.
-              lets [_ _ _ RCa _ _ _ _ _ _] : RC.
-              specialize (RCa o nil).
-              unfolds follow_call.
-              applys~ RCa.
-      apply red_spec_object_get_1_default.
-       applys~ H.
-       rewrite <- EQp. simpls.
-       deal_with_regular_lemma E if_success_out; substs.
-        apply (passing_output_abort (spec_object_get_2 l l)).
-        cases_if; false.
-    introv Hrn; destruct p.
-      destruct f; simpls; inverts* E.
-      destruct a; simpls; invert H1.
-        introv _ _; auto*.
-        introv H1; destruct (attributes_accessor_get a).
-          destruct p; inverts* H1.
-          lets [_ _ _ RCa _ _ _ _ _ _] : RC.
-           specialize (RCa o nil).
-           unfolds follow_call. applys~ RCa s C0 l S.
-      simpls.
-       false.
-       asserts Hab : (abort (out_ter S R)).
-       symmetry in EQp.
-       deal_with_regular_lemma E if_success_out; substs; tryfalse.
-       cases_if; false.
-      inverts~ Hab.
-Qed. *)
+  red_expr S C (spec_object_get l x) o.
+Proof.
+  introv IH HR. unfolds in HR. run.
+  applys* red_spec_object_get.
+   applys* run_object_method_correct. clear E.
+  applys* object_get_builtin_correct.
+Qed.
+
 
 Lemma object_can_put_correct : forall runs S C l x o,
   runs_type_correct runs ->
@@ -1292,11 +1247,56 @@ Lemma prim_new_object_correct : forall S C w o,
   red_expr S C (spec_prim_new_object w) o.
 Proof. introv H. false. Qed.
 
+Lemma run_error_correct_2 : forall S (ne : native_error) o C,
+  run_error S ne = o -> red_expr S C (spec_error ne) o.
+Proof. intros. apply* run_error_correct. Qed.
+
+(* todo: move to the right place above here *)
+Lemma to_object_correct : forall S C v o,
+  to_object S v = o ->
+  red_expr S C (spec_to_object v) o.
+Proof.
+  hint run_error_correct_2, prim_new_object_correct.
+  introv HR. unfolds in HR. destruct v as [w|l].
+    destruct w.
+      applys* red_spec_to_object_undef_or_null. 
+      applys* red_spec_to_object_undef_or_null.
+      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
+      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
+      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
+    run_inv. applys* red_spec_to_object_object.
+Qed.
+
+
 Lemma prim_value_get_correct : forall runs S C v x o,
   runs_type_correct runs ->
   prim_value_get runs S C v x = o ->
   red_expr S C (spec_prim_value_get v x) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_prim_value_get using to_object_correct.
+  applys* red_spec_prim_value_get_1.
+  applys* object_get_builtin_correct.
+Qed.
+
+Lemma object_put_complete_correct : forall runs S C B vthis l x v str o,
+  runs_type_correct runs ->
+  object_put_complete runs B S C vthis l x v str = result_some o ->
+  red_expr S C (spec_object_put_1 B vthis l x v str) o.
+Proof.
 Admitted.
+
+Lemma prim_value_put_correct : forall runs S C w x v str o,
+  runs_type_correct runs ->
+  prim_value_put runs S C w x v str = o ->
+  red_expr S C (spec_prim_value_put w x v str) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_prim_value_put using to_object_correct.
+  applys* red_spec_prim_value_put_1.
+  applys* object_put_complete_correct.
+Qed.
+
 
 Lemma env_record_get_binding_value_correct : forall runs S C L rn rs o,
   runs_type_correct runs ->
@@ -1621,24 +1621,8 @@ Ltac run_select_proj_extra_conversions HT ::=
   end.
 
 
-Lemma run_error_correct_2 : forall S (ne : native_error) o C,
-  run_error S ne = o -> red_expr S C (spec_error ne) o.
-Proof. intros. apply* run_error_correct. Qed.
 
-Lemma to_object_correct : forall S C v o,
-  to_object S v = o ->
-  red_expr S C (spec_to_object v) o.
-Proof.
-  hint run_error_correct_2, prim_new_object_correct.
-  introv HR. unfolds in HR. destruct v as [w|l].
-    destruct w.
-      applys* red_spec_to_object_undef_or_null. 
-      applys* red_spec_to_object_undef_or_null.
-      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
-      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
-      applys* red_spec_to_object_prim. rew_logic*. splits; congruence.
-    run_inv. applys* red_spec_to_object_object.
-Qed.
+
 
 
 
@@ -1791,14 +1775,18 @@ Admitted.
 Lemma run_list_expr_correct : forall runs S C es y,
   runs_type_correct runs ->
   run_list_expr runs S C nil es = result_some y ->
-  red_spec S C (spec_list_then es) y.
+  red_spec S C (spec_list_expr es) y.
 Proof.
-  introv IH HR.
-  apply red_spec_list_then.
-  gen HR. generalize (@nil value) as rv. gen S es.
-  induction es; introv HR.
-  simpls. unfolds in HR. run_inv. skip. skip.
-Admitted.
+  introv IH. cuts M: (forall es S C vs y, 
+      run_list_expr runs S C vs es = result_some y ->
+      red_spec S C (spec_list_expr_1 (rev vs) es) y).
+    intros HR. apply red_spec_list_expr. applys* M (@nil value).
+  clears S C es y. intros es. induction es; introv HR.
+  simpls. run_inv. applys* red_spec_list_expr_1_nil.
+  simpls. run red_spec_list_expr_1_cons. 
+   applys red_spec_list_expr_2. forwards M: IHes HR.
+   rew_list in M. auto.
+Qed.
 
 Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco p args o,
   runs_type_correct runs ->
@@ -1966,11 +1954,35 @@ Lemma type_of_prim_not_object : forall w,
   type_of w <> type_object.
 Proof. destruct w; simpl; try congruence. Qed.
 
+(* TODO: move to the right place *)
+Axiom run_object_get_own_prop_correct : forall runs S C l x y,
+  runs_type_correct runs -> 
+  runs_type_object_get_own_prop runs S C l x = result_some y ->
+  red_spec S C (spec_object_get_own_prop l x) y.
+
+
 Lemma object_delete_correct : forall runs S C l x str o,
   runs_type_correct runs ->
   object_delete runs S C l x str = o ->
   red_expr S C (spec_object_delete l x str) o.
+Proof.
+  introv IH HR. unfolds in HR. run. rename x0 into B. 
+  applys* red_spec_object_delete.
+   applys* run_object_method_correct. clear E.
+  destruct B; tryfalse.
+  run red_spec_object_delete_1_default using run_object_get_own_prop_correct.
+  destruct a.
+    run_inv. applys red_spec_object_delete_2_undef.
+    case_if.
+      run. forwards B: @pick_option_correct (rm E).
+        applys_eq* red_spec_object_delete_2_some_configurable 1.
+          skip. (* will go *)
+          skip. (* even problem *)
+          skip. (* even problem *)
+      applys* red_spec_object_delete_3_some_non_configurable.
+       applys* out_error_or_cst_correct.
 Admitted.
+
 
 Lemma env_record_delete_binding : forall runs S C L x o,
   runs_type_correct runs ->
