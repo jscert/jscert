@@ -715,10 +715,10 @@ Ltac run_select_extra T ::=
 (** [run_select_proj] is used to obtain automatically
     the right correctness lemma out of the correctness record *)
  
-Ltac run_select_proj_extra_1 HT := fail.
-Ltac run_select_proj_extra_2 HT := fail.
+Ltac run_select_proj_extra_ref HT := fail.
+Ltac run_select_proj_extra_conversions HT := fail.
 Ltac run_select_proj_extra_3 HT := fail.
-Ltac run_select_proj_extra_4 HT := fail.
+Ltac run_select_proj_extra_get_value HT := fail.
 
 Ltac run_select_proj H :=
   match type of H with ?T = _ => let HT := get_head T in
@@ -726,10 +726,10 @@ Ltac run_select_proj H :=
   | runs_type_expr => constr:(runs_type_correct_expr)
   | runs_type_stat => constr:(runs_type_correct_stat)
   | runs_type_prog => constr:(runs_type_correct_prog)
-  | ?x => run_select_proj_extra_1 HT
-  | ?x => run_select_proj_extra_2 HT
+  | ?x => run_select_proj_extra_ref HT
+  | ?x => run_select_proj_extra_conversions HT
   | ?x => run_select_proj_extra_3 HT
-  | ?x => run_select_proj_extra_4 HT
+  | ?x => run_select_proj_extra_get_value HT
   end end.
 
 (** [prove_runs_type_correct] discharges the trivial goal
@@ -1158,12 +1158,10 @@ Proof.
    inverts E. splits~. apply~ red_spec_error_or_cst_false.
 Qed.
 
-
-(* TODO:  Waiting for the specification.
-Lemma object_has_prop_correct : forall runs,
-  runs_type_correct runs -> forall S C l x (p : passing bool),
-  object_has_prop runs S C l x = p ->
-  follow_spec_inject (fun b => b) (red_expr S C (spec_object_has_prop l x)) p.
+Lemma object_has_prop_correct : forall runs S C l x o,
+  runs_type_correct runs ->
+  object_has_prop runs S C l x = o ->
+  red_expr S C (spec_object_has_prop l x) o.
 Admitted. (* OLD
   introv RC E. unfolds in E. name_object_method.
   destruct B as [B|]; simpls.
@@ -1184,7 +1182,6 @@ Admitted. (* OLD
       applys~ Ep spec_object_has_prop_2. constructors.
    substs. splits; introv Eq; inverts Eq.
 Qed. *)
-*)
 
 Lemma object_get_builtin_correct : forall runs S C B vthis l x o,
   runs_type_correct runs ->
@@ -1363,8 +1360,7 @@ Lemma run_expr_get_value_correct : forall runs S C e y,
   red_spec S C (spec_expr_get_value e) y.
 Admitted.
 
-
-Ltac run_select_proj_extra_1 HT ::= 
+Ltac run_select_proj_extra_ref HT ::= 
   match HT with
   | run_error => constr:(run_error_correct')
   | run_object_method => constr:(run_object_method_correct)
@@ -1409,6 +1405,9 @@ Lemma env_record_create_mutable_binding_correct : forall runs S C L x deletable_
   runs_type_correct runs ->
   env_record_create_mutable_binding runs S C L x deletable_opt = o ->
   red_expr S C (spec_env_record_create_mutable_binding L x deletable_opt) o.
+Proof.
+  introv IH HR. unfolds in HR. let_name.
+  (* run red_spec_env_record_create_mutable_binding. *)
 Admitted.
 
 Lemma env_record_create_set_mutable_binding_correct : forall runs S C L x deletable_opt v str o,
@@ -1480,7 +1479,7 @@ Proof.
   applys* red_spec_to_integer_1.
 Qed.
 
-Ltac run_select_proj_extra_2 HT ::= 
+Ltac run_select_proj_extra_conversions HT ::= 
   match HT with
   | to_primitive => constr:(to_primitive_correct)
   | to_number => constr:(to_number_correct)
@@ -1762,7 +1761,10 @@ Lemma env_record_has_binding_correct : forall runs S C L x o,
   env_record_has_binding runs S C L x = o ->
   red_expr S C (spec_env_record_has_binding L x) o.
 Proof.
-  introv IH HR. unfolds in HR. skip.
+  introv IH HR. unfolds in HR. run_simpl. forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_has_binding B. destruct x0; run_inv.
+   apply~ red_spec_env_record_has_binding_1_decl. skip. (* TODO:  Arthur, here are some [rew_*] for you :) *)
+   apply~ red_spec_env_record_has_binding_1_object. apply* object_has_prop_correct.
 Qed.
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
@@ -1785,7 +1787,7 @@ Lemma run_typeof_value_correct : forall S v,
   run_typeof_value S v = typeof_value S v.
 Proof. intros. destruct v; simpl. auto. case_if; case_if*. Qed.
 
-Ltac run_select_proj_extra_4 HT ::= 
+Ltac run_select_proj_extra_get_value HT ::= 
   match HT with
   | ref_get_value => constr:(ref_get_value_correct)
   end.

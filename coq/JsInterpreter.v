@@ -758,32 +758,14 @@ Definition run_value_viewable_as_prim s S v : option (option prim) :=
 (**************************************************************)
 (** Operations on environments *)
 
-Definition env_record_lookup Z (d : Z) S L (K : env_record -> Z) : Z :=
-  morph_option d K (Heap.read_option (state_env_record_heap S) L).
-
 Definition env_record_has_binding runs S C L x : result :=
-  env_record_lookup (fun _ =>
-    impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
-    S L (fun E _ =>
-      match E with
-      | env_record_decl Ed =>
-        out_ter S (decide (decl_env_record_indom Ed x))
-      | env_record_object l pt =>
-        object_has_prop runs S C l x
-      end) tt.
-
-(* NEW:
-Definition env_record_has_binding runs S C L x : specres bool :=
-  env_record_lookup (fun _ =>
-    impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
-    S L (fun E _ =>
-      match E with
-      | env_record_decl Ed =>
-        res_spec S (decide (decl_env_record_indom Ed x))
-      | env_record_object l pt =>
-        object_has_prop runs S C l x
-      end) tt.
-*)
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
+    | env_record_decl Ed =>
+      out_ter S (decide (decl_env_record_indom Ed x))
+    | env_record_object l pt =>
+      object_has_prop runs S C l x
+    end).
 
 Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
   match X with
@@ -847,9 +829,8 @@ Definition identifier_resolution runs S C x : specres ref :=
   lexical_env_get_identifier_ref runs S C X x str.
 
 Definition env_record_get_binding_value runs S C L x str : result :=
-  env_record_lookup (fun _ => impossible_with_heap_because S
-    "[env_record_lookup] failed in [env_record_get_binding_value].") S L (fun er _ =>
-    match er with
+  if_some (pick_option (env_record_binds S L)) (fun E =>
+    match E with
     | env_record_decl Ed =>
       if_some (Heap.read_option Ed x) (fun rm =>
         let '(mu, v) := rm in
@@ -861,7 +842,7 @@ Definition env_record_get_binding_value runs S C L x str : result :=
         if has then
           run_object_get runs S1 C l x
         else out_error_or_cst S1 str native_error_ref undef)
-    end) tt.
+    end).
 
 
 (**************************************************************)
