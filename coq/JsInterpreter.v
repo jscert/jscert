@@ -365,6 +365,14 @@ Definition if_prim_spec T W (K : state -> prim -> specres T) : specres T :=
       impossible_with_heap_because S "[if_prim_spec] called with an object."
     end).
 
+Definition if_bool_spec T W (K : state -> bool -> specres T) : specres T :=
+  if_prim_spec W (fun S w =>
+    match w with
+    | prim_bool b => K S b
+    | _ =>
+      impossible_with_heap_because S "[if_number_spec] called with a non-number."
+    end).
+
 Definition if_number_spec T W (K : state -> number -> specres T) : specres T :=
   if_prim_spec W (fun S w =>
     match w with
@@ -460,6 +468,15 @@ Implicit Type runs : runs_type.
 (**************************************************************)
 (** Object Get *)
 
+Definition object_has_prop runs S C l x : result :=
+  if_some (run_object_method object_has_prop_ S l) (fun B =>
+    match B with
+    | builtin_has_prop_default =>
+      if_spec_ter (runs_type_object_get_prop runs S C l x) (fun S1 D =>
+        out_ter S1 (decide (D <> full_descriptor_undef)))
+    end).
+
+(* NEW:
 Definition object_has_prop runs S C l x : specres bool :=
   if_some (run_object_method object_has_prop_ S l) (fun B =>
     match B with
@@ -467,6 +484,7 @@ Definition object_has_prop runs S C l x : specres bool :=
       if_spec (runs_type_object_get_prop runs S C l x) (fun S1 D =>
         res_spec S1 (decide (D <> full_descriptor_undef)))
     end).
+*)
 
 Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
@@ -570,6 +588,43 @@ Definition object_proto_is_prototype_of runs S l0 l : result :=
 (**************************************************************)
 (** Object Set *)
 
+Definition object_can_put runs S C l x : result :=
+  if_some (run_object_method object_can_put_ S l) (fun B =>
+      match B with
+      | builtin_can_put_default =>
+        if_spec_ter (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
+          match D with
+          | attributes_accessor_of Aa =>
+            out_ter S1 (decide (attributes_accessor_set Aa <> undef))
+          | attributes_data_of Ad =>
+            out_ter S1 (attributes_data_writable Ad)
+          | full_descriptor_undef =>
+            if_some (run_object_method object_proto_ S1 l) (fun vproto =>
+                match vproto with
+                | null =>
+                  if_some (run_object_method object_extensible_ S1 l)
+                    (out_ter S1)
+                | value_object lproto =>
+                  if_spec_ter (run_object_get_prop runs S1 C lproto x) (fun S2 D' =>
+                    match D' with
+                    | full_descriptor_undef =>
+                      if_some (run_object_method object_extensible_ S2 l)
+                        (out_ter S2)
+                    | attributes_accessor_of Aa =>
+                      out_ter S2 (decide (attributes_accessor_set Aa <> undef))
+                    | attributes_data_of Ad =>
+                      if_some (run_object_method object_extensible_ S2 l) (fun ext =>
+                        out_ter S2 (
+                          if ext then attributes_data_writable Ad
+                          else false))
+                  end)
+                | value_prim _ =>
+                  impossible_with_heap_because S1 "Non-null primitive get as a prototype value in [object_can_put]."
+                end)
+          end)
+      end).
+
+(* NEW:
 Definition object_can_put runs S C l x : specres bool :=
   if_some (run_object_method object_can_put_ S l) (fun B =>
       match B with
@@ -605,6 +660,7 @@ Definition object_can_put runs S C l x : specres bool :=
                 end)
           end)
       end).
+*)
 
 Definition object_define_own_prop runs S C l x Desc str : result :=
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
@@ -705,23 +761,36 @@ Definition run_value_viewable_as_prim s S v : option (option prim) :=
 Definition env_record_lookup Z (d : Z) S L (K : env_record -> Z) : Z :=
   morph_option d K (Heap.read_option (state_env_record_heap S) L).
 
+Definition env_record_has_binding runs S C L x : result :=
+  env_record_lookup (fun _ =>
+    impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
+    S L (fun E _ =>
+      match E with
+      | env_record_decl Ed =>
+        out_ter S (decide (decl_env_record_indom Ed x))
+      | env_record_object l pt =>
+        object_has_prop runs S C l x
+      end) tt.
+
+(* NEW:
 Definition env_record_has_binding runs S C L x : specres bool :=
   env_record_lookup (fun _ =>
     impossible_with_heap_because S "[env_record_lookup] failed in [env_record_has_binding]")
     S L (fun E _ =>
       match E with
       | env_record_decl Ed =>
-          res_spec S (decide (decl_env_record_indom Ed x))
+        res_spec S (decide (decl_env_record_indom Ed x))
       | env_record_object l pt =>
-          object_has_prop runs S C l x
+        object_has_prop runs S C l x
       end) tt.
+*)
 
 Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
   match X with
   | nil =>
     res_spec S (ref_create_value undef x str)
   | L :: X' =>
-    if_spec (env_record_has_binding runs S C L x) (fun S1 has =>
+    if_bool_spec (env_record_has_binding runs S C L x) (fun S1 has =>
       if has then
         res_spec S1 (ref_create_env_loc L x str)
       else 
@@ -788,7 +857,7 @@ Definition env_record_get_binding_value runs S C L x str : result :=
           out_error_or_cst S str native_error_ref undef
         else out_ter S v)
     | env_record_object l pt =>
-      if_spec_ter (object_has_prop runs S C l x) (fun S1 has =>
+      if_bool (object_has_prop runs S C l x) (fun S1 has =>
         if has then
           run_object_get runs S1 C l x
         else out_error_or_cst S1 str native_error_ref undef)
@@ -842,7 +911,7 @@ Definition run_expr_get_value runs S C e : specres value :=
 Definition object_put_complete runs B S C vthis l x v str : result_void :=
   match B with
   | builtin_put_default =>
-    if_spec_ter (object_can_put runs S C l x) (fun S1 b =>
+    if_bool (object_can_put runs S C l x) (fun S1 b =>
       if b then
         if_spec_ter (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
           match D with
@@ -944,7 +1013,7 @@ Definition env_record_create_mutable_binding runs S C L x (deletable_opt : optio
         Let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
         out_void S'
     | env_record_object l pt =>
-      if_spec_ter (object_has_prop runs S C l x) (fun S1 has =>
+      if_bool (object_has_prop runs S C l x) (fun S1 has =>
         if has then
           impossible_with_heap_because S1 "Already declared binding in [env_record_create_mutable_binding]."
         else (
@@ -1208,7 +1277,7 @@ Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list
   | nil => out_void S
   | argname :: names' =>
     Let v := hd undef args in
-    if_spec_ter (env_record_has_binding runs S C L argname) (fun S1 hb =>
+    if_bool (env_record_has_binding runs S C L argname) (fun S1 hb =>
       Let follow := fun S' =>
         if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S'' =>
           binding_inst_formal_params runs S'' C L (tl args) names' str)
@@ -1232,7 +1301,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
           if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
             binding_inst_function_decls runs S3 C L fds' str bconfig)
           in
-        if_spec_ter (env_record_has_binding runs S1 C L fname) (fun S2 has =>
+        if_bool (env_record_has_binding runs S1 C L fname) (fun S2 has =>
           if has then (
             ifb L = env_loc_global_env_record then (
               if_spec_ter (run_object_get_prop runs S2 C prealloc_global fname) (fun S3 D =>
@@ -1259,7 +1328,7 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
   | nil => out_void S
   | vd :: vds' =>
     Let bivd := fun S => binding_inst_var_decls runs S C L vds' bconfig str in
-    if_spec_ter (env_record_has_binding runs S C L vd) (fun S1 has =>
+    if_bool (env_record_has_binding runs S C L vd) (fun S1 has =>
       if has then
         bivd S
       else
@@ -1354,7 +1423,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
       Let bconfig := decide (ct = codetype_eval) in
       Let fds := prog_funcdecl p in
       if_void (binding_inst_function_decls runs S' C L fds str bconfig) (fun S1 =>
-        if_spec_ter (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
+        if_bool (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
           Let follow2 := fun S' =>
             let vds := prog_vardecl p in
             binding_inst_var_decls runs S' C L vds str (prog_intro_strictness p)
@@ -1638,7 +1707,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     match v2 with
     | value_object l =>
       if_string (to_string runs S C v1) (fun S2 x =>
-        if_spec_ter (object_has_prop runs S2 C l x) out_ter)
+        if_bool (object_has_prop runs S2 C l x) out_ter)
     | value_prim _ => run_error S native_error_type
     end
 

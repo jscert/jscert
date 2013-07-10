@@ -186,20 +186,7 @@ red_spec_env_record_create_set_mutable_binding
 red_spec_env_record_create_set_mutable_binding_1 
 
 
-
 red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
-
-
-=== errors
-
-red_spec_error 
-red_spec_error_1 
-red_spec_error_or_cst_true 
-red_spec_error_or_cst_false 
-red_spec_error_or_void_true 
-red_spec_error_or_void_false 
-
-red_javascript_intro
 
 
 === descriptors
@@ -425,4 +412,5 @@ red_spec_create_arguments_object_1
 red_spec_create_arguments_object_2_non_strict 
 red_spec_create_arguments_object_2_strict 
 red_spec_create_arguments_object_3 
-red_spec_create_arguments_object_4 
+red_spec_create_arguments_object_4
+
