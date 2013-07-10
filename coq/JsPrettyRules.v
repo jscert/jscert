@@ -1635,18 +1635,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_can_put_2_accessor : forall S0 S C l x Aa b, (* Steps 2 and 2.a *)
       b = (If attributes_accessor_set Aa = undef then false else true) ->
-      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_accessor_of Aa))) (out_ter S b)
+      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_accessor_of Aa))) (out_ter S0 b)
 
   | red_spec_object_can_put_2_data : forall S0 S C l x Ad b, (* Step 2.b *)
       b = attributes_data_writable Ad ->
-      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_data_of Ad))) (out_ter S b)
+      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_data_of Ad))) (out_ter S0 b)
 
   | red_spec_object_can_put_2_undef : forall S0 S C l x o lproto, (* Step 3 *)
       object_proto S l lproto ->
       red_expr S C (spec_object_can_put_4 l x lproto) o -> (* Isn't there any [spec_object_can_put_3]? *)
-      red_expr S C (spec_object_can_put_2 l x (ret S0 full_descriptor_undef)) o
+      red_expr S0 C (spec_object_can_put_2 l x (ret S full_descriptor_undef)) o
 
-  | red_spec_object_can_put_4_null : forall S C l x o b, (* Step 4 *)
+  | red_spec_object_can_put_4_null : forall S C l x b, (* Step 4 *)
       object_extensible S l b ->
       red_expr S C (spec_object_can_put_4 l x null) (out_ter S b)
 
@@ -1655,7 +1655,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_can_put_5 l y1) o ->
       red_expr S C (spec_object_can_put_4 l x lproto) o
 
-  | red_spec_object_can_put_5_undef : forall S0 S C l x o b, (* Step 6 *)
+  | red_spec_object_can_put_5_undef : forall S0 S C l x b, (* Step 6 *)
       object_extensible S l b ->
       red_expr S0 C (spec_object_can_put_5 l (dret S full_descriptor_undef)) (out_ter S b)
 
@@ -1671,7 +1671,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_can_put_6_extens_false : forall S C Ad, (* Step 8.a *)
       red_expr S C (spec_object_can_put_6 Ad false) (out_ter S false)
 
-  | red_spec_object_can_put_6_extens_true : forall S C Ad b o, (* Step 8.b *)
+  | red_spec_object_can_put_6_extens_true : forall S C Ad b, (* Step 8.b *)
       b = attributes_data_writable Ad ->
       red_expr S C (spec_object_can_put_6 Ad true) (out_ter S b)
 

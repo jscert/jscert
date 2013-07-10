@@ -38,19 +38,6 @@ Arthur:
 Martin:
 
 red_spec_object_put 
-red_spec_object_can_put 
-red_spec_object_has_prop 
-red_spec_object_can_put_1_default 
-red_spec_object_can_put_2_accessor 
-red_spec_object_can_put_2_data 
-red_spec_object_can_put_2_undef 
-red_spec_object_can_put_4_null 
-red_spec_object_can_put_4_not_null 
-red_spec_object_can_put_5_undef 
-red_spec_object_can_put_5_accessor 
-red_spec_object_can_put_5_data 
-red_spec_object_can_put_6_extens_false 
-red_spec_object_can_put_6_extens_true 
 red_spec_object_put_1_default 
 red_spec_object_put_1_false 
 red_spec_object_put_2_true 

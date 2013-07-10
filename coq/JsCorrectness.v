@@ -978,7 +978,8 @@ Ltac run_inv :=
   | H: specret_val ?S ?R = specret_val ?S ?R |- _ => clear H
   | H: specret_val _ _ = specret_val _ _ |- _ => inverts H
   | H: specret_out ?o = specret_out ?o |- _ => clear H
-  | H: specret_out _ = specret_out _ |- _ => inverts H
+  | H: specret_out _ = _ |- _ => inverts H
+  | H: _ = specret_out _ |- _ => inverts H
   | H: out_from_retn ?sp = out_from_retn ?sp |- _ => clear H
   | H: out_from_retn _ = out_from_retn _ |- _ => inverts H
   end.
@@ -1265,7 +1266,25 @@ Lemma object_can_put_correct : forall runs S C l x o,
   runs_type_correct runs ->
   object_can_put runs S C l x = o ->
   red_expr S C (spec_object_can_put l x) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR. run. run_hyp E as CP.
+  applys~ red_spec_object_can_put CP. destruct x0.
+  run red_spec_object_can_put_1_default. destruct a.
+   run. run_hyp E as P. applys~ red_spec_object_can_put_2_undef P.
+    destruct x0 as [()|lproto]; tryfalse.
+     run. run_hyp E as E. apply~ red_spec_object_can_put_4_null.
+     run red_spec_object_can_put_4_not_null using run_object_get_prop_correct.
+      destruct a as [|[Ad|Aa]].
+       run. run_hyp E as E. apply~ red_spec_object_can_put_5_undef.
+       run. run_hyp E as E. applys~ red_spec_object_can_put_5_data E. destruct x0.
+        applys~ red_spec_object_can_put_6_extens_true.
+        applys~ red_spec_object_can_put_6_extens_false.
+       run_inv. apply~ red_spec_object_can_put_5_accessor. rewrite decide_def.
+        repeat cases_if~.
+   destruct a; run_inv.
+    apply~ red_spec_object_can_put_2_data.
+    apply~ red_spec_object_can_put_2_accessor. rewrite decide_def. repeat cases_if~.
+Qed.
 
 Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
   runs_type_correct runs ->
