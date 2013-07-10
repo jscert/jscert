@@ -31,14 +31,10 @@ red_spec_to_uint32_1
 
 === internal
 
+Arthur:
+
 red_spec_object_get 
 red_spec_object_get_prop 
-red_spec_object_put 
-red_spec_object_can_put 
-red_spec_object_has_prop 
-red_spec_object_delete 
-red_spec_object_define_own_prop 
-red_spec_object_has_instance 
 red_spec_object_get_prop_1_default 
 red_spec_object_get_prop_2_not_undef 
 red_spec_object_get_prop_2_undef 
@@ -50,6 +46,13 @@ red_spec_object_get_2_data
 red_spec_object_get_2_accessor 
 red_spec_object_get_3_accessor_undef 
 red_spec_object_get_3_accessor_object 
+
+
+Martin:
+
+red_spec_object_put 
+red_spec_object_can_put 
+red_spec_object_has_prop 
 red_spec_object_can_put_1_default 
 red_spec_object_can_put_2_accessor 
 red_spec_object_can_put_2_data 
@@ -74,10 +77,9 @@ red_spec_object_put_4_not_accessor_prim
 red_spec_object_put_5_return 
 red_spec_object_has_prop_1_default 
 red_spec_object_has_prop_2 
-red_spec_object_delete_1_default 
-red_spec_object_delete_2_undef 
-red_spec_object_delete_2_some_configurable 
-red_spec_object_delete_3_some_non_configurable 
+
+
+=== others
 
 red_spec_creating_function_object_proto 
 red_spec_creating_function_object_proto_1 
@@ -94,6 +96,7 @@ red_spec_create_new_function_in
 red_spec_object_get_1_function 
 red_spec_function_get_1_error 
 red_spec_function_get_1_normal 
+red_spec_object_has_instance 
 red_spec_object_has_instance_1_prim 
 red_spec_object_has_instance_1_object 
 red_spec_function_has_instance_1_prim 

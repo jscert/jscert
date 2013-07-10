@@ -1548,14 +1548,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Default implementations for operations on objects (8.12) *)
 
-
   (** GetProperty (8.12.2) *)
 
   | red_spec_object_get_prop_1_default : forall S C l x K o (y:specret full_descriptor), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_object_get_prop_2 l x K y) o ->
       red_expr S C (spec_object_get_prop_1 builtin_get_prop_default l x K) o  
-
 
   | red_spec_object_get_prop_2_not_undef : forall S S0 C l x K A o, (* Step 2 *)
       red_expr S C (K (full_descriptor_some A)) o ->

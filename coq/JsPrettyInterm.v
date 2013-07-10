@@ -871,7 +871,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_object_delete _ _ _ => None
   | spec_object_delete_1 _ _ _ _ => None
-  | spec_object_delete_2 _ _ _ _ => None
+  | spec_object_delete_2 _ _ _ o => Some o
   | spec_object_delete_3 _ _ _ _ => None
 
   | spec_object_default_value _ _ => None
