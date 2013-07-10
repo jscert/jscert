@@ -2158,6 +2158,7 @@ Proof.
           skip. (* will go *)
           skip. (* even problem *)
           skip. (* even problem *)
+          skip. (* even problem *)
       applys* red_spec_object_delete_3_some_non_configurable.
        applys* out_error_or_cst_correct.
 Admitted.
