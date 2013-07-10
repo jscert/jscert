@@ -674,6 +674,8 @@ with ext_spec :=
   | spec_object_get_own_prop_2 : object_loc -> prop_name -> option attributes -> ext_spec
 
   | spec_get_value : resvalue -> ext_spec
+  | spec_get_value_ref_b_1 : out -> ext_spec
+  | spec_get_value_ref_c_1 : out -> ext_spec
 
   (** Shorthand for calling [red_expr] then [ref_get_value] *)
 
@@ -686,6 +688,9 @@ with ext_spec :=
   | spec_lexical_env_get_identifier_ref_1 : env_loc -> lexical_env -> prop_name -> bool -> ext_spec
   | spec_lexical_env_get_identifier_ref_2 : env_loc -> lexical_env -> prop_name -> bool -> out -> ext_spec
 
+  (** Errors in the grammar of spec *) (* LATER: merge *)
+  | spec_error_spec : native_error -> ext_spec
+  | spec_error_spec_1 : out -> ext_spec
 .
 
 
@@ -1285,11 +1290,15 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_object_get_own_prop_1 _ _ _ => None
   | spec_object_get_own_prop_2 _ _ _ => None
   | spec_get_value _ => None
+  | spec_get_value_ref_b_1 o => Some o
+  | spec_get_value_ref_c_1 o => Some o
   | spec_expr_get_value _ => None
   | spec_expr_get_value_1 o => Some o
   | spec_lexical_env_get_identifier_ref _ _ _ => None
   | spec_lexical_env_get_identifier_ref_1 _ _ _ _ => None
   | spec_lexical_env_get_identifier_ref_2 _ _ _ _ o => Some o
+  | spec_error_spec _ => None
+  | spec_error_spec_1 o => Some o
   end.
 
 

@@ -6,35 +6,16 @@ Function.*
 switch
 do_while
 binary ops
+
 argument objects
 
 Monadic constructors.
 
+
+
 === Requires big changes (Daniele)
 
 prog_block
-
-
-=== expr/stat
-
-red_stat_with 
-red_stat_with_1 
-
-red_stat_throw 
-red_stat_throw_1
-
-red_expr_conditional (* needs conv *)
-
-red_stat_var_decl_nil 
-red_stat_var_decl_cons 
-red_stat_var_decl_1 
-red_stat_var_decl_item_none 
-red_stat_var_decl_item_some 
-red_stat_var_decl_item_1 
-red_stat_var_decl_item_2 
-red_stat_var_decl_item_3 
-
-[later: unary ops, binary ops, do_while, switch]
 
 
 
@@ -63,13 +44,6 @@ red_spec_ref_put_value_ref_a_1
 red_spec_ref_put_value_ref_a_2 
 red_spec_ref_put_value_ref_b 
 red_spec_ref_put_value_ref_c 
-red_spec_ref_get_value_value 
-red_spec_ref_get_value_ref_a 
-red_spec_ref_get_value_ref_b
-red_spec_ref_get_value_ref_c 
-red_spec_expr_get_value 
-red_spec_expr_get_value_1 
-
 red_spec_object_get 
 red_spec_object_get_prop 
 red_spec_object_put 
