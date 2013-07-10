@@ -1,6 +1,5 @@
 Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux JsSyntaxInfos JsInit.
 
-
 (* TODO: move *)
 
 Definition vret := ret (T:=value).
