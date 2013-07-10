@@ -111,12 +111,7 @@ red_spec_object_has_instance_1_prim
 red_spec_object_has_instance_1_object 
 red_spec_function_has_instance_1_prim 
 red_spec_function_has_instance_1_object 
-red_spec_function_has_instance_2 
-red_spec_function_has_instance_3_null 
-red_spec_function_has_instance_3_eq 
-red_spec_function_has_instance_3_neq 
 
-=== environment
 
 red_javascript_intro (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
 

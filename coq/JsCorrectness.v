@@ -94,9 +94,9 @@ Definition follow_function_has_instance (run : state -> object_loc -> value -> r
   (* Note that this function is related to [spec_function_has_instance_2] instead of
     [spec_function_has_instance_1] as it's much more closer to the specification and
     thus much easier to prove. *)
-  forall lo,
-    follow_spec (spec_function_has_instance_2 lo) red_expr
-      (fun S C lv => run S lo lv).
+  forall lv,
+    follow_spec (spec_function_has_instance_2 lv) red_expr
+      (fun S C lo => run S lo lv).
 Definition follow_stat_while (run : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result) :=
   forall ls e t,
   follow_spec
@@ -2340,17 +2340,17 @@ Admitted. (* OLD:
 Lemma run_function_has_instance_correct : forall runs,
   runs_type_correct runs ->
   follow_function_has_instance (run_function_has_instance runs).
-Admitted. (* OLD:
-   intros S C lo lv S' res R. simpls. rewrite_morph_option; tryfalse.
-    simpls. unmonad. applys_and red_spec_function_has_instance_2 R0. destruct v; tryfalse.
-     destruct p; inverts R. splits*.
-      apply~ red_spec_function_has_instance_3_null.
-     cases_if.
-      substs. inverts R. splits*. apply~ red_spec_function_has_instance_3_eq.
-      applys_and red_spec_function_has_instance_3_neq n.
-       forwards~: IHhi C R.
-*)
-
+Proof.
+  intros runs IH lo S C lv o HR. unfolds in HR. run_simpl.
+  forwards~ M: run_object_method_correct (rm E).
+  applys~ red_spec_function_has_instance_2 M.
+  destruct x as [()|lproto]; tryfalse; run_inv.
+   apply~ red_spec_function_has_instance_3_null.
+   cases_if; run_inv.
+    apply~ red_spec_function_has_instance_3_eq.
+    apply~ red_spec_function_has_instance_3_neq.
+     applys~ runs_type_correct_function_has_instance HR.
+Qed.
 
 Lemma run_stat_while_correct : forall runs,
   runs_type_correct runs ->
