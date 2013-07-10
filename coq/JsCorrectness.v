@@ -1960,7 +1960,6 @@ Proof.
    applys* run_object_method_correct. clear E.
   destruct B; tryfalse.
   run red_spec_object_delete_1_default using run_object_get_own_prop_correct.
-   skip. (* will go *)
   destruct a.
     run_inv. applys red_spec_object_delete_2_undef.
     case_if.
