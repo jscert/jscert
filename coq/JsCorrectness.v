@@ -1281,9 +1281,8 @@ Qed.
 
 Lemma object_put_complete_correct : forall runs S C B vthis l x v str o,
   runs_type_correct runs ->
-  object_put_complete runs B S C vthis l x v str = result_some o ->
+  object_put_complete runs B S C vthis l x v str = o ->
   red_expr S C (spec_object_put_1 B vthis l x v str) o.
-Proof.
 Admitted.
 
 Lemma prim_value_put_correct : forall runs S C w x v str o,
