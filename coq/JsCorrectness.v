@@ -2430,8 +2430,8 @@ Proof.
          run_inv. applys* red_stat_while_5_break.
          applys* red_stat_while_5_not_break. case_if in K; run_inv.
            applys* red_stat_while_6_abort.
-           applys* red_stat_while_6_normal.
-       rew_logic in *. applys* red_stat_while_4_continue.
+           applys* red_stat_while_6_normal. run_hyp*.
+       rew_logic in *. applys* red_stat_while_4_continue. run_hyp*.
    run_inv. applys red_stat_while_2_false.
 Admitted. (*faster*)
 
