@@ -2203,7 +2203,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_formal_params_empty : forall S C args L str,  (* Loop ends in Step 4d *)  
       red_expr S C (spec_binding_inst_formal_params args L nil str) (out_void S)
 
-  | red_spec_binding_inst_formal_params_non_empty : forall o1 S C v args args' L x xs str o, (* Steps 4d i - iii *)
+  | red_spec_binding_inst_formal_params_non_empty : forall v args' S C args L x xs str o1 o, (* Steps 4d i - iii *)
       (v,args') = (match args with nil => (undef,nil) | v::args' => (v,args') end) -> (* TODO_ARTHUr: rewrite in a simpler way *)
       red_expr S C (spec_env_record_has_binding L x) o1 ->
       red_expr S C (spec_binding_inst_formal_params_1 args' L x xs str v o1) o ->
@@ -2236,6 +2236,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Auxiliary reductions for binding instantiation: 
      bindings for function declarations (Step 5). *)
+  (* LATER: remove "args" as it's not used at all in this subroutine *)
 
   | red_spec_binding_inst_function_decls_nil : forall o1 L S0 S C args str bconfig o, (* Step 5b *)
       red_expr S0 C (spec_binding_inst_function_decls args L nil str bconfig) (out_void S)
@@ -2327,7 +2328,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Auxiliary reductions for binding instantiation:
      bindings for variable declarations (Step 8) *)
 
-  | red_spec_binding_inst_var_decls_nil : forall o1 L S C bconfig str o, (* Step 8 *)
+  | red_spec_binding_inst_var_decls_nil : forall L S C bconfig str, (* Step 8 *)
       red_expr S C (spec_binding_inst_var_decls L nil bconfig str) (out_void S)     
       
   | red_spec_binding_inst_var_decls_cons : forall o1 L S C vd vds bconfig str o, (* Step 8b *)
