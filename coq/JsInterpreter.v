@@ -8,7 +8,7 @@ Require Import LibFix LibList.
 (** [list_get_last ls] returns [None] if the list given is empty
     or [Some (ls',x)] where [ls=ls'++x::nil] otherwise. *)
 
-Fixpoint lib_get_last (A:Type) (ls:list A) :=
+Fixpoint lib_get_last (A:Type) (ls:list A) : option (list A * A) :=
   match ls with
   | nil => None
   | a::ls' =>
@@ -250,7 +250,7 @@ Definition if_success_state rv W (K : state -> resvalue -> result) : result :=
     | restype_normal =>
       if_empty_label S0 R (fun _ =>
         K S0 (res_value (res_overwrite_value_if_empty rv R)))
-    | restype_throw => W
+    | restype_throw => out_ter S0 (res_value R)
     | _ =>
       out_ter S0 (res_overwrite_value_if_empty rv R)
     end).
@@ -524,7 +524,8 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
-    runs_type_equal : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result
+    runs_type_equal : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result;
+    runs_type_block : state -> execution_ctx -> list stat -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -1930,13 +1931,13 @@ Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr) : specres (l
       run_list_expr runs S2 C (v :: vs) es')
   end.
 
-Fixpoint run_block runs S C rv ts : result :=
-  match ts with
-  | nil => out_ter S rv
-  | t :: ts' =>
-    if_success_state rv (runs_type_stat runs S C t) (fun S1 rv1 =>
-      run_block runs S1 C rv1 ts')
-  end.
+Definition run_block runs S C (ts : list stat) : result :=
+  morph_option
+    (res_ter S resvalue_empty)
+    (fun (p : list stat * stat) => let (ts', t) := p in
+      if_success (runs_type_block runs S C ts') (fun S0 rv0 =>
+        if_success_state rv0 (runs_type_stat runs S0 C t) out_ter))
+    (lib_get_last ts).
 
 
 (**************************************************************)
@@ -2275,7 +2276,7 @@ Definition run_stat runs S C t : result :=
     run_var_decl runs S C xeos
 
   | stat_block ts =>
-    run_block runs S C resvalue_empty ts
+    run_block runs S C ts
 
   | stat_label lab t =>
     run_stat_label runs S C lab t
@@ -2624,7 +2625,8 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
-      runs_type_equal := fun S _ _ _ _ => result_bottom S
+      runs_type_equal := fun S _ _ _ _ => result_bottom S;
+      runs_type_block := fun S _ _ => result_bottom S
     |}
   | S max_step' =>
     let wrap {A : Type} (f : runs_type -> state -> A) S : A :=
@@ -2645,7 +2647,8 @@ Fixpoint runs max_step : runs_type :=
         wrap run_object_get_prop;
       runs_type_object_proto_is_prototype_of :=
         wrap object_proto_is_prototype_of;
-      runs_type_equal := wrap run_equal
+      runs_type_equal := wrap run_equal;
+      runs_type_block := wrap run_block
     |}
   end.
 

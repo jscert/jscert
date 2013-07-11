@@ -311,7 +311,7 @@ Qed.
 
 Definition if_success_state_post rv0 (K : _ -> _ -> result) o o1 :=
   (o1 = out_div /\ o = o1) \/
-  (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = o1) \/
+  (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = out_ter S (res_value R)) \/
   (exists S R, o1 = out_ter S R /\ res_type R <> restype_throw /\
     o = out_ter S (res_overwrite_value_if_empty rv0 R)) \/
   exists S rv, o1 = out_ter S (res_normal rv) /\
