@@ -261,6 +261,9 @@ Qed.
 Definition eqabort o1 o :=
   o = o1 /\ abort o.
 
+Ltac prove_abort :=
+  solve [ assumption | (constructor; absurd_neg) ].
+
 (** [isout W Pred] asserts that [W] is in fact
     an outcome that satisfies [Pred]. *)
 
@@ -301,7 +304,7 @@ Definition if_ter_post (K : _ -> _ -> result) o o1 :=
   \/ (exists S R, o1 = out_ter S R /\ K S R = o).
 
 Lemma if_ter_out : forall W K o,
-  if_ter W K = o ->
+  if_ter W K = res_out o ->
   isout W (if_ter_post K o).
 Proof.
   introv H. destruct W as [[|o1]| | | ]; simpls; tryfalse_nothing.
@@ -336,9 +339,16 @@ Definition if_success_post (K : _ -> _ -> result) o o1 :=
   exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = o.
 
 Lemma if_success_out : forall W K o,
-  if_success W K = o ->
+  if_success W K = res_out o ->
   isout W (if_success_post K o).
-Admitted.
+Proof.
+  introv E. forwards~ (o1&WE&P): if_ter_out (rm E). subst W. eexists. splits*.
+  inversion_clear P as [[? ?]|(S&R&?&H)]. substs. branch~ 1.
+  substs. destruct R as [rt rv' rl]. destruct~ rt; simpls;
+     try solve [inverts H; branch 1; splits~; prove_abort].
+   forwards~ (?&?): if_empty_label_out (rm H). simpls. substs.
+    branch 2. repeat eexists. auto*.
+Qed.
 
   (* Documentation: same with unfolding:
     Lemma if_success_out : forall W K o,
@@ -403,7 +413,7 @@ Definition if_value_post (K : _ -> _ -> result) o o1 :=
   exists S v, o1 = out_ter S (res_val v) /\ K S v = o.
 
 Lemma if_value_out : forall W K o,
-  if_value W K = o ->
+  if_value W K = res_out o ->
   isout W (if_value_post K o).
 Admitted.
 
@@ -412,7 +422,7 @@ Definition if_bool_post (K : _ -> _ -> result) o o1 :=
   exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = o.
 
 Lemma if_bool_out : forall W K o,
-  if_bool W K = o ->
+  if_bool W K = res_out o ->
   isout W (if_bool_post K o).
 Admitted.
 
@@ -421,7 +431,7 @@ Definition if_object_post (K : _ -> _ -> result) o o1 :=
   exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = o.
 
 Lemma if_object_out : forall W K o,
-  if_object W K = o ->
+  if_object W K = res_out o ->
   isout W (if_object_post K o).
 Admitted.
 
@@ -430,7 +440,7 @@ Definition if_string_post (K : _ -> _ -> result) o o1 :=
   exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = o.
 
 Lemma if_string_out : forall W K o,
-  if_string W K = o ->
+  if_string W K = res_out o ->
   isout W (if_string_post K o).
 Admitted.
 
@@ -439,17 +449,17 @@ Definition if_number_post (K : _ -> _ -> result) o o1 :=
   exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = o.
 
 Lemma if_number_out : forall W K o,
-  if_number W K = o ->
+  if_number W K = res_out o ->
   isout W (if_number_post K o).
 Admitted.
 
-Definition if_primitive_post (K : _ -> _ -> result) o o1 :=
+Definition if_prim_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
   exists S w, o1 = out_ter S (res_val (value_prim w)) /\ K S w = o.
 
-Lemma if_primitive_out : forall W K o,
-  if_primitive W K = o ->
-  isout W (if_primitive_post K o).
+Lemma if_prim_out : forall W K o,
+  if_prim W K = res_out o ->
+  isout W (if_prim_post K o).
 Admitted.
 
 Lemma if_abort_out : forall T o K (t : T),
@@ -472,41 +482,30 @@ Proof. skip.
 *)
 Qed.
 
-(* TOOD:  missing 
-    if_ter_spec*)
-
-Definition if_spec_ter_post T (K : _ -> _ -> result) o (y:specret T) :=
+Definition if_ter_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
-  \/ (exists S a, y = specret_val S a /\ K S a = o).
+  \/ (exists S, exists (R : res), o = out_ter S R /\ K S R = result_some y).
 
-Lemma if_spec_ter_out : forall T (W : specres T) K o,
-  if_spec_ter W K = o -> 
-  exists y, W = result_some y /\ if_spec_ter_post K o y.
-Proof.
-(* TODO
-  introv H. destruct W as [sp| | |]; tryfalse.
-  destruct (result_some sp)
-  destruct sp; [right* | left]. simpls. eexists. splits~.
-  forwards*: if_abort_out H.
-*)
-skip.
-Qed.
+Lemma if_ter_spec : forall T W K (y : specret T),
+  if_ter W K = result_some y ->
+  isout W (if_ter_spec_post K y).
+Admitted.
 
 Definition if_success_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (rv : resvalue), o = out_ter S rv /\ K S rv = result_some y).
 
-Lemma if_success_spec_out : forall T W K (y : specret T),
-  if_success_spec W K = result_some y ->
-  exists (o : out), W = o /\ if_success_spec_post K y o.
+Lemma if_success_spec : forall T W K (y : specret T),
+  if_success W K = result_some y ->
+  exists (o : out), W = o /\ if_success_spec_post K y o. (* LATER:  Change to [isout] *)
 Admitted.
 
 Definition if_value_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (v : value), o = out_ter S v /\ K S v = result_some y).
 
-Lemma if_value_spec_out : forall T W K (y : specret T),
-  if_value_spec W K = result_some y ->
+Lemma if_value_spec : forall T W K (y : specret T),
+  if_value W K = result_some y ->
   exists (o : out), W = o /\ if_value_spec_post K y o.
 Admitted.
 
@@ -514,8 +513,8 @@ Definition if_prim_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (w : prim), o = out_ter S w /\ K S w = result_some y).
 
-Lemma if_prim_spec_out : forall T W K (y : specret T),
-  if_prim_spec W K = result_some y ->
+Lemma if_prim_spec : forall T W K (y : specret T),
+  if_prim W K = result_some y ->
   exists (o : out), W = o /\ if_prim_spec_post K y o.
 Admitted.
 
@@ -523,8 +522,8 @@ Definition if_bool_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (b : bool), o = out_ter S b /\ K S b = result_some y).
 
-Lemma if_bool_spec_out : forall T W K (y : specret T),
-  if_bool_spec W K = result_some y ->
+Lemma if_bool_spec : forall T W K (y : specret T),
+  if_bool W K = result_some y ->
   exists (o : out), W = o /\ if_bool_spec_post K y o.
 Admitted.
 
@@ -532,8 +531,8 @@ Definition if_number_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (n : number), o = out_ter S n /\ K S n = result_some y).
 
-Lemma if_number_spec_out : forall T W K (y : specret T),
-  if_number_spec W K = result_some y ->
+Lemma if_number_spec : forall T W K (y : specret T),
+  if_number W K = result_some y ->
   exists (o : out), W = o /\ if_number_spec_post K y o.
 Admitted.
 
@@ -541,11 +540,12 @@ Definition if_string_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
   \/ (exists S, exists (s : string), o = out_ter S s /\ K S s = result_some y).
 
-Lemma if_string_spec_out : forall T W K (y : specret T),
-  if_string_spec W K = result_some y ->
+Lemma if_string_spec : forall T W K (y : specret T),
+  if_string W K = result_some y ->
   exists (o : out), W = o /\ if_string_spec_post K y o.
 Admitted.
 
+(* TODO:  if_object_spec. *)
 
 (* proofs of old monadic lemmas, might be useful
 Lemma if_success_out : forall res K S R,
@@ -619,70 +619,6 @@ Proof.
 Qed.
 *)
 
-(* Passing *)
-
-(*
-Inductive passing_terminates {A : Type} : passing A -> Prop :=
-  | passing_terminates_normal : forall S a,
-    passing_terminates (passing_normal S a)
-  | passing_terminates_abort : forall S R,
-    abort (out_ter S R) ->
-    passing_terminates (passing_abort (out_ter S R)).
-
-Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
-  passing_def bo K = p ->
-  (exists b, bo = Some b /\ K b = p) \/
-  (exists res, bo = None /\ p = passing_abort res /\ forall o, result_out o <> res).
-Proof. introv E. destruct* bo. right. eexists. splits*. discriminate. Qed.
-
-Lemma passing_defined_out : forall (A B : Type) (p : passing B) K (pr : passing A),
-  passing_defined p K = pr ->
-  (exists S0 b, p = passing_normal S0 b /\ K S0 b = pr) \/
-  (exists res, p = passing_abort res /\ pr = passing_abort res).
-Proof. introv E. destruct* p. Qed.
-
-Lemma passing_success_out : forall (A : Type) res K (p : passing A),
-  passing_success res K = p ->
-  (exists S0 rv, res = out_ter S0 (rv : resvalue) /\
-                 K S0 rv = p) \/
-  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, result_out o <> res') /\
-                      res = out_ter S0 (res_intro restype_normal rv ls) /\
-                      ls <> label_empty) \/
-  (exists o, res = result_out o /\ p = passing_abort res /\ abort o) \/
-  (p = passing_abort res /\ forall o, res <> o).
-Proof.
-  introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
-  destruct~ o.
-   branch 3. eexists. splits~.
-  destruct r as [T R L]. destruct~ T; try solve [ branch 3;
-    eexists; splits~; constructors; absurd_neg ]. simpls.
-  cases_if.
-   branch 1. substs. repeat eexists.
-   branch 2. substs. repeat eexists; auto*. discriminate.
-Qed.
-
-Lemma passing_value_out : forall (A : Type) res K (p : passing A),
-  passing_value res K = p ->
-  (exists S0 v, res = out_ter S0 (v : value) /\
-                 K S0 v = p) \/
-  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, result_out o <> res') /\
-                      res = out_ter S0 (res_intro restype_normal rv ls) /\
-                      (ls <> label_empty \/ forall v, rv <> v)) \/
-  (exists o, res = result_out o /\ p = passing_abort res /\ abort o) \/
-  (p = passing_abort res /\ forall o, res <> o).
-Proof.
-  introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
-  destruct~ o.
-   branch 3. eexists. splits~.
-  destruct r as [T R L]. destruct~ T; try solve [ branch 3;
-    eexists; splits~; constructors; absurd_neg ]. simpls.
-  cases_if; destruct R; subst; try (
-    branch 2; repeat eexists;
-    [ discriminate | solve [left*] || solve [try right; discriminate] ]).
-  branch 1. repeat eexists.
-Qed.
-*)
-
 
 (************************************************************)
 (* ** Correctness tactics *)
@@ -696,9 +632,6 @@ let H := fresh in intros H; try solve [ inversion H; false~ ].
 Hint Extern 1 (~ abort_intercepted_expr _) => prove_not_intercept.
 Hint Extern 1 (~ abort_intercepted_stat _) => prove_not_intercept.
 Hint Extern 1 (~ abort_intercepted_prog _) => prove_not_intercept.
-
-Ltac prove_abort :=
-  solve [ assumption | (constructor; absurd_neg) ].
 
 Ltac abort_tactic L :=
   try subst; apply L;
@@ -728,24 +661,25 @@ Ltac run_select_extra T := fail.
 
 Ltac run_select_ifres H :=
   match type of H with ?T = _ => match T with
-  | if_ter _ _ => constr:(if_ter_out)
-  | if_success _ _ => constr:(if_success_out)
-  | if_value _ _ => constr:(if_value_out)
-  | if_void _ _ => constr:(if_void_out)
+  | @if_ter nothing _ _ => constr:(if_ter_out)
+  | @if_success nothing _ _ => constr:(if_success_out)
+  | @if_value nothing _ _ => constr:(if_value_out)
+  | @if_void nothing _ _ => constr:(if_void_out)
   | if_break _ _ => constr:(if_break_out)
-  | if_object _ _ => constr:(if_object_out)
-  | if_bool _ _ => constr:(if_bool_out)
-  | if_string _ _ => constr:(if_string_out)
-  | if_number _ _ => constr:(if_number_out)
-  | if_primitive _ _ => constr:(if_primitive_out)
+  | @if_object nothing _ _ => constr:(if_object_out)
+  | @if_bool nothing _ _ => constr:(if_bool_out)
+  | @if_string nothing _ _ => constr:(if_string_out)
+  | @if_number nothing _ _ => constr:(if_number_out)
+  | @if_prim nothing _ _ => constr:(if_prim_out)
+  | if_ter _ _ => constr:(if_ter_spec)
+  | if_success _ _ => constr:(if_success_spec)
+  | if_value _ _ => constr:(if_value_spec)
+  | if_bool _ _ => constr:(if_bool_spec)
+  | if_string _ _ => constr:(if_string_spec)
+  | if_number _ _ => constr:(if_number_spec)
+  | if_prim _ _ => constr:(if_prim_spec)
   | if_spec _ _ => constr:(if_spec_out)
-  | if_spec_ter _ _ => constr:(if_spec_ter_out)
-  | if_success_spec _ _ => constr:(if_success_spec_out)
-  | if_value_spec _ _ => constr:(if_value_spec_out)
-  | if_prim_spec _ _ => constr:(if_prim_spec_out)
-  | if_bool_spec _ _ => constr:(if_bool_spec_out)
-  | if_number_spec _ _ => constr:(if_number_spec_out)
-  | if_string_spec _ _ => constr:(if_string_spec_out)
+  | if_void _ _ => constr:(if_void_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
   | if_success_or_return _ _ _ => constr:(if_success_or_return_out) 
   | ?x => run_select_extra T
@@ -918,40 +852,26 @@ Ltac run_post_core :=
     let s := fresh "s" in go H s
   | H: if_number_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
-  | H: if_primitive_post _ _ _ |- _ =>
+  | H: if_prim_post _ _ _ |- _ =>
+    let m := fresh "w" in go H m
+  | H: if_ter_spec_post _ _ _ |- _ =>
+    let R := fresh "R" in go H R
+  | H: if_success_spec_post _ _ _ |- _ =>
+    let rv := fresh "rv" in go H rv
+  | H: if_value_spec_post _ _ _ |- _ =>
+    let v := fresh "v" in go H v
+  | H: if_bool_spec_post _ _ _ |- _ =>
+    let b := fresh "b" in go H b
+  | H: if_string_spec_post _ _ _ |- _ =>
+    let s := fresh "s" in go H s
+  | H: if_number_spec_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
+  | H: if_prim_spec_post _ _ _ |- _ =>
+    let m := fresh "w" in go H m
   | H: if_spec_post _ _ _ |- _ =>
     let o := fresh "o" in let Er' := fresh "Er" in 
     let S := fresh "S" in let a := fresh "a" in
     destruct H as [(o&Er&Er'&Ab)|(S&a&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_spec_ter_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "a" in
-    destruct H as [(Er&Ab)|(S&a&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_success_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let rv := fresh "rv" in
-    destruct H as [(Er&Ab)|(S&rv&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_value_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let v := fresh "v" in
-    destruct H as [(Er&Ab)|(S&v&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_prim_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let w := fresh "w" in
-    destruct H as [(Er&Ab)|(S&w&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_bool_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let b := fresh "b" in
-    destruct H as [(Er&Ab)|(S&b&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_number_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let n := fresh "n" in
-    destruct H as [(Er&Ab)|(S&n&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_string_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let s := fresh "s" in
-    destruct H as [(Er&Ab)|(S&s&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_any_or_throw_post _ _ _ _ |- _ =>
     let R := fresh "R" in
@@ -1056,7 +976,7 @@ Ltac run_step Red :=
   match Red with ltac_wild => idtac | _ =>
     let o := run_get_current_out tt in
     run_apply Red o1 R1;
-    try (run_check_current_out o; run_post; run_inv)
+    try (run_check_current_out o; run_post; run_inv; try assumption)
   end.
 
 (** [run_step_using Red Lem] combines [run_pre], 
@@ -1074,7 +994,7 @@ Ltac run_step_using Red Lem :=
   match Red with ltac_wild => idtac | _ =>
     let o := run_get_current_out tt in
     run_apply Red o1 R1;
-    try (run_check_current_out o; run_post; run_inv)
+    try (run_check_current_out o; run_post; run_inv; try assumption)
   end.
 
 (** [run_simpl] is intended for simplyfing simple monads
@@ -1444,7 +1364,7 @@ Proof.
   run red_spec_object_put_1_default using object_can_put_correct. cases_if.
    run red_spec_object_put_2_true. let_name.
     asserts follows_correct: (forall o, True ->
-        follow tt = o ->
+        follow tt = res_out o ->
         red_expr S0 C (spec_object_put_3 vthis l x v str (specret_val S2 a)) o).
       clear HR. introv N E. substs. 
 (* TODO:
@@ -1578,7 +1498,7 @@ Proof.
    clear HR. introv EQ HR. subst M.
    asserts: (ref_is_property r). unfolds. destruct* EQ.
    lets (v&Ev): ref_kind_base_object_inv EQ. rewrite Ev in HR.
-   unfolds ref_has_primitive_base. case_if.  
+   unfolds ref_has_primitive_base. case_if.
      run* red_spec_ref_get_value_ref_b using prim_value_get_correct. case_if*. 
       applys* red_spec_ref_get_value_ref_b_1.
      destruct EQ; tryfalse. destruct v as [|l]; tryfalse.
@@ -1838,10 +1758,10 @@ Ltac run_post_if_spec_ter_post_bool H := (* todo: integrate into run_post *)
   destruct H as [(Er&Ab)|(S1&b&O1&H)];
   [ try abort | try subst_hyp O1 ].
 
-Lemma if_spec_ter_post_to_bool : forall (K:state->bool->result) S C e o y1,
+Lemma if_spec_post_to_bool : forall (K:state->bool->result) S C e o y1,
   red_spec S C (spec_expr_get_value e) y1 ->
-  if_spec_ter_post 
-   (fun S v => Let b := convert_value_to_boolean v in K S b) o y1 ->
+  if_spec_post
+   (fun S v => Let b := convert_value_to_boolean v in K S b) (specret_out o) y1 ->
   exists y2,
      red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y2
   /\ if_spec_ter_post_bool K o y2.
@@ -1849,7 +1769,7 @@ Proof.
   introv HR HP. run_post. 
   exists y1. splits.
     subst. apply* red_spec_expr_get_value_conv. abort.
-    subst. left. splits~.
+    subst. left. splits; run_inv; auto~.
   exists (specret_val S1 (value_prim (convert_value_to_boolean a))). splits.
     applys* red_spec_expr_get_value_conv.
      applys* red_spec_expr_get_value_conv_1.
@@ -1866,10 +1786,10 @@ Definition if_spec_ter_post_object (K:state->object_loc->result) o (y:specret va
        /\ K S l = o).
 
 
-Lemma if_spec_ter_post_to_object : forall (K:state->object_loc->result) S C e o y1,
+Lemma if_spec_post_to_object : forall (K:state->object_loc->result) S C e o y1,
   red_spec S C (spec_expr_get_value e) y1 ->
-  if_spec_ter_post 
-   (fun S v => if_object (to_object S v) K) o y1 ->
+  if_spec_post
+   (fun S v => if_object (to_object S v) K) (specret_out o) y1 ->
   exists y2,
      red_spec S C (spec_expr_get_value_conv spec_to_object e) y2
   /\ if_spec_ter_post_object K o y2.
@@ -1877,7 +1797,7 @@ Proof.
   introv HR HP. run_post. 
   exists y1. splits.
     subst. apply* red_spec_expr_get_value_conv. abort.
-    subst. left. splits~.
+    subst. left. splits; run_inv; auto~.
   run_pre. lets*: to_object_correct C (rm R1). run_post.
     subst. exists (specret_out (T:=value) o1). split.
       applys* red_spec_expr_get_value_conv. 
@@ -1904,13 +1824,14 @@ Admitted. (* Part of libraries, will do afterwards *)
 
 Lemma run_construct_default_correct : forall runs S C l args o,
   runs_type_correct runs ->
-  run_construct_default runs S C l args = o ->
+  run_construct_default runs S C l args = res_out o ->
   red_expr S C (spec_construct_default l args) o.
 Proof.
   introv IH HR. unfolds in HR.
   run red_spec_construct_default using run_object_get_correct.
   let_simpl. let_simpl. let_name. destruct p as [l' S2].
   run* red_spec_construct_default_1. rewrite* EQp. case_if; case_if*.
+  let_simpl. run_inv.
   applys* red_spec_function_construct_2. case_if; case_if*.
 Admitted. (*faster*)
 
@@ -1992,7 +1913,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
         if_bool (env_record_has_binding runs S1 C L fname) (fun S2 has =>
           if has then (
             ifb L = env_loc_global_env_record then (
-              if_spec_ter (run_object_get_prop runs S2 C prealloc_global fname) (fun S3 D =>
+              if_spec (run_object_get_prop runs S2 C prealloc_global fname) (fun S3 D =>
                 match D with
                 | full_descriptor_undef =>
                   impossible_with_heap_because S3 "Undefined full descriptor in [binding_inst_function_decls]."
@@ -2381,7 +2302,7 @@ Proof.
   run* red_spec_from_descriptor_some.
   rename a into A.
   let_name as M. asserts M_correct: (forall S0 S b o,
-    M S b = o ->
+    M S b = res_out o ->
     red_expr S0 C (spec_from_descriptor_4 l A (out_ter S b)) o).
    clear HR S o. introv HR. subst M.
     let_name. run* red_spec_from_descriptor_4. congruence.
@@ -2467,7 +2388,7 @@ Proof.
   introv IH. gen S. induction pds as [|(pn&pb) pds]; introv HR.
   simpls. run_inv. applys red_expr_object_1_nil.
   simpls. let_name. let_name. 
-  asserts follows_correct: (forall S A, follows S A = o ->
+  asserts follows_correct: (forall S A, follows S A = res_out o ->
       red_expr S C (expr_object_4 l x A pds) o). 
     subst follows. clear HR. introv HR.
     run red_expr_object_4 using object_define_own_prop_correct. 
@@ -2526,45 +2447,6 @@ Proof.
   Hint Constructors prepost_op.
   introv HR. destruct u; simpls; inverts* HR.
 Qed.
-
-
-
-Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
-  if_some (run_object_method object_get_own_prop_ S l) (fun B =>
-    Let default := fun S' =>
-      if_some (run_object_method object_properties_ S' l) (fun P =>
-        res_spec S' (
-          if_some_or_default (convert_option_attributes (Heap.read_option P x))
-            (full_descriptor_undef) id))
-      in 
-    match B with
-      | builtin_get_own_prop_default =>
-        default S
-      | builtin_get_own_prop_args_obj =>
-        if_spec (default S) (fun S1 D =>
-          match D with
-          | full_descriptor_undef =>
-            res_spec S1 full_descriptor_undef
-          | full_descriptor_some A =>
-            if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
-              if_some lmapo (fun lmap =>
-                if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
-                  Let follow := fun S' A =>
-                    res_spec S' (full_descriptor_some A) in
-                  match D with
-                     | full_descriptor_undef =>
-                       follow S2 A
-                     | full_descriptor_some Amap =>
-                       if_value_spec (run_object_get runs S2 C lmap x) (fun S3 v =>
-                         match A with
-                         | attributes_data_of Ad =>
-                           follow S3 (attributes_data_with_value Ad v)
-                         | attributes_accessor_of Aa =>
-                           impossible_with_heap_because S3 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens."
-                         end)
-                     end)))
-          end)
-      end).
 
 
 Axiom red_spec_object_get_own_prop : forall S C l x B (y:specret full_descriptor),
@@ -2851,7 +2733,7 @@ skip.
   skip. (* TODO : first need to fix the conversion functions *)
   (* conditionnal *)
   unfolds in R. 
-  run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
+  run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
    applys* red_expr_conditional (rm R2). run_post_if_spec_ter_post_bool K.
   let_name. run red_expr_conditional_1. case_if in EQe; case_if*.
   applys* red_expr_conditional_2.
@@ -2960,7 +2842,7 @@ Proof.
   applys* run_var_decl_correct.
   (* If *)
   unfolds in R.
-  run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
+  run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
    applys* red_stat_if (rm R2). run_post_if_spec_ter_post_bool K.
    case_if.
      applys~ red_stat_if_1_true. apply~ RC.
@@ -2973,7 +2855,7 @@ Proof.
   apply~ red_stat_while. applys* runs_type_correct_stat_while.
   (* With *)
   unfolds in R.
-  run_pre. lets (y1&R2&K): if_spec_ter_post_to_object (rm R1) (rm R).
+  run_pre. lets (y1&R2&K): if_spec_post_to_object (rm R1) (rm R).
    applys* red_stat_with (rm R2). run_post_if_spec_ter_post_bool K.
   let_name. let_name. destruct p as [lex' S3]. let_name.
   subst lex. applys* red_stat_with_1. subst C'. run_inv. run_hyp*.
@@ -2991,7 +2873,7 @@ Proof.
   (* Try *)
   unfolds in R. let_name.
   asserts finally_correct: (forall S (R:res), 
-      finally S R = o ->
+      finally S R = res_out o ->
       red_stat S C (stat_try_4 R fo) o). 
     subst finally. clear R. introv HR.
     destruct fo.
@@ -3068,7 +2950,7 @@ Lemma run_stat_while_correct : forall runs,
   follow_stat_while (run_stat_while runs).
 Proof.
   intros runs IH ls e t S C rv o R. unfolds in R.
-  run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
+  run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
    applys~ red_stat_while_1 (rm R2). run_post_if_spec_ter_post_bool K.
     case_if.
     run red_stat_while_2_true.
@@ -3091,10 +2973,10 @@ Proof.
   run red_stat_do_while_1. do 2 let_name.
   applys~ red_stat_do_while_2 rv'.
     repeat cases_if~. clear EQrv'.
-  asserts loop_correct: (forall o, loop tt = o ->
+  asserts loop_correct: (forall o, loop tt = res_out o ->
       red_stat S0 C (stat_do_while_6 ls t e rv') o).
     clear R. introv H. subst loop.
-     run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm H).
+     run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm H).
      applys~ red_stat_do_while_6 (rm R2). run_post_if_spec_ter_post_bool K.
      cases_if.
       apply~ red_stat_do_while_7_true. apply* IH.

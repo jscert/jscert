@@ -123,16 +123,7 @@ binary ops
 
 Martin:
 
-new program for prog_block
-
 new program for to-property-descriptor (it's missing it seems; it's long but easy)
-
-Merging if_success* (in a branch)
-
-
-
-
-
 
 
 
