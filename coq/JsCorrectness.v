@@ -665,7 +665,7 @@ Ltac run_select_ifres H :=
   | @if_success nothing _ _ => constr:(if_success_out)
   | @if_value nothing _ _ => constr:(if_value_out)
   | @if_void nothing _ _ => constr:(if_void_out)
-  | @if_break nothing _ _ => constr:(if_break_out)
+  | if_break _ _ => constr:(if_break_out)
   | @if_object nothing _ _ => constr:(if_object_out)
   | @if_bool nothing _ _ => constr:(if_bool_out)
   | @if_string nothing _ _ => constr:(if_string_out)
@@ -2749,7 +2749,7 @@ Proof.
   applys* run_var_decl_correct.
   (* If *)
   unfolds in R.
-  run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
+  run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
    applys* red_stat_if (rm R2). run_post_if_spec_ter_post_bool K.
    case_if.
      applys~ red_stat_if_1_true. apply~ RC.
@@ -2762,7 +2762,7 @@ Proof.
   apply~ red_stat_while. applys* runs_type_correct_stat_while.
   (* With *)
   unfolds in R.
-  run_pre. lets (y1&R2&K): if_spec_ter_post_to_object (rm R1) (rm R).
+  run_pre. lets (y1&R2&K): if_spec_post_to_object (rm R1) (rm R).
    applys* red_stat_with (rm R2). run_post_if_spec_ter_post_bool K.
   let_name. let_name. destruct p as [lex' S3]. let_name.
   subst lex. applys* red_stat_with_1. subst C'. run_inv. run_hyp*.
@@ -2780,7 +2780,7 @@ Proof.
   (* Try *)
   unfolds in R. let_name.
   asserts finally_correct: (forall S (R:res), 
-      finally S R = o ->
+      finally S R = res_out o ->
       red_stat S C (stat_try_4 R fo) o). 
     subst finally. clear R. introv HR.
     destruct fo.
@@ -2857,7 +2857,7 @@ Lemma run_stat_while_correct : forall runs,
   follow_stat_while (run_stat_while runs).
 Proof.
   intros runs IH ls e t S C rv o R. unfolds in R.
-  run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
+  run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
    applys~ red_stat_while_1 (rm R2). run_post_if_spec_ter_post_bool K.
     case_if.
     run red_stat_while_2_true.
@@ -2880,10 +2880,10 @@ Proof.
   run red_stat_do_while_1. do 2 let_name.
   applys~ red_stat_do_while_2 rv'.
     repeat cases_if~. clear EQrv'.
-  asserts loop_correct: (forall o, loop tt = o ->
+  asserts loop_correct: (forall o, loop tt = res_out o ->
       red_stat S0 C (stat_do_while_6 ls t e rv') o).
     clear R. introv H. subst loop.
-     run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm H).
+     run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm H).
      applys~ red_stat_do_while_6 (rm R2). run_post_if_spec_ter_post_bool K.
      cases_if.
       apply~ red_stat_do_while_7_true. apply* IH.
