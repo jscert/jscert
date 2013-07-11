@@ -1304,13 +1304,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       b1 = b_ret ->
       red_expr S0 C (expr_lazy_op_2 b_ret v1 (out_ter S b1) e2) (out_ter S v1)
 
-  | red_expr_lazy_op_2_second : forall S0 S C b_ret v v1 b1 e2 y1 o, 
+  | red_expr_lazy_op_2_second : forall S0 S C v1 b_ret b1 e2 y1 o, 
       b1 <> b_ret ->
       red_spec S C (spec_expr_get_value e2) y1 ->
       red_expr S C (expr_lazy_op_2_1 y1) o ->
       red_expr S0 C (expr_lazy_op_2 b_ret v1 (out_ter S b1) e2) o
 
-  | red_expr_lazy_op_2_second_1: forall S0 S C v,
+  | red_expr_lazy_op_2_second_1 : forall S0 S C v,
       red_expr S0 C (expr_lazy_op_2_1 (ret S v)) (out_ter S v)
 
   (** Conditional operator (11.12) *)

@@ -1218,6 +1218,17 @@ Tactic Notation "runs" "*" :=
 (************************************************************)
 (* ** Correctness Lemmas *)
 
+Lemma is_lazy_op_correct : forall op,
+  match is_lazy_op op with
+  | None => regular_binary_op op 
+  | Some b => lazy_op op b
+  end.
+Proof.
+  Hint Constructors lazy_op. 
+  unfold regular_binary_op.
+  intros. destruct op; simple*.
+Admitted. (* faster *)
+
 Lemma run_object_method_correct : forall Z (Proj : _ -> Z) S l (z : Z),
   run_object_method Proj S l = Some z ->
   object_method Proj S l z.
@@ -2455,6 +2466,37 @@ Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   red_expr S C (expr_binary_op_3 op v1 v2) o.
 Admitted. (* TODO NOW *)
 
+ (* TODO NOW *)
+(* TODO: for binary op:  
+     (* In *)
+     skip. (* TODO *)
+     (* Equal *)
+     skip. (* TODO *)
+
+     (* Disequal *)
+     skip. (* TODO *)
+     (* Strict equal *)
+     skip. (* TODO *)
+     (* Strict disequal *)
+     skip. (* TODO *)
+     (* Bitwise and *)
+     skip. (* TODO *)
+     (* Bitwise or *)
+     skip. (* TODO *)
+     (* Bitwise xor *)
+     skip. (* TODO *)
+     (* And *)
+     skip. (* TODO *)
+     (* Or *)
+     skip. (* TODO *)
+     (* Comma *)
+     skip. (* TODO *)
+    (* conditionnal *)
+    skip. (* TODO *)
+    (* assign *)
+    skip. (* TODO *)
+*)
+
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
   runs_type_correct runs ->
@@ -2672,36 +2714,18 @@ Proof.
    forwards* M: red_spec_to_boolean a.
     applys* red_expr_unary_op_not. applys* red_expr_unary_op_not_1.
   (* binary operators *)
-  skip. (* TODO NOW *)
-(* TODO: for binary op:  
-     (* In *)
-     skip. (* TODO *)
-     (* Equal *)
-     skip. (* TODO *)
-
-     (* Disequal *)
-     skip. (* TODO *)
-     (* Strict equal *)
-     skip. (* TODO *)
-     (* Strict disequal *)
-     skip. (* TODO *)
-     (* Bitwise and *)
-     skip. (* TODO *)
-     (* Bitwise or *)
-     skip. (* TODO *)
-     (* Bitwise xor *)
-     skip. (* TODO *)
-     (* And *)
-     skip. (* TODO *)
-     (* Or *)
-     skip. (* TODO *)
-     (* Comma *)
-     skip. (* TODO *)
-    (* conditionnal *)
-    skip. (* TODO *)
-    (* assign *)
-    skip. (* TODO *)
-*)
+  unfolds in R. rename b into op.
+  lets: (is_lazy_op_correct op). cases (is_lazy_op op).
+    run* red_expr_binary_op_lazy.
+     let_name. applys* red_expr_lazy_op_1. applys* red_spec_to_boolean.
+     case_if; subst; run_inv.
+       applys* red_expr_lazy_op_2_first.
+       run* red_expr_lazy_op_2_second.
+       applys* red_expr_lazy_op_2_second_1.
+    run* red_expr_binary_op.
+     run red_expr_binary_op_1.
+     applys* red_expr_binary_op_2.
+     inverts R as M. applys run_binary_op_correct M.
   (* conditionnal *)
   unfolds in R. 
   run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).

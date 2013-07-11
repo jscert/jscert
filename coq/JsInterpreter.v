@@ -1907,7 +1907,7 @@ Definition run_expr_binary_op runs S C op e1 e2 : result :=
         run_binary_op runs S2 C op v1 v2))
   | Some b_ret =>
     if_spec (run_expr_get_value runs S C e1) (fun S1 v1 =>
-      let b1 := convert_value_to_boolean v1 in
+      Let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then res_ter S1 v1
       else
         if_spec (run_expr_get_value runs S1 C e2) (fun S2 v =>

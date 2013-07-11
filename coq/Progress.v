@@ -25,9 +25,6 @@ red_spec_object_put_4_not_accessor_prim
 Arthur:
 
 
-
-object_default_value_correct
-
 run_binary_op_correct
 
 
