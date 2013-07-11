@@ -1488,7 +1488,15 @@ Admitted. (* faster *)
 Lemma prim_new_object_correct : forall S C w o,
   prim_new_object S w = o ->
   red_expr S C (spec_prim_new_object w) o.
-Proof. introv H. false. Qed.
+Proof. introv H. destruct w; tryfalse;
+ unfolds in H;  repeat let_simpl;
+ match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end;
+ destruct X as (l&S');
+ inversion H.
+ applys* red_spec_prim_new_object_bool.
+ applys* red_spec_prim_new_object_number.
+ applys* red_spec_prim_new_object_string. 
+Qed.
 
 Lemma run_error_correct_2 : forall T S (ne : native_error) o C,
   run_error S ne = (res_out o : specres T) -> red_expr S C (spec_error ne) o.

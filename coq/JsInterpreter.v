@@ -696,8 +696,25 @@ Definition run_to_descriptor runs S C v : specres descriptor :=
 (** Conversions *)
 
 Definition prim_new_object S w : result :=
-  result_not_yet_implemented (* TODO:  Waiting for the specification *).
-
+  match w with
+  | prim_bool b => 
+      Let O1 := object_new prealloc_bool_proto "Boolean" in
+      Let O := object_with_primitive_value O1 b in
+      let '(l, S1) := object_alloc S O in
+      out_ter S1 l
+  | prim_number n =>
+      Let O1 := object_new prealloc_number_proto "Number" in
+      Let O := object_with_primitive_value O1 n in
+      let '(l, S1) := object_alloc S O in
+      out_ter S1 l
+  | prim_string s =>
+      Let O1 := object_new prealloc_string_proto "String" in
+      Let O :=  object_with_primitive_value O1 s in
+      let '(l, S1) := object_alloc S O in
+      out_ter S1 l
+  | _ => impossible_with_heap_because S "[prim_new_object] received an null or undef."
+  end.
+  
 Definition to_object S v : result :=
   match v with
   | prim_null => run_error S native_error_type

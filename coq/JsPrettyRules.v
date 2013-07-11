@@ -1385,7 +1385,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** ** Conversions (9) *)
 
   (* TODO:  spec_to_primitive_auto *)
-  (* TODO:  spec_prim_new_object *)
+  
+  | red_spec_prim_new_object_bool : forall S C b S' l,
+      let O1 := object_new prealloc_bool_proto "Boolean" in 
+      let O := object_with_primitive_value O1 b in 
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_prim_new_object (prim_bool b)) (out_ter S' l)
+      
+  | red_spec_prim_new_object_number : forall S C n S' l,
+      let O1 := object_new prealloc_number_proto "Number" in 
+      let O := object_with_primitive_value O1 n in 
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_prim_new_object (prim_number n)) (out_ter S' l)
+    
+  | red_spec_prim_new_object_string : forall S C s S' l,
+      let O1 := object_new prealloc_string_proto "String" in 
+      let O := object_with_primitive_value O1 s in 
+      (l, S') = object_alloc S O ->
+      red_expr S C (spec_prim_new_object (prim_string s)) (out_ter S' l)
 
   (** Conversion to primitive (returns prim) (9.1) *)
 
