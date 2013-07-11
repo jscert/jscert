@@ -2901,7 +2901,7 @@ Lemma run_prog_correct : forall runs,
    follow_prog (run_prog runs).
 Proof.
   introv RC. intros S C p o R. unfolds in R. destruct p.
-  apply~ red_prog_prog. skip. (* TODO, this should work afterwards:  applys~ run_elements_correct R. *)
+  (*apply~ red_prog_prog.*) skip. (* TODO, this should work afterwards:  applys~ run_elements_correct R. *)
 Qed.
 
 (*

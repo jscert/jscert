@@ -622,9 +622,8 @@ with ext_prog :=
 
   | prog_basic : prog -> ext_prog
   | javascript_1 : out -> prog -> ext_prog
-  | prog_1 : resvalue -> elements -> ext_prog
-  | prog_2 : resvalue -> out -> elements -> ext_prog
-  | prog_3 : out -> elements -> ext_prog
+  | prog_1 : out -> stat -> ext_prog
+  | prog_2 : resvalue -> out -> ext_prog
 
 
 (** Grammar of extended forms for specification functions *)
@@ -1250,9 +1249,9 @@ Definition out_of_ext_prog (p : ext_prog) : option out :=
   match p with
   | prog_basic _ => None
   | javascript_1 o _ => Some o
-  | prog_1 _ _ => None
-  | prog_2 _ o _ => Some o
-  | prog_3 o _ => Some o
+  | prog_1 o _ => Some o
+  | prog_2 _ o => Some o
+
   end.
 
 Definition out_of_ext_spec (es : ext_spec) : option out :=
@@ -1339,9 +1338,8 @@ Inductive abort : out -> Prop :=
     and thus not propagated by the generic abort rule *)
 
 Inductive abort_intercepted_prog : ext_prog -> Prop :=
-  | abort_intercepted_prog_block_2 : forall lab S R rv els,
-      res_type R <> restype_throw ->
-      abort_intercepted_prog (prog_2 rv (out_ter S R) els).
+  | abort_intercepted_prog_block_2 : forall S R rv,
+      abort_intercepted_prog (prog_2 rv (out_ter S R)).
 
 Inductive abort_intercepted_stat : ext_stat -> Prop :=
 
