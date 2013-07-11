@@ -2103,13 +2103,13 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
         ) else loop tt)
     else res_ter S1 rv).
 
-Fixpoint run_stat_switch_no_default_ending runs S C rv scs : result :=
+Fixpoint run_stat_switch_end runs S C rv scs : result :=
   match scs with
   | nil =>
     out_ter S rv
   | switchclause_intro e ts :: scs' =>
     if_success_state rv (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv1 =>
-      run_stat_switch_no_default_ending runs S1 C rv1 scs')
+      run_stat_switch_end runs S1 C rv1 scs')
   end.
 
 Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
@@ -2121,21 +2121,51 @@ Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
       Let b := strict_equality_test v1 vi in
       if b then
         if_success (runs_type_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
-          run_stat_switch_no_default_ending runs S2 C rv scs')
+          run_stat_switch_end runs S2 C rv scs')
       else
-        run_stat_switch_no_default runs S1 C vi rv scs'
-      )
+        run_stat_switch_no_default runs S1 C vi rv scs')
   end.
 
-Fixpoint run_stat_switch_with_default runs S C (found : bool) (vi : value) rv (scs1 : list switchclause) (ts1 : list stat) (scs2 : list switchclause) : result :=
-  result_not_yet_implemented
-  (*
-  Let default := fun S =>
-    result_not_yet_implemented in
+Definition run_stat_switch_with_default_default runs S C ts scs : result :=
+  if_success (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv =>
+    run_stat_switch_end runs S1 C rv scs).
+
+Fixpoint run_stat_switch_with_default_B runs S C vi rv ts scs : result :=
+  match scs with
+  | nil =>
+    run_stat_switch_with_default_default runs S C ts scs
+  | switchclause_intro e ts :: scs' =>
+    if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
+      Let b := strict_equality_test v1 vi in
+      if b then
+        if_success (runs_type_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
+          run_stat_switch_end runs S2 C rv scs')
+      else
+        run_stat_switch_with_default_B runs S1 C vi rv ts scs')
+  end.
+
+Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 : result :=
   match scs1 with
   | nil =>
-    if found then default S
-  end *).
+    if found then
+      run_stat_switch_with_default_B runs S C vi rv ts scs2
+    else
+      run_stat_switch_end runs S C rv scs2
+  | switchclause_intro e ts :: scs' =>
+    Let follow := fun S =>
+      if_success (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv =>
+        run_stat_switch_with_default_A runs S1 C true vi rv scs' ts scs2)
+      in
+    if found then
+      follow S
+    else
+      if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
+        Let b := strict_equality_test v1 vi in
+        if b then
+          follow S1
+        else
+          run_stat_switch_with_default_A runs S1 C false vi rv scs' ts scs2)
+  end.
 
 Definition run_stat_switch runs S C labs e sb : result :=
   if_spec (run_expr_get_value runs S C e) (fun S1 vi =>
@@ -2147,8 +2177,8 @@ Definition run_stat_switch runs S C labs e sb : result :=
     match sb with
     | switchbody_nodefault scs =>
       follow (run_stat_switch_no_default runs S1 C vi resvalue_empty scs)
-    | switchbody_withdefault scs1 ts1 scs2 =>
-      follow (run_stat_switch_with_default runs S1 C false vi resvalue_empty scs1 ts1 scs2)
+    | switchbody_withdefault scs1 ts scs2 =>
+      follow (run_stat_switch_with_default_A runs S1 C false vi resvalue_empty scs1 ts scs2)
     end).
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
