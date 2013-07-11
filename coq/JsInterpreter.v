@@ -1277,7 +1277,8 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
                   ) else ifb descriptor_is_accessor A
                     \/ attributes_writable A = false \/ attributes_enumerable A = false then
                       run_error S3 native_error_type
-                  else follow S3
+                  else 
+                    follow S3
                 end)
             ) else follow S2)
           else
