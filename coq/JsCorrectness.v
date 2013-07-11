@@ -153,13 +153,11 @@ Record runs_type_correct runs :=
     runs_type_correct_block : forall runs S C ls o,
       runs_type_block runs S C ls = o ->
       red_stat S C (stat_block (rev ls)) o;
-    runs_type_correct_elements : True
-     (* TODO: add this forall runs S C ls o,
+    runs_type_correct_elements : forall runs S C str ls o,
       runs_type_elements runs S C ls = o ->
-      red_prog S C (prog_1 (rev ls)) o
-      *)
-
+      red_prog S C (prog_intro str (rev ls)) o
   }.
+
 
 
 
@@ -2792,22 +2790,35 @@ Proof.
 Admitted. (* faster *)
 
 
+Lemma run_elements_correct : forall runs S C str ls o,
+  runs_type_correct runs ->
+  run_elements runs S C ls = o ->
+  red_prog S C (prog_intro str (rev ls)) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct ls; rew_list.
+  run_inv. applys* red_prog_nil.
+  run_pre. eauto. applys* red_prog_cons. run_post. clear R1.
+   (* run* red_prog_cons. ==> LATER: should work*)
+  destruct e.
+  run red_prog_1_stat. applys* red_prog_2.
+  run_inv. applys red_prog_1_funcdecl.
+Admitted. (*faster*)
+
+
 Lemma run_block_correct : forall runs S C ls o,
   runs_type_correct runs ->
   run_block runs S C ls = o ->
   red_stat S C (stat_block (rev ls)) o.
 Proof.
-(*
   introv IH HR. unfolds in HR. destruct ls; rew_list.
   run_inv. applys* red_stat_block_nil.
   run_pre. eauto. applys* red_stat_block_cons. 
   run_post. clear R1.
-   (* run* red_stat_block_cons. ==> TODO: should work*)
+   (* run* red_stat_block_cons. ==> LATER: should work*)
   run red_stat_block_1.
   subst. applys* red_stat_block_2_throw.
   subst. applys* red_stat_block_2_not_throw.
   applys* red_stat_block_2_not_throw. simple*. case_if; case_if*. 
-*)
 Admitted. (*faster*)
 
 

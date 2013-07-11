@@ -2359,13 +2359,12 @@ Definition run_elements runs S C (els_rev : elements) : result :=
     if_success (runs_type_elements runs S C els_rev') (fun S0 rv0 =>
       match el with
       | element_stat t =>
-        if_not_throw (runs_type_stat runs S0 C t) (fun S1 R1 =>
+        if_ter (runs_type_stat runs S0 C t) (fun S1 R1 =>
           let R2 := res_overwrite_value_if_empty rv0 R1 in
-          out_ter S1 R2)
+          res_out (out_ter S1 R2))
       | element_func_decl name args bd => res_ter S0 rv0
       end)
   end.
-
 
 (**************************************************************)
 

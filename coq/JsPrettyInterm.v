@@ -622,7 +622,7 @@ with ext_prog :=
 
   | prog_basic : prog -> ext_prog
   | javascript_1 : out -> prog -> ext_prog
-  | prog_1 : out -> stat -> ext_prog
+  | prog_1 : out -> element -> ext_prog
   | prog_2 : resvalue -> out -> ext_prog
 
 

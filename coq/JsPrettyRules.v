@@ -93,36 +93,33 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
       ~ abort_intercepted_prog extp ->
       red_prog S C extp o
 
-  (** Program  (10.4.1) *)
+  (** Program  (14.1) *)
 
   | red_javascript_intro_1 : forall S S' C p o,
       red_prog S' C p o ->
       red_prog S C (javascript_1 (out_void S') p) o
 
-  (** No more source elements *)
-
   | red_prog_nil : forall S C str,
       red_prog S C (prog_intro str nil) (out_ter S resvalue_empty)
       
-   | red_prog_cons : forall S C str t els o1 o,
+  | red_prog_cons : forall S C str el els o1 o,
       red_prog S C (prog_intro str els) o1 ->
-      red_prog S C (prog_1 o1 t) o ->
-      red_prog S C (prog_intro str (els++((element_stat t)::nil))) o
-      
-   | red_prog_1 : forall S0 S C t rv o1 o,
+      red_prog S C (prog_1 o1 el) o ->
+      red_prog S C (prog_intro str (els++(el::nil))) o
+ 
+  | red_prog_1_funcdecl : forall S0 S C rv name args bd,
+      red_prog S0 C (prog_1 (out_ter S rv) (element_func_decl name args bd)) (out_ter S rv)
+
+  | red_prog_1_stat : forall S0 S C t rv o1 o,
       red_stat S C t o1 ->
       red_prog S C (prog_2 rv o1) o ->
-      red_prog S0 C (prog_1 (out_ter S rv) t) o
+      red_prog S0 C (prog_1 (out_ter S rv) (element_stat t)) o
 
-  | red_prog_2 : forall S0 S C R rv,
-      red_prog S0 C (prog_2 rv (out_ter S R)) (out_ter S (res_overwrite_value_if_empty rv R))
-
-  (** Source element : function declaration *)
-
-  | red_prog_1_cons_funcdecl : forall o1 S C str rv name args bd els o,
-      red_prog S C (prog_intro str els) o1 ->
-      red_prog S C (prog_2 resvalue_empty o1) o ->
-      red_prog S C (prog_intro str (els++((element_func_decl name args bd)::nil))) o
+  | red_prog_2 : forall S0 S C R R' rv,
+      R' = (res_overwrite_value_if_empty rv R) ->
+      red_prog S0 C (prog_2 rv (out_ter S R)) (out_ter S R').
+        (* LATER: strange, the spec does not say the same thing as for blocs,
+           i.e. it's being implicit about exceptions *)
 
 
 (**************************************************************)
