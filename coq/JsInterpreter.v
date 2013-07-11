@@ -2169,27 +2169,37 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     else out_ter S1 rv).
 
 (* Daniele: TODO.  *)
+
+Fixpoint run_stat_switch_no_default runs S C rv scs v : result :=
+  match scs with 
+  | nil => (out_ter S resvalue_empty) 
+  | (switchclause_intro e ts)::scs => 
+      if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
+        Let b := strict_equality_test v v1 in 
+        if b then 
+          if_ter (run_block runs S1 C ts) (fun S2 R =>
+          Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+            match scs with 
+            | nil => (out_ter S2 rv)
+            | (switchclause_intro e ts)::scs => (out_ter S2 rv) (* dummy *)
+            end
+          )
+        else 
+          (run_stat_switch_no_default runs S C rv scs v) (* dummy output *)
+        )
+  end.
+
+
 Definition run_stat_switch runs S C rv labs e sb : result :=
-  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
+  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v =>
       match sb with 
-      (* no-default case *)
-      | switchbody_nodefault scs =>
-          match scs with 
-          | nil => (out_ter S1 resvalue_empty) (* dummy output *)
-          | (switchclause_intro e1 ts)::scs => 
-              if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v2 =>
-                Let b := strict_equality_test v1 v2 in 
-                  if b then 
-                    if_ter (run_block runs S C ts) (fun S2 R =>
-                      (out_ter S1 resvalue_empty) (* dummy output *)
-                    )
-                  else 
-                    (out_ter S1 resvalue_empty) (* summy output *)
-              )
-          end
+      | switchbody_nodefault scs => (run_stat_switch_no_default runs S1 C rv scs v)   
       | switchbody_withdefault scs1 ts1 scs2 => (out_ter S1 resvalue_empty)
       end
   ).
+
+
+
 (* --- *)
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
