@@ -302,7 +302,8 @@ Definition if_success_or_return W (K1 : state -> result) (K2 : state -> resvalue
     match res_type R with
     | restype_normal =>
       if_empty_label S R (fun _ => K1 S)
-    | restype_return => K2 S (res_value R)
+    | restype_return => 
+      if_empty_label S R (fun _ => K2 S (res_value R))
     | _ => W
     end).
 
@@ -1257,19 +1258,17 @@ Definition run_construct runs S C co l args : result :=
 (** Function Calls *)
 
 Definition run_call_default runs S C (lf : object_loc) : result :=
-  (* Corresponds to the [spec_call_default_1] of the specification. *)
-  Let follow := fun W =>
-    if_success_or_return W
-      (fun S' => out_ter S' undef) out_ter
-    in
-  Let default := out_ter S undef in
+  Let default := (out_ter S undef : result) in
   if_some (run_object_method object_code_ S lf) (fun OC =>
        match OC with
-       | None => follow default
+       | None => default
        | Some bd =>
-         follow
-           (ifb funcbody_empty bd then default
-           else runs_type_prog runs S C (funcbody_prog bd))
+         ifb funcbody_empty bd then 
+           default
+         else
+           if_success_or_return (runs_type_prog runs S C (funcbody_prog bd))
+             (fun S' => out_ter S' undef) (* normal *)
+             (fun S' rv => out_ter S' rv) (* return *)
        end).
 
 Definition creating_function_object_proto runs S C l : result :=
@@ -2021,7 +2020,7 @@ Definition entering_eval_code runs S C direct bd K : result :=
   if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
     K S1 C').
 
-Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
+Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with
   | prim_string s =>
     match pick (parse s) with
@@ -2034,7 +2033,7 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
           | restype_throw =>
             res_ter S2 (res_throw (res_value R))
           | restype_normal =>
-            if_empty_label S2 R (fun _ =>
+             if_empty_label S2 R (fun _ => 
               match res_value R with
               | resvalue_value v =>
                 res_ter S2 v
@@ -2049,6 +2048,7 @@ Definition run_eval runs S C (is_direct_call : bool) (vthis : value) (vs : list 
   | v => out_ter S v
   end.
 
+
 Definition run_expr_call runs S C e1 e2s : result :=
   Let is_eval_direct := is_syntactic_eval e1 in
   if_success (runs_type_expr runs S C e1) (fun S1 rv =>
@@ -2056,11 +2056,14 @@ Definition run_expr_call runs S C e1 e2s : result :=
       if_spec_ter (run_list_expr runs S2 C nil e2s) (fun S3 vs =>
         match f with
         | value_object l =>
+          (* LATER: restore the negation:
           ifb ~ (is_callable S3 l) then run_error S3 native_error_type
           else
+          *)
+          ifb (is_callable S3 l) then 
             Let follow := fun vthis =>
               ifb l = prealloc_global_eval then
-                run_eval runs S3 C is_eval_direct vthis vs
+                run_eval runs S3 C is_eval_direct vs
               else runs_type_call runs S3 C l vthis vs in
             match rv with
             | resvalue_value v => follow undef
@@ -2074,6 +2077,8 @@ Definition run_expr_call runs S C e1 e2s : result :=
               end
             | resvalue_empty => impossible_with_heap_because S3 "[run_expr_call] unable to call an  empty result."
             end
+           (* LATER: restore the negation by removing this *)
+           else run_error S3 native_error_type
         | value_prim _ => run_error S3 native_error_type
         end))).
 

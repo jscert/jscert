@@ -1423,6 +1423,7 @@ Definition is_syntactic_eval e :=
     account. *)
 
 Axiom parse : string -> option prog -> Prop.
+Axiom parse_exists : forall s, exists oprog, parse s oprog.
 Axiom parse_pickable : forall s, Pickable (parse s).
 
 
