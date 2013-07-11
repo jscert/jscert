@@ -2093,7 +2093,7 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     else res_ter S1 rv).
 
 (* Daniele: TODO.  *)
-
+(*
 Fixpoint run_stat_switch_no_default runs S C rv scs v : result :=
   match scs with 
   | nil => (out_ter S resvalue_empty) 
@@ -2121,7 +2121,7 @@ Definition run_stat_switch runs S C rv labs e sb : result :=
       | switchbody_withdefault scs1 ts1 scs2 => (out_ter S1 resvalue_empty)
       end
   ).
-
+*)
 
 
 (* --- *)
