@@ -691,13 +691,13 @@ Definition object_can_put runs S C l x : result :=
       end).
 
 
-Definition object_define_own_prop runs S C l x Desc str : result :=
+Definition object_define_own_prop runs S C l x Desc throw : result :=
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
     match B with
     | builtin_define_own_prop_default =>
       if_spec_ter (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         Let reject := fun S =>
-          out_error_or_cst S str native_error_type false in
+          out_error_or_cst S throw native_error_type false in
         if_some (run_object_method object_extensible_ S1 l) (fun ext =>
              match D, ext with
              | full_descriptor_undef, false => reject S1
@@ -747,20 +747,27 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                         object_define_own_prop_write S2 A')
                  else
                    reject S1)
-               else ifb descriptor_is_accessor Desc then
+               else ifb (attributes_is_data A /\ descriptor_is_data Desc) then
                  match A with
                  | attributes_data_of Ad =>
                    ifb attributes_change_data_on_non_configurable Ad Desc then
                      reject S1
                    else
                      object_define_own_prop_write S1 A
+                 | attributes_accessor_of _ =>
+                   impossible_with_heap_because S "data is not accessor in [defineOwnProperty]"
+                 end
+               else ifb (not (attributes_is_data A) /\ descriptor_is_accessor Desc) then
+                 match A with
                  | attributes_accessor_of Aa =>
                    ifb attributes_change_accessor_on_non_configurable Aa Desc then
                      reject S1
                    else
                      object_define_own_prop_write S1 A
+                 | attributes_data_of _ =>
+                   impossible_with_heap_because S "accessor is not data in [defineOwnProperty]"
                  end
-               else
+               else (* both are accesor *)
                 (* TODO: check this is true *)
                 impossible_with_heap_because S "cases are mutually exclusives in [defineOwnProperty]"
              end))
