@@ -34,6 +34,12 @@ proof for blocks
 
 run_elements
 
+
+run_block code
+run_elements code
+--switch--> code & proof
+
+
 ============================================================================
 
 

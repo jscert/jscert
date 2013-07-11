@@ -112,6 +112,7 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
   (** Source element : statement (See also [abort_intercepted_prog]) *)
 
+  (* TODO:  Reverse order (see blocks for more details) *)
   | red_prog_1_cons_stat : forall S C t rv els o1 o,
       red_stat S C t o1 ->
       red_prog S C (prog_2 rv o1 els) o ->
@@ -1676,7 +1677,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
-(* OLD, see fix below
+(* OLD, see fix below (Note that I'm not very proud of the result:  TODO:  split it in two and do the same with the others)
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
       red_spec S C (spec_object_get_prop l x) y1 ->
       red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
