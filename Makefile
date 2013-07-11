@@ -269,6 +269,11 @@ interp/src/print_syntax.cmx: interp/src/print_syntax.ml interp/src/extract/JsSyn
 interp/src/run_js.cmx: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmx
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
 
+interp/src/run_jsbisect.ml: interp/src/run_js.ml
+	cp $< $@
+	sed -e $$'s|JsInterpreter|JsInterpreterBisect|' $@ > $@.bak
+	mv $@.bak $@
+
 interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmx
 	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
 
@@ -279,7 +284,7 @@ mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
 mlfileswithbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreter.cmx||' | sed 's|interp/src/run_js.cmx||'}
 mlfileswithoutbisect=${shell echo ${mlfilestransformed} | sed 's|interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|interp/src/run_jsbisect.cmx||'}
 
-interp/run_js: ${mlfilessortedwithparsermoved:.ml=.cmx}
+interp/run_js: interp/src/run_jsbisect.ml ${mlfilessortedwithparsermoved:.ml=.cmx}
 	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
 	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
 
