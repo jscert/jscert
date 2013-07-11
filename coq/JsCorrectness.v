@@ -1218,6 +1218,17 @@ Tactic Notation "runs" "*" :=
 (************************************************************)
 (* ** Correctness Lemmas *)
 
+Lemma is_lazy_op_correct : forall op,
+  match is_lazy_op op with
+  | None => regular_binary_op op 
+  | Some b => lazy_op op b
+  end.
+Proof.
+  Hint Constructors lazy_op. 
+  unfold regular_binary_op.
+  intros. destruct op; simple*.
+Admitted. (* faster *)
+
 Lemma run_object_method_correct : forall Z (Proj : _ -> Z) S l (z : Z),
   run_object_method Proj S l = Some z ->
   object_method Proj S l z.
@@ -1399,7 +1410,7 @@ Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
   object_define_own_prop runs S C l x Desc str = o ->
   red_expr S C (spec_object_define_own_prop l x Desc str) o.
 Proof.
-(*  introv IH HR. unfolds in HR. run. 
+  introv IH HR. unfolds in HR. run. 
   (* LATER: create a tactic for the pattern of the next two lines *)
   applys* red_spec_object_define_own_prop.
    applys* run_object_method_correct. clear E.
@@ -1439,19 +1450,18 @@ Proof.
              [ | applys* red_spec_object_define_own_prop_6a_reject].
   let_name. run. forwards B: @pick_option_correct (rm E).
    applys* red_spec_object_define_own_prop_6a_accept A'.
-   case_if. destruct a; inverts n2.
-     applys red_spec_object_define_own_prop_5_b. rewrite* <- H0.
-      case_if.
-        applys* red_spec_object_define_own_prop_6b_false_reject.
-        applys* red_spec_object_define_own_prop_6b_false_accept.
-     applys* red_spec_object_define_own_prop_5_c. case_if. 
-       applys* red_spec_object_define_own_prop_6c_1.
-       applys* red_spec_object_define_own_prop_6c_2.  
+   case_if as HC1.
+     destruct a; inverts n2; tryfalse.
+       applys* red_spec_object_define_own_prop_5_b. case_if.
+         applys* red_spec_object_define_own_prop_6b_false_reject.
+         applys* red_spec_object_define_own_prop_6b_false_accept.
+     case_if. destruct a; tryfalse.
+      applys* red_spec_object_define_own_prop_5_c. case_if. 
+        applys* red_spec_object_define_own_prop_6c_1.
+        applys* red_spec_object_define_own_prop_6c_2.  
   (* arguments object *)
   skip. (* Arguments object: postponed *)
-*) (* TODO *)
 Admitted. (* faster *)
-
 
 Lemma prim_new_object_correct : forall S C w o,
   prim_new_object S w = o ->
@@ -1785,11 +1795,41 @@ Lemma object_default_value_correct : forall runs S C l pref o,
   runs_type_correct runs ->
   object_default_value runs S C l pref = o ->
   red_expr S C (spec_object_default_value l pref) o.
-Admitted. (* TODO NOW *)
-
+Proof.
+  introv IH HR. unfolds in HR.
+  run. lets H: run_object_method_correct (rm E).
+  applys* red_spec_object_default_value (rm H). 
+  destruct x. 
+  let_name as M. 
+  asserts M_correct: (forall S x (F:state->result) K (o:out),
+      (M S x F = res_out o) ->
+      (forall S' o', (F S' = o') -> red_expr S' C K o') ->
+      red_expr S C (spec_object_default_value_sub_1 l x K) o).
+    clears HR S o. introv HR HK. subst M.
+    run red_spec_object_default_value_sub_1
+      using run_object_get_correct.
+    run. forwards R1: run_callable_correct (rm E). 
+    destruct x0.
+      simpls. run. destruct v; tryfalse.
+       run* red_spec_object_default_value_sub_2_callable.
+       destruct v; run_inv.
+         applys* red_spec_object_default_value_sub_3_prim.
+         applys* red_spec_object_default_value_sub_3_object.
+      applys* red_spec_object_default_value_sub_2_not_callable.
+    clear EQM.  
+  let_name.
+  applys* red_spec_object_default_value_1_default.
+  applys* red_spec_object_default_value_2.
+  subst. applys* M_correct.
+  clears S o. intros S o HR. simpls.
+  applys* red_spec_object_default_value_3.
+  subst. applys* M_correct.
+  clears S o. intros S o HR. simpls.
+  applys* red_spec_object_default_value_4. 
+  applys* run_error_correct.
+Admitted.
 
 (** Conversions *)
-
 
 Lemma to_primitive_correct : forall runs S C v o prefo,
   runs_type_correct runs ->
@@ -1841,18 +1881,25 @@ Ltac run_select_proj_extra_conversions HT ::=
   | to_string => constr:(to_string_correct)
   end.
 
+Lemma to_int32_correct : forall runs S C v (y:specret int),
+  runs_type_correct runs ->
+  to_int32 runs S C v = result_some y -> 
+  red_spec S C (spec_to_int32 v) y.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_to_int32 using to_number_correct.
+  applys* red_spec_to_int32_1.
+Qed.
 
-
-
-
-
-
-(* TODO:  to_int32, to_uint32 *)
-
-
-
-
-
+Lemma to_uint32_correct : forall runs S C v (y:specret int),
+  runs_type_correct runs ->
+  to_uint32 runs S C v = result_some y -> 
+  red_spec S C (spec_to_uint32 v) y.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_to_uint32 using to_number_correct.
+  applys* red_spec_to_uint32_1.
+Qed.
 
 
 
@@ -2242,7 +2289,7 @@ Lemma type_of_prim_not_object : forall w,
 Proof. destruct w; simpl; try congruence. Qed.
 
 
-(* to merge to top *)
+(* to merge to top :: TODO Martin *)
 Axiom run_call_correct : forall runs S C l vthis vs o,
   (* l <> prealloc_global_eval *)
   runs_type_correct runs ->
@@ -2362,35 +2409,7 @@ red_prog_1_cons_funcdecl
 *)
 
 
-Admitted. (* OLD
-  intros runs [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo] rv S C es S' res R.
-  gen rv S C S' res R. induction es; simpls; introv R.
-   unmonad. apply~ red_prog_1_nil.
-   destruct a.
-    (* stat *)
-    unmonad.
-     (* Throw case *)
-     forwards~ RC: IHs (rm E). applys~ red_prog_1_cons_stat RC. abort_prog.
-     (* Other cases *)
-     forwards~ RC: IHs (rm E). applys~ red_prog_1_cons_stat RC. apply~ red_prog_2.
-     rewrite <- res_type_res_overwrite_value_if_empty in HE.
-     tests N: (res_type R0 = restype_normal).
-      rewrite N in HE. forwards~ (E1&E2): if_empty_label_out (rm HE).
-       rewrite <- res_label_res_overwrite_value_if_empty in E1.
-       destruct R0 as [rt0 rv0 rl0]. simpls. substs. fold (res_normal rv0) in *.
-       forwards~ (rv'&Erv'&?): res_overwrite_value_if_empty_resvalue.
-       rewrite <- Erv' in *. applys~ red_prog_3.
-       rewrite res_overwrite_value_if_empty_empty in E2. forwards~: IHes E2.
-      rewrite res_overwrite_value_if_empty_empty in *.
-       asserts H: (out_ter S0 (res_overwrite_value_if_empty rv R0) = out_ter S' res).
-         destruct R0 as [rt0 rv0 rl0]. destruct rt0; simpls; tryfalse; inverts~ HE.
-       clear HE. inverts H. destruct R0 as [rt0 rv0 rl0]. simpls.
-       unfold res_overwrite_value_if_empty in *. cases_if; simpls; substs;
-        abort_prog; constructors; intro H; unfolds in H; simpls; false.
-    (* func_decl *)
-    forwards RC: IHes (rm R). apply~ red_prog_1_cons_funcdecl.
-Qed. *)
-
+Admitted. 
 
 Lemma create_new_function_in_correct : forall runs S C args bd o,
   runs_type_correct runs ->
@@ -2431,6 +2450,37 @@ Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   red_expr S C (expr_binary_op_3 op v1 v2) o.
 Admitted. (* TODO NOW *)
 
+ (* TODO NOW *)
+(* TODO: for binary op:  
+     (* In *)
+     skip. (* TODO *)
+     (* Equal *)
+     skip. (* TODO *)
+
+     (* Disequal *)
+     skip. (* TODO *)
+     (* Strict equal *)
+     skip. (* TODO *)
+     (* Strict disequal *)
+     skip. (* TODO *)
+     (* Bitwise and *)
+     skip. (* TODO *)
+     (* Bitwise or *)
+     skip. (* TODO *)
+     (* Bitwise xor *)
+     skip. (* TODO *)
+     (* And *)
+     skip. (* TODO *)
+     (* Or *)
+     skip. (* TODO *)
+     (* Comma *)
+     skip. (* TODO *)
+    (* conditionnal *)
+    skip. (* TODO *)
+    (* assign *)
+    skip. (* TODO *)
+*)
+
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
   runs_type_correct runs ->
@@ -2470,19 +2520,7 @@ Proof.
 Qed.
 
 
-Axiom red_spec_object_get_own_prop : forall S C l x B (y:specret full_descriptor),
-      object_method object_get_own_prop_ S l B ->
-      red_spec S C (spec_object_get_own_prop_1 B l x) y ->
-      red_spec S C (spec_object_get_own_prop l x) y
-.
-Axiom red_spec_object_get_own_prop_1_default : forall S C l x P Ao (y:specret full_descriptor), (* Beginning of steps 1 and 3 *)
-      object_properties S l P -> (* TODO: combine this line and the next one using an auxiliary def *)
-      Ao = Heap.read_option P x ->
-      red_spec S C (spec_object_get_own_prop_2 l x Ao) y ->
-      red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y  
-.
-
-(* TODO: move to the right place *)
+(* LATER: move to the right place *)
 Lemma run_object_get_own_prop_correct : forall runs S C l x y,
   runs_type_correct runs -> 
   run_object_get_own_prop runs S C l x = result_some y ->
@@ -2503,61 +2541,10 @@ Proof.
     clear EQM.
   destruct x0.
   (* default *)
-Focus 1.
   subst*.
   (* argument object *)
   skip. (* Argument object: proof postponed *)
 Admitted. (*faster*)
-
-(*OLD
-Lemma run_object_get_own_prop_correct : forall runs,
-  runs_type_correct runs -> forall l,
-  follow_object_get_own_prop l
-    (fun S C => run_object_get_own_prop runs S C l).
-   introv E R. simpls. unfolds in E. unmonad_passing.
-    applys_and red_spec_object_get_own_prop R0. name_passing_def.
-    asserts Co: (forall K o,
-        passing_output K red_expr C p0 o ->
-        red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x K) o /\
-          (p0 = passing_abort o -> abort o)).
-      introv R1. unmonad_passing.
-      applys_and red_spec_object_get_own_prop_1_default R2.
-      rewrite <- E in R1. sets_eq Ao: (Heap.read_option x1 x). destruct Ao; inverts R1.
-       splits. apply~ red_spec_object_get_own_prop_2_some_data. absurd_neg.
-       splits. apply~ red_spec_object_get_own_prop_2_none. absurd_neg.
-    destruct x0.
-     inverts E0. apply* Co.
-     applys_and red_spec_object_get_own_prop_args_obj. applys_and Co. clear EQp0.
-      unmonad_passing. destruct x0.
-       substs. inverts R. splits.
-        constructors. apply~ red_spec_object_get_own_prop_args_obj_1_undef.
-        absurd_neg.
-       rewrite H. constructors_and. unmonad_passing.
-        destruct x0; simpls; try solve [ substs; inverts R ].
-        applys_and red_spec_object_get_own_prop_args_obj_1_attrs R1.
-        unmonad_passing.
-         applys_and RC. constructors_and. destruct x0.
-          applys_and red_spec_object_get_own_prop_args_obj_2_undef.
-           applys_and red_spec_object_get_own_prop_args_obj_4.
-           inverts~ R; tryfalse. inverts~ H0. splits~. absurd_neg.
-          unmonad_passing.
-           forwards~ G: run_object_get_correct Eo. constructors~.
-            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. destruct a.
-             applys_and red_spec_object_get_own_prop_args_obj_3.
-              applys_and red_spec_object_get_own_prop_args_obj_4.
-              inverts~ R; tryfalse. splits. inverts~ H0. absurd_neg.
-             subst p. inverts R.
-           subst p. inverts R. symmetry in H3. rewrite H3 in H0. inverts H0.
-            forwards~ G: run_object_get_correct H3. constructors~.
-            applys_and red_spec_object_get_own_prop_args_obj_2_attrs G. splits~.
-            apply~ red_expr_abort.
-           subst p. inverts R. false* No.
-         applys_and RC. rewrite H0 in R. inverts R. splits. constructors.
-          forwards*: RC K. constructors.
-       substs. inverts R. splits. constructors.
-        forwards*: Co K. constructors.
-*)
-
 
 
 Lemma object_delete_correct : forall runs S C l x str o,
@@ -2660,47 +2647,7 @@ Proof.
        applys* run_construct_correct.
       applys* red_expr_new_2_type_error. apply* run_error_correct.
   (* call *)
-   (* TODO NOW *)
-(*
-  unfolds in R.
-  Focus 1.
-  let_simpl.
-  run red_expr_call.
-  run red_expr_call_1 using ref_get_value_correct. 
-  run red_expr_call_2 using run_list_expr_correct.
-  destruct a.
-  applys* red_expr_call_3. left.
-  destruct p; intros H; inversion H. 
-  applys* run_error_correct_2.
-  case_if.
-  applys* red_expr_call_3.
-  applys* run_error_correct_2.
-  applys* red_expr_call_3_callable.
-  let_name.
-  asserts follows_correct: (forall vthis, follow vthis = o ->
-      red_expr S3 C (expr_call_5 o0 (is_syntactic_eval e) a0 (out_ter S3 vthis)) o). 
-    subst follow. clear R. introv HR. 
-    case_if. subst.
-    applys* red_expr_call_5_eval.
-    skip. (* Need a lemma about run_eval correctness*)
-    applys* red_expr_call_5_not_eval.
-    apply runs_type_correct_call in HR; trivial.
-    clear EQfollow.
-  destruct rv; tryfalse.
-  applys* red_expr_call_4_not_ref.
-  assert (exists x, ref_base r = x).
-     exists (ref_base r). trivial.
-  destruct H. rewrite H in *.
-  destruct x. 
-  case_if.
-  applys* red_expr_call_4_prop.
-  applys* red_expr_call_4_env.
-  skip. (* lemma about implicit this *)
-  applys* follows_correct.
-  skip.
-  (* TODO *)
-*)
-skip.
+  applys* run_expr_call_correct.
   (* unary operators *)
   unfolds in R. case_if as N. (*todo: other branch *)
     run* red_expr_prepost. run red_expr_prepost_1_valid.
@@ -2751,7 +2698,18 @@ skip.
    forwards* M: red_spec_to_boolean a.
     applys* red_expr_unary_op_not. applys* red_expr_unary_op_not_1.
   (* binary operators *)
-  skip. (* TODO : first need to fix the conversion functions *)
+  unfolds in R. rename b into op.
+  lets: (is_lazy_op_correct op). cases (is_lazy_op op).
+    run* red_expr_binary_op_lazy.
+     let_name. applys* red_expr_lazy_op_1. applys* red_spec_to_boolean.
+     case_if; subst; run_inv.
+       applys* red_expr_lazy_op_2_first.
+       run* red_expr_lazy_op_2_second.
+       applys* red_expr_lazy_op_2_second_1.
+    run* red_expr_binary_op.
+     run red_expr_binary_op_1.
+     applys* red_expr_binary_op_2.
+     inverts R as M. applys run_binary_op_correct M.
   (* conditionnal *)
   unfolds in R. 
   run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
@@ -2776,36 +2734,8 @@ skip.
     run red_expr_assign_1_simple.
     forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
 
-Admitted. (* TODO NOW *)
-(* TODO: for binary op:  
-     (* In *)
-     skip. (* TODO *)
-     (* Equal *)
-     skip. (* TODO *)
+Admitted.
 
-     (* Disequal *)
-     skip. (* TODO *)
-     (* Strict equal *)
-     skip. (* TODO *)
-     (* Strict disequal *)
-     skip. (* TODO *)
-     (* Bitwise and *)
-     skip. (* TODO *)
-     (* Bitwise or *)
-     skip. (* TODO *)
-     (* Bitwise xor *)
-     skip. (* TODO *)
-     (* And *)
-     skip. (* TODO *)
-     (* Or *)
-     skip. (* TODO *)
-     (* Comma *)
-     skip. (* TODO *)
-    (* conditionnal *)
-    skip. (* TODO *)
-    (* assign *)
-    skip. (* TODO *)
-*)
 
 (* Hints for automatically applying "run_hyp" in obvious cases *) 
 Hint Extern 1 (red_stat ?S ?C ?s ?o) =>
@@ -3071,9 +3001,9 @@ Proof.
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
      apply~ run_stat_do_while_correct.
-     skip. (* TODO:  Use object_delete_correct *)
-     skip. (* TODO:  Use run_object_get_own_prop_correct *)
-     skip. (* Todo:  Use run_object_get_prop_correct. *)
+     skip. (* TODO MARTIN:  Use object_delete_correct *)
+     skip. (* TODO MARTIN:  Use run_object_get_own_prop_correct *)
+     skip. (* TODO MARTIN:  Use run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
      apply~ run_equal_correct.
 Qed.

@@ -1039,19 +1039,19 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
     | builtin_default_value_default =>
       let gpref := unsome_default preftype_number prefo in
       let lpref := other_preftypes gpref in
-      Let sub := fun S' x K =>
-        if_value (run_object_get runs S' C l x) (fun S1 vfo =>
+      Let sub := fun S' x (K:state->result) =>
+        (if_value (run_object_get runs S' C l x) (fun S1 vfo =>
           if_some (run_callable S1 vfo) (fun co =>
             match co with
             | Some B =>
               if_object (out_ter S1 vfo) (fun S2 lfunc =>
                 if_value (runs_type_call runs S2 C lfunc l nil) (fun S3 v =>
-                  match v with
-                  | value_prim w => res_ter S3 w
+                  match v return result with
+                  | value_prim w => out_ter S3 w
                   | value_object l => K S3
                   end))
             | None => K S1
-            end)) in
+            end))) in
       Let gmeth := method_of_preftype gpref in
       sub S gmeth (fun S' =>
         let lmeth := method_of_preftype lpref in
@@ -1625,20 +1625,20 @@ Definition run_equal runs S C v1 v2 : result :=
     else so false).
 
 Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
-  let conv_primitive := fun S v =>
+  Let conv_primitive := fun S v =>
     to_primitive runs S C v None in
-  let convert_twice_primitive :=
+  Let convert_twice_primitive :=
     convert_twice' (@if_prim (prim * prim)) conv_primitive in
-  let conv_number := fun S v =>
+  Let conv_number := fun S v =>
     to_number runs S C v in
-  let convert_twice_number :=
+  Let convert_twice_number :=
     convert_twice' (@if_number (number * number)) conv_number in
-  let conv_string := fun S v =>
+  Let conv_string := fun S v =>
     to_string runs S C v in
-  let convert_twice_string :=
+  Let convert_twice_string :=
     convert_twice' (@if_string (string * string)) conv_string in
 
-  match op with
+  match op return result with
 
   | binary_op_add =>
     convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>
@@ -1911,7 +1911,7 @@ Definition run_expr_binary_op runs S C op e1 e2 : result :=
         run_binary_op runs S2 C op v1 v2))
   | Some b_ret =>
     if_spec (run_expr_get_value runs S C e1) (fun S1 v1 =>
-      let b1 := convert_value_to_boolean v1 in
+      Let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then res_ter S1 v1
       else
         if_spec (run_expr_get_value runs S1 C e2) (fun S2 v =>

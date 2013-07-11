@@ -3,11 +3,10 @@ Require Export Shared.
 Require Export Ascii String.
 Require Export LibTactics LibLogic LibReflect LibList
   LibOperation LibStruct LibNat LibEpsilon LibFunc
-  LibHeap LibStream.
+  LibHeap LibStream LibListSorted.
 Module Heap := HeapId (LibHeap.HeapList).
 Require JsNumber.
 Notation "'number'" := (JsNumber.number).
-
 
 
 (* There seems to be problems with modules and I've temporarily added
@@ -28,7 +27,8 @@ Qed.
 (* [heap_keys_as_list h ks] holds if the list [ks] is a
    permutation of the set of keys of the map [h]. *)
 
-Axiom heap_keys_as_list : forall A B, Heap.heap A B -> list A -> Prop.
+Definition heap_keys_as_list A B (h : Heap.heap A B) l :=
+  permut (keys (Heap.to_list h)) l.
 
 
 (************************************************************)
