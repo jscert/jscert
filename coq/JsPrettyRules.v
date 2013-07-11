@@ -153,7 +153,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_block_nil : forall S C, (* empty block, step 1 *)
       red_stat S C (stat_block nil) (out_ter S resvalue_empty)
 
-  | red_stat_block_cons : forall S C rv t ts o1 o, (* step 1, and 2 (via abort rule) *)
+  | red_stat_block_cons : forall S C t ts o1 o, (* step 1, and 2 (via abort rule) *)
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_block_1 o1 t) o ->
       red_stat S C (stat_block (ts++(t::nil))) o

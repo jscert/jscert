@@ -207,9 +207,8 @@ Definition if_success_state rv W (K : state -> resvalue -> result) : result :=
     match res_type R with
     | restype_normal =>
       if_empty_label S0 R (fun _ =>
-        K S0 (res_value (res_overwrite_value_if_empty rv R)))
-    | restype_throw =>
-      res_ter S0 (res_value R)
+        K S0 (ifb res_value R = resvalue_empty then rv else res_value R))
+    | restype_throw => res_ter S0 R
     | _ =>
       res_ter S0 (res_overwrite_value_if_empty rv R)
     end).
