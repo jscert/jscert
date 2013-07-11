@@ -109,6 +109,8 @@ Definition follow_stat_do_while (run : state -> execution_ctx -> resvalue -> lab
   follow_spec
     (stat_do_while_1 ls t e)
     red_stat (fun S C rv => run S C rv ls e t).
+Definition follow_object_delete (run : state -> execution_ctx -> object_loc -> prop_name -> bool -> result) :=
+  True. (* TODO *)
 Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
     (fun S C => run S C l x).
@@ -135,6 +137,8 @@ Record runs_type_correct runs :=
       follow_function_has_instance (runs_type_function_has_instance runs);
     runs_type_correct_stat_while : follow_stat_while (runs_type_stat_while runs);
     runs_type_correct_stat_do_while : follow_stat_do_while (runs_type_stat_do_while runs);
+    runs_type_correct_object_delete :
+      follow_object_delete (runs_type_object_delete runs);
     runs_type_correct_object_get_own_prop :
       follow_object_get_own_prop (runs_type_object_get_own_prop runs);
     runs_type_correct_object_get_prop :
@@ -365,7 +369,13 @@ Definition if_void_post (K : _ -> result) o o1 :=
 Lemma if_void_out : forall W K o,
   if_void W K = o ->
   isout W (if_void_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_success_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&?&?)]; subst; [ left* | right ].
+  exists S. destruct R; tryfalse. auto. 
+Admitted. (*faster*)
 
 (* TODO: misssing 
     if_not_throw *)
@@ -377,10 +387,21 @@ Definition if_any_or_throw_post (K1 K2 : _ -> _ -> result) o o1 :=
      \/ (res_type R = restype_throw /\ exists (v : value), res_value R = v
            /\ res_label R = label_empty /\ K2 S v = o))). (* Didn't worked when writing [exists (v : value), R = res_throw v]. *)
 
+Hint Extern 1 (_ <> _ :> restype) => congruence.
+
+
 Lemma if_any_or_throw_out : forall W K1 K2 o,
   if_any_or_throw W K1 K2 = res_out o ->
   isout W (if_any_or_throw_post K1 K2 o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_ter_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&?&?)]; subst; [ left* | right ].
+  exists S R. split~. destruct (res_type R); tryfalse; simple*.
+  right. destruct (res_value R); tryfalse; simple*. split*.
+  forwards*: if_empty_label_out.  
+Admitted. (*faster*)
 
 Definition if_success_or_return_post (K1 : state -> result) (K2 : state -> resvalue -> result) o o1 :=
      (o1 = out_div /\ o = o1)
@@ -392,7 +413,19 @@ Definition if_success_or_return_post (K1 : state -> result) (K2 : state -> resva
 Lemma if_success_or_return_out : forall W (K1 : state -> result) (K2 : state -> resvalue -> result) o,
   if_success_or_return W K1 K2 = o ->
   isout W (if_success_or_return_post K1 K2 o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_ter_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  exists S R. split~. destruct (res_type R); tryfalse; simple*.
+  branch 1. forwards*: if_empty_label_out.  
+  branch 3. inverts* E.
+  branch 3. inverts* E.
+  branch 2. forwards*: if_empty_label_out.  
+  branch 3. inverts* E. 
+Admitted. (*faster*)
+
 
 (* TODO: misssing 
     if_normal_continue_or_break *)
@@ -406,7 +439,13 @@ Definition if_break_post (K : _ -> _ -> result) o o1 :=
 Lemma if_break_out : forall W K o,
   if_break W K = o ->
   isout W (if_break_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_ter_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  exists S R. split~. destruct (res_type R); try inverts E; simple*.
+Admitted. (*faster*)
 
 Definition if_value_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
@@ -415,7 +454,13 @@ Definition if_value_post (K : _ -> _ -> result) o o1 :=
 Lemma if_value_out : forall W K o,
   if_value W K = res_out o ->
   isout W (if_value_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_success_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Definition if_bool_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
@@ -424,7 +469,14 @@ Definition if_bool_post (K : _ -> _ -> result) o o1 :=
 Lemma if_bool_out : forall W K o,
   if_bool W K = res_out o ->
   isout W (if_bool_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+Admitted. (*faster*)
+
 
 Definition if_object_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
@@ -433,7 +485,14 @@ Definition if_object_post (K : _ -> _ -> result) o o1 :=
 Lemma if_object_out : forall W K o,
   if_object W K = res_out o ->
   isout W (if_object_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. exists___*.
+Admitted. (*faster*)
+
 
 Definition if_string_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
@@ -442,7 +501,14 @@ Definition if_string_post (K : _ -> _ -> result) o o1 :=
 Lemma if_string_out : forall W K o,
   if_string W K = res_out o ->
   isout W (if_string_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+Admitted. (*faster*)
+
 
 Definition if_number_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
@@ -451,7 +517,13 @@ Definition if_number_post (K : _ -> _ -> result) o o1 :=
 Lemma if_number_out : forall W K o,
   if_number W K = res_out o ->
   isout W (if_number_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Definition if_prim_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
@@ -460,7 +532,13 @@ Definition if_prim_post (K : _ -> _ -> result) o o1 :=
 Lemma if_prim_out : forall W K o,
   if_prim W K = res_out o ->
   isout W (if_prim_post K o).
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_out (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Lemma if_abort_out : forall T o K (t : T),
   if_abort o K = result_some t ->
@@ -474,13 +552,14 @@ Definition if_spec_post (A B:Type) K (b:specret B) y :=
 Lemma if_spec_out : forall (A B : Type) (W : specres A) K (b : specret B),
   if_spec W K = result_some b ->
   exists y, W = result_some y /\ if_spec_post K b y.
-Proof. skip.
-(*
-  introv H. destruct W as [sp| | |]; tryfalse.
-  destruct sp; [right* | left]. simpls. eexists. splits~.
-  forwards*: if_abort_out H.
-*)
-Qed.
+Proof. 
+  introv E. unfolds in E. unfolds in E.
+  destruct W; tryfalse. exists s. split~.
+  unfolds. destruct s; [ right | left ].
+    exists___*.
+    lets (?&H): if_abort_out E. inverts H. exists___*.
+Admitted. (* faster *)
+
 
 Definition if_ter_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -489,7 +568,12 @@ Definition if_ter_spec_post T K (y:specret T) o :=
 Lemma if_ter_spec : forall T W K (y : specret T),
   if_ter W K = result_some y ->
   isout W (if_ter_spec_post K y).
-Admitted.
+Proof.
+  introv H. destruct W as [[|o1]| | | ]; simpls; tryfalse_nothing.
+  exists o1. splits~. unfolds. destruct o1 as [|S R].
+   inverts* H.
+   jauto.
+Qed.
 
 Definition if_success_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -498,7 +582,14 @@ Definition if_success_spec_post T K (y:specret T) o :=
 Lemma if_success_spec : forall T W K (y : specret T),
   if_success W K = result_some y ->
   exists (o : out), W = o /\ if_success_spec_post K y o. (* LATER:  Change to [isout] *)
-Admitted.
+Proof.
+  introv E. forwards~ (o1&WE&P): if_ter_spec (rm E). subst W. eexists. splits*.
+  inversion_clear P as [[? ?]|(S&R&?&H)]. substs. branch~ 1.
+  substs. destruct R as [rt rv' rl]. destruct~ rt; simpls;
+     try solve [inverts H; branch 1; splits~; prove_abort].
+   forwards~ (?&?): if_empty_label_out (rm H). simpls. substs.
+    branch 2. repeat eexists. auto*.
+Qed.
 
 Definition if_value_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -507,7 +598,13 @@ Definition if_value_spec_post T K (y:specret T) o :=
 Lemma if_value_spec : forall T W K (y : specret T),
   if_value W K = result_some y ->
   exists (o : out), W = o /\ if_value_spec_post K y o.
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_success_spec (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Definition if_prim_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -516,7 +613,13 @@ Definition if_prim_spec_post T K (y:specret T) o :=
 Lemma if_prim_spec : forall T W K (y : specret T),
   if_prim W K = result_some y ->
   exists (o : out), W = o /\ if_prim_spec_post K y o.
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_spec (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Definition if_bool_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -525,7 +628,13 @@ Definition if_bool_spec_post T K (y:specret T) o :=
 Lemma if_bool_spec : forall T W K (y : specret T),
   if_bool W K = result_some y ->
   exists (o : out), W = o /\ if_bool_spec_post K y o.
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_spec (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Definition if_number_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -534,7 +643,13 @@ Definition if_number_spec_post T K (y:specret T) o :=
 Lemma if_number_spec : forall T W K (y : specret T),
   if_number W K = result_some y ->
   exists (o : out), W = o /\ if_number_spec_post K y o.
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_spec (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Definition if_string_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -543,7 +658,13 @@ Definition if_string_spec_post T K (y:specret T) o :=
 Lemma if_string_spec : forall T W K (y : specret T),
   if_string W K = result_some y ->
   exists (o : out), W = o /\ if_string_spec_post K y o.
-Admitted.
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_spec (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+Admitted. (*faster*)
 
 Definition if_object_spec_post T K (y:specret T) o :=
      (y = specret_out o /\ abort o)
@@ -1106,7 +1227,7 @@ Qed.
 Lemma run_object_heap_set_extensible_correct : forall b S l S',
   run_object_heap_set_extensible b S l = Some S' ->
   object_heap_set_extensible b S l S'.
-Admitted.
+Admitted. (* TODO Martin *)
 
 Lemma build_error_correct : forall S C vproto vmsg o,
   build_error S vproto vmsg = o ->
@@ -1322,8 +1443,9 @@ Proof.
        applys* red_spec_object_define_own_prop_6c_1.
        applys* red_spec_object_define_own_prop_6c_2.  
   (* arguments object *)
-  skip. (* TODO: implement *)*)
-Admitted.
+  skip. (* Arguments object: postponed *)
+*) (* TODO *)
+Admitted. (* faster *)
 
 
 Lemma prim_new_object_correct : forall S C w o,
@@ -1535,7 +1657,7 @@ Lemma object_put_correct : forall runs S C l x v str o,
   runs_type_correct runs ->
   object_put runs S C l x v str = o ->
   red_expr S C (spec_object_put l x v str) o.
-Admitted.
+Admitted. (* TODO NOW *)
 
 Lemma env_record_set_mutable_binding_correct : forall runs S C L x v str o,
   runs_type_correct runs ->
@@ -1559,13 +1681,13 @@ Lemma ref_put_value_correct : forall runs S C rv v o,
   runs_type_correct runs ->
   ref_put_value runs S C rv v = o ->
   red_expr S C (spec_put_value rv v) o.
-Admitted.
+Admitted. (* TODO NOW *)
 
 Lemma run_expr_get_value_correct : forall runs S C e y,
   runs_type_correct runs -> 
   run_expr_get_value runs S C e = result_some y -> 
   red_spec S C (spec_expr_get_value e) y.
-Admitted.
+Admitted. (* TODO NOW *)
 
 Ltac run_select_proj_extra_ref HT ::= 
   match HT with
@@ -1574,37 +1696,6 @@ Ltac run_select_proj_extra_ref HT ::=
   | run_expr_get_value => constr:(run_expr_get_value_correct)
   | object_define_own_prop => constr:(object_define_own_prop_correct)
   end.
-
-
-(* todo; deprecated
-
-Lemma run_expr_get_value_correct : forall runs S C e K o,
-  runs_type_correct runs ->
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
-Admitted.
-*)
-
-(*
-Ltac run_select_lemma_run_expr_get_value T ::=
-  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
-
-Ltac run_post_run_expr_get_value ::=
-  let o1 := fresh "o1" in
-  let Eq := fresh "Eq" in
-  let Er := fresh "Er" in
-  let Ab := fresh "Ab" in
-  match goal with
-  | H: run_expr_get_value_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let v1 := fresh "v" in
-    destruct H as [(o1&Eq&Er&Ab)|(S1&v1&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  end.
-*)
-
 
 Lemma env_record_create_mutable_binding_correct : forall runs S C L x deletable_opt o,
   runs_type_correct runs ->
@@ -1659,7 +1750,7 @@ Lemma object_default_value_correct : forall runs S C l pref o,
   runs_type_correct runs ->
   object_default_value runs S C l pref = o ->
   red_expr S C (spec_object_default_value l pref) o.
-Admitted. 
+Admitted. (* TODO NOW *)
 
 
 (** Conversions *)
@@ -1725,28 +1816,7 @@ Ltac run_select_proj_extra_conversions HT ::=
 
 
 
-(*
-Definition run_expr_get_value_post K o o1 :=
-  (eqabort o1 o \/
-    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
-      K S1 v1 = result_some o).
-*)
 
-(*
-Lemma run_expr_get_value_correct : forall runs,
-(*
- runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1. *)
-
- runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_spec S C (spec_expr_get_value e) (ret S o1) /\
-      run_expr_get_value_post K o o1. 
-
-Admitted.
-*)
 
 
 
@@ -1907,60 +1977,6 @@ Proof.
 Qed.
 
 
-Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfig {struct fds} : result_void :=
-  match fds with
-  | nil => res_void S
-  | fd :: fds' =>
-      Let fbd := funcdecl_body fd in
-      Let str_fd := funcbody_is_strict fbd in
-      Let fparams := funcdecl_parameters fd in
-      Let fname := funcdecl_name fd in
-      if_object (creating_function_object runs S C fparams fbd (execution_ctx_variable_env C) str_fd) (fun S1 fo =>
-        Let follow := fun S2 =>
-          if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
-            binding_inst_function_decls runs S3 C L fds' str bconfig)
-          in
-        if_bool (env_record_has_binding runs S1 C L fname) (fun S2 has =>
-          if has then (
-            ifb L = env_loc_global_env_record then (
-              if_spec (run_object_get_prop runs S2 C prealloc_global fname) (fun S3 D =>
-                match D with
-                | full_descriptor_undef =>
-                  impossible_with_heap_because S3 "Undefined full descriptor in [binding_inst_function_decls]."
-                | full_descriptor_some A =>
-                  ifb attributes_configurable A then (
-                    Let A' := attributes_data_intro undef true true bconfig in
-                    if_bool (object_define_own_prop runs S3 C prealloc_global fname A' true)
-                      (fun S _ => follow S)
-                  ) else ifb descriptor_is_accessor A
-                    \/ attributes_writable A = false \/ attributes_enumerable A = false then
-                      run_error S3 native_error_type
-                  else follow S3
-                end)
-            ) else follow S2)
-          else
-            if_void (env_record_create_mutable_binding runs S2 C L fname (Some bconfig)) follow))
-  end.
-
-Axiom red_spec_binding_inst_function_decls_nil : forall L S C args str bconfig, (* Step 5b *)
-      red_expr S C (spec_binding_inst_function_decls args L nil str bconfig) (out_void S)
-.
-
-Axiom red_spec_binding_inst_function_decls_cons : forall str_fd S C L args fd fds str bconfig o1 o, (* Step 5b *)
-      str_fd = funcbody_is_strict (funcdecl_body fd) ->
-      red_expr S C (spec_creating_function_object (funcdecl_parameters fd) (funcdecl_body fd) (execution_ctx_variable_env C) str_fd) o1 ->
-      red_expr S C (spec_binding_inst_function_decls_1 args L fd fds str bconfig o1) o ->
-      red_expr S C (spec_binding_inst_function_decls args L (fd::fds) str bconfig) o
-.
-
-
-(* TODO: remove args from the pretty big step rules *)
-Axiom 
- red_spec_binding_inst_function_decls_4 : forall S0 S C args L fd fds str fo bconfig rv o, (* Step 5e iii *)
-      red_expr S C (spec_binding_inst_function_decls_5 args L fd fds str fo bconfig) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_4 args L fd fds str fo bconfig (out_ter S rv)) o
-.
-
 Lemma binding_inst_function_decls_correct : forall runs S C args L fds str bconfig o,
   runs_type_correct runs ->
   binding_inst_function_decls runs S C L fds str bconfig = o ->
@@ -1984,57 +2000,23 @@ Proof.
     using env_record_has_binding_correct.
   case_if; subst.
     case_if; try subst L.
-Axiom
-red_spec_binding_inst_function_decls_2_true_global : forall S0 S C args fd fds str fo bconfig y1 o, (* Step 5e ii *)
-      red_spec S C (spec_object_get_prop prealloc_global (funcdecl_name fd)) y1 ->
-      red_expr S C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig y1) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_2 args env_loc_global_env_record fd fds str fo bconfig (out_ter S true)) o
-.
-Axiom
-red_spec_binding_inst_function_decls_3_true : forall S0 S C args fd fds str fo bconfig A Anew o1 o, (* Step 5e iii *)
-      attributes_configurable A = true ->
-      Anew = attributes_data_intro undef true true bconfig -> 
-      red_expr S C (spec_object_define_own_prop prealloc_global (funcdecl_name fd) Anew true) o1 ->
-      red_expr S C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (ret S (full_descriptor_some A))) o
-.      
       run red_spec_binding_inst_function_decls_2_true_global
         using run_object_get_prop_correct.
        destruct a; tryfalse. case_if.
          let_name. run* red_spec_binding_inst_function_decls_3_true.
           applys* red_spec_binding_inst_function_decls_4. 
-         case_if. 
-(*
-           destruct a.
-red_spec_binding_inst_function_decls_3_false
-           run red_spec_binding_inst_function_decls_3_false_type_error.
-
+         applys red_spec_binding_inst_function_decls_3_false. 
+           destruct (attributes_configurable a); tryfalse; auto. (* LATER: cleanup *)
+          case_if. 
+            applys* red_spec_binding_inst_function_decls_3a_type_error.
+             applys* run_error_correct.
+            applys* red_spec_binding_inst_function_decls_3a_no_error.
+        applys* red_spec_binding_inst_function_decls_2_true.
     run red_spec_binding_inst_function_decls_2_false
       using env_record_create_mutable_binding_correct.
      applys* red_spec_binding_inst_function_decls_4. 
-*)
-Admitted.
+Admitted. (* faster *)
 
-(* TODO: change rules 
-
-  | red_spec_binding_inst_function_decls_3_false_type_error : forall S0 S C args fd fds str fo A bconfig o1 L o, (* Step 5e iv *)
-      attributes_configurable A = false -> 
-      descriptor_is_accessor A \/ (attributes_writable A = false \/ attributes_enumerable A = false) ->
-      red_expr S C (spec_error native_error_type) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (ret S (full_descriptor_some A))) o
-
-  | red_spec_binding_inst_function_decls_3_false : forall S0 S C args fd fds str fo Ad bconfig o1 L o, (* Step 5e iv else *)
-      attributes_data_configurable Ad = false -> 
-      attributes_data_writable Ad = true /\ attributes_data_enumerable Ad = true ->
-      red_expr S C (spec_binding_inst_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (dret S (attributes_data_of Ad))) o
-
-  | red_spec_binding_inst_function_decls_2_true : forall o1 L S0 S C args fd fds str fo bconfig o, (* Step 5e *)
-      L <> env_loc_global_env_record ->
-      red_expr S C (spec_binding_inst_function_decls_5 args L fd fds str fo bconfig) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_2 args L fd fds str fo bconfig (out_ter S true)) o
-
-*)
 
 Lemma binding_inst_var_decls_correct : forall runs S C L vds bconfig str o,
   runs_type_correct runs ->
@@ -2051,7 +2033,7 @@ Proof.
     run red_spec_binding_inst_var_decls_1_false
       using env_record_create_set_mutable_binding_correct.
      applys* red_spec_binding_inst_var_decls_2.
-Admitted.
+Admitted. (* faster *)
   
 Lemma binding_inst_formal_params_correct : forall runs S C L args names str o,
   runs_type_correct runs ->
@@ -2338,6 +2320,8 @@ Lemma run_elements_correct : forall runs,
   runs_type_correct runs -> forall rv,
   follow_elements rv (fun S C => run_elements runs S C rv).
 Proof.
+ (* TODO NOW *)
+
 (* TODO: don't do it because the definition will need to change
   in order to first process all but the last elements. *)
 (*
@@ -2418,7 +2402,7 @@ Qed.
 Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   run_binary_op runs S C op v1 v2 = o ->
   red_expr S C (expr_binary_op_3 op v1 v2) o.
-Admitted.
+Admitted. (* TODO NOW *)
 
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
@@ -2495,7 +2479,7 @@ Proof.
 Focus 1.
   subst*.
   (* argument object *)
-  skip. (*TODO*)
+  skip. (* Argument object: proof postponed *)
 Admitted. (*faster*)
 
 (*OLD
@@ -2503,7 +2487,6 @@ Lemma run_object_get_own_prop_correct : forall runs,
   runs_type_correct runs -> forall l,
   follow_object_get_own_prop l
     (fun S C => run_object_get_own_prop runs S C l).
-Admitted. 
    introv E R. simpls. unfolds in E. unmonad_passing.
     applys_and red_spec_object_get_own_prop R0. name_passing_def.
     asserts Co: (forall K o,
@@ -2555,7 +2538,7 @@ Lemma object_delete_correct : forall runs S C l x str o,
   object_delete runs S C l x str = o ->
   red_expr S C (spec_object_delete l x str) o.
 Proof.
-  introv IH HR. unfolds in HR. run. rename x0 into B. 
+(*  introv IH HR. unfolds in HR. run. rename x0 into B. 
   applys* red_spec_object_delete.
    applys* run_object_method_correct. clear E.
   destruct B; tryfalse.
@@ -2565,8 +2548,8 @@ Proof.
       run. forwards B: @pick_option_correct (rm E).
         applys_eq* red_spec_object_delete_2_some_configurable 1. 
       applys* red_spec_object_delete_3_some_non_configurable.
-       applys* out_error_or_cst_correct.
-Admitted.
+       applys* out_error_or_cst_correct.*)
+Admitted.  (* TODO *)
 
 
 Lemma env_record_delete_binding : forall runs S C L x o,
@@ -2650,6 +2633,7 @@ Proof.
        applys* run_construct_correct.
       applys* red_expr_new_2_type_error. apply* run_error_correct.
   (* call *)
+   (* TODO NOW *)
 (*
   unfolds in R.
   Focus 1.
@@ -2765,8 +2749,8 @@ skip.
     run red_expr_assign_1_simple.
     forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
 
-Admitted. 
-(* TODO: for binary op:
+Admitted. (* TODO NOW *)
+(* TODO: for binary op:  
      (* In *)
      skip. (* TODO *)
      (* Equal *)
@@ -2909,7 +2893,7 @@ Proof.
   (* Debugger *)
   run_inv. apply red_stat_debugger.
   (* switch *)
-  skip. (* TODO: wait for switch semantics to be double check *)
+  skip. (* TODO: wait for switch semantics to be double check *) (* TODO Martin *)
 Admitted.
 
 Lemma run_prog_correct : forall runs,
@@ -3005,12 +2989,12 @@ Lemma object_proto_is_prototype_of_correct : forall runs,
   runs_type_correct runs ->
   follow_object_proto_is_prototype_of
     (object_proto_is_prototype_of runs).
-Admitted.
+Admitted. (* Part of libraries: postponed for now *)
 
 Lemma run_equal_correct : forall runs,
   runs_type_correct runs ->
   follow_equal (run_equal runs).
-Admitted.
+Admitted. (* TODO Martin *)
 
 
 Theorem runs_correct : forall num,
@@ -3028,6 +3012,7 @@ Proof.
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
      apply~ run_stat_do_while_correct.
+     skip. (* TODO:  Use object_delete_correct *)
      skip. (* TODO:  Use run_object_get_own_prop_correct *)
      skip. (* Todo:  Use run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
@@ -3043,7 +3028,7 @@ Proof.
 (*
   forwards R: execution_ctx_binding_inst_correct IH (rm R1). (* Need more information there:  it should return a result_void. *)
 *)
-skip.
+skip. (* TODO NOW *)
   (* applys~ red_javascript_intro R. *)
 Admitted.
 

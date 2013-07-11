@@ -456,6 +456,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_function_has_instance : state -> object_loc -> value -> result;
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_do_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
+    runs_type_object_delete : state -> execution_ctx -> object_loc -> prop_name -> bool -> result;
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
@@ -795,22 +796,32 @@ Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
         lexical_env_get_identifier_ref runs S1 C X' x str)
   end.
 
+Definition object_delete_default runs S C l x str : result :=
+  if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
+    match D with
+    | full_descriptor_undef => res_ter S true
+    | full_descriptor_some A =>
+      if attributes_configurable A then
+        if_some (pick_option (object_rem_property S1 l x)) (fun S' =>
+          res_ter S' true)
+      else
+        out_error_or_cst S str native_error_type false
+    end).
+
 Definition object_delete runs S C l x str : result :=
   if_some (run_object_method object_delete_ S l) (fun B =>
     match B with
-    | builtin_delete_default =>
-      if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
-        match D with
-        | full_descriptor_undef => res_ter S true
-        | full_descriptor_some A =>
-          if attributes_configurable A then
-            if_some (pick_option (object_rem_property S1 l x)) (fun S' =>
-              res_ter S' true)
-          else
-            out_error_or_cst S str native_error_type false
-        end)
+    | builtin_delete_default => object_delete_default runs S C l x str
     | builtin_delete_args_obj =>
-      result_not_yet_implemented (* LATER *)
+      if_some (run_object_method object_parameter_map_ S l) (fun Mo =>
+        if_some Mo (fun M =>
+         if_spec (runs_type_object_get_own_prop runs S C M x) (fun S1 D =>
+           if_bool (object_delete_default runs S1 C l x str) (fun S2 b =>
+             match b, D with
+             | true, full_descriptor_some _ =>
+               runs_type_object_delete runs S2 C M x false
+             | _, _ => res_ter S2 b
+             end))))
     end).
 
 Definition env_record_delete_binding runs S C L x : result :=
@@ -1315,7 +1326,8 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
                   ) else ifb descriptor_is_accessor A
                     \/ attributes_writable A = false \/ attributes_enumerable A = false then
                       run_error S3 native_error_type
-                  else follow S3
+                  else 
+                    follow S3
                 end)
             ) else follow S2)
           else
@@ -2132,27 +2144,37 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     else res_ter S1 rv).
 
 (* Daniele: TODO.  *)
+(*
+Fixpoint run_stat_switch_no_default runs S C rv scs v : result :=
+  match scs with 
+  | nil => (out_ter S resvalue_empty) 
+  | (switchclause_intro e ts)::scs => 
+      if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
+        Let b := strict_equality_test v v1 in 
+        if b then 
+          if_ter (run_block runs S1 C ts) (fun S2 R =>
+          Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+            match scs with 
+            | nil => (out_ter S2 rv)
+            | (switchclause_intro e ts)::scs => (out_ter S2 rv) (* dummy *)
+            end
+          )
+        else 
+          (run_stat_switch_no_default runs S C rv scs v) (* dummy output *)
+        )
+  end.
+
+
 Definition run_stat_switch runs S C rv labs e sb : result :=
-  if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
+  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v =>
       match sb with 
-      (* no-default case *)
-      | switchbody_nodefault scs =>
-          match scs with 
-          | nil => (res_ter S1 resvalue_empty) (* dummy output *)
-          | (switchclause_intro e1 ts)::scs => 
-              if_spec (run_expr_get_value runs S C e1) (fun S1 v2 =>
-                Let b := strict_equality_test v1 v2 in 
-                  if b then 
-                    if_ter (run_block runs S C ts) (fun S2 R =>
-                      (res_ter S1 resvalue_empty) (* dummy output *)
-                    )
-                  else 
-                    (res_ter S1 resvalue_empty) (* summy output *)
-              )
-          end
-      | switchbody_withdefault scs1 ts1 scs2 => (res_ter S1 resvalue_empty)
+      | switchbody_nodefault scs => (run_stat_switch_no_default runs S1 C rv scs v)   
+      | switchbody_withdefault scs1 ts1 scs2 => (out_ter S1 resvalue_empty)
       end
   ).
+*)
+
+
 (* --- *)
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
@@ -2623,6 +2645,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_function_has_instance := fun S _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_stat_do_while := fun S _ _ _ _ _ => result_bottom S;
+      runs_type_object_delete := fun S _ _ _ _ => result_bottom S;
       runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
@@ -2642,6 +2665,7 @@ Fixpoint runs max_step : runs_type :=
         wrap run_function_has_instance;
       runs_type_stat_while := wrap run_stat_while;
       runs_type_stat_do_while := wrap run_stat_do_while;
+      runs_type_object_delete := wrap object_delete;
       runs_type_object_get_own_prop :=
         wrap run_object_get_own_prop;
       runs_type_object_get_prop :=

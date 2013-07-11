@@ -309,6 +309,7 @@ Inductive ext_expr :=
   | spec_binding_inst_function_decls_1 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
   | spec_binding_inst_function_decls_2 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_inst_function_decls_3 : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> specret full_descriptor -> ext_expr
+  | spec_binding_inst_function_decls_3a : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> full_descriptor -> ext_expr
   | spec_binding_inst_function_decls_4 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
   | spec_binding_inst_function_decls_5 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> ext_expr
   | spec_binding_inst_function_decls_6 : list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
@@ -967,6 +968,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_binding_inst_function_decls_1 _ _ _ _ _ _ o => Some o
   | spec_binding_inst_function_decls_2 _ _ _ _ _ _ _ o => Some o
   | spec_binding_inst_function_decls_3 _ _ _ _ _ _ y => out_of_specret y
+  | spec_binding_inst_function_decls_3a _ _ _ _ _ _ _ => None
   | spec_binding_inst_function_decls_4 _ _ _ _ _ _ _ o => Some o
   | spec_binding_inst_function_decls_5 _ _ _ _ _ _ _ => None
   | spec_binding_inst_function_decls_6 _ _ _ _ _ o => Some o
