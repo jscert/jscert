@@ -742,7 +742,7 @@ Definition attributes_change_accessor_on_non_configurable Aa Desc : Prop := (* 8
 
 (** Characterize the case where an error is thrown (15.3.5.4, step 2) *)
 
-Definition spec_function_get_error_case S x v := 
+Definition spec_function_get_error_case S x v : Prop := 
   x = "caller" /\ exists l bd, 
     v = value_object l /\ object_code S l (Some bd) /\ funcbody_is_strict bd = true.
 

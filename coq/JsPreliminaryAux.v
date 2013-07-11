@@ -450,6 +450,62 @@ Global Instance attributes_change_accessor_on_non_configurable_dec : forall Aa D
   Decidable (attributes_change_accessor_on_non_configurable Aa Desc).
 Proof. introv. typeclass. Qed.
 
+Definition run_function_get_error_case S x v : bool :=
+  match v with
+  | value_prim w => false
+  | value_object l => 
+    andb (ifb (x = "caller") then true else false)
+    (morph_option false (fun O => 
+       morph_option false (fun bd => 
+          funcbody_is_strict bd) (object_code_ O)) (pick_option (object_binds S l)))
+    
+  end.
+
+Global Instance spec_function_get_error_case_dec : forall S x v,
+  Decidable (spec_function_get_error_case S x v).
+Proof. 
+  introv. applys decidable_make (run_function_get_error_case S x v).
+  destruct v; simpl.
+    fold_bool. rewrite is_False with (P := spec_function_get_error_case _ _ _).
+      rewrite* isTrue_false.   
+      
+      intro A. unfold spec_function_get_error_case in A.
+      destruct A as [xcaller [l [bd [B C]]]]. invert B.
+ 
+    case_if; simpl.
+    tests : (spec_function_get_error_case S x o).
+
+    rewrite~ isTrue_true. lets (c&O&fb&E&H): (rm C).
+    unfold object_code in H. 
+    destruct H as [[O0 [H1 H2]] H3].
+    forwards Ex: ex_intro H1. forwards (O1&H4): @pick_option_defined Ex.
+    inversion E. 
+    rewrite H4. simpl. asserts: (O0 = O1).
+      forwards: @pick_option_correct H4. 
+      applys Heap_binds_func H1 H. typeclass.
+      substs. rewrite~ H2.
+
+    rewrite~ isTrue_false. unfold spec_function_get_error_case in C. 
+    rew_logic in C.
+    destruct C as [C1 | C2]. contradiction.
+    unfold object_code in C2.
+    sets_eq <- Ob PS: (pick_option (object_binds S o)).
+    destruct~ Ob as [o'|]. forwards B: @pick_option_correct PS. simpl.
+    sets_eq <- Oc CD: (object_code_ o'). destruct~ Oc.
+
+    assert (exists b, funcbody_is_strict f = b) as H.
+    exists (funcbody_is_strict f). trivial.
+    destruct H as [b H2].
+    destruct b.
+
+    false (C2 o). exists* f.
+    apply H2.
+
+    rewrite~ isTrue_false. introv H. 
+    unfold spec_function_get_error_case in H.
+    destruct H. contradiction.    
+Qed.
+
 (** Decidable instance for [is_callable] *)
 
 Definition run_callable S v : option (option call) :=
