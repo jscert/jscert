@@ -124,8 +124,10 @@ Definition follow_object_proto_is_prototype_of (run : state -> object_loc -> obj
   forall lthis,
     follow_spec (spec_call_object_proto_is_prototype_of_2_3 lthis) red_expr
       (fun S C l => run S lthis l).
-Definition follow_equal (_ : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result) :=
-  True. (* TODO *)
+Definition follow_equal (run : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result) :=
+  forall S C v1 v2 K1 K2 o,
+    run S K1 K2 v1 v2 = o ->
+    red_expr S C (spec_equal v1 v2) o.
 
 Record runs_type_correct runs :=
   make_runs_type_correct {
@@ -1227,7 +1229,10 @@ Qed.
 Lemma run_object_heap_set_extensible_correct : forall b S l S',
   run_object_heap_set_extensible b S l = Some S' ->
   object_heap_set_extensible b S l S'.
-Admitted. (* TODO Martin *)
+Proof.
+  introv R. unfolds in R. forwards (O&H&E): option_map_some_back (rm R).
+  forwards: @pick_option_correct (rm H). exists O. splits~.
+Qed.
 
 Lemma build_error_correct : forall S C vproto vmsg o,
   build_error S vproto vmsg = o ->
@@ -1499,7 +1504,7 @@ Proof.
         follow tt = res_out o ->
         red_expr S0 C (spec_object_put_3 vthis l x v str (specret_val S2 a)) o).
       clear HR. introv N E. substs. 
-(* TODO:
+(* TODO Martin.
       run red_spec_object_put_3_not_data.
 
   |  : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
@@ -3040,8 +3045,7 @@ Admitted. (* Part of libraries: postponed for now *)
 Lemma run_equal_correct : forall runs,
   runs_type_correct runs ->
   follow_equal (run_equal runs).
-Admitted. (* TODO Martin *)
-
+Admitted. (* TODO:  Martin *)
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).
