@@ -759,13 +759,13 @@ Definition object_delete runs S C l x str : result :=
         | full_descriptor_undef => res_ter S true
         | full_descriptor_some A =>
           if attributes_configurable A then
-            if_some (pick_option (object_rem_property S l x)) (fun S' =>
+            if_some (pick_option (object_rem_property S1 l x)) (fun S' =>
               res_ter S' true)
           else
             out_error_or_cst S str native_error_type false
         end)
     | builtin_delete_args_obj =>
-      result_not_yet_implemented (* TODO *)
+      result_not_yet_implemented (* LATER *)
     end).
 
 Definition env_record_delete_binding runs S C L x : result :=
@@ -1164,7 +1164,8 @@ Definition run_construct_default runs S C l args :=
       else prealloc_object_proto
       in
     Let O := object_new vproto "Object" in
-    let '(l', S2) := object_alloc S1 O in
+    Let p := object_alloc S1 O in (* todo: Let pair *)
+    let '(l', S2) := p in
     if_value (runs_type_call runs S2 C l l' args) (fun S3 v2 =>
       Let vr := ifb type_of v2 = type_object then v2 else l' in
       res_ter S3 vr)).
@@ -1367,9 +1368,12 @@ Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
       else
         env_record_create_set_mutable_binding runs S1 C L arguments None largs false).
 
+
 Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
-  destr_list (execution_ctx_variable_env C) (fun _ => impossible_with_heap_because S
-    "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst].") (fun L _ =>
+  match (execution_ctx_variable_env C) with
+  | nil => impossible_with_heap_because S
+    "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst]."
+  | L::_ =>
     Let str := prog_intro_strictness p in
     Let follow := fun S' names =>
       Let bconfig := decide (ct = codetype_eval) in
@@ -1379,13 +1383,15 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
           Let follow2 := fun S' =>
             let vds := prog_vardecl p in
             binding_inst_var_decls runs S' C L vds bconfig str
-          in match ct, funco, bdefined with
+            in 
+          match ct, funco, bdefined with
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
           | codetype_func, _, false => impossible_with_heap_because S2 "Strange `arguments' object in [execution_ctx_binding_inst]."
           | _, _, _ => follow2 S2
           end))
-    in match ct, funco with
+      in 
+    match ct, funco with
       | codetype_func, Some func =>
         if_some (run_object_method object_formal_parameters_ S func) (fun nameso =>
           if_some nameso (fun names =>
@@ -1396,7 +1402,8 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
       | _, None => follow S nil
       | _, _ =>
         impossible_with_heap_because S "Not coherent non-functionnal code type in [execution_ctx_binding_inst]."
-      end) tt.
+    end
+  end.
 
 Definition entering_func_code runs S C lf vthis (args : list value) : result :=
   if_some (run_object_method object_code_ S lf) (fun bdo =>
@@ -1928,10 +1935,11 @@ Definition run_expr_function runs S C fo args bd : result :=
       (fun L _ => follow L) tt
   end.
 
+
 Definition entering_eval_code runs S C direct bd K : result :=
   Let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
   Let C' := if direct then C else execution_ctx_initial str in
-  let p :=
+  Let p :=
     if str
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
       else (execution_ctx_lexical_env C', S)
@@ -1944,7 +1952,7 @@ Definition entering_eval_code runs S C direct bd K : result :=
     in
   Let p := funcbody_prog bd in
   if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
-    K S1 C').
+    K S1 C1). (* TODO: this was C', but Arthur changed it to C1 *)
 
 Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with
@@ -2076,6 +2084,30 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
            )
         ) else loop tt)
     else res_ter S1 rv).
+
+(* Daniele: TODO.  *)
+Definition run_stat_switch runs S C rv labs e sb : result :=
+  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
+      match sb with 
+      (* no-default case *)
+      | switchbody_nodefault scs =>
+          match scs with 
+          | nil => (out_ter S1 resvalue_empty) (* dummy output *)
+          | (switchclause_intro e1 ts)::scs => 
+              if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v2 =>
+                Let b := strict_equality_test v1 v2 in 
+                  if b then 
+                    if_ter (run_block runs S C ts) (fun S2 R =>
+                      (out_ter S1 resvalue_empty) (* dummy output *)
+                    )
+                  else 
+                    (out_ter S1 resvalue_empty) (* summy output *)
+              )
+          end
+      | switchbody_withdefault scs1 ts1 scs2 => (out_ter S1 resvalue_empty)
+      end
+  ).
+(* --- *)
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
   if_ter (runs_type_stat runs S C t2) (fun S1 R =>

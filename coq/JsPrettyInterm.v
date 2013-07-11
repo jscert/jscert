@@ -1410,3 +1410,38 @@ Inductive arguments_from : list value -> list value -> Prop :=
       arguments_from Vs1 Vs2 ->
       arguments_from (v::Vs1) (v::Vs2).
 
+
+(**************************************************************)
+(** ** Rules for delete_events. *)
+
+(** [search_proto_chain S l x] returns the location l' of the first object 
+    in the prototype chain of l which contains property x. *)
+
+Inductive search_proto_chain : state -> object_loc -> prop_name -> option object_loc -> Prop :=
+  | search_proto_chain_found : forall S l x,
+                                 object_has_property S l x ->
+                                 search_proto_chain S l x (Some l)
+  | search_proto_chain_not_found : forall S l x,
+                                     not (object_has_property S l x) ->
+                                     object_proto S l prim_null ->
+                                     search_proto_chain S l x None
+  | search_proto_chain_inductive : forall S l x v l' res,
+                                     (not (object_has_property S l x) ->
+                                     object_proto S l (value_object l') ->
+                                     search_proto_chain S l' x res ->
+                                     search_proto_chain S l x res).
+
+
+(** [make_delete_event S l x ev] constructs a delete_event "ev" which
+records the deletion of the property (l,x) in the state S. *)
+
+Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop :=
+  | make_delete_event_intro : forall S l x res ev,
+                                search_proto_chain S l x res ->
+                                ev = delete_event l x res ->
+                                make_delete_event S l x ev.
+
+(**************************************************************)
+(** ** Auxiliary definitions for the semantics of for-in. *)
+
+(* LATER *)
