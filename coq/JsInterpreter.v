@@ -1306,10 +1306,11 @@ Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list
   | nil => res_void S
   | argname :: names' =>
     Let v := hd undef args in
+    Let args' := tl args in
     if_bool (env_record_has_binding runs S C L argname) (fun S1 hb =>
       Let follow := fun S' =>
         if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S'' =>
-          binding_inst_formal_params runs S'' C L (tl args) names' str)
+          binding_inst_formal_params runs S'' C L args' names' str)
         in
       if hb then
         follow S1
@@ -1350,18 +1351,6 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
             ) else follow S2)
           else
             if_void (env_record_create_mutable_binding runs S2 C L fname (Some bconfig)) follow))
-  end.
-
-Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : result_void :=
-  match vds with
-  | nil => res_void S
-  | vd :: vds' =>
-    Let bivd := fun S => binding_inst_var_decls runs S C L vds' bconfig str in
-    if_bool (env_record_has_binding runs S C L vd) (fun S1 has =>
-      if has then
-        bivd S
-      else
-        if_void (env_record_create_set_mutable_binding runs S1 C L vd (Some bconfig) undef str) bivd)
   end.
 
 Definition make_arg_getter runs S C x X : result :=
@@ -1444,6 +1433,17 @@ Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
       else
         env_record_create_set_mutable_binding runs S1 C L arguments None largs false).
 
+Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : result_void :=
+  match vds with
+  | nil => res_void S
+  | vd :: vds' =>
+    Let bivd := fun S => binding_inst_var_decls runs S C L vds' bconfig str in
+    if_bool (env_record_has_binding runs S C L vd) (fun S1 has =>
+      if has then
+        bivd S1
+      else
+        if_void (env_record_create_set_mutable_binding runs S1 C L vd (Some bconfig) undef str) bivd)
+  end.
 
 Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
   match (execution_ctx_variable_env C) with
