@@ -3889,7 +3889,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_list_expr_1 (vs&v) es) y ->
       red_spec S0 C (spec_list_expr_2 vs (ret S v) es) y
 
-  (** ToPropertyDescriptor ( Obj ) - (passes a Descriptor to the continuation) (8.10.5) *)    
+  (** ToPropertyDescriptor ( Obj ) - (returns a Descriptor) (8.10.5) *)    
 
   | red_spec_to_descriptor_not_object : forall S C v (y:specret descriptor), (* Step 1 *)
       type_of v <> type_object ->
@@ -3922,13 +3922,13 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S0 C (spec_to_descriptor_1c (out_ter S v) l Desc) y 
 
   | red_spec_to_descriptor_2a : forall S C o1 l Desc (y:specret descriptor), (* step 4 *)
-      red_expr S C (spec_object_has_prop l "enumerable") o1 ->
+      red_expr S C (spec_object_has_prop l "configurable") o1 ->
       red_spec S C (spec_to_descriptor_2b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_2a l Desc) y
 
   | red_spec_to_descriptor_2b_false : forall S0 S C l Desc (y:specret descriptor), (* step 4, neg *)
-      red_spec S C (spec_to_descriptor_2a l Desc) y ->
-      red_spec S0 C (spec_to_descriptor_1b (out_ter S false) l Desc) y 
+      red_spec S C (spec_to_descriptor_3a l Desc) y ->
+      red_spec S0 C (spec_to_descriptor_2b (out_ter S false) l Desc) y 
 
   | red_spec_to_descriptor_2b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 4a *)
       red_expr S C (spec_object_get l "configurable")  o1 ->

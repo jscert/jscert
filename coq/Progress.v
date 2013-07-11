@@ -123,8 +123,7 @@ binary ops
 
 Martin:
 
-new program for to-property-descriptor (it's missing it seems; it's long but easy)
-
+switch
 
 
 === can be skipped ===
