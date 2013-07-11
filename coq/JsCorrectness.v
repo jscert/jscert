@@ -1216,7 +1216,7 @@ Qed.
 Lemma run_object_heap_set_extensible_correct : forall b S l S',
   run_object_heap_set_extensible b S l = Some S' ->
   object_heap_set_extensible b S l S'.
-Admitted.(* TODO Martin *)
+Admitted. (* TODO Martin *)
 
 Lemma build_error_correct : forall S C vproto vmsg o,
   build_error S vproto vmsg = o ->
@@ -1434,6 +1434,7 @@ Proof.
        applys* red_spec_object_define_own_prop_6c_2.  
   (* arguments object *)
   skip. (* Arguments object: postponed *)
+*) (* TODO *)
 Admitted. (* faster *)
 
 
@@ -1670,13 +1671,13 @@ Lemma ref_put_value_correct : forall runs S C rv v o,
   runs_type_correct runs ->
   ref_put_value runs S C rv v = o ->
   red_expr S C (spec_put_value rv v) o.
-Admitted.(* TODO NOW *)
+Admitted. (* TODO NOW *)
 
 Lemma run_expr_get_value_correct : forall runs S C e y,
   runs_type_correct runs -> 
   run_expr_get_value runs S C e = result_some y -> 
   red_spec S C (spec_expr_get_value e) y.
-Admitted.(* TODO NOW *)
+Admitted. (* TODO NOW *)
 
 Ltac run_select_proj_extra_ref HT ::= 
   match HT with
@@ -2978,12 +2979,12 @@ Lemma object_proto_is_prototype_of_correct : forall runs,
   runs_type_correct runs ->
   follow_object_proto_is_prototype_of
     (object_proto_is_prototype_of runs).
-Admitted.(* Part of libraries: postponed for now *)
+Admitted. (* Part of libraries: postponed for now *)
 
 Lemma run_equal_correct : forall runs,
   runs_type_correct runs ->
   follow_equal (run_equal runs).
-Admitted.(* TODO Martin *)
+Admitted. (* TODO Martin *)
 
 
 Theorem runs_correct : forall num,
