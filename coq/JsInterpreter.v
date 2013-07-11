@@ -480,9 +480,9 @@ Definition object_has_prop runs S C l x : result :=
 
 Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
-  match B with
-  | builtin_get_default =>
-    if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
+
+  Let default :=     
+     if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
       match D with
       | full_descriptor_undef => res_ter S0 undef
       | attributes_data_of Ad =>
@@ -494,10 +494,18 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
           | value_prim _ =>
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
           end
-      end)
-
+      end) in
+  
+  match B with
+  | builtin_get_default => default
+  
   | builtin_get_function =>
-    result_not_yet_implemented (* TODO:  Waiting for the specification *)
+    if_value default (fun S' v =>
+       ifb spec_function_get_error_case S' x v then
+         run_error S' native_error_type
+       else
+         res_ter S' v
+    )
 
   | builtin_get_args_obj =>
     result_not_yet_implemented (* TODO:  Waiting for the specification *)
@@ -1262,13 +1270,14 @@ Definition creating_function_object_proto runs S C l : result :=
       object_define_own_prop runs S2 C l "prototype" A2 false)).    
 
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
-  Let O := object_create prealloc_function_proto "Function" true Heap.empty in
-  Let O1 := object_with_invokation O
+  Let O := object_new prealloc_function_proto "Function" in
+  Let O1 := object_with_get O builtin_get_function in
+  Let O2 := object_with_invokation O1
     (Some construct_default)
     (Some call_default)
     (Some builtin_has_instance_function) in
-  Let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
-  Let p := object_alloc S O2 in (* TODO: Let on pairs *)
+  Let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in
+  Let p := object_alloc S O3 in (* TODO: Let on pairs *)
   let '(l, S1) := p in
   Let A1 := attributes_data_intro (JsNumber.of_int (length names)) false false false in
   if_bool (object_define_own_prop runs S1 C l "length" A1 false) (fun S2 b2 =>

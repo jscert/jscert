@@ -1345,14 +1345,14 @@ Lemma object_get_builtin_correct : forall runs S C B (vthis:object_loc) l x o,
   red_expr S C (spec_object_get_1 B vthis l x) o.
 Proof.
   introv IH HR. unfolds in HR. destruct B; tryfalse.
-  run red_spec_object_get_1_default. destruct a as [|[Ad|Aa]].
+  (*run red_spec_object_get_1_default. destruct a as [|[Ad|Aa]].
     run_inv. applys* red_spec_object_get_2_undef.
     run_inv. applys* red_spec_object_get_2_data.
     applys red_spec_object_get_2_accessor. 
      destruct (attributes_accessor_get Aa); tryfalse.
        destruct p; tryfalse. run_inv.
         applys* red_spec_object_get_3_accessor_undef.
-       applys* red_spec_object_get_3_accessor_object. run_hyp*.
+       applys* red_spec_object_get_3_accessor_object. run_hyp*.*)
 Admitted. (* faster *)
 
 Lemma run_object_get_correct : forall runs S C l x o,
@@ -1992,15 +1992,15 @@ Proof.
   let_simpl. applys* red_spec_creating_function_object_proto_2. run_hyp*.
 Admitted. (* faster *)
 
+
 Lemma creating_function_object_correct : forall runs S C names bd X str o,
   runs_type_correct runs ->
   creating_function_object runs S C names bd X str = o ->
   red_expr S C (spec_creating_function_object names bd X str) o.
 Proof.
   introv IH HR. unfolds in HR.  
-  let_simpl. let_simpl. let_simpl. let_name. destruct p as [l S1].
-  let_simpl. run* red_spec_creating_function_object. rewrite* EQp. 
-    skip. (*one bug*)
+  let_simpl. let_simpl. let_simpl. let_simpl. let_name. destruct p as [l S1].
+  let_simpl. run* red_spec_creating_function_object.  
   run red_spec_creating_function_object_1 
     using creating_function_object_proto_correct.
   case_if; destruct str; tryfalse.
@@ -2308,14 +2308,6 @@ Proof.
   (* other branch *) 
   applys* red_expr_call_3. apply* run_error_correct.
 Admitted. (*faster*)
-
-
-
-
-
-
-
-
 
 Ltac run_select_proj_extra_construct HT ::= 
   match HT with
