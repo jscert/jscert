@@ -2279,45 +2279,6 @@ Proof.
 Qed.
 
 
-
-Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
-  if_some (run_object_method object_get_own_prop_ S l) (fun B =>
-    Let default := fun S' =>
-      if_some (run_object_method object_properties_ S' l) (fun P =>
-        res_spec S' (
-          if_some_or_default (convert_option_attributes (Heap.read_option P x))
-            (full_descriptor_undef) id))
-      in 
-    match B with
-      | builtin_get_own_prop_default =>
-        default S
-      | builtin_get_own_prop_args_obj =>
-        if_spec (default S) (fun S1 D =>
-          match D with
-          | full_descriptor_undef =>
-            res_spec S1 full_descriptor_undef
-          | full_descriptor_some A =>
-            if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
-              if_some lmapo (fun lmap =>
-                if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
-                  Let follow := fun S' A =>
-                    res_spec S' (full_descriptor_some A) in
-                  match D with
-                     | full_descriptor_undef =>
-                       follow S2 A
-                     | full_descriptor_some Amap =>
-                       if_value_spec (run_object_get runs S2 C lmap x) (fun S3 v =>
-                         match A with
-                         | attributes_data_of Ad =>
-                           follow S3 (attributes_data_with_value Ad v)
-                         | attributes_accessor_of Aa =>
-                           impossible_with_heap_because S3 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens."
-                         end)
-                     end)))
-          end)
-      end).
-
-
 Axiom red_spec_object_get_own_prop : forall S C l x B (y:specret full_descriptor),
       object_method object_get_own_prop_ S l B ->
       red_spec S C (spec_object_get_own_prop_1 B l x) y ->
