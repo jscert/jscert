@@ -1680,13 +1680,20 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
-
+(* OLD, see fix below
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
       red_spec S C (spec_object_get_prop l x) y1 ->
       red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
       red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S (attributes_accessor_of Aa))) o
       (* According to the spec, it should be every cases that are not [attributes_data_of].  
         There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
+*)
+
+  | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o D, (* Step 4 *)
+      (D = full_descriptor_undef) \/ (D = (attributes_accessor_of Aa)) ->
+      red_spec S C (spec_object_get_prop l x) y1 ->
+      red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
+      red_expr S0 C (spec_object_put_3 vthis l x v throw (ret S D)) o
 
   | red_spec_object_put_4_accessor : forall S0 S C vsetter lfsetter vthis l x v throw Aa o1 o, (* Step 5 *)
       vsetter = attributes_accessor_set Aa ->
@@ -1714,9 +1721,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
 
 
-  | red_spec_object_put_4_not_accessor_prim : forall S0 S C (wthis:prim) l x v throw Ad o, (* Step 6, for prim values *)
+  | red_spec_object_put_4_not_accessor_prim : forall S0 S C (wthis:prim) D l x v throw Ad o, (* Step 6, for prim values *)
+      (D = full_descriptor_undef) \/ (D = (attributes_data_of Ad)) ->
       red_expr S C (spec_error_or_void throw native_error_type) o ->
-      red_expr S0 C (spec_object_put_4 wthis l x v throw (dret S (attributes_data_of Ad))) o
+      red_expr S0 C (spec_object_put_4 wthis l x v throw (dret S D)) o
 
   | red_spec_object_put_5_return : forall S0 S C rv, (* Steps 3.c and 7 *)
       red_expr S0 C (spec_object_put_5 (out_ter S rv)) (out_void S)

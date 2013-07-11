@@ -892,8 +892,17 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
     if_bool (object_can_put runs S C l x) (fun S1 b =>
       if b then
         if_spec (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
-          Let follow := fun _ : unit =>
+          Let follow := fun _ =>
             if_spec (run_object_get_prop runs S2 C l x) (fun S3 D' =>
+              Let follow' := fun _ =>
+                match vthis with
+                | value_object lthis =>
+                  Let Desc := descriptor_intro_data v true true true in
+                  if_success (object_define_own_prop runs S3 C l x Desc str) (fun S4 rv =>
+                    res_void S4)
+                | value_prim wthis =>
+                  out_error_or_void S3 str native_error_type
+                end in
               match D' with
               | attributes_accessor_of Aa' =>
                 match attributes_accessor_set Aa' with
@@ -903,15 +912,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
                 | value_prim _ =>
                   impossible_with_heap_because S3 "[object_put_complete] found a primitive in an `set' accessor."
                 end
-              | _ =>
-                match vthis with
-                | value_object lthis =>
-                  Let Desc := descriptor_intro_data v true true true in
-                  if_success (object_define_own_prop runs S3 C l x Desc str) (fun S4 rv =>
-                    res_void S4)
-                | value_prim wthis =>
-                  out_error_or_void S3 str native_error_type
-                end
+              | _ => follow' tt
               end) in
           match D with
 

@@ -871,6 +871,11 @@ Definition label_set_mem lab labs := decide (In lab labs).
 (**************************************************************)
 (** ** Type [attributes_data] *)
 
+(** Inhabitant *)
+
+Global Instance attribute_data_inhab : Inhab attributes_data.
+Proof. apply* prove_Inhab. constructor; try typeclass. exact undef. Qed.
+
 (** Modifies the writable field of a data attribute *)
 
 Definition attributes_data_with_writable Ad bw' :=
@@ -932,6 +937,11 @@ Definition descriptor_with_configurable Desc bc' :=
 
 (**************************************************************)
 (** ** Type [attributes_accessor] *)
+
+(** Inhabitant *)
+
+Global Instance attribute_accessor_inhab : Inhab attributes_accessor.
+Proof. apply* prove_Inhab. constructor; try typeclass; exact undef. Qed.
 
 (** Modifies the configurable field of an accessor attribute *)
 
