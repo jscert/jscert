@@ -11,6 +11,7 @@ Daniele: hide commented stuff in JsPreliminary.
 4) Alan, did the delete function for arg_obj worked?
  5) I'm going to go over all the TODOs to see if we have questions
  6) we'll need a regexp to remove all LATER and TODO for the release
+7) For Alan: handle all the TODOs in the files (except Shared & Correctness).
 
 ====================
 Waiting for fixes:
@@ -27,24 +28,15 @@ red_spec_object_put_4_not_accessor_prim
 
 Arthur:
 
-red_spec_call_throw_type_error 
+Definition object_default_value
 
-red_spec_create_new_function_in 
+get_own_property ==> new proof needed
+  
 
 object_default_value_correct
 
-red_spec_convert_twice 
-red_spec_convert_twice_1 
-red_spec_convert_twice_2 
-red_spec_to_int32 
-red_spec_to_int32_1 
-red_spec_to_uint32 
-red_spec_to_uint32_1 
+run_binary_op_correct
 
-binary ops
-
-
-get_own_property ==> new proof needed
 
 
 ====================
@@ -60,7 +52,7 @@ switch
 
 proof for blocks
 
-
+run_elements
 
 ============================================================================
 

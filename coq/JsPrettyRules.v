@@ -1389,8 +1389,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Conversions (9) *)
 
-  (* LATER:  spec_to_primitive_auto *)
-  (* LATER:  spec_prim_new_object *)
+  (* TODO:  spec_to_primitive_auto *)
+  (* TODO:  spec_prim_new_object *)
 
   (** Conversion to primitive (returns prim) (9.1) *)
 
@@ -3801,7 +3801,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_int32 v) y
 
   | red_spec_to_int32_1 : forall S0 S C n,
-      red_spec S0 C (spec_to_int32_1 (out_ter S n)) (vret S (JsNumber.to_int32 n))
+      red_spec S0 C (spec_to_int32_1 (out_ter S n)) (ret S (JsNumber.to_int32 n))
 
   (** Conversion to unsigned 32-bit integer (9.6) *)
 
@@ -3811,11 +3811,11 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_uint32 v) y
 
   | red_spec_to_uint32_1 : forall S0 S C n,
-      red_spec S0 C (spec_to_uint32_1 (out_ter S n)) (vret S (JsNumber.to_uint32 n))
+      red_spec S0 C (spec_to_uint32_1 (out_ter S n)) (ret S (JsNumber.to_uint32 n))
 
-  (** Conversion to unsigned 16-bit integer (passes an int to the continuation) : LATER (9.7) *)
+  (** Conversion to unsigned 16-bit integer : LATER (9.7) *)
 
-  (** Auxiliary: conversion of two values at once (passes two values to the continuation) (9.1) *)
+  (** Auxiliary: conversion of two values at once (9.1) *)
 
   | red_spec_convert_twice : forall S C ex1 ex2 o1 (y:specret (value*value)),
       red_expr S C ex1 o1 ->
