@@ -666,7 +666,15 @@ Proof.
   destruct R; tryfalse. destruct p; tryfalse. exists___*.
 Admitted. (*faster*)
 
-(* TODO:  if_object_spec. *)
+Definition if_object_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (l : object_loc), o = out_ter S l /\ K S l = result_some y).
+
+Lemma if_object_spec : forall T W K (y : specret T),
+  if_object W K = result_some y ->
+  exists (o : out), W = o /\ if_object_spec_post K y o.
+Admitted.
+
 
 (* proofs of old monadic lemmas, might be useful
 Lemma if_success_out : forall res K S R,
@@ -797,6 +805,7 @@ Ltac run_select_ifres H :=
   | if_value _ _ => constr:(if_value_spec)
   | if_bool _ _ => constr:(if_bool_spec)
   | if_string _ _ => constr:(if_string_spec)
+  | if_object _ _ => constr:(if_object_spec)
   | if_number _ _ => constr:(if_number_spec)
   | if_prim _ _ => constr:(if_prim_spec)
   | if_spec _ _ => constr:(if_spec_out)
@@ -974,7 +983,7 @@ Ltac run_post_core :=
   | H: if_number_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
   | H: if_prim_post _ _ _ |- _ =>
-    let m := fresh "w" in go H m
+    let w := fresh "w" in go H w
   | H: if_ter_spec_post _ _ _ |- _ =>
     let R := fresh "R" in go H R
   | H: if_success_spec_post _ _ _ |- _ =>
@@ -985,10 +994,12 @@ Ltac run_post_core :=
     let b := fresh "b" in go H b
   | H: if_string_spec_post _ _ _ |- _ =>
     let s := fresh "s" in go H s
+  | H: if_object_spec_post _ _ _ |- _ =>
+    let l := fresh "l" in go H l
   | H: if_number_spec_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
   | H: if_prim_spec_post _ _ _ |- _ =>
-    let m := fresh "w" in go H m
+    let w := fresh "w" in go H w
   | H: if_spec_post _ _ _ |- _ =>
     let o := fresh "o" in let Er' := fresh "Er" in 
     let S := fresh "S" in let a := fresh "a" in
@@ -1229,21 +1240,20 @@ Proof.
    applys~ red_spec_build_error_1_no_msg.
 Qed.
 
-Lemma run_error_correct' : forall S ne o C,
-  run_error S ne = o ->
+Lemma run_error_correct' : forall T S ne o C,
+  run_error S ne = (res_out o : specres T) ->
   red_expr S C (spec_error ne) o /\ abort o.
 Proof.
   introv R. unfolds in R. run_pre as o1 R1. forwards R0: build_error_correct (rm R1).
-  applys_and red_spec_error R0. run_post. splits~. abort. run_inv. splits; [|prove_abort].
-  apply~ red_spec_error_1.
+  applys_and red_spec_error R0. run_post.
+   run_inv. splits~. abort.
+   run_inv. splits; [|prove_abort]. apply~ red_spec_error_1.
 Qed.
 
-Lemma run_error_correct : forall S ne o C,
-  run_error S ne = o ->
+Lemma run_error_correct : forall T S ne o C,
+  run_error S ne = (res_out o : specres T) ->
   red_expr S C (spec_error ne) o.
-Proof.
-  intros. applys* run_error_correct'.
-Qed.
+Proof. intros. applys* run_error_correct'. Qed.
 
 Ltac run_simpl_run_error H T K ::=
   match T with run_error _ _ =>
@@ -1443,8 +1453,8 @@ Lemma prim_new_object_correct : forall S C w o,
   red_expr S C (spec_prim_new_object w) o.
 Proof. introv H. false. Qed.
 
-Lemma run_error_correct_2 : forall S (ne : native_error) o C,
-  run_error S ne = o -> red_expr S C (spec_error ne) o.
+Lemma run_error_correct_2 : forall T S (ne : native_error) o C,
+  run_error S ne = (res_out o : specres T) -> red_expr S C (spec_error ne) o.
 Proof. intros. apply* run_error_correct. Qed.
 
 (* todo: move to the right place above here *)
@@ -2149,7 +2159,7 @@ Proof.
       destruct R. simpls. subst.
        applys* red_spec_call_global_eval_3_normal_value.
     run_inv. applys* red_spec_call_global_eval_3_throw.
-  applys* red_spec_call_global_eval_1_string_not_parse. run_hyp*.
+  applys* red_spec_call_global_eval_1_string_not_parse. apply* run_error_correct.
 Admitted. (*faster*)
 
 Lemma run_list_expr_correct : forall runs S C es y,
@@ -2226,7 +2236,7 @@ Proof.
   run red_expr_call_1 using ref_get_value_correct.
   run red_expr_call_2 using run_list_expr_correct.
   destruct a.
-    applys* red_expr_call_3. left. apply type_of_prim_not_object. run_hyp*.
+    applys* red_expr_call_3. left. apply type_of_prim_not_object. apply* run_error_correct.
   case_if.
   applys* red_expr_call_3_callable.
   rename o0 into l. rename a0 into vs.
@@ -2245,7 +2255,7 @@ Proof.
       run. applys* red_expr_call_4_env. 
        applys* env_record_implicit_this_value_correct.
   (* other branch *) 
-  applys* red_expr_call_3. run_hyp*.
+  applys* red_expr_call_3. apply* run_error_correct.
 Admitted. (*faster*)
 
 
@@ -2601,7 +2611,7 @@ Proof.
   (* Access *)
   unfolds in R. run red_expr_access.
   run red_expr_access_1. cases_if.
-    run. applys red_expr_access_2.
+    forwards: run_error_correct C (rm R). applys red_expr_access_2.
       applys* red_spec_check_object_coercible_undef_or_null.
       skip. (* TODO: exploiter le fait que o est un abort / changer le code si besoin*)
     applys red_expr_access_2.
@@ -2615,13 +2625,13 @@ Proof.
   run red_expr_new_1.
   destruct a; tryfalse.
     applys* red_expr_new_2_type_error. 
-     left. applys type_of_prim_not_object. run_hyp*.
+     left. applys type_of_prim_not_object. apply* run_error_correct.
     run. lets M: run_object_method_correct (rm E).
     destruct x; tryfalse.
       applys red_expr_new_2_construct. 
        applys* red_spec_constructor.
        applys* run_construct_correct.
-      applys* red_expr_new_2_type_error. run_hyp*.
+      applys* red_expr_new_2_type_error. apply* run_error_correct.
   (* call *)
    (* TODO NOW *)
 (*

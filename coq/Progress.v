@@ -80,8 +80,7 @@ new program for prog_block
 
 Martin:
 
-
-new program for to-property-descriptor (it's missing it seems; it's long but easy)
+switch
 
 red_javascript_intro 
 (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
