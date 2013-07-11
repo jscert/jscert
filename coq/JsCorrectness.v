@@ -488,7 +488,7 @@ Definition if_ter_spec_post T K (y:specret T) o :=
 
 Lemma if_ter_spec : forall T W K (y : specret T),
   if_ter W K = result_some y ->
-  exists (o : out), W = o /\ if_ter_spec_post K y o.
+  isout W (if_ter_spec_post K y).
 Admitted.
 
 Definition if_success_spec_post T K (y:specret T) o :=
@@ -497,7 +497,7 @@ Definition if_success_spec_post T K (y:specret T) o :=
 
 Lemma if_success_spec : forall T W K (y : specret T),
   if_success W K = result_some y ->
-  exists (o : out), W = o /\ if_success_spec_post K y o.
+  exists (o : out), W = o /\ if_success_spec_post K y o. (* LATER:  Change to [isout] *)
 Admitted.
 
 Definition if_value_spec_post T K (y:specret T) o :=
