@@ -2103,13 +2103,13 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
         ) else loop tt)
     else res_ter S1 rv).
 
-Fixpoint run_stat_switch_ending runs S C rv scs : result :=
+Fixpoint run_stat_switch_no_default_ending runs S C rv scs : result :=
   match scs with
   | nil =>
     out_ter S rv
   | switchclause_intro e ts :: scs' =>
     if_success_state rv (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv1 =>
-      run_stat_switch_ending runs S1 C rv1 scs')
+      run_stat_switch_no_default_ending runs S1 C rv1 scs')
   end.
 
 Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
@@ -2121,13 +2121,23 @@ Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
       Let b := strict_equality_test v1 vi in
       if b then
         if_success (runs_type_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
-          run_stat_switch_ending runs S2 C rv scs')
+          run_stat_switch_no_default_ending runs S2 C rv scs')
       else
         run_stat_switch_no_default runs S1 C vi rv scs'
       )
   end.
 
-Definition run_stat_switch runs S C rv labs e sb : result :=
+Fixpoint run_stat_switch_with_default runs S C (found : bool) (vi : value) rv (scs1 : list switchclause) (ts1 : list stat) (scs2 : list switchclause) : result :=
+  result_not_yet_implemented
+  (*
+  Let default := fun S =>
+    result_not_yet_implemented in
+  match scs1 with
+  | nil =>
+    if found then default S
+  end *).
+
+Definition run_stat_switch runs S C labs e sb : result :=
   if_spec (run_expr_get_value runs S C e) (fun S1 vi =>
     Let follow := fun W =>
       if_break W (fun S2 R =>
@@ -2138,8 +2148,7 @@ Definition run_stat_switch runs S C rv labs e sb : result :=
     | switchbody_nodefault scs =>
       follow (run_stat_switch_no_default runs S1 C vi resvalue_empty scs)
     | switchbody_withdefault scs1 ts1 scs2 =>
-      result_not_yet_implemented
-      (* follow (run_stat_switch_with_default runs S1 C resvalue_empty scs) *)
+      follow (run_stat_switch_with_default runs S1 C false vi resvalue_empty scs1 ts1 scs2)
     end).
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
@@ -2304,8 +2313,8 @@ Definition run_stat runs S C t : result :=
   | stat_debugger =>
     out_ter S res_empty
 
-  | stat_switch _ _ _  =>
-    result_not_yet_implemented (* TODO *)
+  | stat_switch labs e sb =>
+    run_stat_switch runs S C labs e sb
 
   end.
 
