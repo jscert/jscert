@@ -1655,11 +1655,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_put_2_false : forall S0 S C vthis l x v throw o, (* Steps 1.a and 1.b *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_2 vthis l x v throw (out_ter S false)) o
-(*
-  | red_spec_object_put_2_true : forall S C vthis l x v throw o, (* Step 2 *)
-      red_expr S C (spec_object_get_own_prop l x (spec_object_put_3 vthis l x v throw)) o ->      
-      red_expr S C (spec_object_put_2 vthis l x v throw (out_ter S true)) o
-*)
 
   (* Daniele: descriptor or full_descriptor?! *)
   | red_spec_object_put_2_true : forall S0 S C vthis l x v throw o (y:specret full_descriptor), (* Step 2 *)
@@ -1678,12 +1673,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
+(* Daniele: old -- delete after double-checking fix (below) :
+
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
       red_spec S C (spec_object_get_prop l x) y1 ->
       red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
       red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S (attributes_accessor_of Aa))) o
+
       (* According to the spec, it should be every cases that are not [attributes_data_of].  
         There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
+*)
+
+  | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw D Aa y1 o, (* Step 4 *)
+      (D = full_descriptor_undef) \/  (D = (attributes_accessor_of Aa)) ->
+      red_spec S C (spec_object_get_prop l x) y1 ->
+      red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
+      red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S D)) o
+
 
   | red_spec_object_put_4_accessor : forall S0 S C vsetter lfsetter vthis l x v throw Aa o1 o, (* Step 5 *)
       vsetter = attributes_accessor_set Aa ->
@@ -3893,7 +3899,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_list_expr_1 (vs&v) es) y ->
       red_spec S0 C (spec_list_expr_2 vs (ret S v) es) y
 
-  (** ToPropertyDescriptor ( Obj ) - (passes a Descriptor to the continuation) (8.10.5) *)    
+  (** ToPropertyDescriptor ( Obj ) - (returns a Descriptor) (8.10.5) *)    
 
   | red_spec_to_descriptor_not_object : forall S C v (y:specret descriptor), (* Step 1 *)
       type_of v <> type_object ->
@@ -3926,13 +3932,13 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S0 C (spec_to_descriptor_1c (out_ter S v) l Desc) y 
 
   | red_spec_to_descriptor_2a : forall S C o1 l Desc (y:specret descriptor), (* step 4 *)
-      red_expr S C (spec_object_has_prop l "enumerable") o1 ->
+      red_expr S C (spec_object_has_prop l "configurable") o1 ->
       red_spec S C (spec_to_descriptor_2b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_2a l Desc) y
 
   | red_spec_to_descriptor_2b_false : forall S0 S C l Desc (y:specret descriptor), (* step 4, neg *)
-      red_spec S C (spec_to_descriptor_2a l Desc) y ->
-      red_spec S0 C (spec_to_descriptor_1b (out_ter S false) l Desc) y 
+      red_spec S C (spec_to_descriptor_3a l Desc) y ->
+      red_spec S0 C (spec_to_descriptor_2b (out_ter S false) l Desc) y 
 
   | red_spec_to_descriptor_2b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 4a *)
       red_expr S C (spec_object_get l "configurable")  o1 ->

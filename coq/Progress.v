@@ -8,7 +8,6 @@
 ====================
 Waiting for fixes:
 
-red_spec_object_put_3_not_data 
 red_spec_object_put_4_accessor 
 red_spec_object_put_4_not_accessor_object 
 red_spec_object_put_4_not_accessor_prim 
@@ -45,7 +44,6 @@ get_own_property ==> new proof needed
 
 Martin:
 
-
 red_javascript_intro 
 (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
 
@@ -54,6 +52,8 @@ do_while
 switch
 
 proof for blocks
+
+
 
 ============================================================================
 

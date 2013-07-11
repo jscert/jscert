@@ -410,21 +410,22 @@ Definition build_error S vproto vmsg : result :=
   ifb vmsg = undef then out_ter S' l
   else result_not_yet_implemented (* TODO:  Need [to_string] (this function shall be put in [runs_type].) *).
 
-Definition run_error S ne : result :=
+Definition run_error T S ne : specres T :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
-    res_ter S' (res_throw l)).
+    result_some (specret_out (out_ter S' (res_throw l)))).
+Implicit Arguments run_error [[T]].
 
 (** [out_error_or_void S str ne R] throws the error [ne] if
     [str] is true, empty otherwise. *)
 
-Definition out_error_or_void S str ne :=
+Definition out_error_or_void S str ne : result :=
   if str then run_error S ne
   else out_void S.
 
 (** [out_error_or_cst S str ne v] throws the error [ne] if
     [str] is true, the value [v] otherwise. *)
 
-Definition out_error_or_cst S str ne v :=
+Definition out_error_or_cst S str ne v : result :=
   if str then run_error S ne
   else out_ter S v.
 
@@ -699,6 +700,43 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
       | builtin_define_own_prop_args_obj =>
         res_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
     end).
+
+Definition run_to_descriptor runs S C v : specres descriptor :=
+  match v with
+  | value_prim _ =>
+    run_error S native_error_type
+  | value_object l =>
+    let sub S Desc name conv K :=
+      if_bool (object_has_prop runs S C l name) (fun S1 has =>
+        if neg has then
+          K S1 Desc
+        else
+          if_value (run_object_get runs S1 C l name) (fun S2 v =>
+            if_spec (conv S2 v Desc) K)) in
+    sub S descriptor_intro_empty "enumerable" (fun S1 v1 Desc =>
+      let b := convert_value_to_boolean v1 in
+      res_spec S1 (descriptor_with_enumerable Desc (Some b))) (fun S1' Desc =>
+        sub S1' Desc "configurable" (fun S2 v2 Desc =>
+          let b := convert_value_to_boolean v2 in
+          res_spec S2 (descriptor_with_configurable Desc (Some b))) (fun S2' Desc =>
+            sub S2' Desc "value" (fun S3 v3 Desc =>
+              res_spec S3 (descriptor_with_value Desc (Some v3))) (fun S3' Desc =>
+                sub S3' Desc "writable" (fun S4 v4 Desc =>
+                  let b := convert_value_to_boolean v4 in
+                  res_spec S4 (descriptor_with_writable Desc (Some b))) (fun S4' Desc =>
+                    sub S4' Desc "get" (fun S5 v5 Desc =>
+                      ifb (is_callable S5 v5 = false) /\ v5 <> undef then
+                        res_spec S5 (descriptor_with_get Desc (Some v5))
+                      else run_error S5 native_error_type) (fun S5' Desc =>
+                        sub S5' Desc "set" (fun S6 v6 Desc =>
+                          ifb (is_callable S6 v6 = false) /\ v6 <> undef then
+                            res_spec S6 (descriptor_with_set Desc (Some v6))
+                          else run_error S6 native_error_type) (fun S7 Desc =>
+                            ifb descriptor_inconsistent Desc then
+                              run_error S7 native_error_type
+                            else res_spec S7 Desc))))))
+
+  end.
 
 
 (**************************************************************)
@@ -1518,6 +1556,7 @@ Definition from_prop_descriptor runs S C D : result :=
 End LexicalEnvironments.
 
 Implicit Type runs : runs_type.
+Implicit Arguments run_error [[T]].
 
 
 Section Operators.
