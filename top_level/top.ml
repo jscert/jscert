@@ -146,18 +146,23 @@ List of commands:
 let print res =
    (Prheap.prrestype res.JsSyntax.res_type) ^ "; " ^ (Prheap.prresvalue res.JsSyntax.res_value)
 
-let display env = try (match env#eval with
-  | JsInterpreter.Coq_result_some out -> begin match out with
-      | JsSyntax.Coq_out_div ->  env#clear, "Diverge"
-      | JsSyntax.Coq_out_ter (state, res) -> 
-          (*print_endline (Prheap.prstate false state);*)
-          env#update state, print res
-    end
-  | JsInterpreter.Coq_result_not_yet_implemented -> env#clear, "Not yet implemented"
-  | JsInterpreter.Coq_result_impossible ->  env#clear, "Impossible"
-  | JsInterpreter.Coq_result_bottom bot ->  env#next bot) with
-    | Xml.File_not_found s -> env#clear, "Xml: File not found..."
-    | Parser.InvalidArgument -> env#clear, "Parser: Invalid Argument...";;
+let display env = try 
+    (match env#eval with
+     | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
+       env#clear, "**Impossible**"
+     | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_out o) ->
+       begin match o with
+         | JsSyntax.Coq_out_div ->  env#clear, "Diverge"
+         | JsSyntax.Coq_out_ter (state, res) -> 
+           (*print_endline (Prheap.prstate false state);*)
+           env#update state, print res
+       end
+     | JsInterpreter.Coq_result_not_yet_implemented -> env#clear, "Not yet implemented"
+     | JsInterpreter.Coq_result_impossible ->  env#clear, "Impossible"
+     | JsInterpreter.Coq_result_bottom bot ->  env#next bot)
+  with
+  | Xml.File_not_found s -> env#clear, "Xml: File not found..."
+  | Parser.InvalidArgument -> env#clear, "Parser: Invalid Argument...";;
 
 let rec read env = scan env (read_line ())
 

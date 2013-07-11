@@ -1,4 +1,4 @@
-mlfiles = ${shell ls ../interp/src/extract/*.ml ../interp/src/*.ml ../interp/parser/src/*.ml}
+mlfiles = ${shell ls ../interp/src/extract/*.ml ../interp/src/*.ml ../interp/parser/src/*.ml | sed 's|../interp/src/prtest.ml||'}
 mlfilessorted = ${shell ocamldep -I ../interp/src/extract/ -sort ${mlfiles}}
 mlfilestransformed = ${shell echo ${mlfilessorted} | sed 's|parser/src|src|g' | sed 's|.ml|.cmx|g' |  sed 's|../interp/src/extract/JsInterpreterBisect.cmx||' | sed 's|../interp/src/run_jsbisect.cmx||' | sed 's|../interp/src/run_js.cmx||'}
 mlfilesdebug = ${shell echo ${mlfilestransformed} | sed 's|.cmx|.cmo|g'}
