@@ -264,19 +264,6 @@ Definition if_success_or_return W (K1 : state -> result) (K2 : state -> resvalue
     | _ => W
     end).
 
-Definition if_normal_continue_or_break W (search_label : res -> bool)
-  (K1 : state -> res -> result) (K2 : state -> res -> result) : result :=
-  if_ter W (fun S R =>
-    match res_type R with
-    | restype_break =>
-      (if search_label R then K2 else out_ter) S R
-    | restype_continue =>
-      (if search_label R then K1 else out_ter) S R
-    | restype_normal =>
-      if_empty_label S R (fun _ => K1 S R)
-    | _ => res_ter S R
-    end).
-
 Definition if_break W (K : state -> res -> result) : result :=
   if_ter W (fun S R =>
     match res_type R with
@@ -420,7 +407,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
     runs_type_equal : state -> execution_ctx -> value -> value -> result;
     runs_type_block : state -> execution_ctx -> list stat -> result;
-    runs_type_elements : state -> execution_ctx -> list element -> result
+    runs_type_elements : state -> execution_ctx -> elements -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -2116,39 +2103,44 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
         ) else loop tt)
     else res_ter S1 rv).
 
-(* Daniele: TODO.  *)
-(*
-Fixpoint run_stat_switch_no_default runs S C rv scs v : result :=
-  match scs with 
-  | nil => (out_ter S resvalue_empty) 
-  | (switchclause_intro e ts)::scs => 
-      if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
-        Let b := strict_equality_test v v1 in 
-        if b then 
-          if_ter (runs_type_block runs S1 C (LibList.rev ts)) (fun S2 R =>
-          Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
-            match scs with 
-            | nil => (out_ter S2 rv)
-            | (switchclause_intro e ts)::scs => (out_ter S2 rv) (* dummy *)
-            end
-          )
-        else 
-          (run_stat_switch_no_default runs S C rv scs v) (* dummy output *)
-        )
+Fixpoint run_stat_switch_ending runs S C rv scs : result :=
+  match scs with
+  | nil =>
+    out_ter S rv
+  | switchclause_intro e ts :: scs' =>
+    if_success_state rv (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv1 =>
+      run_stat_switch_ending runs S1 C rv1 scs')
   end.
 
+Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
+  match scs with
+  | nil =>
+    out_ter S rv
+  | switchclause_intro e ts :: scs' =>
+    if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
+      Let b := strict_equality_test v1 vi in
+      if b then
+        if_success (runs_type_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
+          run_stat_switch_ending runs S2 C rv scs')
+      else
+        run_stat_switch_no_default runs S1 C vi rv scs'
+      )
+  end.
 
 Definition run_stat_switch runs S C rv labs e sb : result :=
-  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v =>
-      match sb with 
-      | switchbody_nodefault scs => (run_stat_switch_no_default runs S1 C rv scs v)   
-      | switchbody_withdefault scs1 ts1 scs2 => (out_ter S1 resvalue_empty)
-      end
-  ).
-*)
-
-
-(* --- *)
+  if_spec (run_expr_get_value runs S C e) (fun S1 vi =>
+    Let follow := fun W =>
+      if_break W (fun S2 R =>
+        if res_label_in R labs then
+          out_ter S2 (res_value R)
+        else out_ter S2 R) in
+    match sb with
+    | switchbody_nodefault scs =>
+      follow (run_stat_switch_no_default runs S1 C vi resvalue_empty scs)
+    | switchbody_withdefault scs1 ts1 scs2 =>
+      result_not_yet_implemented
+      (* follow (run_stat_switch_with_default runs S1 C resvalue_empty scs) *)
+    end).
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
   if_ter (runs_type_stat runs S C t2) (fun S1 R =>
@@ -2319,7 +2311,7 @@ Definition run_stat runs S C t : result :=
 
 (**************************************************************)
 
-Definition run_elements runs S C (els_rev : list element) : result :=
+Definition run_elements runs S C (els_rev : elements) : result :=
   match els_rev with
   | nil =>
     out_ter S resvalue_empty

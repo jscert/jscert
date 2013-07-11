@@ -452,12 +452,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_switch_1_nodefault : forall S S0 C vi o o1 scs labs, 
       red_stat S C (stat_switch_nodefault_1 vi resvalue_empty scs) o1 ->
       red_stat S C (stat_switch_2 o1 labs) o ->
-      red_stat S C (stat_switch_1 (ret S0 vi) labs (switchbody_nodefault scs)) o
+      red_stat S0 C (stat_switch_1 (ret S vi) labs (switchbody_nodefault scs)) o
 
   | red_stat_switch_1_default: forall S S0 C o o1 vi scs1 scs2 ts1 labs, 
       red_stat S C (stat_switch_default_A_1 false vi resvalue_empty scs1 ts1 scs2) o1 ->
       red_stat S C (stat_switch_2 o1 labs) o ->
-      red_stat S C (stat_switch_1 (ret S0 vi) labs (switchbody_withdefault scs1 ts1 scs2)) o
+      red_stat S0 C (stat_switch_1 (ret S vi) labs (switchbody_withdefault scs1 ts1 scs2)) o
 
   | red_stat_switch_2_break : forall S S0 C R rv lab labs, (* step 3 *)
       R = res_intro restype_break rv lab ->
@@ -511,6 +511,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_switch_nodefault_6_abrupt : forall S C R R' scs rv, 
       ~ res_is_normal R ->
+      res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       R' = (res_overwrite_value_if_empty rv R) ->
       red_stat S C (stat_switch_nodefault_6 rv (out_ter S R) scs) (out_ter S R')
 
