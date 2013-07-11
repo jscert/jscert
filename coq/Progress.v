@@ -12,7 +12,6 @@ red_spec_object_define_own_prop_5_generic
 ====================
 Waiting for fixes:
 
-red_spec_object_put_3_not_data 
 red_spec_object_put_4_accessor 
 red_spec_object_put_4_not_accessor_object 
 red_spec_object_put_4_not_accessor_prim 
