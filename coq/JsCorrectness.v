@@ -109,6 +109,8 @@ Definition follow_stat_do_while (run : state -> execution_ctx -> resvalue -> lab
   follow_spec
     (stat_do_while_1 ls t e)
     red_stat (fun S C rv => run S C rv ls e t).
+Definition follow_object_delete (run : state -> execution_ctx -> object_loc -> prop_name -> bool -> result) :=
+  True. (* TODO *)
 Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
     (fun S C => run S C l x).
@@ -135,6 +137,8 @@ Record runs_type_correct runs :=
       follow_function_has_instance (runs_type_function_has_instance runs);
     runs_type_correct_stat_while : follow_stat_while (runs_type_stat_while runs);
     runs_type_correct_stat_do_while : follow_stat_do_while (runs_type_stat_do_while runs);
+    runs_type_correct_object_delete :
+      follow_object_delete (runs_type_object_delete runs);
     runs_type_correct_object_get_own_prop :
       follow_object_get_own_prop (runs_type_object_get_own_prop runs);
     runs_type_correct_object_get_prop :
@@ -2523,7 +2527,7 @@ Lemma object_delete_correct : forall runs S C l x str o,
   object_delete runs S C l x str = o ->
   red_expr S C (spec_object_delete l x str) o.
 Proof.
-  introv IH HR. unfolds in HR. run. rename x0 into B. 
+(*  introv IH HR. unfolds in HR. run. rename x0 into B. 
   applys* red_spec_object_delete.
    applys* run_object_method_correct. clear E.
   destruct B; tryfalse.
@@ -2533,8 +2537,8 @@ Proof.
       run. forwards B: @pick_option_correct (rm E).
         applys_eq* red_spec_object_delete_2_some_configurable 1. 
       applys* red_spec_object_delete_3_some_non_configurable.
-       applys* out_error_or_cst_correct.
-Admitted. (* faster *)
+       applys* out_error_or_cst_correct.*)
+Admitted.  (* TODO *)
 
 
 Lemma env_record_delete_binding : forall runs S C L x o,
@@ -2997,6 +3001,7 @@ Proof.
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
      apply~ run_stat_do_while_correct.
+     skip. (* TODO:  Use object_delete_correct *)
      skip. (* TODO:  Use run_object_get_own_prop_correct *)
      skip. (* Todo:  Use run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
