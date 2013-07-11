@@ -2130,8 +2130,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C' (spec_entering_eval_code_1 bd K str) o ->
       red_expr S C (spec_entering_eval_code bdirect bd K) o  
       
-  | red_spec_entering_eval_code_1 : forall str lex S' C' o1 S C bd K o, (* Steps 3 - 4 *)
-      red_spec_entering_eval_code_1 : forall (str:bool) lex S' C' o1 S C bd K o, (* Steps 3 - 4 *)
+  | red_spec_entering_eval_code_1 : forall (str:bool) lex S' C' o1 S C bd K o, (* Steps 3 - 4 *)
       (lex, S') = (If str then lexical_env_alloc_decl S (execution_ctx_lexical_env C)
                           else (execution_ctx_lexical_env C, S)) ->
       C' = (If str then (execution_ctx_with_lex_same C lex) else C) ->

@@ -2427,6 +2427,7 @@ Admitted.
 *)
 
 
+
 Lemma object_delete_correct : forall runs S C l x str o,
   runs_type_correct runs ->
   object_delete runs S C l x str = o ->
@@ -2440,11 +2441,7 @@ Proof.
     run_inv. applys red_spec_object_delete_2_undef. (* This rule is erroneous, the conclusion should contains [S0] instead [S]. *)
     case_if.
       run. forwards B: @pick_option_correct (rm E).
-        applys_eq* red_spec_object_delete_2_some_configurable 1.
-          skip. (* will go *)
-          skip. (* even problem *)
-          skip. (* even problem *)
-          skip. (* even problem *)
+        applys_eq* red_spec_object_delete_2_some_configurable 1. 
       applys* red_spec_object_delete_3_some_non_configurable.
        applys* out_error_or_cst_correct.
 Admitted.

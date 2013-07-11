@@ -835,13 +835,13 @@ Definition object_delete runs S C l x str : result :=
         | full_descriptor_undef => out_ter S true
         | full_descriptor_some A =>
           if attributes_configurable A then
-            if_some (pick_option (object_rem_property S l x)) (fun S' =>
+            if_some (pick_option (object_rem_property S1 l x)) (fun S' =>
               res_ter S' true)
           else
             out_error_or_cst S str native_error_type false
         end)
     | builtin_delete_args_obj =>
-      result_not_yet_implemented (* TODO *)
+      result_not_yet_implemented (* LATER *)
     end).
 
 Definition env_record_delete_binding runs S C L x : result :=
