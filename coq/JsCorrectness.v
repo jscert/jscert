@@ -261,6 +261,9 @@ Qed.
 Definition eqabort o1 o :=
   o = o1 /\ abort o.
 
+Ltac prove_abort :=
+  solve [ assumption | (constructor; absurd_neg) ].
+
 (** [isout W Pred] asserts that [W] is in fact
     an outcome that satisfies [Pred]. *)
 
@@ -301,7 +304,7 @@ Definition if_ter_post (K : _ -> _ -> result) o o1 :=
   \/ (exists S R, o1 = out_ter S R /\ K S R = o).
 
 Lemma if_ter_out : forall W K o,
-  if_ter W K = o ->
+  if_ter W K = res_out o ->
   isout W (if_ter_post K o).
 Proof.
   introv H. destruct W as [[|o1]| | | ]; simpls; tryfalse_nothing.
@@ -336,9 +339,16 @@ Definition if_success_post (K : _ -> _ -> result) o o1 :=
   exists S rv, o1 = out_ter S (res_normal rv) /\ K S rv = o.
 
 Lemma if_success_out : forall W K o,
-  if_success W K = o ->
+  if_success W K = res_out o ->
   isout W (if_success_post K o).
-Admitted.
+Proof.
+  introv E. forwards~ (o1&WE&P): if_ter_out (rm E). subst W. eexists. splits*.
+  inversion_clear P as [[? ?]|(S&R&?&H)]. substs. branch~ 1.
+  substs. destruct R as [rt rv' rl]. destruct~ rt; simpls;
+     try solve [inverts H; branch 1; splits~; prove_abort].
+   forwards~ (?&?): if_empty_label_out (rm H). simpls. substs.
+    branch 2. repeat eexists. auto*.
+Qed.
 
   (* Documentation: same with unfolding:
     Lemma if_success_out : forall W K o,
@@ -403,7 +413,7 @@ Definition if_value_post (K : _ -> _ -> result) o o1 :=
   exists S v, o1 = out_ter S (res_val v) /\ K S v = o.
 
 Lemma if_value_out : forall W K o,
-  if_value W K = o ->
+  if_value W K = res_out o ->
   isout W (if_value_post K o).
 Admitted.
 
@@ -412,7 +422,7 @@ Definition if_bool_post (K : _ -> _ -> result) o o1 :=
   exists S z, o1 = out_ter S (res_val (prim_bool z)) /\ K S z = o.
 
 Lemma if_bool_out : forall W K o,
-  if_bool W K = o ->
+  if_bool W K = res_out o ->
   isout W (if_bool_post K o).
 Admitted.
 
@@ -421,7 +431,7 @@ Definition if_object_post (K : _ -> _ -> result) o o1 :=
   exists S l, o1 = out_ter S (res_val (value_object l)) /\ K S l = o.
 
 Lemma if_object_out : forall W K o,
-  if_object W K = o ->
+  if_object W K = res_out o ->
   isout W (if_object_post K o).
 Admitted.
 
@@ -430,7 +440,7 @@ Definition if_string_post (K : _ -> _ -> result) o o1 :=
   exists S s, o1 = out_ter S (res_val (prim_string s)) /\ K S s = o.
 
 Lemma if_string_out : forall W K o,
-  if_string W K = o ->
+  if_string W K = res_out o ->
   isout W (if_string_post K o).
 Admitted.
 
@@ -439,17 +449,17 @@ Definition if_number_post (K : _ -> _ -> result) o o1 :=
   exists S n, o1 = out_ter S (res_val (prim_number n)) /\ K S n = o.
 
 Lemma if_number_out : forall W K o,
-  if_number W K = o ->
+  if_number W K = res_out o ->
   isout W (if_number_post K o).
 Admitted.
 
-Definition if_primitive_post (K : _ -> _ -> result) o o1 :=
+Definition if_prim_post (K : _ -> _ -> result) o o1 :=
   eqabort o1 o \/
   exists S w, o1 = out_ter S (res_val (value_prim w)) /\ K S w = o.
 
-Lemma if_primitive_out : forall W K o,
-  if_primitive W K = o ->
-  isout W (if_primitive_post K o).
+Lemma if_prim_out : forall W K o,
+  if_prim W K = res_out o ->
+  isout W (if_prim_post K o).
 Admitted.
 
 Lemma if_abort_out : forall T o K (t : T),
@@ -471,80 +481,6 @@ Proof. skip.
   forwards*: if_abort_out H.
 *)
 Qed.
-
-(* TOOD:  missing 
-    if_ter_spec*)
-
-Definition if_spec_ter_post T (K : _ -> _ -> result) o (y:specret T) :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S a, y = specret_val S a /\ K S a = o).
-
-Lemma if_spec_ter_out : forall T (W : specres T) K o,
-  if_spec_ter W K = o -> 
-  exists y, W = result_some y /\ if_spec_ter_post K o y.
-Proof.
-(* TODO
-  introv H. destruct W as [sp| | |]; tryfalse.
-  destruct (result_some sp)
-  destruct sp; [right* | left]. simpls. eexists. splits~.
-  forwards*: if_abort_out H.
-*)
-skip.
-Qed.
-
-Definition if_success_spec_post T K (y:specret T) o :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (rv : resvalue), o = out_ter S rv /\ K S rv = result_some y).
-
-Lemma if_success_spec_out : forall T W K (y : specret T),
-  if_success_spec W K = result_some y ->
-  exists (o : out), W = o /\ if_success_spec_post K y o.
-Admitted.
-
-Definition if_value_spec_post T K (y:specret T) o :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (v : value), o = out_ter S v /\ K S v = result_some y).
-
-Lemma if_value_spec_out : forall T W K (y : specret T),
-  if_value_spec W K = result_some y ->
-  exists (o : out), W = o /\ if_value_spec_post K y o.
-Admitted.
-
-Definition if_prim_spec_post T K (y:specret T) o :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (w : prim), o = out_ter S w /\ K S w = result_some y).
-
-Lemma if_prim_spec_out : forall T W K (y : specret T),
-  if_prim_spec W K = result_some y ->
-  exists (o : out), W = o /\ if_prim_spec_post K y o.
-Admitted.
-
-Definition if_bool_spec_post T K (y:specret T) o :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (b : bool), o = out_ter S b /\ K S b = result_some y).
-
-Lemma if_bool_spec_out : forall T W K (y : specret T),
-  if_bool_spec W K = result_some y ->
-  exists (o : out), W = o /\ if_bool_spec_post K y o.
-Admitted.
-
-Definition if_number_spec_post T K (y:specret T) o :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (n : number), o = out_ter S n /\ K S n = result_some y).
-
-Lemma if_number_spec_out : forall T W K (y : specret T),
-  if_number_spec W K = result_some y ->
-  exists (o : out), W = o /\ if_number_spec_post K y o.
-Admitted.
-
-Definition if_string_spec_post T K (y:specret T) o :=
-     (y = specret_out o /\ abort o)
-  \/ (exists S, exists (s : string), o = out_ter S s /\ K S s = result_some y).
-
-Lemma if_string_spec_out : forall T W K (y : specret T),
-  if_string_spec W K = result_some y ->
-  exists (o : out), W = o /\ if_string_spec_post K y o.
-Admitted.
 
 
 (* proofs of old monadic lemmas, might be useful
@@ -619,70 +555,6 @@ Proof.
 Qed.
 *)
 
-(* Passing *)
-
-(*
-Inductive passing_terminates {A : Type} : passing A -> Prop :=
-  | passing_terminates_normal : forall S a,
-    passing_terminates (passing_normal S a)
-  | passing_terminates_abort : forall S R,
-    abort (out_ter S R) ->
-    passing_terminates (passing_abort (out_ter S R)).
-
-Lemma passing_def_out : forall (A B : Type) bo (K : B -> passing A) (p : passing A),
-  passing_def bo K = p ->
-  (exists b, bo = Some b /\ K b = p) \/
-  (exists res, bo = None /\ p = passing_abort res /\ forall o, result_out o <> res).
-Proof. introv E. destruct* bo. right. eexists. splits*. discriminate. Qed.
-
-Lemma passing_defined_out : forall (A B : Type) (p : passing B) K (pr : passing A),
-  passing_defined p K = pr ->
-  (exists S0 b, p = passing_normal S0 b /\ K S0 b = pr) \/
-  (exists res, p = passing_abort res /\ pr = passing_abort res).
-Proof. introv E. destruct* p. Qed.
-
-Lemma passing_success_out : forall (A : Type) res K (p : passing A),
-  passing_success res K = p ->
-  (exists S0 rv, res = out_ter S0 (rv : resvalue) /\
-                 K S0 rv = p) \/
-  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, result_out o <> res') /\
-                      res = out_ter S0 (res_intro restype_normal rv ls) /\
-                      ls <> label_empty) \/
-  (exists o, res = result_out o /\ p = passing_abort res /\ abort o) \/
-  (p = passing_abort res /\ forall o, res <> o).
-Proof.
-  introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
-  destruct~ o.
-   branch 3. eexists. splits~.
-  destruct r as [T R L]. destruct~ T; try solve [ branch 3;
-    eexists; splits~; constructors; absurd_neg ]. simpls.
-  cases_if.
-   branch 1. substs. repeat eexists.
-   branch 2. substs. repeat eexists; auto*. discriminate.
-Qed.
-
-Lemma passing_value_out : forall (A : Type) res K (p : passing A),
-  passing_value res K = p ->
-  (exists S0 v, res = out_ter S0 (v : value) /\
-                 K S0 v = p) \/
-  (exists res' S0 rv ls, p = passing_abort res' /\ (forall o, result_out o <> res') /\
-                      res = out_ter S0 (res_intro restype_normal rv ls) /\
-                      (ls <> label_empty \/ forall v, rv <> v)) \/
-  (exists o, res = result_out o /\ p = passing_abort res /\ abort o) \/
-  (p = passing_abort res /\ forall o, res <> o).
-Proof.
-  introv E. destruct~ res; try solve [branch 4; splits~; discriminate].
-  destruct~ o.
-   branch 3. eexists. splits~.
-  destruct r as [T R L]. destruct~ T; try solve [ branch 3;
-    eexists; splits~; constructors; absurd_neg ]. simpls.
-  cases_if; destruct R; subst; try (
-    branch 2; repeat eexists;
-    [ discriminate | solve [left*] || solve [try right; discriminate] ]).
-  branch 1. repeat eexists.
-Qed.
-*)
-
 
 (************************************************************)
 (* ** Correctness tactics *)
@@ -696,9 +568,6 @@ let H := fresh in intros H; try solve [ inversion H; false~ ].
 Hint Extern 1 (~ abort_intercepted_expr _) => prove_not_intercept.
 Hint Extern 1 (~ abort_intercepted_stat _) => prove_not_intercept.
 Hint Extern 1 (~ abort_intercepted_prog _) => prove_not_intercept.
-
-Ltac prove_abort :=
-  solve [ assumption | (constructor; absurd_neg) ].
 
 Ltac abort_tactic L :=
   try subst; apply L;
@@ -737,15 +606,8 @@ Ltac run_select_ifres H :=
   | if_bool _ _ => constr:(if_bool_out)
   | if_string _ _ => constr:(if_string_out)
   | if_number _ _ => constr:(if_number_out)
-  | if_primitive _ _ => constr:(if_primitive_out)
+  | if_prim _ _ => constr:(if_prim_out)
   | if_spec _ _ => constr:(if_spec_out)
-  | if_spec_ter _ _ => constr:(if_spec_ter_out)
-  | if_success_spec _ _ => constr:(if_success_spec_out)
-  | if_value_spec _ _ => constr:(if_value_spec_out)
-  | if_prim_spec _ _ => constr:(if_prim_spec_out)
-  | if_bool_spec _ _ => constr:(if_bool_spec_out)
-  | if_number_spec _ _ => constr:(if_number_spec_out)
-  | if_string_spec _ _ => constr:(if_string_spec_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
   | if_success_or_return _ _ _ => constr:(if_success_or_return_out) 
   | ?x => run_select_extra T
@@ -918,40 +780,10 @@ Ltac run_post_core :=
     let s := fresh "s" in go H s
   | H: if_number_post _ _ _ |- _ =>
     let m := fresh "m" in go H m
-  | H: if_primitive_post _ _ _ |- _ =>
-    let m := fresh "m" in go H m
   | H: if_spec_post _ _ _ |- _ =>
     let o := fresh "o" in let Er' := fresh "Er" in 
     let S := fresh "S" in let a := fresh "a" in
     destruct H as [(o&Er&Er'&Ab)|(S&a&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_spec_ter_post _ _ _ |- _ =>
-    let S := fresh "S" in let a := fresh "a" in
-    destruct H as [(Er&Ab)|(S&a&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_success_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let rv := fresh "rv" in
-    destruct H as [(Er&Ab)|(S&rv&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_value_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let v := fresh "v" in
-    destruct H as [(Er&Ab)|(S&v&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_prim_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let w := fresh "w" in
-    destruct H as [(Er&Ab)|(S&w&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_bool_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let b := fresh "b" in
-    destruct H as [(Er&Ab)|(S&b&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_number_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let n := fresh "n" in
-    destruct H as [(Er&Ab)|(S&n&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  | H: if_string_spec_post _ _ _ |- _ =>
-    let S := fresh "S" in let s := fresh "s" in
-    destruct H as [(Er&Ab)|(S&s&O1&H)];
     [ try abort | try subst_hyp O1 ]
   | H: if_any_or_throw_post _ _ _ _ |- _ =>
     let R := fresh "R" in

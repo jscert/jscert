@@ -2087,24 +2087,24 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
 
 (* Daniele: TODO.  *)
 Definition run_stat_switch runs S C rv labs e sb : result :=
-  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
+  if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
       match sb with 
       (* no-default case *)
       | switchbody_nodefault scs =>
           match scs with 
-          | nil => (out_ter S1 resvalue_empty) (* dummy output *)
+          | nil => (res_ter S1 resvalue_empty) (* dummy output *)
           | (switchclause_intro e1 ts)::scs => 
-              if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v2 =>
+              if_spec (run_expr_get_value runs S C e1) (fun S1 v2 =>
                 Let b := strict_equality_test v1 v2 in 
                   if b then 
                     if_ter (run_block runs S C ts) (fun S2 R =>
-                      (out_ter S1 resvalue_empty) (* dummy output *)
+                      (res_ter S1 resvalue_empty) (* dummy output *)
                     )
                   else 
-                    (out_ter S1 resvalue_empty) (* summy output *)
+                    (res_ter S1 resvalue_empty) (* summy output *)
               )
           end
-      | switchbody_withdefault scs1 ts1 scs2 => (out_ter S1 resvalue_empty)
+      | switchbody_withdefault scs1 ts1 scs2 => (res_ter S1 resvalue_empty)
       end
   ).
 (* --- *)
