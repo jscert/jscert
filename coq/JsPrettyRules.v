@@ -1673,23 +1673,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
-(* Daniele: old -- delete after double-checking fix (below) :
 
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
       red_spec S C (spec_object_get_prop l x) y1 ->
       red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
       red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S (attributes_accessor_of Aa))) o
-
       (* According to the spec, it should be every cases that are not [attributes_data_of].  
         There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
-*)
-
-  | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw D Aa y1 o, (* Step 4 *)
-      (D = full_descriptor_undef) \/  (D = (attributes_accessor_of Aa)) ->
-      red_spec S C (spec_object_get_prop l x) y1 ->
-      red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
-      red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S D)) o
-
 
   | red_spec_object_put_4_accessor : forall S0 S C vsetter lfsetter vthis l x v throw Aa o1 o, (* Step 5 *)
       vsetter = attributes_accessor_set Aa ->
@@ -1699,12 +1689,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S0 C (spec_object_put_4 vthis l x v throw (dret S (attributes_accessor_of Aa))) o
 
+(* Daniele: old. see fix below.
   | red_spec_object_put_4_not_accessor_object : forall S0 S C (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
       Desc = descriptor_intro_data v true true true ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S0 C (spec_object_put_4 lthis l x v throw (dret S (attributes_data_of Ad))) o
       (* According to the spec, it should be every cases that are not [attributes_accessor_of].  There thus (unless it's not possible?) lacks a case there:  [full_descriptor_undef]. -- Martin *)
+*)
+
+  | red_spec_object_put_4_not_accessor_object : forall S0 S C D (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
+      (D = full_descriptor_undef) \/  (D = (attributes_data_of Ad)) ->
+      Desc = descriptor_intro_data v true true true ->
+      red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
+      red_expr S C (spec_object_put_5 o1) o ->
+      red_expr S0 C (spec_object_put_4 lthis l x v throw (dret S D)) o
+
+
 
   | red_spec_object_put_4_not_accessor_prim : forall S0 S C (wthis:prim) l x v throw Ad o, (* Step 6, for prim values *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
