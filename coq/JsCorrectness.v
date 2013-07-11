@@ -482,6 +482,78 @@ Proof. skip.
 *)
 Qed.
 
+(* TODO
+Definition if_spec_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S a, y = specret_val S a /\ K S a = o).
+
+Lemma if_spec_spec_out : forall T (W : specres T) K o,
+  if_spec W K = o ->
+  exists y, W = result_some y /\ if_spec_spec_post K o y.
+Proof.
+(* TODO
+  introv H. destruct W as [sp| | |]; tryfalse.
+  destruct (result_some sp)
+  destruct sp; [right* | left]. simpls. eexists. splits~.
+  forwards*: if_abort_out H.
+*)
+skip.
+Qed.
+
+Definition if_success_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (rv : resvalue), o = out_ter S rv /\ K S rv = result_some y).
+
+Lemma if_success_spec_out : forall T W K (y : specret T),
+  if_success_spec W K = result_some y ->
+  exists (o : out), W = o /\ if_success_spec_post K y o.
+Admitted.
+
+Definition if_value_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (v : value), o = out_ter S v /\ K S v = result_some y).
+
+Lemma if_value_spec_out : forall T W K (y : specret T),
+  if_value_spec W K = result_some y ->
+  exists (o : out), W = o /\ if_value_spec_post K y o.
+Admitted.
+
+Definition if_prim_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (w : prim), o = out_ter S w /\ K S w = result_some y).
+
+Lemma if_prim_spec_out : forall T W K (y : specret T),
+  if_prim_spec W K = result_some y ->
+  exists (o : out), W = o /\ if_prim_spec_post K y o.
+Admitted.
+
+Definition if_bool_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (b : bool), o = out_ter S b /\ K S b = result_some y).
+
+Lemma if_bool_spec_out : forall T W K (y : specret T),
+  if_bool_spec W K = result_some y ->
+  exists (o : out), W = o /\ if_bool_spec_post K y o.
+Admitted.
+
+Definition if_number_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (n : number), o = out_ter S n /\ K S n = result_some y).
+
+Lemma if_number_spec_out : forall T W K (y : specret T),
+  if_number_spec W K = result_some y ->
+  exists (o : out), W = o /\ if_number_spec_post K y o.
+Admitted.
+
+Definition if_string_spec_post T K (y:specret T) o :=
+     (y = specret_out o /\ abort o)
+  \/ (exists S, exists (s : string), o = out_ter S s /\ K S s = result_some y).
+
+Lemma if_string_spec_out : forall T W K (y : specret T),
+  if_string_spec W K = result_some y ->
+  exists (o : out), W = o /\ if_string_spec_post K y o.
+Admitted.
+*)
 
 (* proofs of old monadic lemmas, might be useful
 Lemma if_success_out : forall res K S R,
@@ -597,16 +669,26 @@ Ltac run_select_extra T := fail.
 
 Ltac run_select_ifres H :=
   match type of H with ?T = _ => match T with
-  | if_ter _ _ => constr:(if_ter_out)
-  | if_success _ _ => constr:(if_success_out)
-  | if_value _ _ => constr:(if_value_out)
-  | if_void _ _ => constr:(if_void_out)
-  | if_break _ _ => constr:(if_break_out)
-  | if_object _ _ => constr:(if_object_out)
-  | if_bool _ _ => constr:(if_bool_out)
-  | if_string _ _ => constr:(if_string_out)
-  | if_number _ _ => constr:(if_number_out)
-  | if_prim _ _ => constr:(if_prim_out)
+  | @if_ter nothing _ _ => constr:(if_ter_out)
+  | @if_success nothing _ _ => constr:(if_success_out)
+  | @if_value nothing _ _ => constr:(if_value_out)
+  | @if_void nothing _ _ => constr:(if_void_out)
+  | @if_break nothing _ _ => constr:(if_break_out)
+  | @if_object nothing _ _ => constr:(if_object_out)
+  | @if_bool nothing _ _ => constr:(if_bool_out)
+  | @if_string nothing _ _ => constr:(if_string_out)
+  | @if_number nothing _ _ => constr:(if_number_out)
+  | @if_prim nothing _ _ => constr:(if_prim_out)
+  | if_ter _ _ => constr:(if_ter_spec)
+  | if_success _ _ => constr:(if_success_spec)
+  | if_value _ _ => constr:(if_value_spec)
+  | if_void _ _ => constr:(if_void_spec)
+  | if_break _ _ => constr:(if_break_spec)
+  | if_object _ _ => constr:(if_object_spec)
+  | if_bool _ _ => constr:(if_bool_spec)
+  | if_string _ _ => constr:(if_string_spec)
+  | if_number _ _ => constr:(if_number_spec)
+  | if_prim _ _ => constr:(if_prim_spec)
   | if_spec _ _ => constr:(if_spec_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
   | if_success_or_return _ _ _ => constr:(if_success_or_return_out) 
@@ -888,7 +970,7 @@ Ltac run_step Red :=
   match Red with ltac_wild => idtac | _ =>
     let o := run_get_current_out tt in
     run_apply Red o1 R1;
-    try (run_check_current_out o; run_post; run_inv)
+    try (run_check_current_out o; run_post; run_inv; try assumption)
   end.
 
 (** [run_step_using Red Lem] combines [run_pre], 
@@ -906,7 +988,7 @@ Ltac run_step_using Red Lem :=
   match Red with ltac_wild => idtac | _ =>
     let o := run_get_current_out tt in
     run_apply Red o1 R1;
-    try (run_check_current_out o; run_post; run_inv)
+    try (run_check_current_out o; run_post; run_inv; try assumption)
   end.
 
 (** [run_simpl] is intended for simplyfing simple monads
@@ -1276,7 +1358,7 @@ Proof.
   run red_spec_object_put_1_default using object_can_put_correct. cases_if.
    run red_spec_object_put_2_true. let_name.
     asserts follows_correct: (forall o, True ->
-        follow tt = o ->
+        follow tt = res_out o ->
         red_expr S0 C (spec_object_put_3 vthis l x v str (specret_val S2 a)) o).
       clear HR. introv N E. substs. 
 (* TODO:
@@ -1410,7 +1492,7 @@ Proof.
    clear HR. introv EQ HR. subst M.
    asserts: (ref_is_property r). unfolds. destruct* EQ.
    lets (v&Ev): ref_kind_base_object_inv EQ. rewrite Ev in HR.
-   unfolds ref_has_primitive_base. case_if.  
+   unfolds ref_has_primitive_base. case_if.
      run* red_spec_ref_get_value_ref_b using prim_value_get_correct. case_if*. 
       applys* red_spec_ref_get_value_ref_b_1.
      destruct EQ; tryfalse. destruct v as [|l]; tryfalse.
