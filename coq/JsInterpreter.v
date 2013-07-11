@@ -1634,7 +1634,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
   Let convert_twice_string :=
     convert_twice' (@if_string (string * string)) conv_string in
 
-  match op with
+  match op return result with
 
   | binary_op_add =>
     convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>

@@ -5,12 +5,8 @@
 
 Daniele: hide commented stuff in JsPreliminary.
 
-1) someone (who?) please fix the rules of 8.12.5 in pretty rules
- 2) whoever is working on the code for "switch", what's the status? Alan might double check the code
- 3) has red_javascript_intro been checked and is ready to go?
-4) Alan, did the delete function for arg_obj worked?
- 5) I'm going to go over all the TODOs to see if we have questions
- 6) we'll need a regexp to remove all LATER and TODO for the release
+2) whoever is working on the code for "switch", what's the status?
+6) we'll need a regexp to remove all LATER and TODO for the release
 7) For Alan: handle all the TODOs in the files (except Shared & Correctness).
 
 ====================
@@ -28,10 +24,7 @@ red_spec_object_put_4_not_accessor_prim
 
 Arthur:
 
-Definition object_default_value
 
-get_own_property ==> new proof needed
-  
 
 object_default_value_correct
 
