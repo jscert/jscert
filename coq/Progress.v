@@ -26,20 +26,14 @@ Waiting for fixes:
 Arthur:
 
 run_binary_op_correct
-spec_equal.
 run red_expr_delete
-run_block preuve
 run_elements preuve
 
 ====================
 
 Martin:
 
-
-
-run_block code
-run_elements code
---switch--> code & proof
+--switch--> code (half done) & proof
 
 
 ============================================================================

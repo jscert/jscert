@@ -3028,9 +3028,12 @@ Theorem runs_correct : forall num,
   runs_type_correct (runs num).
 Proof.
   induction num.
-   constructors; try solve [unfolds~ (* Temporary, to remove [True] properties *)];
-     introv H; inverts H; introv P; inverts P.
+   constructors; 
+     try (introv M; inverts M; introv P; inverts P).
    (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
+skip. (* TODO MARTIN: *)
+skip.
+skip.
    constructors.
      apply~ run_expr_correct.
      apply~ run_stat_correct.
@@ -3044,6 +3047,9 @@ Proof.
      skip. (* TODO MARTIN:  Use run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
      apply~ run_equal_correct.
+
+skip.
+skip.
 Qed.
 
 Theorem run_javascript_correct : forall runs p o,

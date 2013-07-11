@@ -452,12 +452,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_switch_1_nodefault : forall S S0 C vi o o1 scs labs, 
       red_stat S C (stat_switch_nodefault_1 vi resvalue_empty scs) o1 ->
       red_stat S C (stat_switch_2 o1 labs) o ->
-      red_stat S C (stat_switch_1 (ret S0 vi) labs (switchbody_nodefault scs)) o
+      red_stat S0 C (stat_switch_1 (ret S vi) labs (switchbody_nodefault scs)) o
 
   | red_stat_switch_1_default: forall S S0 C o o1 vi scs1 scs2 ts1 labs, 
       red_stat S C (stat_switch_default_A_1 false vi resvalue_empty scs1 ts1 scs2) o1 ->
       red_stat S C (stat_switch_2 o1 labs) o ->
-      red_stat S C (stat_switch_1 (ret S0 vi) labs (switchbody_withdefault scs1 ts1 scs2)) o
+      red_stat S0 C (stat_switch_1 (ret S vi) labs (switchbody_withdefault scs1 ts1 scs2)) o
 
   | red_stat_switch_2_break : forall S S0 C R rv lab labs, (* step 3 *)
       R = res_intro restype_break rv lab ->
@@ -511,6 +511,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_switch_nodefault_6_abrupt : forall S C R R' scs rv, 
       ~ res_is_normal R ->
+      res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       R' = (res_overwrite_value_if_empty rv R) ->
       red_stat S C (stat_switch_nodefault_6 rv (out_ter S R) scs) (out_ter S R')
 
@@ -570,16 +571,16 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_switch_default_A_3_false : forall S C b vi rv scs ts ts1 scs2 o,  
       red_stat S C (stat_switch_default_A_1 b vi rv scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 false b vi rv ts scs ts1 scs2) o 
+      red_stat S C (stat_switch_default_A_3 false b vi rv ts scs ts1 scs2) o (* TODO:  According to the rules, [b] can only be [false] there:  are you sure it should really be there? *)
 
   | red_stat_switch_default_A_3_true : forall S C b vi rv scs ts ts1 scs2 o,  
       red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 true b vi rv ts scs ts1 scs2) o 
+      red_stat S C (stat_switch_default_A_3 true b vi rv ts scs ts1 scs2) o (* TODO:  According to the rules, [b] can only be [false] there:  are you sure it should really be there? *)
 
   | red_stat_switch_default_A_4 : forall S C o1 rv ts scs ts1 scs2 o vi,  
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_default_A_5 o1 true vi scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o
+      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o (* TODO:  What's the point if this [true] if there is no [false] branch?  Same question for the [rv]. *)
 
   | red_stat_switch_default_A_5 : forall S C vi rv scs scs2 ts1 o, 
       red_stat S C (stat_switch_default_A_1 true vi rv scs ts1 scs2) o ->
@@ -620,7 +621,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_switch_default_5 : forall S C o o1 ts vi rv scs,  
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_default_6 o1 scs) o ->
-      red_stat S C (stat_switch_default_5 vi rv ts scs) o 
+      red_stat S C (stat_switch_default_5 vi rv ts scs) o (* TODO:  What is the use of this [vi] and [rv]?  Can't we remove them? *)
 
   | red_stat_switch_default_6 : forall S C o rv scs, 
       red_stat S C (stat_switch_default_7 rv scs) o ->
@@ -642,6 +643,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_switch_default_8_abrupt : forall S C R scs rv, 
       ~ res_is_normal R ->
+      res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       red_stat S C (stat_switch_default_8 (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
 
   (** Labelled statement (12.12) 
