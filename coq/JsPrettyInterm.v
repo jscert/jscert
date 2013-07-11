@@ -169,8 +169,8 @@ Inductive ext_expr :=
   (* todo *)
   | spec_object_get : value -> prop_name -> ext_expr
   | spec_object_get_1 : builtin_get -> value -> object_loc -> prop_name -> ext_expr
-  | spec_object_get_2 : object_loc -> object_loc -> specret full_descriptor -> ext_expr
-  | spec_object_get_3 : object_loc -> object_loc -> value -> ext_expr
+  | spec_object_get_2 : value -> specret full_descriptor -> ext_expr
+  | spec_object_get_3 : value -> value -> ext_expr
 
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
   | spec_object_can_put_1 : builtin_can_put -> object_loc -> prop_name -> ext_expr
@@ -854,8 +854,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_object_get _ _ => None
   | spec_object_get_1 _ _ _ _ => None
-  | spec_object_get_2 _ _ y => out_of_specret y
-  | spec_object_get_3 _ _ _ => None
+  | spec_object_get_2 _ y => out_of_specret y
+  | spec_object_get_3 _ _ => None
 
   | spec_object_can_put _ _ => None
   | spec_object_can_put_1 _ _ _ => None
