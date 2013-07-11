@@ -2991,6 +2991,7 @@ Lemma object_proto_is_prototype_of_correct : forall runs,
     (object_proto_is_prototype_of runs).
 Admitted. (* Part of libraries: postponed for now *)
 
+
 Lemma run_equal_correct : forall runs,
   runs_type_correct runs ->
   follow_equal (run_equal runs).
@@ -2998,36 +2999,30 @@ Proof.
   intros runs IH S C v1 v2 o R. unfolds in R. let_simpl.
   apply~ red_spec_equal. cases_if.
    run_inv. rewrite e. apply~ red_spec_equal_1_same_type.
-Axiom red_spec_equal_1_diff_type : forall S C v1 v2 ty1 ty2 ext o,
-      ext =  
-        (If ty1 = type_null /\ ty2 = type_undef then (spec_equal_2 true)
-        else If ty1 = type_undef /\ ty2 = type_null then (spec_equal_2 true)
-        else If ty1 = type_number /\ ty2 = type_string then (spec_equal_3 v1 spec_to_number v2)
-        else If ty1 = type_string /\ ty2 = type_number then (spec_equal_3 v2 spec_to_number v1)
-        else If ty1 = type_bool then (spec_equal_3 v2 spec_to_number v1)
-        else If ty2 = type_bool then (spec_equal_3 v1 spec_to_number v2)
-        else If (ty1 = type_string \/ ty1 = type_number) /\ ty2 = type_object then (spec_equal_3 v1 spec_to_primitive_auto v2)
-        else If ty1 = type_object /\ (ty2 = type_string \/ ty2 = type_number) then (spec_equal_3 v2 spec_to_primitive_auto v1)
-        else (spec_equal_2 false)) ->
-      red_expr S C ext o ->
-      red_expr S C (spec_equal_1 ty1 ty2 v1 v2) o.
    apply~ red_spec_equal_1_diff_type. let_name.
-   asserts dc_conv_correct: (forall v1 F Ext v2 o,
-     (forall S C v o, F S v = o -> red_expr S C (Ext v) o) ->
+   asserts dc_conv_correct: (forall v1 F Ext v2 o,   
      dc_conv v1 F v2 = res_out o ->
+     (forall S v o, F S v = o -> red_expr S C (Ext v) o) ->
      red_expr S C (spec_equal_3 v1 Ext v2) o).
-     clear R. introv Cor E. substs. run red_spec_equal_3_convert_and_recurse.
+     clear R. introv E Cor. substs. run red_spec_equal_3_convert_and_recurse.
        run_inv. apply* Cor.
-     run_hyp. match goal with H: _ = _ |- _ => rewrite H end. (* Unnamed hypothesis. *)
-     apply~ red_spec_equal_4_recurse.
-   clear EQdc_conv. cases_if.
-     cases_if. run_inv. apply~ red_spec_equal_2_return. false*.
-   cases_if.
-     cases_if. run_inv. apply~ red_spec_equal_2_return. false*.
-   cases_if in R as D. rewrite decide_def in D.
-     false. cases_if as D1. destruct D1 as [() ()]; false*.
-   cases_if; cases_if in R.
-Admitted. (* Arthur:  Can you look at this proof, see if we could automate it? *)
+     run_hyp. apply~ red_spec_equal_4_recurse.
+   clear EQdc_conv.
+  Ltac eqcas R :=
+     match type of R with context [ ifb ?P then _ else _ ] =>
+       let x := fresh "x" in set (x := P) in * end;
+     case_if in R as C; [ rewrite If_l; try assumption
+                        | rewrite If_r; try assumption ].
+   eqcas R. run_inv. applys red_spec_equal_2_return.
+   eqcas R. run_inv. applys red_spec_equal_2_return.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_primitive_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_primitive_correct E.
+   run_inv. applys red_spec_equal_2_return.
+Admitted. (* faster *)
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).

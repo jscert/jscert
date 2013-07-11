@@ -1608,7 +1608,9 @@ Definition run_equal runs S C v1 v2 : result :=
         runs_type_equal runs S0 C v1 v2') in
     let so b : result :=
       out_ter S b in
-    ifb (ty1 = type_null \/ ty1 = type_undef) /\ (ty2 = type_null \/ ty2 = type_undef) then
+    ifb (ty1 = type_null /\ ty2 = type_undef) then 
+      so true
+    else ifb (ty1 = type_undef /\ ty2 = type_null) then
       so true
     else ifb ty1 = type_number /\ ty2 = type_string then
       dc_conv v1 conv_number v2
