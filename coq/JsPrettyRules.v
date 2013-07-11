@@ -1,9 +1,5 @@
 Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux JsSyntaxInfos JsInit.
 
-(* TODO: move *)
-
-Definition vret := ret (T:=value).
-Definition dret := ret (T:=full_descriptor).
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
@@ -62,6 +58,12 @@ Implicit Type sb : switchbody.
 Implicit Type sc : switchclause.
 (*Implicit Type scs : list switchclause.*)
 
+
+(**************************************************************)
+(** Shorthand **)
+
+Definition vret := ret (T:=value).
+Definition dret := ret (T:=full_descriptor).
 
 
 (**************************************************************)
@@ -434,7 +436,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_with_1 t2 (vret S l)) o
 
   (** Switch statement (12.11) *)
-(*!!!TODO : read ARTHUR!!!*)
+
   | red_stat_switch : forall S C e o sb labs y1,
       red_spec S C (spec_expr_get_value e) y1 ->
       red_stat S C (stat_switch_1 y1 labs sb) o ->
@@ -1120,7 +1122,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ~ (type_of v1 = type_string \/ type_of v2 = type_string) ->
       red_spec S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2)) y1 ->
       red_expr S C (expr_puremath_op_1 JsNumber.add y1) o ->
-      (* TODO: maybe we could go more directly to "expr_binary_op_3 JsNumber.add" *)
+      (* LATER: maybe we could go more directly to "expr_binary_op_3 JsNumber.add" *)
       red_expr S0 C (expr_binary_op_add_1 (ret S (v1,v2))) o
 
   (** Binary op : pure maths operations (11.5) *)
@@ -1379,7 +1381,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Special function *)
 
-  (* TODO: see if useful *)
+  (* LATER: see if useful *)
   | red_spec_returns : forall S C o,
       red_expr S C (spec_returns o) o
 
@@ -1387,8 +1389,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Conversions (9) *)
 
-  (* TODO:  spec_to_primitive_auto *)
-  (* TODO:  spec_prim_new_object *)
+  (* LATER:  spec_to_primitive_auto *)
+  (* LATER:  spec_prim_new_object *)
 
   (** Conversion to primitive (returns prim) (9.1) *)
 
@@ -1568,7 +1570,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   
   (** Get (8.12.3) and (8.7.1)
       Note: rules are generalized so as to also handle the Put method on primitive values *)
-  (* TODO_ARTHUR: Maybe it'd be bettter not to factorize the two sets of rules...
+  (* LATER: Maybe it'd be bettter not to factorize the two sets of rules...
            but copy-pasting is really ugly though.. *)
 
   | red_spec_object_get_1_default : forall S C vthis l x y1 o, (* Step 1 *)
@@ -1611,7 +1613,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_can_put_2_undef : forall S0 S C l x o lproto, (* Step 3 *)
       object_proto S l lproto ->
-      red_expr S C (spec_object_can_put_4 l x lproto) o -> (* Isn't there any [spec_object_can_put_3]? *)
+      red_expr S C (spec_object_can_put_4 l x lproto) o ->
       red_expr S0 C (spec_object_can_put_2 l x (ret S full_descriptor_undef)) o
 
   | red_spec_object_can_put_4_null : forall S C l x b, (* Step 4 *)
@@ -1644,7 +1646,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_can_put_6 Ad true) (out_ter S b)
 
   (** Put (8.12.5) and (8.7.2)
-      TODO_ARTHUR::=>
       Note: rules are generalized so as to also handle the Put method on primitive values *)
 
   | red_spec_object_put_1_default : forall S C vthis l x v throw o1 o, (* Step 1 *)
@@ -1673,23 +1674,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
-(* Daniele: old -- delete after double-checking fix (below) :
 
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
       red_spec S C (spec_object_get_prop l x) y1 ->
       red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
       red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S (attributes_accessor_of Aa))) o
-
       (* According to the spec, it should be every cases that are not [attributes_data_of].  
         There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
-*)
-
-  | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw D Aa y1 o, (* Step 4 *)
-      (D = full_descriptor_undef) \/  (D = (attributes_accessor_of Aa)) ->
-      red_spec S C (spec_object_get_prop l x) y1 ->
-      red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
-      red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S D)) o
-
 
   | red_spec_object_put_4_accessor : forall S0 S C vsetter lfsetter vthis l x v throw Aa o1 o, (* Step 5 *)
       vsetter = attributes_accessor_set Aa ->
@@ -1699,12 +1690,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S0 C (spec_object_put_4 vthis l x v throw (dret S (attributes_accessor_of Aa))) o
 
+(* Daniele: old. see fix below.
   | red_spec_object_put_4_not_accessor_object : forall S0 S C (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
       Desc = descriptor_intro_data v true true true ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S0 C (spec_object_put_4 lthis l x v throw (dret S (attributes_data_of Ad))) o
       (* According to the spec, it should be every cases that are not [attributes_accessor_of].  There thus (unless it's not possible?) lacks a case there:  [full_descriptor_undef]. -- Martin *)
+*)
+
+  | red_spec_object_put_4_not_accessor_object : forall S0 S C D (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
+      (D = full_descriptor_undef) \/  (D = (attributes_data_of Ad)) ->
+      Desc = descriptor_intro_data v true true true ->
+      red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
+      red_expr S C (spec_object_put_5 o1) o ->
+      red_expr S0 C (spec_object_put_4 lthis l x v throw (dret S D)) o
+
+
 
   | red_spec_object_put_4_not_accessor_prim : forall S0 S C (wthis:prim) l x v throw Ad o, (* Step 6, for prim values *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
@@ -2210,7 +2212,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_formal_params args L nil str) (out_void S)
 
   | red_spec_binding_inst_formal_params_non_empty : forall v args' S C args L x xs str o1 o, (* Steps 4d i - iii *)
-      (v,args') = (match args with nil => (undef,nil) | v::args' => (v,args') end) -> (* TODO_ARTHUr: rewrite in a simpler way *)
+      (v,args') = (match args with nil => (undef,nil) | v::args' => (v,args') end) -> 
       red_expr S C (spec_env_record_has_binding L x) o1 ->
       red_expr S C (spec_binding_inst_formal_params_1 args' L x xs str v o1) o ->
       red_expr S C (spec_binding_inst_formal_params args L (x::xs) str) o
@@ -2452,42 +2454,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      red_expr S C (spec_object_get (value_object lmap) x) o ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap (ret S0 (full_descriptor_some A))) o
 
-  (* Daniele: TODO*)
-  (* Arguments Object: GetOwnProperty (passes a fully-populated property descriptor to the continuation) (10.6) *) 
-(*
-  | red_spec_object_get_own_prop_args_obj : forall S C l x K o, (* Step 1 *)
-      red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x (spec_args_obj_get_own_prop_1 l x K)) o ->
-      red_expr S C (spec_object_get_own_prop_1 builtin_get_own_prop_args_obj l x K) o   
-
-  | red_spec_object_get_own_prop_args_obj_1_undef : forall S C l x K o, (* Step 2 *)
-      red_expr S C (K full_descriptor_undef) o ->
-      red_expr S C (spec_args_obj_get_own_prop_1 l x K full_descriptor_undef) o 
-
-  | red_spec_object_get_own_prop_args_obj_1_attrs : forall lmap S C l x K A o, (* Steps 3 - 4 *)
-      object_parameter_map S l (Some lmap) ->
-      red_spec S C (spec_object_get_own_prop lmap x) y ->
-      red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A y) o -> 
-      red_expr S C (spec_args_obj_get_own_prop_1 l x K (full_descriptor_some A)) o 
-
-  | red_spec_object_get_own_prop_args_obj_2_attrs : forall o1 S C l x K lmap A Amap o, (* Step 5 *)
-      red_expr S C (spec_object_get (value_object lmap) x) o1 ->
-      red_expr S C (spec_args_obj_get_own_prop_3 K A o1) o -> 
-      red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A (ret S0 (full_descriptor_some Amap))) o
-
-  | red_spec_object_get_own_prop_args_obj_3 : forall S C K Ad S' v o, (* Step 5 *)      
-      red_expr S' C (spec_args_obj_get_own_prop_4 K (attributes_data_with_value Ad v)) o -> 
-      red_expr S C (spec_args_obj_get_own_prop_3 K (attributes_data_of Ad) (out_ter S' v)) o
-      (* What happens if we have an accessor property descriptor? The spec assumes it is a data property descriptor. *)
-
-  | red_spec_object_get_own_prop_args_obj_2_undef : forall S C l x K lmap A o, (* Step 5 else *)
-      red_expr S C (spec_args_obj_get_own_prop_4 K A) o -> 
-      red_expr S C (spec_args_obj_get_own_prop_2 l x K lmap A (ret S0 full_descriptor_undef)) o  
-
-  | red_spec_object_get_own_prop_args_obj_4 : forall S C K A o, (* Step 6 *)
-      red_expr S C (K (full_descriptor_some A)) o ->
-      red_expr S C (spec_args_obj_get_own_prop_4 K A) o    
-*)
   (* Arguments Object: DefineOwnProperty (returns bool) (10.6) *)
+
   | red_spec_object_define_own_prop_args_obj : forall lmap S C l x Desc throw o (y:specret full_descriptor), (* Steps 1 - 2 *)
       object_parameter_map S l (Some lmap) ->
       red_spec S C (spec_object_get_own_prop lmap x) y ->
@@ -2824,8 +2792,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
       red_expr S' C (spec_creating_function_object_proto (spec_creating_function_object_1 str l) l o1) o ->
 *)
-
-(* TODO: what is this? *)            
 
   (** Shortcut: creates a new function object in the given execution context *)
   (* Daniele: [spec_creating_function_object] requires the function body as
@@ -3533,7 +3499,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Function built using Function.prototype.bind (15.3.4.5) *)
 
-   (** TODO: HasInstance, call, construct  *)
+   (** LATER: HasInstance, call, construct  *)
 
   (*------------------------------------------------------------*)
   (** ** Array builtin functions : LATER *)
@@ -3553,7 +3519,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Boolean builtin functions *)
 
-  (* TODO: check naming convention *)
+  (* LATER: check naming convention *)
 
   (** Boolean(value)  (returns object_loc)  (15.6.1) *)
 
@@ -4057,7 +4023,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_object_get_own_prop l x) y
 
   | red_spec_object_get_own_prop_1_default : forall S C l x P Ao (y:specret descriptor), (* Beginning of steps 1 and 3 *)
-      object_properties S l P -> (* TODO: combine this line and the next one using an auxiliary def *)
+      object_properties S l P -> (* LATER: combine this line and the next one using an auxiliary def *)
       Ao = Heap.read_option P x ->
       red_spec S C (spec_object_get_own_prop_2 l x Ao) y ->
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y  
@@ -4154,7 +4120,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_expr_get_value_1 o1) y ->
       red_spec S C (spec_expr_get_value e) y
 
-  | red_spec_expr_get_value_1 : forall S0 S C rv o (y:specret value),
+  | red_spec_expr_get_value_1 : forall S0 S C rv (y:specret value),
       red_spec S C (spec_get_value rv) y ->
       red_spec S0 C (spec_expr_get_value_1 (out_ter S rv)) y
 

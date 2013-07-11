@@ -1,7 +1,6 @@
 Set Implicit Arguments.
 Require Export JsPreliminary JsPreliminaryAux.
 
-(* TODO: (re)move *)
 
 Coercion JsNumber.of_int : Z >-> JsNumber.number.
 
@@ -70,7 +69,7 @@ Definition attrib_constant v :=
 
 Notation "'attrib_native'" := prop_attributes_for_global_object.
 
-(* TODO: might not need the above two notations *)
+(* LATER: might not need the above two notations *)
 
 (** Builds an object with all optional fields to None
     and with extensible set to true *)
@@ -285,10 +284,10 @@ Definition object_prealloc_function_proto :=
   let P := Heap.empty in
   let P := write_native P "constructor" prealloc_function in
   let P := Heap.write P "length" (attrib_constant 0) in (* todo: can we use write_constant? *)
-  (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* TODO *)
-  (* let P := write_native P "apply" prealloc_function_proto_apply in *) (* TODO *)
-  (* let P := write_native P "call" prealloc_function_proto_call in *) (* TODO *)
-  (* let P := write_native P "bind" prealloc_function_proto_bind in *) (* TODO *)
+  (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* LATER *)
+  (* let P := write_native P "apply" prealloc_function_proto_apply in *) (* LATER *)
+  (* let P := write_native P "call" prealloc_function_proto_call in *) (* LATER *)
+  (* let P := write_native P "bind" prealloc_function_proto_bind in *) (* LATER *)
   (* LATER: complete list *)
 
   (* Daniele: why this construct here and not the usual (see other builtins), i.e. just 
@@ -315,7 +314,7 @@ Definition object_prealloc_number :=
   let P := write_constant P "POSITIVE_INFINITY" JsNumber.infinity in
   let P := write_constant P "MAX_VALUE" JsNumber.max_value in
   let P := write_constant P "MIN_VALUE" JsNumber.min_value in
-  (* TODO: complete list *)
+  (* LATER: complete list *)
   object_create_prealloc_constructor prealloc_number 1 P.
 
 
@@ -368,7 +367,7 @@ Definition object_prealloc_bool :=
   let P := Heap.empty in
   (*let P := write_native P "prototype" prealloc_bool_proto in*) (* Daniele: replaced by the following, as the spec says "prototype" has writable, enumerable and configurable all FALSE. *)
   let P := write_constant P "prototype" prealloc_bool_proto in
-  (* TODO: complete list *)
+  (* LATER: complete list *)
   object_create_prealloc_constructor prealloc_bool 1 P.
 
 
@@ -395,28 +394,28 @@ Definition bool_proto_value_of_function_object :=
 (**************************************************************)
 (** Math object *)
 
-(* TODO *)
+(* LATER *)
 
 
 (**************************************************************)
 (** Date object *)
 
-(* TODO *)
+(* LATER *)
 
 (**************************************************************)
 (** Date prototype *)
 
-(* TODO *)
+(* LATER *)
 
 (**************************************************************)
 (** RegExp object *)
 
-(* TODO *)
+(* LATER *)
 
 (**************************************************************)
 (** RegExp prototype object *)
 
-(* TODO *)
+(* LATER *)
 
 
 (**************************************************************)
@@ -439,7 +438,7 @@ Definition object_prealloc_error_proto :=
   let P := write_native P "name" (prim_string "Error") in   
   let P := write_native P "message" (prim_string "") in   
   let P := write_native P "toString" prealloc_error_proto_to_string in   
-  (* TODO: the spec does not talk about valueOf, is it intended? *)
+  (* LATER: the spec does not talk about valueOf, is it intended? *)
   object_create_builtin prealloc_object_proto "Error" P.
 
 Definition error_proto_to_string_function_object :=
@@ -620,7 +619,7 @@ Definition env_record_heap_initial :=
 
 
 (**************************************************************)
-(** TODO: remove this once Heap representation is fixed *)
+(** LATER: remove this once Heap representation is fixed *)
 
 CoFixpoint all_locations (k:nat) : stream nat :=
   stream_intro k (all_locations (S k)).

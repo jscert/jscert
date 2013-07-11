@@ -1345,14 +1345,14 @@ Lemma object_get_builtin_correct : forall runs S C B (vthis:object_loc) l x o,
   red_expr S C (spec_object_get_1 B vthis l x) o.
 Proof.
   introv IH HR. unfolds in HR. destruct B; tryfalse.
-  run red_spec_object_get_1_default. destruct a as [|[Ad|Aa]].
+  (*run red_spec_object_get_1_default. destruct a as [|[Ad|Aa]].
     run_inv. applys* red_spec_object_get_2_undef.
     run_inv. applys* red_spec_object_get_2_data.
     applys red_spec_object_get_2_accessor. 
      destruct (attributes_accessor_get Aa); tryfalse.
        destruct p; tryfalse. run_inv.
         applys* red_spec_object_get_3_accessor_undef.
-       applys* red_spec_object_get_3_accessor_object. run_hyp*.
+       applys* red_spec_object_get_3_accessor_object. run_hyp*.*)
 Admitted. (* faster *)
 
 Lemma run_object_get_correct : forall runs S C l x o,
@@ -1662,7 +1662,11 @@ Lemma object_put_correct : forall runs S C l x v str o,
   runs_type_correct runs ->
   object_put runs S C l x v str = o ->
   red_expr S C (spec_object_put l x v str) o.
-Admitted. (* TODO NOW *)
+Proof.
+  introv IH HR. unfolds in HR.
+  run. applys red_spec_object_put. apply* run_object_method_correct.
+  applys* object_put_complete_correct.
+Admitted. (*faster*)
 
 Lemma env_record_set_mutable_binding_correct : forall runs S C L x v str o,
   runs_type_correct runs ->
@@ -1682,17 +1686,59 @@ Proof.
     applys~ object_put_correct HR.
 Qed.
 
+
+Lemma ref_is_property_from_not_unresolvable_value : forall r v,
+  ~ ref_is_unresolvable r ->
+  ref_base r = ref_base_type_value v ->
+  ref_is_property r.
+Proof.
+  introv N E. unfolds ref_is_property, ref_is_unresolvable, ref_kind_of.
+  destruct (ref_base r); tryfalse. destruct* v0. destruct* p.
+Admitted. (* faster *)
+
 Lemma ref_put_value_correct : forall runs S C rv v o,
   runs_type_correct runs ->
   ref_put_value runs S C rv v = o ->
   red_expr S C (spec_put_value rv v) o.
-Admitted. (* TODO NOW *)
+Proof.
+  introv IH HR. unfolds in HR.
+  destruct rv; tryfalse.
+  applys* red_spec_ref_put_value_value. applys* run_error_correct.
+  case_if. 
+    case_if.
+      applys~ red_spec_ref_put_value_ref_a_1. applys* run_error_correct.
+      applys~ red_spec_ref_put_value_ref_a_2. applys* object_put_correct.
+    cases (ref_base r).
+      skip. (*
+      applys* red_spec_ref_put_value_ref_b.
+        applys* ref_is_property_from_not_unresolvable_value.
+         case_if as HC.
+           inverts HC. destruct v0.
+             skip.
+             unfolds ref_kind_of. destruct (ref_base r); tryfalse.
+              destruct v0; tryfalse.
+           destruct v0. 
+             unfold ref_has_primitive_base, ref_kind_of in HC.
+             unfold ref_is_unresolvable, ref_kind_of in n.
+              rewrite Eq in HC, n. destruct p; simpls; tryfalse.
+        *)
+        (* TODO NOW: change the rules or the interpreter *)
+      applys* red_spec_ref_put_value_ref_c.
+        applys* env_record_set_mutable_binding_correct.
+Admitted. (* faster *)
+
 
 Lemma run_expr_get_value_correct : forall runs S C e y,
   runs_type_correct runs -> 
   run_expr_get_value runs S C e = result_some y -> 
   red_spec S C (spec_expr_get_value e) y.
-Admitted. (* TODO NOW *)
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_expr_get_value.
+  applys* red_spec_expr_get_value_1. 
+   applys* ref_get_value_correct.
+Admitted. (* faster *)
+
 
 Ltac run_select_proj_extra_ref HT ::= 
   match HT with
@@ -1946,15 +1992,15 @@ Proof.
   let_simpl. applys* red_spec_creating_function_object_proto_2. run_hyp*.
 Admitted. (* faster *)
 
+
 Lemma creating_function_object_correct : forall runs S C names bd X str o,
   runs_type_correct runs ->
   creating_function_object runs S C names bd X str = o ->
   red_expr S C (spec_creating_function_object names bd X str) o.
 Proof.
   introv IH HR. unfolds in HR.  
-  let_simpl. let_simpl. let_simpl. let_name. destruct p as [l S1].
-  let_simpl. run* red_spec_creating_function_object. rewrite* EQp. 
-    skip. (*one bug*)
+  let_simpl. let_simpl. let_simpl. let_simpl. let_name. destruct p as [l S1].
+  let_simpl. run* red_spec_creating_function_object.  
   run red_spec_creating_function_object_1 
     using creating_function_object_proto_correct.
   case_if; destruct str; tryfalse.
@@ -2262,14 +2308,6 @@ Proof.
   (* other branch *) 
   applys* red_expr_call_3. apply* run_error_correct.
 Admitted. (*faster*)
-
-
-
-
-
-
-
-
 
 Ltac run_select_proj_extra_construct HT ::= 
   match HT with
