@@ -121,11 +121,6 @@ binary ops
 
 Martin:
 
-new program for prog_block
-
-new program for do_while
-
-
 Implementing the new stat_block, and code do_while, following while.
 
 Merging if_success* (in a branch)

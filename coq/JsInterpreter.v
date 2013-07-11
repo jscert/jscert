@@ -519,6 +519,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_call : state -> execution_ctx -> object_loc -> value -> list value -> result;
     runs_type_function_has_instance : state -> object_loc -> value -> result;
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
+    runs_type_stat_do_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
@@ -2133,7 +2134,7 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
     if b then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
         Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
-        let loop tt : result := runs_type_stat_while runs S2 C rv' labs e1 t2 in
+        Let loop := fun _ => runs_type_stat_while runs S2 C rv' labs e1 t2 in
         ifb res_type R <> restype_continue
              \/ ~ res_label_in R labs then (
            ifb res_type R = restype_break /\ res_label_in R labs then
@@ -2145,6 +2146,28 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
            )
         ) else loop tt)
     else out_ter S1 rv).
+
+Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
+  if_ter (runs_type_stat runs S C t2) (fun S1 R =>
+    Let rv' := ifb res_value R = resvalue_empty then rv else res_value R in
+    Let loop := fun _ =>
+      if_spec_ter (run_expr_get_value runs S1 C e1) (fun S2 v1 =>
+        Let b := convert_value_to_boolean v1 in
+          if b then
+            runs_type_stat_do_while runs S2 C rv' labs e1 t2
+          else res_ter S2 rv') in
+    ifb res_type R = restype_continue
+         /\ res_label_in R labs then
+      loop tt
+    else
+       ifb res_type R = restype_break /\ res_label_in R labs then
+          res_ter S1 rv'
+       else (
+          ifb res_type R <> restype_normal then
+            res_ter S1 R
+          else loop tt
+       )
+    ).
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=
   Let finally := fun S1 R =>
@@ -2259,7 +2282,7 @@ Definition run_stat runs S C t : result :=
     run_stat_if runs S C e1 t2 to
 
   | stat_do_while ls t1 e2 =>
-    result_not_yet_implemented (* TODO *)
+    runs_type_stat_do_while runs S C resvalue_empty ls e2 t1
 
   | stat_while ls e1 t2 =>
     runs_type_stat_while runs S C resvalue_empty ls e1 t2
@@ -2592,6 +2615,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_call := fun S _ _ _ _ => result_bottom S;
       runs_type_function_has_instance := fun S _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
+      runs_type_stat_do_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
@@ -2609,6 +2633,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_function_has_instance :=
         wrap run_function_has_instance;
       runs_type_stat_while := wrap run_stat_while;
+      runs_type_stat_do_while := wrap run_stat_do_while;
       runs_type_object_get_own_prop :=
         wrap run_object_get_own_prop;
       runs_type_object_get_prop :=
