@@ -3063,10 +3063,14 @@ Axiom red_spec_equal_1_diff_type : forall S C v1 v2 ty1 ty2 ext o,
        run_inv. apply* Cor.
      run_hyp. match goal with H: _ = _ |- _ => rewrite H end. (* Unnamed hypothesis. *)
      apply~ red_spec_equal_4_recurse.
-   clear EQdc_conv. repeat (cases_if~; repeat match goal with
-     H: ?A /\ ?B |- _ => destruct H end; run_inv; tryfalse;
-     try apply~ red_spec_equal_2_return).
-Qed.
+   clear EQdc_conv. cases_if.
+     cases_if. run_inv. apply~ red_spec_equal_2_return. false*.
+   cases_if.
+     cases_if. run_inv. apply~ red_spec_equal_2_return. false*.
+   cases_if in R as D. rewrite decide_def in D.
+     false. cases_if as D1. destruct D1 as [() ()]; false*.
+   cases_if; cases_if in R.
+Admitted. (* Arthur:  Can you look at this proof, see if we could automate it? *)
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).
