@@ -129,6 +129,7 @@ Definition follow_equal (run : state -> execution_ctx -> value -> value -> resul
     run S C v1 v2 = o ->
     red_expr S C (spec_equal v1 v2) o.
 
+(* TODO: inline definitions here in a readable way like at the end *)
 Record runs_type_correct runs :=
   make_runs_type_correct {
     runs_type_correct_expr : follow_expr (runs_type_expr runs);
@@ -148,8 +149,18 @@ Record runs_type_correct runs :=
     runs_type_correct_object_proto_is_prototype_of :
       follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs);
     runs_type_correct_equal :
-      follow_equal (runs_type_equal runs)
+      follow_equal (runs_type_equal runs);
+    runs_type_correct_block : forall runs S C ls o,
+      runs_type_block runs S C ls = o ->
+      red_stat S C (stat_block (rev ls)) o;
+    runs_type_correct_elements : True
+     (* TODO: add this forall runs S C ls o,
+      runs_type_elements runs S C ls = o ->
+      red_prog S C (prog_1 (rev ls)) o
+      *)
+
   }.
+
 
 
 (**************************************************************)
@@ -321,11 +332,11 @@ Qed.
 
 Definition if_success_state_post rv0 (K : _ -> _ -> result) o o1 :=
   (o1 = out_div /\ o = o1) \/
-  (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = out_ter S (res_value R)) \/
+  (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = out_ter S R) \/
   (exists S R, o1 = out_ter S R /\ res_type R <> restype_throw /\
     o = out_ter S (res_overwrite_value_if_empty rv0 R)) \/
   exists S rv, o1 = out_ter S (res_normal rv) /\
-    K S (res_value (res_overwrite_value_if_empty rv0 rv)) = res_out o.
+    K S (ifb rv = resvalue_empty then rv0 else rv) = res_out o.
 
 Lemma if_success_state_out : forall rv W K o,
   if_success_state rv W K = o ->
@@ -675,7 +686,7 @@ Definition if_object_spec_post T K (y:specret T) o :=
 Lemma if_object_spec : forall T W K (y : specret T),
   if_object W K = result_some y ->
   exists (o : out), W = o /\ if_object_spec_post K y o.
-Admitted.
+Admitted. (* NOW *)
 
 
 (* proofs of old monadic lemmas, might be useful
@@ -814,8 +825,11 @@ Ltac run_select_ifres H :=
   | if_void _ _ => constr:(if_void_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
   | if_success_or_return _ _ _ => constr:(if_success_or_return_out) 
+  | if_success_state _ _ _ => constr:(if_success_state_out) 
   | ?x => run_select_extra T
   end end.
+
+
 
 (* template:
 Ltac run_select_extra T ::=
@@ -847,6 +861,8 @@ Ltac run_select_proj H :=
   | runs_type_object_get_prop => constr:(runs_type_correct_object_get_prop)
   | runs_type_object_proto_is_prototype_of => constr:(runs_type_correct_object_proto_is_prototype_of) 
   | runs_type_equal => constr:(runs_type_correct_equal) 
+  | runs_type_block => constr:(runs_type_correct_block) 
+  | runs_type_elements => constr:(runs_type_correct_elements) 
   | ?x => run_select_proj_extra_error HT
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
@@ -1018,6 +1034,14 @@ Ltac run_post_core :=
      let o1 := fresh "o1" in let W1 := fresh "W1" in let O1 := fresh "O1" in 
      let E1 := fresh "E" in let E2 := fresh "E" in 
      destruct H as [(Er&Ab)|(S&R&O1&[(E1&E2&K)|[(E1&E2&K)|(E1&E2&K)]])];
+    [ try subst_hyp Er; try subst_hyp Ab; try abort
+    | try subst_hyp O1 | try subst_hyp O1 | try subst_hyp O1 ]
+  | H: if_success_state_post _ _ _ _ |- _ => 
+    (* LATER: improve the statement of the lemma *)
+     let S := fresh "S" in let R := fresh "R" in
+     let O1 := fresh "O1" in 
+     let E1 := fresh "E" in let E2 := fresh "E" in let rv := fresh "rv" in 
+     destruct H as [(Er&Ab)|[(S&R&O1&E1&H)|[(S&R&O1&E1&H)|(S&rv&O1&H)]]];
     [ try subst_hyp Er; try subst_hyp Ab; try abort
     | try subst_hyp O1 | try subst_hyp O1 | try subst_hyp O1 ]
   | |- _ => run_post_run_expr_get_value
@@ -1827,7 +1851,7 @@ Proof.
   clears S o. intros S o HR. simpls.
   applys* red_spec_object_default_value_4. 
   applys* run_error_correct.
-Admitted.
+Admitted. (* faster *)
 
 (** Conversions *)
 
@@ -2409,7 +2433,7 @@ red_prog_1_cons_funcdecl
 *)
 
 
-Admitted. 
+Admitted. (* NOW *)
 
 Lemma create_new_function_in_correct : forall runs S C args bd o,
   runs_type_correct runs ->
@@ -2668,7 +2692,7 @@ Proof.
           applys* red_expr_delete_1_ref_property.
            unfolds. unfold ref_kind_of. rewrite <- EQba.
            destruct v; [destruct p|]; tryfalse; eauto.
-         *) (* TODO:bug if ref_base r = null: nothing applies *) skip.
+         *) (* TODO NOW :bug if ref_base r = null: nothing applies *) skip.
     (* void *)
     run* red_expr_unary_op. applys red_expr_unary_op_1.  
      applys* red_expr_unary_op_void.
@@ -2692,7 +2716,7 @@ Proof.
     run red_expr_unary_op_bitwise_not. 
      (* TODO: spec_to_int32_correct. 
     applys* red_expr_unary_op_bitwise_not_1.*)
-    skip. skip.
+    skip. skip. (* TODO NOW *)
    (* not *)
    run* red_expr_unary_op. applys red_expr_unary_op_1.  
    forwards* M: red_spec_to_boolean a.
@@ -2734,7 +2758,7 @@ Proof.
     run red_expr_assign_1_simple.
     forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
 
-Admitted.
+Admitted. (* NOW verify *)
 
 
 (* Hints for automatically applying "run_hyp" in obvious cases *) 
@@ -2754,7 +2778,7 @@ Proof.
    run red_stat_var_decl_item_1. run red_stat_var_decl_item_2.
    applys* red_stat_var_decl_item_3.
   run_inv. applys* red_stat_var_decl_item_none.
-Qed.
+Admitted. (* faster *)
 
 Lemma run_var_decl_correct : forall runs S C ls o,
   runs_type_correct runs ->
@@ -2765,7 +2789,26 @@ Proof.
   simpls. run_inv. applys* red_stat_var_decl_nil.
   simpls. run red_stat_var_decl_cons using run_var_decl_item_correct.
    applys* red_stat_var_decl_1. 
-Qed.
+Admitted. (* faster *)
+
+
+Lemma run_block_correct : forall runs S C ls o,
+  runs_type_correct runs ->
+  run_block runs S C ls = o ->
+  red_stat S C (stat_block (rev ls)) o.
+Proof.
+(*
+  introv IH HR. unfolds in HR. destruct ls; rew_list.
+  run_inv. applys* red_stat_block_nil.
+  run_pre. eauto. applys* red_stat_block_cons. 
+  run_post. clear R1.
+   (* run* red_stat_block_cons. ==> TODO: should work*)
+  run red_stat_block_1.
+  subst. applys* red_stat_block_2_throw.
+  subst. applys* red_stat_block_2_not_throw.
+  applys* red_stat_block_2_not_throw. simple*. case_if; case_if*. 
+*)
+Admitted. (*faster*)
 
 
 Lemma run_stat_correct : forall runs,
@@ -2788,7 +2831,7 @@ Proof.
        intro M. inverts M. simpls. false.
       (* LATER: change interpreter to make it more faithful *)
   (* Block *)
-  skip. (* TODO : wait for changes to the rules *)
+  forwards* E: run_block_correct (rev ls). rew_list* in E.
   (* Variable declaration *)
   applys* run_var_decl_correct.
   (* If *)
@@ -2801,7 +2844,7 @@ Proof.
        applys~ red_stat_if_1_false.  apply~ RC.
        run_inv. applys* red_stat_if_1_false_implicit.
   (* Do-while *)
-  skip. (* TODO: wait until fixed.*)
+  applys* red_stat_do_while. applys* runs_type_correct_stat_do_while.
   (* While *)
   apply~ red_stat_while. applys* runs_type_correct_stat_while.
   (* With *)
@@ -2844,14 +2887,14 @@ Proof.
       applys~ red_stat_try_1_throw_no_catch. applys~ finally_correct.
       rewrite <- R. fequal. destruct R0; simpls; substs~.
   (* For-in *)
-  skip. (* TODO *)
+  skip. (* LATER *)
   (* For-in-var *)
-  skip. (* TODO *)
+  skip. (* LATER *)
   (* Debugger *)
   run_inv. apply red_stat_debugger.
   (* switch *)
-  skip. (* TODO: wait for switch semantics to be double check *) (* TODO Martin *)
-Admitted.
+  skip. (* NOW: wait for switch semantics to be double check *) (* TODO Martin *)
+Admitted. (* TODO: verify *)
 
 Lemma run_prog_correct : forall runs,
   runs_type_correct runs ->
@@ -2948,6 +2991,7 @@ Lemma object_proto_is_prototype_of_correct : forall runs,
     (object_proto_is_prototype_of runs).
 Admitted. (* Part of libraries: postponed for now *)
 
+
 Lemma run_equal_correct : forall runs,
   runs_type_correct runs ->
   follow_equal (run_equal runs).
@@ -2955,44 +2999,41 @@ Proof.
   intros runs IH S C v1 v2 o R. unfolds in R. let_simpl.
   apply~ red_spec_equal. cases_if.
    run_inv. rewrite e. apply~ red_spec_equal_1_same_type.
-Axiom red_spec_equal_1_diff_type : forall S C v1 v2 ty1 ty2 ext o,
-      ext =  
-        (If ty1 = type_null /\ ty2 = type_undef then (spec_equal_2 true)
-        else If ty1 = type_undef /\ ty2 = type_null then (spec_equal_2 true)
-        else If ty1 = type_number /\ ty2 = type_string then (spec_equal_3 v1 spec_to_number v2)
-        else If ty1 = type_string /\ ty2 = type_number then (spec_equal_3 v2 spec_to_number v1)
-        else If ty1 = type_bool then (spec_equal_3 v2 spec_to_number v1)
-        else If ty2 = type_bool then (spec_equal_3 v1 spec_to_number v2)
-        else If (ty1 = type_string \/ ty1 = type_number) /\ ty2 = type_object then (spec_equal_3 v1 spec_to_primitive_auto v2)
-        else If ty1 = type_object /\ (ty2 = type_string \/ ty2 = type_number) then (spec_equal_3 v2 spec_to_primitive_auto v1)
-        else (spec_equal_2 false)) ->
-      red_expr S C ext o ->
-      red_expr S C (spec_equal_1 ty1 ty2 v1 v2) o.
    apply~ red_spec_equal_1_diff_type. let_name.
-   asserts dc_conv_correct: (forall v1 F Ext v2 o,
-     (forall S C v o, F S v = o -> red_expr S C (Ext v) o) ->
+   asserts dc_conv_correct: (forall v1 F Ext v2 o,   
      dc_conv v1 F v2 = res_out o ->
+     (forall S v o, F S v = o -> red_expr S C (Ext v) o) ->
      red_expr S C (spec_equal_3 v1 Ext v2) o).
-     clear R. introv Cor E. substs. run red_spec_equal_3_convert_and_recurse.
+     clear R. introv E Cor. substs. run red_spec_equal_3_convert_and_recurse.
        run_inv. apply* Cor.
-     run_hyp. match goal with H: _ = _ |- _ => rewrite H end. (* Unnamed hypothesis. *)
-     apply~ red_spec_equal_4_recurse.
-   clear EQdc_conv. cases_if.
-     cases_if. run_inv. apply~ red_spec_equal_2_return. false*.
-   cases_if.
-     cases_if. run_inv. apply~ red_spec_equal_2_return. false*.
-   cases_if in R as D. rewrite decide_def in D.
-     false. cases_if as D1. destruct D1 as [() ()]; false*.
-   cases_if; cases_if in R.
-Admitted. (* Arthur:  Can you look at this proof, see if we could automate it? *)
+     run_hyp. apply~ red_spec_equal_4_recurse.
+   clear EQdc_conv.
+  Ltac eqcas R :=
+     match type of R with context [ ifb ?P then _ else _ ] =>
+       let x := fresh "x" in set (x := P) in * end;
+     case_if in R as C; [ rewrite If_l; try assumption
+                        | rewrite If_r; try assumption ].
+   eqcas R. run_inv. applys red_spec_equal_2_return.
+   eqcas R. run_inv. applys red_spec_equal_2_return.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_number_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_primitive_correct E.
+   eqcas R. applys dc_conv_correct R. introv E. applys* to_primitive_correct E.
+   run_inv. applys red_spec_equal_2_return.
+Admitted. (* faster *)
 
 Theorem runs_correct : forall num,
   runs_type_correct (runs num).
 Proof.
   induction num.
-   constructors; try solve [unfolds~ (* Temporary, to remove [True] properties *)];
-     introv H; inverts H; introv P; inverts P.
+   constructors; 
+     try (introv M; inverts M; introv P; inverts P).
    (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
+skip. (* TODO MARTIN: *)
+skip.
+skip.
    constructors.
      apply~ run_expr_correct.
      apply~ run_stat_correct.
@@ -3006,6 +3047,9 @@ Proof.
      skip. (* TODO MARTIN:  Use run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
      apply~ run_equal_correct.
+
+skip.
+skip.
 Qed.
 
 Theorem run_javascript_correct : forall runs p o,

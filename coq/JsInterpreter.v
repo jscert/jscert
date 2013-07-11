@@ -207,9 +207,8 @@ Definition if_success_state rv W (K : state -> resvalue -> result) : result :=
     match res_type R with
     | restype_normal =>
       if_empty_label S0 R (fun _ =>
-        K S0 (res_value (res_overwrite_value_if_empty rv R)))
-    | restype_throw =>
-      res_ter S0 (res_value R)
+        K S0 (ifb res_value R = resvalue_empty then rv else res_value R))
+    | restype_throw => res_ter S0 R
     | _ =>
       res_ter S0 (res_overwrite_value_if_empty rv R)
     end).
@@ -1596,7 +1595,9 @@ Definition run_equal runs S C v1 v2 : result :=
         runs_type_equal runs S0 C v1 v2') in
     let so b : result :=
       out_ter S b in
-    ifb (ty1 = type_null \/ ty1 = type_undef) /\ (ty2 = type_null \/ ty2 = type_undef) then
+    ifb (ty1 = type_null /\ ty2 = type_undef) then 
+      so true
+    else ifb (ty1 = type_undef /\ ty2 = type_null) then
       so true
     else ifb ty1 = type_number /\ ty2 = type_string then
       dc_conv v1 conv_number v2

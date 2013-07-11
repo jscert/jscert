@@ -1171,7 +1171,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_expr_1 (specret_val _ _) => None
   | stat_basic _ => None
 
-  | stat_block_1 _ _ => None
+  | stat_block_1 o _ => Some o
   | stat_block_2 _ o => Some o
 
   | stat_label_1 _ o => Some o

@@ -144,7 +144,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_block_nil : forall S C, (* empty block, step 1 *)
       red_stat S C (stat_block nil) (out_ter S resvalue_empty)
 
-  | red_stat_block_cons : forall S C rv t ts o1 o, (* step 1, and 2 (via abort rule) *)
+  | red_stat_block_cons : forall S C t ts o1 o, (* step 1, and 2 (via abort rule) *)
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_block_1 o1 t) o ->
       red_stat S C (stat_block (ts++(t::nil))) o
@@ -156,7 +156,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_block_2_throw : forall S0 S C R rv, (* step 4 *)
       res_type R = restype_throw ->
-      red_stat S0 C (stat_block_2 rv (out_ter S R)) (out_ter S (res_throw (res_value R)))
+      red_stat S0 C (stat_block_2 rv (out_ter S R)) (out_ter S R)
 
   | red_stat_block_2_not_throw : forall S0 S C R R' rv, (* steps 5 and 6 *)
       res_type R <> restype_throw ->
@@ -1234,7 +1234,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       b = equality_test_for_same_type ty v1 v2 ->
       red_expr S C (spec_equal_1 ty ty v1 v2) (out_ter S b)
 
-  | red_spec_equal_1_diff_type : forall S C v1 v2 ty1 ty2 b ext o,
+  | red_spec_equal_1_diff_type : forall S C v1 v2 ty1 ty2 ext o,
       ext =  
         (If ty1 = type_null /\ ty2 = type_undef then (spec_equal_2 true)
         else If ty1 = type_undef /\ ty2 = type_null then (spec_equal_2 true)

@@ -1,5 +1,13 @@
 
 
+~ 700 reduction rules (~ 3000 non empty lines)
+~ 450 intermediate forms
+~ 3000 lines of correctness proofs jsref/jscert
+~ 2500 lines of interpreter code (~ 2000 non empty lines)
+~ ? lines of definitions in Syntax 
+~ ? lines of definitions in Preliminary 
+~ ? lines of proofs (SyntaxAux, PreliminaryAux, IntermAux)
+
 ============================================================================
 
 
@@ -17,16 +25,13 @@ Waiting for fixes:
 
 Arthur:
 
-
 run_binary_op_correct
-
-
+run red_expr_delete
+run_elements preuve
 
 ====================
 
 Martin:
-
-do_while
 
 --switch--> code (half done) & proof
 
