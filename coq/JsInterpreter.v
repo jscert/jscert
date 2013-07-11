@@ -561,7 +561,7 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
           out_ter S0 (attributes_data_value Ad)
       | attributes_accessor_of Aa =>
           match attributes_accessor_get Aa with
-          | value_object lf => runs_type_call runs S0 C lf l nil
+          | value_object lf => runs_type_call runs S0 C lf vthis nil
           | undef => out_ter S0 undef
           | value_prim _ =>
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
