@@ -691,13 +691,13 @@ Definition object_can_put runs S C l x : result :=
       end).
 
 
-Definition object_define_own_prop runs S C l x Desc str : result :=
+Definition object_define_own_prop runs S C l x Desc throw : result :=
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
     match B with
     | builtin_define_own_prop_default =>
       if_spec_ter (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         Let reject := fun S =>
-          out_error_or_cst S str native_error_type false in
+          out_error_or_cst S throw native_error_type false in
         if_some (run_object_method object_extensible_ S1 l) (fun ext =>
              match D, ext with
              | full_descriptor_undef, false => reject S1
@@ -747,20 +747,27 @@ Definition object_define_own_prop runs S C l x Desc str : result :=
                         object_define_own_prop_write S2 A')
                  else
                    reject S1)
-               else ifb descriptor_is_accessor Desc then
+               else ifb (attributes_is_data A /\ descriptor_is_data Desc) then
                  match A with
                  | attributes_data_of Ad =>
                    ifb attributes_change_data_on_non_configurable Ad Desc then
                      reject S1
                    else
                      object_define_own_prop_write S1 A
+                 | attributes_accessor_of _ =>
+                   impossible_with_heap_because S "data is not accessor in [defineOwnProperty]"
+                 end
+               else ifb (not (attributes_is_data A) /\ descriptor_is_accessor Desc) then
+                 match A with
                  | attributes_accessor_of Aa =>
                    ifb attributes_change_accessor_on_non_configurable Aa Desc then
                      reject S1
                    else
                      object_define_own_prop_write S1 A
+                 | attributes_data_of _ =>
+                   impossible_with_heap_because S "accessor is not data in [defineOwnProperty]"
                  end
-               else
+               else (* both are accesor *)
                 (* TODO: check this is true *)
                 impossible_with_heap_because S "cases are mutually exclusives in [defineOwnProperty]"
              end))
@@ -2160,6 +2167,30 @@ Definition run_stat_while runs S C rv labs e1 t2 : result :=
            )
         ) else loop tt)
     else out_ter S1 rv).
+
+(* Daniele: TODO.  *)
+Definition run_stat_switch runs S C rv labs e sb : result :=
+  if_spec_ter (run_expr_get_value runs S C e) (fun S1 v1 =>
+      match sb with 
+      (* no-default case *)
+      | switchbody_nodefault scs =>
+          match scs with 
+          | nil => (out_ter S1 resvalue_empty) (* dummy output *)
+          | (switchclause_intro e1 ts)::scs => 
+              if_spec_ter (run_expr_get_value runs S C e1) (fun S1 v2 =>
+                Let b := strict_equality_test v1 v2 in 
+                  if b then 
+                    if_ter (run_block runs S C ts) (fun S2 R =>
+                      (out_ter S1 resvalue_empty) (* dummy output *)
+                    )
+                  else 
+                    (out_ter S1 resvalue_empty) (* summy output *)
+              )
+          end
+      | switchbody_withdefault scs1 ts1 scs2 => (out_ter S1 resvalue_empty)
+      end
+  ).
+(* --- *)
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
   if_ter (runs_type_stat runs S C t2) (fun S1 R =>
