@@ -57,55 +57,9 @@ Arthur:
 
 red_spec_call_throw_type_error 
 
-
-
-red_spec_binding_inst_formal_params_empty 
-red_spec_binding_inst_formal_params_non_empty 
-red_spec_binding_inst_formal_params_1_not_declared 
-red_spec_binding_inst_formal_params_2 
-red_spec_binding_inst_formal_params_1_declared 
-red_spec_binding_inst_formal_params_3 
-red_spec_binding_inst_formal_params_4 
-red_spec_binding_inst_function_decls_nil 
-red_spec_binding_inst_function_decls_cons 
-red_spec_binding_inst_function_decls_1 
-red_spec_binding_inst_function_decls_2_false 
-red_spec_binding_inst_function_decls_2_true_global 
-red_spec_binding_inst_function_decls_3_true 
-red_spec_binding_inst_function_decls_4 
-red_spec_binding_inst_function_decls_3_false_type_error 
-red_spec_binding_inst_function_decls_3_false 
-red_spec_binding_inst_function_decls_2_true 
-red_spec_binding_inst_function_decls_5 
-red_spec_binding_inst_function_decls_6 
-red_spec_binding_inst_arg_obj 
-red_spec_binding_inst_arg_obj_1_strict 
-red_spec_binding_inst_arg_obj_2 
-red_spec_binding_inst_arg_obj_1_not_strict 
-red_spec_binding_inst_var_decls_nil 
-red_spec_binding_inst_var_decls_cons 
-red_spec_binding_inst_var_decls_1_true 
-red_spec_binding_inst_var_decls_1_false 
-red_spec_binding_inst_var_decls_2 
-red_spec_binding_inst 
-red_spec_binding_inst_1_function 
-red_spec_binding_inst_2 
-red_spec_binding_inst_1_not_function 
-red_spec_binding_inst_3 
-red_spec_binding_inst_4 
-red_spec_binding_inst_5 
-red_spec_binding_inst_6_arguments 
-red_spec_binding_inst_7 
-red_spec_binding_inst_6_no_arguments 
-red_spec_binding_inst_8 
-
-
-
-
 red_spec_create_new_function_in 
 
-red_javascript_intro 
-(* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
+object_default_value_correct
 
 red_spec_convert_twice 
 red_spec_convert_twice_1 
@@ -119,12 +73,29 @@ switch
 do_while
 binary ops
 
+new program for prog_block
+
+
 ====================
 
 Martin:
 
+<<<<<<< Updated upstream
 new program for to-property-descriptor (it's missing it seems; it's long but easy)
 
+=======
+
+new program for to-property-descriptor (it's missing it seems; it's long but easy)
+
+red_javascript_intro 
+(* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
+
+
+
+
+
+
+>>>>>>> Stashed changes
 
 
 === can be skipped ===
