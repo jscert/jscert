@@ -1444,9 +1444,12 @@ Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
       else
         env_record_create_set_mutable_binding runs S1 C L arguments None largs false).
 
+
 Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
-  destr_list (execution_ctx_variable_env C) (fun _ => impossible_with_heap_because S
-    "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst].") (fun L _ =>
+  match (execution_ctx_variable_env C) with
+  | nil => impossible_with_heap_because S
+    "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst]."
+  | L::_ =>
     Let str := prog_intro_strictness p in
     Let follow := fun S' names =>
       Let bconfig := decide (ct = codetype_eval) in
@@ -1456,13 +1459,15 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
           Let follow2 := fun S' =>
             let vds := prog_vardecl p in
             binding_inst_var_decls runs S' C L vds bconfig str
-          in match ct, funco, bdefined with
+            in 
+          match ct, funco, bdefined with
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
           | codetype_func, _, false => impossible_with_heap_because S2 "Strange `arguments' object in [execution_ctx_binding_inst]."
           | _, _, _ => follow2 S2
           end))
-    in match ct, funco with
+      in 
+    match ct, funco with
       | codetype_func, Some func =>
         if_some (run_object_method object_formal_parameters_ S func) (fun nameso =>
           if_some nameso (fun names =>
@@ -1473,7 +1478,8 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
       | _, None => follow S nil
       | _, _ =>
         impossible_with_heap_because S "Not coherent non-functionnal code type in [execution_ctx_binding_inst]."
-      end) tt.
+    end
+  end.
 
 Definition entering_func_code runs S C lf vthis (args : list value) : result :=
   if_some (run_object_method object_code_ S lf) (fun bdo =>

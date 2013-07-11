@@ -2327,8 +2327,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Auxiliary reductions for binding instantiation:
      bindings for variable declarations (Step 8) *)
 
-  | red_spec_binding_inst_var_decls_nil : forall o1 L S0 S C bconfig str o, (* Step 8 *)
-      red_expr S0 C (spec_binding_inst_var_decls L nil bconfig str) (out_void S)     
+  | red_spec_binding_inst_var_decls_nil : forall o1 L S C bconfig str o, (* Step 8 *)
+      red_expr S C (spec_binding_inst_var_decls L nil bconfig str) (out_void S)     
       
   | red_spec_binding_inst_var_decls_cons : forall o1 L S C vd vds bconfig str o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
@@ -2370,7 +2370,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_3 ct None code nil args L) o ->
       red_expr S C (spec_binding_inst_1 ct None code args L) o
 
-  | red_spec_binding_inst_3 : forall o1 bconfig L S C ct olf code fds xs args o, (* Step 5 *)
+  | red_spec_binding_inst_3 : forall bconfig L S C ct olf code fds xs args o1 o, (* Step 5 *)
       bconfig = (If ct = codetype_eval then true else false) -> (* Step 2 *)
       fds = prog_funcdecl code -> 
       red_expr S C (spec_binding_inst_function_decls args L fds (prog_intro_strictness code) bconfig) o1 ->
@@ -2391,12 +2391,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_7 code bconfig L o1) o ->
       red_expr S0 C (spec_binding_inst_6 codetype_func (Some lf) code xs args bconfig L (out_ter S false)) o
       
-  | red_spec_binding_inst_7 : forall L S C code bconfig L o, (* Step 7, continued *)
+  | red_spec_binding_inst_7 : forall S0 S C code bconfig L o, (* Step 7, continued *)
       red_expr S C (spec_binding_inst_8 code bconfig L) o ->
-      red_expr S C (spec_binding_inst_7 code bconfig L (out_void S)) o
+      red_expr S0 C (spec_binding_inst_7 code bconfig L (out_void S)) o
 
   | red_spec_binding_inst_6_no_arguments : forall L S0 S C ct olf code xs args bconfig bdefined o, (* Step 7 not needed *) 
-      ~ (ct = codetype_func /\ bdefined = true) ->
+      ~ (ct = codetype_func /\ bdefined = false) ->
       red_expr S C (spec_binding_inst_8 code bconfig L) o ->
       red_expr S0 C (spec_binding_inst_6 ct olf code xs args bconfig L (out_ter S bdefined)) o
 
