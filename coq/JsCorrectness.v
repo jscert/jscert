@@ -268,6 +268,7 @@ Definition isout W (Pred:out->Prop) :=
   exists o1, W = res_out o1 /\ Pred o1.
 
 Hint Unfold isout.
+Hint Unfold eqabort. 
 
 (* Generic *)
 
@@ -1895,36 +1896,210 @@ Qed.
 (**************************************************************)
 (* Auxiliary results for [spec_expr_get_value_conv] *)
 
-
-
-Hint Unfold eqabort. (* todo move *)
-
-
-
 Lemma run_construct_prealloc_correct : forall runs S C B args o,
   runs_type_correct runs ->
   run_construct_prealloc runs S C B args = o ->
   red_expr S C (spec_construct_prealloc B args) o.
-Admitted. 
+Admitted. (* Part of libraries, will do afterwards *)
 
 Lemma run_construct_default_correct : forall runs S C l args o,
   runs_type_correct runs ->
   run_construct_default runs S C l args = o ->
   red_expr S C (spec_construct_default l args) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_construct_default using run_object_get_correct.
+  let_simpl. let_simpl. let_name. destruct p as [l' S2].
+  run* red_spec_construct_default_1. rewrite* EQp. case_if; case_if*.
+  applys* red_spec_function_construct_2. case_if; case_if*.
+Admitted. (*faster*)
 
 Lemma run_construct_correct : forall runs S C co l args o,
   runs_type_correct runs ->
   run_construct runs S C co l args = o ->
   red_expr S C (spec_construct_1 co l args) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  destruct co; tryfalse.
+    applys* red_spec_construct_1_default. applys* run_construct_default_correct.
+    applys* red_spec_construct_1_prealloc. applys* run_construct_prealloc_correct.
+Admitted. (* faster *)
+
+
+
+Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfig {struct fds} : result_void :=
+  match fds with
+  | nil => res_void S
+  | fd :: fds' =>
+      Let fbd := funcdecl_body fd in
+      Let str_fd := funcbody_is_strict fbd in
+      Let fparams := funcdecl_parameters fd in
+      Let fname := funcdecl_name fd in
+      if_object (creating_function_object runs S C fparams fbd (execution_ctx_variable_env C) str_fd) (fun S1 fo =>
+        Let follow := fun S2 =>
+          if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
+            binding_inst_function_decls runs S3 C L fds' str bconfig)
+          in
+        if_bool (env_record_has_binding runs S1 C L fname) (fun S2 has =>
+          if has then (
+            ifb L = env_loc_global_env_record then (
+              if_spec_ter (run_object_get_prop runs S2 C prealloc_global fname) (fun S3 D =>
+                match D with
+                | full_descriptor_undef =>
+                  impossible_with_heap_because S3 "Undefined full descriptor in [binding_inst_function_decls]."
+                | full_descriptor_some A =>
+                  ifb attributes_configurable A then (
+                    Let A' := attributes_data_intro undef true true bconfig in
+                    if_bool (object_define_own_prop runs S3 C prealloc_global fname A' true)
+                      (fun S _ => follow S)
+                  ) else ifb descriptor_is_accessor A
+                    \/ attributes_writable A = false \/ attributes_enumerable A = false then
+                      run_error S3 native_error_type
+                  else follow S3
+                end)
+            ) else follow S2)
+          else
+            if_void (env_record_create_mutable_binding runs S2 C L fname (Some bconfig)) follow))
+  end.
+
+
+(* TODO: remove args from the pretty big step rules *)
+
+Lemma binding_inst_function_decls_correct : forall runs S C args L fds str bconfig o,
+  runs_type_correct runs ->
+  binding_inst_function_decls runs S C L fds str bconfig = o ->
+  red_expr S C (spec_binding_inst_function_decls args L fds str bconfig) o.
 Admitted.
+
+Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : result_void :=
+  match vds with
+  | nil => res_void S
+  | vd :: vds' =>
+    Let bivd := fun S => binding_inst_var_decls runs S C L vds' bconfig str in
+    if_bool (env_record_has_binding runs S C L vd) (fun S1 has =>
+      if has then
+        bivd S
+      else
+        if_void (env_record_create_set_mutable_binding runs S1 C L vd (Some bconfig) undef str) bivd)
+  end.
+
+Lemma binding_inst_var_decls_correct : forall runs S C L vds bconfig str o,
+  runs_type_correct runs ->
+  binding_inst_var_decls runs S C L vds bconfig str = o ->
+  red_expr S C (spec_binding_inst_var_decls L vds bconfig str) o.
+Admitted.
+
+
+Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
+  match names with
+  | nil => res_void S
+  | argname :: names' =>
+    Let v := hd undef args in
+    if_bool (env_record_has_binding runs S C L argname) (fun S1 hb =>
+      Let follow := fun S' =>
+        if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S'' =>
+          binding_inst_formal_params runs S'' C L (tl args) names' str)
+        in
+      if hb then
+        follow S1
+      else
+        if_void (env_record_create_mutable_binding runs S1 C L argname None) follow)
+  end.
+
+Lemma binding_inst_formal_params_correct : forall runs S C L args names str o,
+  runs_type_correct runs ->
+  binding_inst_formal_params runs S C L args names str = o ->
+  red_expr S C (spec_binding_inst_formal_params args L names str) o.
+Admitted.
+
+
+Lemma env_record_has_binding_correct : forall runs S C L x o,
+  runs_type_correct runs ->
+  env_record_has_binding runs S C L x = o ->
+  red_expr S C (spec_env_record_has_binding L x) o.
+Proof.
+  introv IH HR. unfolds in HR. run_simpl. 
+  forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_has_binding B. destruct x0; run_inv.
+   apply~ red_spec_env_record_has_binding_1_decl. 
+    rewrite decide_def; auto.
+   apply~ red_spec_env_record_has_binding_1_object.
+    apply* object_has_prop_correct.
+Qed.
+
+Lemma binding_inst_arg_obj_correct : forall runs S C lf p xs args L o,
+  binding_inst_arg_obj runs S C lf p xs args L = o ->
+  red_expr S C (spec_binding_inst_arg_obj lf p xs args L) o.
+Admitted. (* argument object *)
+
+
+Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco (p:prog) args o,
+  runs_type_correct runs ->
+  execution_ctx_binding_inst runs S C ct funco p args = o ->
+  red_expr S C (spec_binding_inst ct funco p args) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  cases (execution_ctx_variable_env C); tryfalse. rename e into L.
+  applys* red_spec_binding_inst. clears TEMP. let_simpl. 
+  let_name as M. asserts M_correct: (forall S xs o,
+      M S xs = o ->
+      red_expr S C (spec_binding_inst_3 ct funco p xs args L) o).
+    clear HR S o. introv HR. subst M.
+    let_name. let_name.
+    run red_spec_binding_inst_3 
+      using binding_inst_function_decls_correct.
+        subst bconfig. rewrite decide_def. auto.
+        auto.
+    applys red_spec_binding_inst_4.
+    run red_spec_binding_inst_5 using env_record_has_binding_correct.
+    let_name as N. asserts N_correct: (forall S o,
+      N S = o ->
+      red_expr S C (spec_binding_inst_8 p bconfig L) o).
+      clear HR S o. introv HR. subst N.
+      skip.
+      clear EQN.
+    destruct ct.
+      destruct funco.
+        destruct b; tryfalse.
+          applys* red_spec_binding_inst_6_no_arguments. rew_logic*.
+          run red_spec_binding_inst_6_arguments 
+            using binding_inst_arg_obj_correct.
+           applys* red_spec_binding_inst_7.
+        destruct b; tryfalse.
+         applys* red_spec_binding_inst_6_no_arguments. rew_logic*.
+      applys* red_spec_binding_inst_6_no_arguments.
+       rew_logic*. left. congruence.
+      applys* red_spec_binding_inst_6_no_arguments. 
+       rew_logic*. left; congruence.
+  destruct ct; destruct funco; tryfalse.
+    run. lets H: run_object_method_correct (rm E).
+     run. subst. run* red_spec_binding_inst_1_function
+       using binding_inst_formal_params_correct.
+     applys* red_spec_binding_inst_2.
+    applys* red_spec_binding_inst_1_not_function. congruence.
+    applys* red_spec_binding_inst_1_not_function. congruence.
+Admitted. (* faster *)
+
 
 Lemma entering_eval_code_correct : forall runs S C bdirect bd F K o,
   runs_type_correct runs ->
   entering_eval_code runs S C bdirect bd F = o ->
   (forall S' C' o', F S' C' = o' -> red_expr S' C' K o') ->
   red_expr S C (spec_entering_eval_code bdirect bd K) o.
-Admitted.
+Proof.
+  introv IH HR HK. unfolds in HR.
+  let_name. let_name.
+  applys* red_spec_entering_eval_code str C'. case_if; case_if*.
+  let_name. destruct p as [lex S']. 
+  let_name. let_name.
+  run_pre. applys* red_spec_entering_eval_code_1 str lex S' C1 o1.
+    rewrite EQp. case_if; case_if*.
+    subst C1. case_if; case_if*.
+    subst p. applys* execution_ctx_binding_inst_correct R1.
+    run_post. clear R1.
+  applys* red_spec_entering_eval_code_2.
+Admitted. (* faster *)
+
 
 Lemma run_eval_correct : forall runs S C (is_direct_call : bool) vs o,
   runs_type_correct runs ->
@@ -2085,12 +2260,6 @@ Admitted. (* faster*)
 
 
 
-Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco p args o,
-  runs_type_correct runs ->
-  execution_ctx_binding_inst runs S C ct funco p args = o ->
-  red_expr S C (spec_binding_inst ct funco p args) o.
-Admitted.
-
 Ltac run_select_proj_extra_construct HT ::= 
   match HT with
   | run_construct_prealloc => constr:(run_construct_prealloc_correct)
@@ -2227,19 +2396,6 @@ Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   red_expr S C (expr_binary_op_3 op v1 v2) o.
 Admitted.
 
-Lemma env_record_has_binding_correct : forall runs S C L x o,
-  runs_type_correct runs ->
-  env_record_has_binding runs S C L x = o ->
-  red_expr S C (spec_env_record_has_binding L x) o.
-Proof.
-  introv IH HR. unfolds in HR. run_simpl. 
-  forwards B: @pick_option_correct (rm E).
-  applys~ red_spec_env_record_has_binding B. destruct x0; run_inv.
-   apply~ red_spec_env_record_has_binding_1_decl. 
-    rewrite decide_def; auto.
-   apply~ red_spec_env_record_has_binding_1_object.
-    apply* object_has_prop_correct.
-Qed.
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
   runs_type_correct runs ->
@@ -2408,6 +2564,7 @@ Admitted.
 *)
 
 
+
 Lemma object_delete_correct : forall runs S C l x str o,
   runs_type_correct runs ->
   object_delete runs S C l x str = o ->
@@ -2421,11 +2578,7 @@ Proof.
     run_inv. applys red_spec_object_delete_2_undef. (* This rule is erroneous, the conclusion should contains [S0] instead [S]. *)
     case_if.
       run. forwards B: @pick_option_correct (rm E).
-        applys_eq* red_spec_object_delete_2_some_configurable 1.
-          skip. (* will go *)
-          skip. (* even problem *)
-          skip. (* even problem *)
-          skip. (* even problem *)
+        applys_eq* red_spec_object_delete_2_some_configurable 1. 
       applys* red_spec_object_delete_3_some_non_configurable.
        applys* out_error_or_cst_correct.
 Admitted.
