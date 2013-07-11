@@ -1329,8 +1329,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_conditional_2 : forall S0 S C v,
       red_expr S0 C (expr_conditional_2 (ret S v)) (out_ter S v)
       
-
-
   (** Assignment (11.13) *)
   
   | red_expr_assign : forall S C opo e1 e2 o o1,
