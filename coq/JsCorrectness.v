@@ -262,6 +262,7 @@ Definition isout W (Pred:out->Prop) :=
   exists o1, W = res_out o1 /\ Pred o1.
 
 Hint Unfold isout.
+Hint Unfold eqabort. 
 
 (* Generic *)
 
@@ -1889,28 +1890,39 @@ Qed.
 (**************************************************************)
 (* Auxiliary results for [spec_expr_get_value_conv] *)
 
-
-
-Hint Unfold eqabort. (* todo move *)
-
-
-
 Lemma run_construct_prealloc_correct : forall runs S C B args o,
   runs_type_correct runs ->
   run_construct_prealloc runs S C B args = o ->
   red_expr S C (spec_construct_prealloc B args) o.
-Admitted. 
+Admitted. (* Part of libraries, will do afterwards *)
 
 Lemma run_construct_default_correct : forall runs S C l args o,
   runs_type_correct runs ->
   run_construct_default runs S C l args = o ->
   red_expr S C (spec_construct_default l args) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_construct_default using run_object_get_correct.
+  let_simpl. let_simpl. let_name. destruct p as [l' S2].
+  run* red_spec_construct_default_1. rewrite* EQp. case_if; case_if*.
+  applys* red_spec_function_construct_2. case_if; case_if*.
+Admitted. (*faster*)
 
 Lemma run_construct_correct : forall runs S C co l args o,
   runs_type_correct runs ->
   run_construct runs S C co l args = o ->
   red_expr S C (spec_construct_1 co l args) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  destruct co; tryfalse.
+    applys* red_spec_construct_1_default. applys* run_construct_default_correct.
+    applys* red_spec_construct_1_prealloc. applys* run_construct_prealloc_correct.
+Admitted. (* faster *)
+
+Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco (p:prog) args o,
+  runs_type_correct runs ->
+  execution_ctx_binding_inst runs S C ct funco p args = o ->
+  red_expr S C (spec_binding_inst ct funco p args) o.
 Admitted.
 
 Lemma entering_eval_code_correct : forall runs S C bdirect bd F K o,
@@ -1918,7 +1930,20 @@ Lemma entering_eval_code_correct : forall runs S C bdirect bd F K o,
   entering_eval_code runs S C bdirect bd F = o ->
   (forall S' C' o', F S' C' = o' -> red_expr S' C' K o') ->
   red_expr S C (spec_entering_eval_code bdirect bd K) o.
-Admitted.
+Proof.
+  introv IH HR HK. unfolds in HR.
+  let_name. let_name.
+  applys* red_spec_entering_eval_code str C'. case_if; case_if*.
+  let_name. destruct p as [lex S']. 
+  let_name. let_name.
+  run_pre. applys* red_spec_entering_eval_code_1 str lex S' C1 o1.
+    rewrite EQp. case_if; case_if*.
+    subst C1. case_if; case_if*.
+    subst p. applys* execution_ctx_binding_inst_correct R1.
+    run_post. clear R1.
+  applys* red_spec_entering_eval_code_2.
+Admitted. (* faster *)
+
 
 Lemma run_eval_correct : forall runs S C (is_direct_call : bool) vs o,
   runs_type_correct runs ->
@@ -2078,12 +2103,6 @@ Admitted. (* faster*)
 
 
 
-
-Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco p args o,
-  runs_type_correct runs ->
-  execution_ctx_binding_inst runs S C ct funco p args = o ->
-  red_expr S C (spec_binding_inst ct funco p args) o.
-Admitted.
 
 Ltac run_select_proj_extra_construct HT ::= 
   match HT with

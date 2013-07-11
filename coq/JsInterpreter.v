@@ -1238,7 +1238,8 @@ Definition run_construct_default runs S C l args :=
       else prealloc_object_proto
       in
     Let O := object_new vproto "Object" in
-    let '(l', S2) := object_alloc S1 O in
+    Let p := object_alloc S1 O in (* todo: Let pair *)
+    let '(l', S2) := p in
     if_value (runs_type_call runs S2 C l l' args) (fun S3 v2 =>
       Let vr := ifb type_of v2 = type_object then v2 else l' in
       out_ter S3 vr)).
@@ -2002,10 +2003,11 @@ Definition run_expr_function runs S C fo args bd : result :=
       (fun L _ => follow L) tt
   end.
 
+
 Definition entering_eval_code runs S C direct bd K : result :=
   Let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
   Let C' := if direct then C else execution_ctx_initial str in
-  let p :=
+  Let p :=
     if str
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
       else (execution_ctx_lexical_env C', S)
@@ -2018,7 +2020,7 @@ Definition entering_eval_code runs S C direct bd K : result :=
     in
   Let p := funcbody_prog bd in
   if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
-    K S1 C').
+    K S1 C1). (* TODO: this was C', but Arthur changed it to C1 *)
 
 Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with

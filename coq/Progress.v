@@ -55,34 +55,7 @@ red_spec_to_descriptor_7_ok
 
 Arthur:
 
-
-red_spec_call 
-red_spec_constructor 
-red_spec_call_1_prealloc 
-red_spec_construct_1_prealloc 
-
-red_spec_construct_1_default 
-red_spec_construct_default 
-red_spec_construct_default_1 
-red_spec_function_construct_2 
-
-red_spec_call_object_call 
-red_spec_call_object_call_1_null_or_undef 
-red_spec_call_object_call_1_other 
-red_spec_call_object_new 
-red_spec_call_object_new_1_object 
-red_spec_call_object_new_1_prim 
-red_spec_call_object_new_1_null_or_undef 
-
 red_spec_call_throw_type_error 
-red_spec_call_global_eval 
-red_spec_call_global_eval_1_not_string 
-red_spec_call_global_eval_1_string_not_parse 
-red_spec_call_global_eval_1_string_parse 
-red_spec_call_global_eval_2 
-red_spec_call_global_eval_3_normal_value 
-red_spec_call_global_eval_3_normal_empty 
-red_spec_call_global_eval_3_throw 
 
 
 red_spec_create_new_function_in 
@@ -116,18 +89,6 @@ new program for to-property-descriptor (it's missing it seems; it's long but eas
 Merging if_success* (in a branch)
 
 
-
-red_spec_entering_eval_code 
-red_spec_entering_eval_code_1 
-red_spec_entering_eval_code_2 
-red_spec_entering_func_code 
-red_spec_entering_func_code_1_strict 
-red_spec_entering_func_code_1_null_or_undef 
-red_spec_entering_func_code_1_not_object 
-red_spec_entering_func_code_2 
-red_spec_entering_func_code_1_object 
-red_spec_entering_func_code_3 
-red_spec_entering_func_code_4 
 
 red_spec_binding_inst_formal_params_empty 
 red_spec_binding_inst_formal_params_non_empty 
@@ -168,6 +129,11 @@ red_spec_binding_inst_6_arguments
 red_spec_binding_inst_7 
 red_spec_binding_inst_6_no_arguments 
 red_spec_binding_inst_8 
+
+
+
+
+
 
 
 
