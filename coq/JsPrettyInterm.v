@@ -65,7 +65,7 @@ Inductive ext_expr :=
 
   | expr_object_0 : out -> propdefs -> ext_expr
   | expr_object_1 : object_loc -> propdefs -> ext_expr
-  | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr (* TODO: check the type! *)
+  | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr 
   | expr_object_3 : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_val : object_loc -> string -> (specret value) -> propdefs -> ext_expr
   | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
@@ -91,7 +91,7 @@ Inductive ext_expr :=
   | expr_call_4 : res -> object_loc -> bool -> list value -> ext_expr
   | expr_call_5 : object_loc -> bool -> list value -> out -> ext_expr (* The call has been executed. *)
 
-  | spec_eval : bool -> value -> list value -> ext_expr (* TODO *)
+  | spec_eval : bool -> value -> list value -> ext_expr
 
   | expr_unary_op_1 : unary_op -> (specret value) -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
@@ -166,7 +166,6 @@ Inductive ext_expr :=
 
   (** Extended expressions for operations on objects *)
 
-  (* todo *)
   | spec_object_get : value -> prop_name -> ext_expr
   | spec_object_get_1 : builtin_get -> value -> object_loc -> prop_name -> ext_expr
   | spec_object_get_2 : value -> specret full_descriptor -> ext_expr
@@ -175,8 +174,8 @@ Inductive ext_expr :=
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
   | spec_object_can_put_1 : builtin_can_put -> object_loc -> prop_name -> ext_expr
   | spec_object_can_put_2 : object_loc -> prop_name -> (specret full_descriptor) -> ext_expr
-  (* Daiva: Not needed? *)
-  (*| spec_object_can_put_3 : object_loc -> prop_name -> bool -> ext_expr*)
+
+  (* LATER: shift names since spec_object_can_put_3 is not used *)
   | spec_object_can_put_4 : object_loc -> prop_name -> value -> ext_expr
   | spec_object_can_put_5 : object_loc -> specret full_descriptor -> ext_expr
   | spec_object_can_put_6 : attributes_data -> bool -> ext_expr
@@ -380,7 +379,7 @@ Inductive ext_expr :=
   | spec_error_or_cst : bool -> native_error -> value -> ext_expr
   | spec_error_or_void : bool -> native_error -> ext_expr
 
-  (* TODO: these are currently unused *)
+  (* LATER: these are currently unused *)
   | spec_init_throw_type_error : ext_expr
   | spec_init_throw_type_error_1 : out -> ext_expr
 
@@ -431,7 +430,7 @@ Inductive ext_expr :=
   | spec_construct_default_2 : object_loc -> out -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
-  (* TODO: rename all the spec_call into spec_builtin *)
+  (* LATER: rename all the spec_call into spec_builtin *)
 
   | spec_call_global_is_nan_1 : out -> ext_expr
   | spec_call_global_is_finite_1 : out -> ext_expr
@@ -564,11 +563,12 @@ with ext_stat :=
   | stat_do_while_6 : label_set -> stat ->  expr -> resvalue -> ext_stat
   | stat_do_while_7 : label_set -> stat ->  expr -> resvalue -> specret value -> ext_stat
 
+(* LATER: define prop_names for [set prop_name] *)
 (* LATER
   | stat_for_in_1 : expr -> stat -> out -> ext_stat
   | stat_for_in_2 : expr -> stat -> out -> ext_stat
   | stat_for_in_3 : expr -> stat -> out -> ext_stat
-  | stat_for_in_4 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> ext_stat (* TODO: define prop_names for [set prop_name] *)
+  | stat_for_in_4 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> ext_stat 
   | stat_for_in_5 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
   | stat_for_in_6 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> prop_name -> ext_stat
   | stat_for_in_7 : expr -> stat -> object_loc -> option res -> option out -> set prop_name -> set prop_name -> out -> ext_stat

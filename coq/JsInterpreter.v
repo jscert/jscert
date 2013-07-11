@@ -3,50 +3,7 @@ Require Import Shared.
 Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
 Require Import LibFix LibList.
 
-(* TODO/ move to shared*)
 
-(** [list_get_last ls] returns [None] if the list given is empty
-    or [Some (ls',x)] where [ls=ls'++x::nil] otherwise. *)
-
-Fixpoint lib_get_last (A:Type) (ls:list A) : option (list A * A) :=
-  match ls with
-  | nil => None
-  | a::ls' =>
-    match ls' with
-    | nil => Some (nil,a)
-    | _ => option_map (fun p => let '(ls',x) := p in (a::ls',x)) (lib_get_last ls')
-    end
-  end.
-
-Lemma lib_get_last_spec : forall (A:Type) (ls:list A),
-  match lib_get_last ls with
-  | None => (ls = nil)
-  | Some (ls',x) => (ls = LibList.append ls' (x::nil))
-  end.
-Proof.
-  intros. induction ls; simpl.
-  auto.
-  destruct ls as [|b ls].
-    rew_list*.
-    destruct (lib_get_last (b::ls)) as [(?&?)|]; simpls.
-      rew_list*. congruence.
-      congruence.
-Qed.
-
-Lemma lib_get_last_nil : forall (A:Type),
-  lib_get_last (@nil A) = None.
-Proof. auto. Qed.
-
-Lemma lib_get_last_cons : forall (A:Type) ls,
-  ls <> nil -> exists (x:A) (ls':list A),
-     lib_get_last ls = Some (ls',x) 
-  /\ ls = LibList.append ls' (x::nil).
-Proof. 
-  intros. lets M: (lib_get_last_spec ls).
-  destruct (lib_get_last ls) as [(ls'&x)|]. 
-    subst. exists* x ls'.
-    false.
-Qed.
 
 
 (**************************************************************)
@@ -235,6 +192,7 @@ Definition if_out_some T W (K : out -> resultof T) : resultof T :=
 (* TODO: badly named *)
 Definition res_res T W : specres T :=
   if_out_some W (fun o => res_out o).
+
 Implicit Arguments res_res [[T]].
 
 Definition if_ter T W (K : state -> res -> specres T) : specres T :=
@@ -480,9 +438,9 @@ Definition object_has_prop runs S C l x : result :=
 
 Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
-  match B with
-  | builtin_get_default =>
-    if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
+
+  Let default :=     
+     if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
       match D with
       | full_descriptor_undef => res_ter S0 undef
       | attributes_data_of Ad =>
@@ -494,10 +452,18 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
           | value_prim _ =>
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
           end
-      end)
-
+      end) in
+  
+  match B with
+  | builtin_get_default => default
+  
   | builtin_get_function =>
-    result_not_yet_implemented (* TODO:  Waiting for the specification *)
+    if_value default (fun S' v =>
+       ifb spec_function_get_error_case S' x v then
+         run_error S' native_error_type
+       else
+         res_ter S' v
+    )
 
   | builtin_get_args_obj =>
     result_not_yet_implemented (* TODO:  Waiting for the specification *)
@@ -693,8 +659,8 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                  | attributes_data_of _ =>
                    impossible_with_heap_because S "accessor is not data in [defineOwnProperty]"
                  end
-               else (* both are accesor *)
-                (* TODO: check this is true *)
+               else 
+                (* LATER: check this is true *)
                 impossible_with_heap_because S "cases are mutually exclusives in [defineOwnProperty]"
              end))
       | builtin_define_own_prop_args_obj =>
@@ -1147,7 +1113,7 @@ Definition call_object_new S v : result :=
     to_object S v
   | type_null | type_undef =>
     Let O := object_new prealloc_object_proto "Object" in
-    Let p := object_alloc S O in (* TODO: Let on pairs *)
+    Let p := object_alloc S O in (* LATER: Let on pairs *)
     let '(l, S') := p in
     out_ter S' l
   end.
@@ -1174,7 +1140,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     Let b := convert_value_to_boolean v in
     Let O1 := object_new prealloc_bool_proto "Boolean" in
     Let O := object_with_primitive_value O1 b in
-    Let p := object_alloc S O in (* todo: Let pair *)
+    Let p := object_alloc S O in (* LATER: Let pair *)
     let '(l, S') := p in
     out_ter S' l
 
@@ -1220,7 +1186,7 @@ Definition run_construct_default runs S C l args :=
       else prealloc_object_proto
       in
     Let O := object_new vproto "Object" in
-    Let p := object_alloc S1 O in (* todo: Let pair *)
+    Let p := object_alloc S1 O in (* LATER: Let pair *)
     let '(l', S2) := p in
     if_value (runs_type_call runs S2 C l l' args) (fun S3 v2 =>
       Let vr := ifb type_of v2 = type_object then v2 else l' in
@@ -1262,13 +1228,14 @@ Definition creating_function_object_proto runs S C l : result :=
       object_define_own_prop runs S2 C l "prototype" A2 false)).    
 
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
-  Let O := object_create prealloc_function_proto "Function" true Heap.empty in
-  Let O1 := object_with_invokation O
+  Let O := object_new prealloc_function_proto "Function" in
+  Let O1 := object_with_get O builtin_get_function in
+  Let O2 := object_with_invokation O1
     (Some construct_default)
     (Some call_default)
     (Some builtin_has_instance_function) in
-  Let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
-  Let p := object_alloc S O2 in (* TODO: Let on pairs *)
+  Let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in
+  Let p := object_alloc S O3 in (* LATER: Let on pairs *)
   let '(l, S1) := p in
   Let A1 := attributes_data_intro (JsNumber.of_int (length names)) false false false in
   if_bool (object_define_own_prop runs S1 C l "length" A1 false) (fun S2 b2 =>
@@ -1388,7 +1355,7 @@ Definition arguments_object_map runs S C l xs args L X str : result_void :=
 Definition create_arguments_object runs S C lf xs args L X str : result :=
   let O := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
   let p := object_alloc S O in
-  let '(l, S') := p in (* todo: Let pair *)
+  let '(l, S') := p in (* LATER: Let pair *)
   Let A := attributes_data_intro (JsNumber.of_int (length args)) true false true in
   if_bool (object_define_own_prop runs S' C l "length" A false) (fun S1 b =>
     if_void (arguments_object_map runs S1 C l xs args L X str) (fun S2 =>
@@ -1980,7 +1947,7 @@ Definition run_expr_function runs S C fo args bd : result :=
     let lex := execution_ctx_lexical_env C in
     creating_function_object runs S C args bd lex (funcbody_is_strict bd)
   | Some fn =>
-    Let p := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in (* TODO:  Let pair *)
+    Let p := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in (* LATER:  Let pair *)
     let '(lex', S') := p in
     let follow L :=
       if_some (pick_option (env_record_binds S' L)) (fun E =>
@@ -2002,7 +1969,7 @@ Definition entering_eval_code runs S C direct bd K : result :=
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
       else (execution_ctx_lexical_env C', S)
    in
-  let '(lex, S') := p in (* todo: Let pair *)
+  let '(lex, S') := p in (* LATER: Let pair *)
   Let C1 :=
     if str
       then execution_ctx_with_lex_same C' lex
@@ -2010,7 +1977,7 @@ Definition entering_eval_code runs S C direct bd K : result :=
     in
   Let p := funcbody_prog bd in
   if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
-    K S1 C1). (* TODO: this was C', but Arthur changed it to C1 *)
+    K S1 C1). (* TODO: this was C', but Arthur changed it to C1 --check the change*)
 
 Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with
@@ -2107,7 +2074,7 @@ Definition run_stat_with runs S C e1 t2 : result :=
     if_object (to_object S1 v1) (fun S2 l =>
       Let lex := execution_ctx_lexical_env C in
       Let p := lexical_env_alloc_object S2 lex l provide_this_true in
-      let '(lex', S3) := p in (* todo: let pair *)
+      let '(lex', S3) := p in (* LATER: Let pair *)
       Let C' := execution_ctx_with_lex_this C lex' l in
       runs_type_stat runs S3 C' t2)).
 
@@ -2211,7 +2178,7 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
     | None => finally S1 (res_throw v)
     | Some (x, t2) =>
       Let lex := execution_ctx_lexical_env C in
-      Let p := lexical_env_alloc_decl S1 lex in (* TODO: Let pair *)
+      Let p := lexical_env_alloc_decl S1 lex in (* LATER: Let pair *)
       let '(lex', S') := p in
       match lex' with
       | L :: oldlex =>
@@ -2331,10 +2298,10 @@ Definition run_stat runs S C t : result :=
     out_ter S (res_continue so)
 
   | stat_for_in ls e1 e2 s =>
-    result_not_yet_implemented (* TODO *)
+    result_not_yet_implemented (* LATER *)
 
   | stat_for_in_var ls x e1o e2 s =>
-    result_not_yet_implemented (* TODO *)
+    result_not_yet_implemented (* LATER *)
 
   | stat_debugger =>
     out_ter S res_empty
@@ -2604,7 +2571,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       end)
 
   | _ =>
-    result_not_yet_implemented (* TODO *)
+    result_not_yet_implemented (* LATER *)
 
   end.
 

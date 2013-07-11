@@ -520,7 +520,7 @@ Proof.
   introv nA.
   cases* o.
    false nA. constructors.
-(*TODO:cleanup
+(*LATER:cleanup
    cases* r; try (false nA; constructors).
 *)
 Qed.
@@ -532,7 +532,7 @@ Proof.
   introv nA.
   cases* o.
    false nA. constructors.
-(*TODO: cleanup
+(* LATER: cleanup
    cases* r; try (false nA; constructors).
 *)
 Qed.
