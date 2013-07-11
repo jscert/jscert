@@ -1343,7 +1343,7 @@ Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
   object_define_own_prop runs S C l x Desc str = o ->
   red_expr S C (spec_object_define_own_prop l x Desc str) o.
 Proof.
-  introv IH HR. unfolds in HR. run. 
+(*  introv IH HR. unfolds in HR. run. 
   (* LATER: create a tactic for the pattern of the next two lines *)
   applys* red_spec_object_define_own_prop.
    applys* run_object_method_correct. clear E.
@@ -1392,7 +1392,7 @@ Proof.
        applys* red_spec_object_define_own_prop_6c_1.
        applys* red_spec_object_define_own_prop_6c_2.  
   (* arguments object *)
-  skip. (* TODO: implement *)
+  skip. (* TODO: implement *)*)
 Admitted.
 
 
