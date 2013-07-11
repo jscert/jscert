@@ -744,7 +744,6 @@ Ltac run_select_proj H :=
   | runs_type_expr => constr:(runs_type_correct_expr)
   | runs_type_stat => constr:(runs_type_correct_stat)
   | runs_type_prog => constr:(runs_type_correct_prog)
-  | ?x => run_select_proj_extra_error HT
   | runs_type_call => constr:(runs_type_correct_call) 
   | runs_type_function_has_instance => constr:(runs_type_correct_function_has_instance) 
   | runs_type_stat_while => constr:(runs_type_correct_stat_while) 
@@ -752,6 +751,7 @@ Ltac run_select_proj H :=
   | runs_type_object_get_prop => constr:(runs_type_correct_object_get_prop)
   | runs_type_object_proto_is_prototype_of => constr:(runs_type_correct_object_proto_is_prototype_of) 
   | runs_type_equal => constr:(runs_type_correct_equal) 
+  | ?x => run_select_proj_extra_error HT
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
   | ?x => run_select_proj_extra_construct HT
@@ -1407,9 +1407,43 @@ Proof.
   run red_spec_object_put_1_default using object_can_put_correct. cases_if.
    run red_spec_object_put_2_true. let_name.
     asserts follows_correct: (forall o, True ->
-      follow tt = o ->
-      red_expr S0 C (spec_object_put_3 vthis l x v str (specret_val S2 a)) o).
-      clear HR. introv N E. substs. skip. (* TODO *)
+        follow tt = o ->
+        red_expr S0 C (spec_object_put_3 vthis l x v str (specret_val S2 a)) o).
+      clear HR. introv N E. substs. 
+(* TODO:
+      run red_spec_object_put_3_not_data.
+
+  |  : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
+      red_spec S C (spec_object_get_prop l x) y1 ->
+      red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
+      red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S (attributes_accessor_of Aa))) o
+      (* According to the spec, it should be every cases that are not [attributes_data_of].  
+        There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
+
+  | red_spec_object_put_4_accessor : forall S0 S C vsetter lfsetter vthis l x v throw Aa o1 o, (* Step 5 *)
+      vsetter = attributes_accessor_set Aa ->
+      vsetter <> undef -> (* Note: this premise is a derived fact *)
+      vsetter = value_object lfsetter ->
+      red_expr S C (spec_call lfsetter vthis (v::nil)) o1 ->
+      red_expr S C (spec_object_put_5 o1) o ->
+      red_expr S0 C (spec_object_put_4 vthis l x v throw (dret S (attributes_accessor_of Aa))) o
+
+  | red_spec_object_put_4_not_accessor_object : forall S0 S C (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
+      Desc = descriptor_intro_data v true true true ->
+      red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
+      red_expr S C (spec_object_put_5 o1) o ->
+      red_expr S0 C (spec_object_put_4 lthis l x v throw (dret S (attributes_data_of Ad))) o
+      (* According to the spec, it should be every cases that are not [attributes_accessor_of].  There thus (unless it's not possible?) lacks a case there:  [full_descriptor_undef]. -- Martin *)
+
+  | red_spec_object_put_4_not_accessor_prim : forall S0 S C (wthis:prim) l x v throw Ad o, (* Step 6, for prim values *)
+      red_expr S C (spec_error_or_void throw native_error_type) o ->
+      red_expr S0 C (spec_object_put_4 wthis l x v throw (dret S (attributes_data_of Ad))) o
+
+  | red_spec_object_put_5_return : forall S0 S C rv, (* Steps 3.c and 7 *)
+      red_expr S0 C (spec_object_put_5 (out_ter S rv)) (out_void S)
+*)
+ skip.
+
      destruct a as [|[Ad|Aa]]; try solve [apply~ follows_correct].
      clear EQfollow follow follows_correct.
      destruct vthis as [wthis|lthis].
@@ -1859,13 +1893,34 @@ Lemma creating_function_object_proto_correct : forall runs S C l o,
   runs_type_correct runs ->
   creating_function_object_proto runs S C l = o ->
   red_expr S C (spec_creating_function_object_proto l) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_creating_function_object_proto 
+    using run_construct_prealloc_correct.
+  let_simpl. run red_spec_creating_function_object_proto_1.
+  let_simpl. applys* red_spec_creating_function_object_proto_2. run_hyp*.
+Admitted. (* faster *)
+
 
 Lemma creating_function_object_correct : forall runs S C names bd X str o,
   runs_type_correct runs ->
   creating_function_object runs S C names bd X str = o ->
   red_expr S C (spec_creating_function_object names bd X str) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR.  
+  let_simpl. let_simpl. let_simpl. let_name. destruct p as [l S1].
+  let_simpl. run* red_spec_creating_function_object. rewrite* EQp. 
+    skip. (*one bug*)
+  run red_spec_creating_function_object_1 
+    using creating_function_object_proto_correct.
+  case_if; destruct str; tryfalse.
+    run_inv. applys* red_spec_creating_function_object_2_not_strict.
+    let_simpl. let_simpl. 
+     run* red_spec_creating_function_object_2_strict. clear EQp.
+     run* red_spec_creating_function_object_3.
+     applys* red_spec_creating_function_object_4.
+Admitted. (* faster*)
+
 
 Lemma run_list_expr_correct : forall runs S C es y,
   runs_type_correct runs ->

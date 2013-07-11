@@ -1277,7 +1277,7 @@ Definition creating_function_object_proto runs S C l : result :=
     Let A1 := attributes_data_intro l true false true in
     if_bool (object_define_own_prop runs S1 C lproto "constructor" A1 false) (fun S2 b =>
       Let A2 := attributes_data_intro lproto true false false in
-      object_define_own_prop runs S2 C l "prototype" A2 false)).
+      object_define_own_prop runs S2 C l "prototype" A2 false)).    
 
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
   Let O := object_create prealloc_function_proto "Function" true Heap.empty in
@@ -1286,17 +1286,17 @@ Definition creating_function_object runs S C (names : list string) (bd : funcbod
     (Some call_default)
     (Some builtin_has_instance_function) in
   Let O2 := object_with_details O1 (Some X) (Some names) (Some bd) None None None None in
-  let p := object_alloc S O2 in (* TODO: Let on pairs *)
+  Let p := object_alloc S O2 in (* TODO: Let on pairs *)
   let '(l, S1) := p in
   Let A1 := attributes_data_intro (JsNumber.of_int (length names)) false false false in
-  if_success (object_define_own_prop runs S1 C l "length" A1 false) (fun S2 rv1 =>
-    if_bool (creating_function_object_proto runs S2 C l) (fun S3 b =>
+  if_bool (object_define_own_prop runs S1 C l "length" A1 false) (fun S2 b2 =>
+    if_bool (creating_function_object_proto runs S2 C l) (fun S3 b3 =>
       if negb str then out_ter S3 l
       else (
         Let vthrower := value_object prealloc_throw_type_error in
         Let A2 := attributes_accessor_intro vthrower vthrower false false in
-        if_success (object_define_own_prop runs S3 C l "caller" A2 false) (fun S4 rv2 =>
-          if_success (object_define_own_prop runs S4 C l "arguments" A2 false) (fun S5 rv3 =>
+        if_bool (object_define_own_prop runs S3 C l "caller" A2 false) (fun S4 b4 =>
+          if_bool (object_define_own_prop runs S4 C l "arguments" A2 false) (fun S5 b5 =>
             out_ter S5 l))))).
 
 Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list string) str {struct names} : result_void :=
