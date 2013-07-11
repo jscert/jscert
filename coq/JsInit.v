@@ -310,7 +310,6 @@ Definition object_prealloc_number :=
   (* Daniele: as Daiva says, I think this is correct. The internal prototype internal property is function_proto, and this is done by [object_create_prealloc_constructo] below. Instead, the Number.prototype property (following line) is the number.prototype object. *)
 
   let P := write_constant P "prototype" prealloc_number_proto in
-  (* TODO: MAX_VALUE and MIN_VALUE *)
   let P := write_constant P "NaN" JsNumber.nan in
   let P := write_constant P "NEGATIVE_INFINITY" JsNumber.neg_infinity in
   let P := write_constant P "POSITIVE_INFINITY" JsNumber.infinity in

@@ -17,9 +17,7 @@ red_spec_object_put_4_accessor
 red_spec_object_put_4_not_accessor_object 
 red_spec_object_put_4_not_accessor_prim 
 
-====================
 
-Arthur:
 
 red_spec_to_descriptor_not_object 
 red_spec_to_descriptor_object 
@@ -53,29 +51,16 @@ red_spec_to_descriptor_7_error
 red_spec_to_descriptor_7_ok 
 
 
+====================
+
+Arthur:
+
+
 red_spec_call 
 red_spec_constructor 
 red_spec_call_1_prealloc 
 red_spec_construct_1_prealloc 
 
-red_expr_call 
-red_expr_call_1 
-red_expr_call_2 
-red_expr_call_3 
-red_expr_call_3_callable 
-red_expr_call_4_prop 
-red_expr_call_4_env 
-red_expr_call_4_not_ref 
-red_expr_call_5_eval 
-red_expr_call_5_not_eval 
-
-red_spec_call_1_default 
-red_spec_call_default 
-red_spec_call_default_1 
-red_spec_call_default_2_body 
-red_spec_call_default_2_empty_body 
-red_spec_call_default_3_return 
-red_spec_call_default_3_normal 
 red_spec_construct_1_default 
 red_spec_construct_default 
 red_spec_construct_default_1 
@@ -121,7 +106,9 @@ binary ops
 
 Martin:
 
-Implementing the new stat_block, and code do_while, following while.
+new program for prog_block
+
+new program for to-property-descriptor (it's missing it seems; it's long but easy)
 
 Merging if_success* (in a branch)
 

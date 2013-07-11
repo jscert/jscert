@@ -159,6 +159,17 @@ Hint Constructors abort.
 (**************************************************************)
 (** General Lemmas *)
 
+Lemma arguments_from_spec_1 : forall args,
+  exists v, arguments_from args (v::nil) 
+         /\ get_arg 0 args = v.
+Proof.
+  Hint Constructors arguments_from.
+  intros. destruct args as [|v vs]. 
+  exists undef. splits*.
+  exists v. splits*.
+Qed.
+
+
 Lemma res_overwrite_value_if_empty_empty : forall R,
   res_overwrite_value_if_empty resvalue_empty R = R.
 Proof. introv. unfolds. cases_if~. destruct R; simpls; inverts~ e. Qed.
@@ -360,8 +371,19 @@ Lemma if_any_or_throw_out : forall W K1 K2 o,
   isout W (if_any_or_throw_post K1 K2 o).
 Admitted.
 
+Definition if_success_or_return_post (K1 : state -> result) (K2 : state -> resvalue -> result) o o1 :=
+     (o1 = out_div /\ o = o1)
+  \/ exists S R, o1 = out_ter S R /\
+     (   (res_type R = restype_normal /\ res_label R = label_empty /\ K1 S = o)
+      \/ (res_type R = restype_return /\ res_label R = label_empty /\ K2 S (res_value R) = o)
+      \/ (res_type R <> restype_normal /\ res_type R <> restype_return /\ o1 = o)).
+
+Lemma if_success_or_return_out : forall W (K1 : state -> result) (K2 : state -> resvalue -> result) o,
+  if_success_or_return W K1 K2 = o ->
+  isout W (if_success_or_return_post K1 K2 o).
+Admitted.
+
 (* TODO: misssing 
-    if_success_or_return
     if_normal_continue_or_break *)
 
 Definition if_break_post (K : _ -> _ -> result) o o1 :=
@@ -724,6 +746,7 @@ Ltac run_select_ifres H :=
   | if_number_spec _ _ => constr:(if_number_spec_out)
   | if_string_spec _ _ => constr:(if_string_spec_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
+  | if_success_or_return _ _ _ => constr:(if_success_or_return_out) 
   | ?x => run_select_extra T
   end end.
 
@@ -935,6 +958,13 @@ Ltac run_post_core :=
     let E := fresh "E" in let L := fresh "L" in
     destruct H as [(Er&Ab)|(S&R&O1&[(N&H)|(N&v&E&L&H)])];
     [ try subst_hyp Er; try subst_hyp Ab | try subst_hyp O1 | try subst_hyp O1 ]
+  | H: if_success_or_return_post _ _ _ _ |- _ => 
+     let S := fresh "S" in let R := fresh "R" in
+     let o1 := fresh "o1" in let W1 := fresh "W1" in let O1 := fresh "O1" in 
+     let E1 := fresh "E" in let E2 := fresh "E" in 
+     destruct H as [(Er&Ab)|(S&R&O1&[(E1&E2&K)|[(E1&E2&K)|(E1&E2&K)]])];
+    [ try subst_hyp Er; try subst_hyp Ab; try abort
+    | try subst_hyp O1 | try subst_hyp O1 | try subst_hyp O1 ]
   | |- _ => run_post_run_expr_get_value
   | |- _ => run_post_extra
   end.
@@ -1889,11 +1919,136 @@ Lemma run_construct_correct : forall runs S C co l args o,
   red_expr S C (spec_construct_1 co l args) o.
 Admitted.
 
+Lemma entering_eval_code_correct : forall runs S C bdirect bd F K o,
+  runs_type_correct runs ->
+  entering_eval_code runs S C bdirect bd F = o ->
+  (forall S' C' o', F S' C' = o' -> red_expr S' C' K o') ->
+  red_expr S C (spec_entering_eval_code bdirect bd K) o.
+Admitted.
+
+Lemma run_eval_correct : forall runs S C (is_direct_call : bool) vs o,
+  runs_type_correct runs ->
+  run_eval runs S C is_direct_call vs = o ->
+  red_expr S C (spec_call_global_eval is_direct_call vs) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  lets (v&H&E): arguments_from_spec_1 vs. rewrites (rm E) in *.
+  applys* red_spec_call_global_eval (rm H). 
+  destruct v; 
+   [| run_inv; applys* red_spec_call_global_eval_1_not_string; simpl; congruence].
+  destruct p; run_inv; 
+     try (applys* red_spec_call_global_eval_1_not_string; simpl; congruence).
+  forwards* H: (pick_spec (P:=parse s)). applys parse_exists. 
+  destruct (pick (parse s)).
+  applys* red_spec_call_global_eval_1_string_parse (rm H).
+  applys* entering_eval_code_correct (rm HR). clear S C o.
+  introv HR. run red_spec_call_global_eval_2.
+  sets_eq RT: (res_type R). destruct RT; tryfalse.
+    run. cases (res_value R); tryfalse; run_inv.
+      applys* red_spec_call_global_eval_3_normal_empty.
+      destruct R. simpls. subst.
+       applys* red_spec_call_global_eval_3_normal_value.
+    run_inv. applys* red_spec_call_global_eval_3_throw.
+  applys* red_spec_call_global_eval_1_string_not_parse. run_hyp*.
+Admitted. (*faster*)
+
+Lemma run_list_expr_correct : forall runs S C es y,
+  runs_type_correct runs ->
+  run_list_expr runs S C nil es = result_some y ->
+  red_spec S C (spec_list_expr es) y.
+Proof.
+  introv IH. cuts M: (forall es S C vs y, 
+      run_list_expr runs S C vs es = result_some y ->
+      red_spec S C (spec_list_expr_1 (rev vs) es) y).
+    intros HR. apply red_spec_list_expr. applys* M (@nil value).
+  clears S C es y. intros es. induction es; introv HR.
+  simpls. run_inv. applys* red_spec_list_expr_1_nil.
+  simpls. run red_spec_list_expr_1_cons. 
+   applys red_spec_list_expr_2. forwards M: IHes HR.
+   rew_list in M. auto.
+Admitted. (*faster*)
+
+
 Lemma run_call_default_correct : forall runs S C lf o,
   runs_type_correct runs ->
   run_call_default runs S C lf = o ->
   red_expr S C (spec_call_default_1 lf) o.
-Admitted.
+Proof.
+  introv IH HR. unfolds in HR. let_simpl. 
+  run. applys* red_spec_call_default_1.
+    applys* run_object_method_correct. clear E.
+  destruct x.
+    case_if.
+      applys* red_spec_call_default_2_empty_body.
+       run_inv. applys* red_spec_call_default_3_normal.
+      run* red_spec_call_default_2_body.
+        destruct R as [RT RV RL]; simpls. subst. 
+         applys red_spec_call_default_3_normal.
+        destruct R as [RT RV RL]; simpls. subst. 
+         applys red_spec_call_default_3_return.
+        subst. abort.
+    applys* red_spec_call_default_2_empty_body. 
+     run_inv. applys* red_spec_call_default_3_normal.
+Admitted. (* faster *)
+
+
+Lemma type_of_prim_not_object : forall w,
+  type_of w <> type_object.
+Proof. destruct w; simpl; try congruence. Qed.
+
+
+(* to merge to top *)
+Axiom run_call_correct : forall runs S C l vthis vs o,
+  (* l <> prealloc_global_eval *)
+  runs_type_correct runs ->
+  runs_type_call runs S C l vthis vs = o ->
+  red_expr S C (spec_call l vthis vs) o.
+
+(* todo: needed to be up here *)
+Lemma env_record_implicit_this_value_correct : forall S C L v,
+  env_record_implicit_this_value S L = Some v ->
+  red_expr S C (spec_env_record_implicit_this_value L) (out_ter S v).
+Proof.
+  introv HR. unfolds in HR.
+  run_simpl HR as H; tryfalse. inverts H. forwards B: @pick_option_correct (rm E).
+  applys~ red_spec_env_record_implicit_this_value B. destruct n.
+   applys~ red_spec_env_record_implicit_this_value_1_decl.
+   applys~ red_spec_env_record_implicit_this_value_1_object.
+Qed.
+
+Lemma run_expr_call_correct : forall runs S C e1 e2s o,
+  runs_type_correct runs ->
+  run_expr_call runs S C e1 e2s = o ->
+  red_expr S C (expr_call e1 e2s) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  let_name. run red_expr_call.
+  run red_expr_call_1 using ref_get_value_correct.
+  run red_expr_call_2 using run_list_expr_correct.
+  destruct a.
+    applys* red_expr_call_3. left. apply type_of_prim_not_object. run_hyp*.
+  case_if.
+  applys* red_expr_call_3_callable.
+  rename o0 into l. rename a0 into vs.
+  let_name as M. asserts M_correct: (forall S0 vthis o,
+      M vthis = o ->
+      red_expr S0 C (expr_call_5 l is_eval_direct vs (out_ter S3 vthis)) o).
+    clear HR S o. introv HR. subst M.
+    case_if.
+      subst. applys red_expr_call_5_eval. applys* run_eval_correct.
+      applys* red_expr_call_5_not_eval. applys* run_call_correct.
+    clear EQM.
+  subst. destruct rv; tryfalse.
+    applys* red_expr_call_4_not_ref.
+    cases (ref_base r).
+      case_if. applys* red_expr_call_4_prop.
+      run. applys* red_expr_call_4_env. 
+       applys* env_record_implicit_this_value_correct.
+  (* other branch *) 
+  applys* red_expr_call_3. run_hyp*.
+Admitted. (*faster*)
+
+
 
 Lemma creating_function_object_proto_correct : forall runs S C l o,
   runs_type_correct runs ->
@@ -1928,21 +2083,7 @@ Proof.
 Admitted. (* faster*)
 
 
-Lemma run_list_expr_correct : forall runs S C es y,
-  runs_type_correct runs ->
-  run_list_expr runs S C nil es = result_some y ->
-  red_spec S C (spec_list_expr es) y.
-Proof.
-  introv IH. cuts M: (forall es S C vs y, 
-      run_list_expr runs S C vs es = result_some y ->
-      red_spec S C (spec_list_expr_1 (rev vs) es) y).
-    intros HR. apply red_spec_list_expr. applys* M (@nil value).
-  clears S C es y. intros es. induction es; introv HR.
-  simpls. run_inv. applys* red_spec_list_expr_1_nil.
-  simpls. run red_spec_list_expr_1_cons. 
-   applys red_spec_list_expr_2. forwards M: IHes HR.
-   rew_list in M. auto.
-Qed.
+
 
 Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco p args o,
   runs_type_correct runs ->
@@ -2137,9 +2278,7 @@ Proof.
   introv HR. destruct u; simpls; inverts* HR.
 Qed.
 
-Lemma type_of_prim_not_object : forall w,
-  type_of w <> type_object.
-Proof. destruct w; simpl; try congruence. Qed.
+
 
 Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
   if_some (run_object_method object_get_own_prop_ S l) (fun B =>
@@ -2309,16 +2448,7 @@ Proof.
     applys~ object_delete_correct HR.
 Qed.
 
-Lemma env_record_implicit_this_value_correct : forall S C L v,
-  env_record_implicit_this_value S L = Some v ->
-  red_expr S C (spec_env_record_implicit_this_value L) (out_ter S v).
-Proof.
-  introv HR. unfolds in HR.
-  run_simpl HR as H; tryfalse. inverts H. forwards B: @pick_option_correct (rm E).
-  applys~ red_spec_env_record_implicit_this_value B. destruct n.
-   applys~ red_spec_env_record_implicit_this_value_1_decl.
-   applys~ red_spec_env_record_implicit_this_value_1_object.
-Qed.
+
 
 Lemma identifier_resolution_correct : forall runs S C x y,
   runs_type_correct runs ->
@@ -2382,6 +2512,7 @@ Proof.
        applys* run_construct_correct.
       applys* red_expr_new_2_type_error. run_hyp*.
   (* call *)
+(*
   unfolds in R.
   Focus 1.
   let_simpl.
@@ -2419,7 +2550,8 @@ Proof.
   applys* follows_correct.
   skip.
   (* TODO *)
-
+*)
+skip.
   (* unary operators *)
   unfolds in R. case_if as N. (*todo: other branch *)
     run* red_expr_prepost. run red_expr_prepost_1_valid.
@@ -2650,6 +2782,7 @@ Proof.
   apply~ red_prog_prog. applys~ run_elements_correct R.
 Qed.
 
+(*
 Lemma run_call_correct : forall runs,
   runs_type_correct runs ->
   follow_call (run_call runs).
@@ -2666,6 +2799,7 @@ Admitted. (* OLD:
       apply~ red_spec_call_1_prealloc. unmonad.
       skip. (* TODO *)
      skip. (* TODO *)
+*)
 *)
 
 Lemma run_function_has_instance_correct : forall runs,
@@ -2752,7 +2886,7 @@ Proof.
      apply~ run_expr_correct.
      apply~ run_stat_correct.
      apply~ run_prog_correct.
-     apply~ run_call_correct.
+     skip. (* apply~ run_call_correct.*)
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
      apply~ run_stat_do_while_correct.

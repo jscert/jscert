@@ -910,8 +910,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_call_3 rv v is_eval_direct y1) o ->
       red_expr S0 C (expr_call_2 rv is_eval_direct e2s (ret S v)) o
 
-  | red_expr_call_3 : forall l S0 S C o rv v is_eval_direct vs, (* Steps 4-5 *)
-      (type_of v <> type_object) \/ (v = value_object l /\ ~ is_callable S l) ->
+  | red_expr_call_3 : forall S0 S C o rv v is_eval_direct vs, (* Steps 4-5 *)
+      (type_of v <> type_object) \/ (exists l, v = value_object l /\ ~ is_callable S l) ->
       red_expr S C (spec_error native_error_type) o ->
       red_expr S0 C (expr_call_3 rv v is_eval_direct (ret S vs)) o
       
@@ -1603,26 +1603,26 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_get_1_default : forall S C vthis l x y1 o, (* Step 1 *)
       red_spec S C (spec_object_get_prop l x) y1 ->
-      red_expr S C (spec_object_get_2 vthis l y1) o ->
+      red_expr S C (spec_object_get_2 vthis y1) o ->
       red_expr S C (spec_object_get_1 builtin_get_default vthis l x) o
 
-  | red_spec_object_get_2_undef : forall S0 S C vthis l, (* Step 2 *)
-      red_expr S0 C (spec_object_get_2 vthis l (dret S full_descriptor_undef)) (out_ter S undef)
+  | red_spec_object_get_2_undef : forall S0 S C vthis, (* Step 2 *)
+      red_expr S0 C (spec_object_get_2 vthis (dret S full_descriptor_undef)) (out_ter S undef)
 
-  | red_spec_object_get_2_data : forall S0 S C vthis l Ad v, (* Step 3 *)
+  | red_spec_object_get_2_data : forall S0 S C vthis Ad v, (* Step 3 *)
       v = attributes_data_value Ad ->
-      red_expr S0 C (spec_object_get_2 vthis l (dret S (attributes_data_of Ad))) (out_ter S v)
+      red_expr S0 C (spec_object_get_2 vthis (dret S (attributes_data_of Ad))) (out_ter S v)
 
-  | red_spec_object_get_2_accessor : forall S0 S C vthis l Aa o, (* Step 4 *)
-      red_expr S C (spec_object_get_3 vthis l (attributes_accessor_get Aa)) o ->
-      red_expr S0 C (spec_object_get_2 vthis l (dret S (attributes_accessor_of Aa))) o
+  | red_spec_object_get_2_accessor : forall S0 S C vthis Aa o, (* Step 4 *)
+      red_expr S C (spec_object_get_3 vthis (attributes_accessor_get Aa)) o ->
+      red_expr S0 C (spec_object_get_2 vthis (dret S (attributes_accessor_of Aa))) o
 
-  |  red_spec_object_get_3_accessor_undef : forall S C vthis l, (* Step 5 *)
-      red_expr S C (spec_object_get_3 vthis l undef) (out_ter S undef) 
+  |  red_spec_object_get_3_accessor_undef : forall S C vthis, (* Step 5 *)
+      red_expr S C (spec_object_get_3 vthis undef) (out_ter S undef) 
 
-  | red_spec_object_get_3_accessor_object : forall S C vthis l lf o, (* Step 6 *)
-      red_expr S C (spec_call lf l nil) o ->
-      red_expr S C (spec_object_get_3 vthis l lf) o
+  | red_spec_object_get_3_accessor_object : forall S C vthis lf o, (* Step 6 *)
+      red_expr S C (spec_call lf vthis nil) o ->
+      red_expr S C (spec_object_get_3 vthis lf) o
       
   (** CanPut (8.12.4) *)
 
@@ -2784,7 +2784,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_default_2 bdo) o ->
       red_expr S C (spec_call_default_1 l) o
 
-  | red_spec_call_default_2_body : forall S C l bd o1 o, (* Step 2, non-empty code *)
+  | red_spec_call_default_2_body : forall S C bd o1 o, (* Step 2, non-empty code *)
       ~ (funcbody_empty bd) ->
       red_prog S C (funcbody_prog bd) o1 ->
       red_expr S C (spec_call_default_3 o1) o ->
@@ -2795,11 +2795,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_default_3 (out_ter S (res_normal undef))) o ->
       red_expr S C (spec_call_default_2 bdo) o
 
-  | red_spec_call_default_3_return : forall S0 S C v, (* Step 5 (Step 4 done by abort rule) *) 
-      red_expr S0 C (spec_call_default_3 (out_ter S (res_return v))) (out_ter S v) 
+  | red_spec_call_default_3_return : forall S0 S C rv, (* Step 5 (Step 4 done by abort rule) *) 
+      red_expr S0 C (spec_call_default_3 (out_ter S (res_return rv))) (out_ter S rv) 
+         (* LATER: can we make it v instead of rv ? *)   
       
-  | red_spec_call_default_3_normal : forall S0 S C v, (* Step 6 *)
-      red_expr S0 C (spec_call_default_3 (out_ter S (res_normal v))) (out_ter S undef)
+  | red_spec_call_default_3_normal : forall S0 S C rv, (* Step 6 *)
+      red_expr S0 C (spec_call_default_3 (out_ter S (res_normal rv))) (out_ter S undef)
+      (* LATER: can we make it v instead of rv ? *)
      
   (** Constructor for regular functions  (13.2.2) *)       
       
@@ -2940,7 +2942,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_global_eval_3_normal_value : forall S0 S C v, (* Step 6 *)
       red_expr S0 C (spec_call_global_eval_3 (out_ter S v)) (out_ter S v)
       
-  | red_spec_call_global_eval_3_normal_empty : forall S0 S C R lab, (* Step 7 *)
+  | red_spec_call_global_eval_3_normal_empty : forall S0 S C R, (* Step 7 *)
       res_type R = restype_normal ->
       res_value R = resvalue_empty ->
       red_expr S0 C (spec_call_global_eval_3 (out_ter S R)) (out_ter S undef)
