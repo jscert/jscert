@@ -99,39 +99,30 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
       red_prog S' C p o ->
       red_prog S C (javascript_1 (out_void S') p) o
 
-  (** Program  (10.4.1) *)
-
-  | red_prog_prog : forall S C str els o,
-      red_prog S C (prog_1 resvalue_empty els) o ->
-      red_prog S C (prog_intro str els) o
-
   (** No more source elements *)
 
-  | red_prog_1_nil : forall S C rv,
-      red_prog S C (prog_1 rv nil) (out_ter S rv)
-
-  (** Source element : statement (See also [abort_intercepted_prog]) *)
-
-  (* TODO:  Reverse order (see blocks for more details) *)
-  | red_prog_1_cons_stat : forall S C t rv els o1 o,
+  | red_prog_nil : forall S C str,
+      red_prog S C (prog_intro str nil) (out_ter S resvalue_empty)
+      
+   | red_prog_cons : forall S C str t els o1 o,
+      red_prog S C (prog_intro str els) o1 ->
+      red_prog S C (prog_1 o1 t) o ->
+      red_prog S C (prog_intro str (els++((element_stat t)::nil))) o
+      
+   | red_prog_1 : forall S0 S C t rv o1 o,
       red_stat S C t o1 ->
-      red_prog S C (prog_2 rv o1 els) o ->
-      red_prog S C (prog_1 rv ((element_stat t)::els)) o
+      red_prog S C (prog_2 rv o1) o ->
+      red_prog S0 C (prog_1 (out_ter S rv) t) o
 
-  | red_prog_2 : forall S0 S C R rv els o,
-      res_type R <> restype_throw ->
-      red_prog S C (prog_3 (out_ter S (res_overwrite_value_if_empty rv R)) els) o ->
-      red_prog S0 C (prog_2 rv (out_ter S R) els) o
-
-  | red_prog_3 : forall S0 S C rv els o,
-      red_prog S C (prog_1 rv els) o ->
-      red_prog S0 C (prog_3 (out_ter S rv) els) o
+  | red_prog_2 : forall S0 S C R rv,
+      red_prog S0 C (prog_2 rv (out_ter S R)) (out_ter S (res_overwrite_value_if_empty rv R))
 
   (** Source element : function declaration *)
 
-  | red_prog_1_cons_funcdecl : forall S C rv name args bd els o,
-      red_prog S C (prog_1 rv els) o ->
-      red_prog S C (prog_1 rv ((element_func_decl name args bd)::els)) o
+  | red_prog_1_cons_funcdecl : forall o1 S C str rv name args bd els o,
+      red_prog S C (prog_intro str els) o1 ->
+      red_prog S C (prog_2 resvalue_empty o1) o ->
+      red_prog S C (prog_intro str (els++((element_func_decl name args bd)::nil))) o
 
 
 (**************************************************************)
