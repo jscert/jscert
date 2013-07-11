@@ -80,22 +80,11 @@ new program for prog_block
 
 Martin:
 
-<<<<<<< Updated upstream
-new program for to-property-descriptor (it's missing it seems; it's long but easy)
-
-=======
 
 new program for to-property-descriptor (it's missing it seems; it's long but easy)
 
 red_javascript_intro 
 (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
-
-
-
-
-
-
->>>>>>> Stashed changes
 
 
 === can be skipped ===

@@ -1212,7 +1212,7 @@ Qed.
 Lemma run_object_heap_set_extensible_correct : forall b S l S',
   run_object_heap_set_extensible b S l = Some S' ->
   object_heap_set_extensible b S l S'.
-Admitted.
+Admitted.(* TODO Martin *)
 
 Lemma build_error_correct : forall S C vproto vmsg o,
   build_error S vproto vmsg = o ->
@@ -1429,8 +1429,8 @@ Proof.
        applys* red_spec_object_define_own_prop_6c_1.
        applys* red_spec_object_define_own_prop_6c_2.  
   (* arguments object *)
-  skip. (* TODO: implement *)*)
-Admitted.
+  skip. (* Arguments object: postponed *)
+Admitted. (* faster *)
 
 
 Lemma prim_new_object_correct : forall S C w o,
@@ -1642,7 +1642,7 @@ Lemma object_put_correct : forall runs S C l x v str o,
   runs_type_correct runs ->
   object_put runs S C l x v str = o ->
   red_expr S C (spec_object_put l x v str) o.
-Admitted.
+Admitted. (* TODO NOW *)
 
 Lemma env_record_set_mutable_binding_correct : forall runs S C L x v str o,
   runs_type_correct runs ->
@@ -1666,13 +1666,13 @@ Lemma ref_put_value_correct : forall runs S C rv v o,
   runs_type_correct runs ->
   ref_put_value runs S C rv v = o ->
   red_expr S C (spec_put_value rv v) o.
-Admitted.
+Admitted.(* TODO NOW *)
 
 Lemma run_expr_get_value_correct : forall runs S C e y,
   runs_type_correct runs -> 
   run_expr_get_value runs S C e = result_some y -> 
   red_spec S C (spec_expr_get_value e) y.
-Admitted.
+Admitted.(* TODO NOW *)
 
 Ltac run_select_proj_extra_ref HT ::= 
   match HT with
@@ -1681,37 +1681,6 @@ Ltac run_select_proj_extra_ref HT ::=
   | run_expr_get_value => constr:(run_expr_get_value_correct)
   | object_define_own_prop => constr:(object_define_own_prop_correct)
   end.
-
-
-(* todo; deprecated
-
-Lemma run_expr_get_value_correct : forall runs S C e K o,
-  runs_type_correct runs ->
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1.
-Admitted.
-*)
-
-(*
-Ltac run_select_lemma_run_expr_get_value T ::=
-  match T with run_expr_get_value _ _ _ _ _ => constr:(run_expr_get_value_correct) end.
-
-Ltac run_post_run_expr_get_value ::=
-  let o1 := fresh "o1" in
-  let Eq := fresh "Eq" in
-  let Er := fresh "Er" in
-  let Ab := fresh "Ab" in
-  match goal with
-  | H: run_expr_get_value_post _ _ _ |- _ =>
-    let O1 := fresh "O1" in
-    let S1 := fresh "S" in
-    let v1 := fresh "v" in
-    destruct H as [(o1&Eq&Er&Ab)|(S1&v1&O1&H)];
-    [ try abort | try subst_hyp O1 ]
-  end.
-*)
-
 
 Lemma env_record_create_mutable_binding_correct : forall runs S C L x deletable_opt o,
   runs_type_correct runs ->
@@ -1766,7 +1735,7 @@ Lemma object_default_value_correct : forall runs S C l pref o,
   runs_type_correct runs ->
   object_default_value runs S C l pref = o ->
   red_expr S C (spec_object_default_value l pref) o.
-Admitted. 
+Admitted. (* TODO NOW *)
 
 
 (** Conversions *)
@@ -1832,28 +1801,7 @@ Ltac run_select_proj_extra_conversions HT ::=
 
 
 
-(*
-Definition run_expr_get_value_post K o o1 :=
-  (eqabort o1 o \/
-    exists S1, exists (v1 : value), o1 = out_ter S1 v1 /\
-      K S1 v1 = result_some o).
-*)
 
-(*
-Lemma run_expr_get_value_correct : forall runs,
-(*
- runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_expr S C (spec_expr_get_value e) o1 /\
-      run_expr_get_value_post K o o1. *)
-
- runs_type_correct runs -> forall S C e K o,
-  run_expr_get_value runs S C e K = o -> exists o1,
-    red_spec S C (spec_expr_get_value e) (ret S o1) /\
-      run_expr_get_value_post K o o1. 
-
-Admitted.
-*)
 
 
 
@@ -2070,7 +2018,7 @@ Proof.
     run red_spec_binding_inst_var_decls_1_false
       using env_record_create_set_mutable_binding_correct.
      applys* red_spec_binding_inst_var_decls_2.
-Admitted.
+Admitted. (* faster *)
   
 Lemma binding_inst_formal_params_correct : forall runs S C L args names str o,
   runs_type_correct runs ->
@@ -2357,6 +2305,8 @@ Lemma run_elements_correct : forall runs,
   runs_type_correct runs -> forall rv,
   follow_elements rv (fun S C => run_elements runs S C rv).
 Proof.
+ (* TODO NOW *)
+
 (* TODO: don't do it because the definition will need to change
   in order to first process all but the last elements. *)
 (*
@@ -2437,7 +2387,7 @@ Qed.
 Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
   run_binary_op runs S C op v1 v2 = o ->
   red_expr S C (expr_binary_op_3 op v1 v2) o.
-Admitted.
+Admitted. (* TODO NOW *)
 
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
@@ -2514,7 +2464,7 @@ Proof.
 Focus 1.
   subst*.
   (* argument object *)
-  skip. (*TODO*)
+  skip. (* Argument object: proof postponed *)
 Admitted. (*faster*)
 
 (*OLD
@@ -2522,7 +2472,6 @@ Lemma run_object_get_own_prop_correct : forall runs,
   runs_type_correct runs -> forall l,
   follow_object_get_own_prop l
     (fun S C => run_object_get_own_prop runs S C l).
-Admitted. 
    introv E R. simpls. unfolds in E. unmonad_passing.
     applys_and red_spec_object_get_own_prop R0. name_passing_def.
     asserts Co: (forall K o,
@@ -2585,7 +2534,7 @@ Proof.
         applys_eq* red_spec_object_delete_2_some_configurable 1. 
       applys* red_spec_object_delete_3_some_non_configurable.
        applys* out_error_or_cst_correct.
-Admitted.
+Admitted. (* faster *)
 
 
 Lemma env_record_delete_binding : forall runs S C L x o,
@@ -2669,6 +2618,7 @@ Proof.
        applys* run_construct_correct.
       applys* red_expr_new_2_type_error. run_hyp*.
   (* call *)
+   (* TODO NOW *)
 (*
   unfolds in R.
   Focus 1.
@@ -2784,8 +2734,8 @@ skip.
     run red_expr_assign_1_simple.
     forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
 
-Admitted. 
-(* TODO: for binary op:
+Admitted. (* TODO NOW *)
+(* TODO: for binary op:  
      (* In *)
      skip. (* TODO *)
      (* Equal *)
@@ -2928,7 +2878,7 @@ Proof.
   (* Debugger *)
   run_inv. apply red_stat_debugger.
   (* switch *)
-  skip. (* TODO: wait for switch semantics to be double check *)
+  skip. (* TODO: wait for switch semantics to be double check *) (* TODO Martin *)
 Admitted.
 
 Lemma run_prog_correct : forall runs,
@@ -3024,12 +2974,12 @@ Lemma object_proto_is_prototype_of_correct : forall runs,
   runs_type_correct runs ->
   follow_object_proto_is_prototype_of
     (object_proto_is_prototype_of runs).
-Admitted.
+Admitted.(* Part of libraries: postponed for now *)
 
 Lemma run_equal_correct : forall runs,
   runs_type_correct runs ->
   follow_equal (run_equal runs).
-Admitted.
+Admitted.(* TODO Martin *)
 
 
 Theorem runs_correct : forall num,
@@ -3062,7 +3012,7 @@ Proof.
 (*
   forwards R: execution_ctx_binding_inst_correct IH (rm R1). (* Need more information there:  it should return a result_void. *)
 *)
-skip.
+skip. (* TODO NOW *)
   (* applys~ red_javascript_intro R. *)
 Admitted.
 
