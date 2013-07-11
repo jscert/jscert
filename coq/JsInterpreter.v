@@ -460,7 +460,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
-    runs_type_equal : state -> (state -> value -> result) -> (state -> value -> result) -> value -> value -> result;
+    runs_type_equal : state -> execution_ctx -> value -> value -> result;
     runs_type_block : state -> execution_ctx -> list stat -> result
   }.
 
@@ -1623,8 +1623,11 @@ Definition convert_twice' T
   if_spec (convert_twice ifv KC S v1 v2) (fun S' (p : T * T) =>
     let '(p1, p2) := p in K S' p1 p2).
 
-Definition run_equal runs S (conv_number conv_primitive : state -> value -> result)
-    v1 v2 : result :=
+Definition run_equal runs S C v1 v2 : result :=
+  let conv_number := fun S v =>
+    to_number runs S C v in
+  let conv_primitive := fun S v =>
+    to_primitive runs S C v None in
   Let checkTypesThen := fun S0 v1 v2 (K : type -> type -> result) =>
     let ty1 := type_of v1 in
     let ty2 := type_of v2 in
@@ -1634,7 +1637,7 @@ Definition run_equal runs S (conv_number conv_primitive : state -> value -> resu
   checkTypesThen S v1 v2 (fun ty1 ty2 =>
     Let dc_conv := fun v1 F v2 =>
       if_value (F S v2) (fun S0 v2' =>
-        runs_type_equal runs S0 conv_number conv_primitive v1 v2') in
+        runs_type_equal runs S0 C v1 v2') in
     let so b : result :=
       out_ter S b in
     ifb (ty1 = type_null \/ ty1 = type_undef) /\ (ty2 = type_null \/ ty2 = type_undef) then
@@ -1737,7 +1740,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
       | binary_op_disequal => Some (negb b)
       | _ => None
       end in
-    if_bool (runs_type_equal runs S conv_number conv_primitive v1 v2) (fun S0 b0 =>
+    if_bool (runs_type_equal runs S C v1 v2) (fun S0 b0 =>
       if_some (finalPass b0) (res_ter S0))
 
   | binary_op_strict_equal =>
@@ -2649,7 +2652,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
-      runs_type_equal := fun S _ _ _ _ => result_bottom S;
+      runs_type_equal := fun S _ _ _ => result_bottom S;
       runs_type_block := fun S _ _ => result_bottom S
     |}
   | S max_step' =>
