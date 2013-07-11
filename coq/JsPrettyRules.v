@@ -71,12 +71,12 @@ Definition dret := ret (T:=full_descriptor).
 
 Inductive red_javascript : prog -> out -> Prop :=
 
-  | red_javascript_intro : forall S S' C p p' o,
+  | red_javascript_intro : forall S C p p' o o1,
       S = state_initial ->
       p' = add_infos_prog strictness_false p ->
       C = execution_ctx_initial (prog_intro_strictness p') -> 
-      red_expr S C (spec_binding_inst codetype_global None p' nil) (out_void S') -> 
-      red_prog S' C p' o ->
+      red_expr S C (spec_binding_inst codetype_global None p' nil) o1 ->
+      red_prog S C (javascript_1 o1 p') o ->
       red_javascript p o
 
 
@@ -92,6 +92,12 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
       abort o ->
       ~ abort_intercepted_prog extp ->
       red_prog S C extp o
+
+  (** Program  (10.4.1) *)
+
+  | red_javascript_intro_1 : forall S S' C p o,
+      red_prog S' C p o ->
+      red_prog S C (javascript_1 (out_void S') p) o
 
   (** Program  (10.4.1) *)
 

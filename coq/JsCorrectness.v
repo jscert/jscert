@@ -3100,11 +3100,8 @@ Theorem run_javascript_correct : forall runs p o,
   red_javascript p o.
 Proof.
   introv IH HR. unfolds in HR. run_pre as o1 R1.
-(*
-  forwards R: execution_ctx_binding_inst_correct IH (rm R1). (* Need more information there:  it should return a result_void. *)
-*)
-skip. (* TODO NOW *)
-  (* applys~ red_javascript_intro R. *)
-Admitted.
+  applys* red_javascript_intro R1. run_post. run_inv. run_hyp.
+  apply~ red_javascript_intro_1.
+Qed.
 
 

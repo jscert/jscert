@@ -621,6 +621,7 @@ with ext_stat :=
 with ext_prog :=
 
   | prog_basic : prog -> ext_prog
+  | javascript_1 : out -> prog -> ext_prog
   | prog_1 : resvalue -> elements -> ext_prog
   | prog_2 : resvalue -> out -> elements -> ext_prog
   | prog_3 : out -> elements -> ext_prog
@@ -1248,6 +1249,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
 Definition out_of_ext_prog (p : ext_prog) : option out :=
   match p with
   | prog_basic _ => None
+  | javascript_1 o _ => Some o
   | prog_1 _ _ => None
   | prog_2 _ o _ => Some o
   | prog_3 o _ => Some o
