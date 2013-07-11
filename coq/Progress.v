@@ -3,11 +3,7 @@
 ====================
 === CHECK:
 
-red_spec_object_define_own_prop_5_generic 
-  => the negation of the condition does not appear in the others; is it correct?
 
-
-==> get rid of the events in pretty rules (with a flag)
 
 ====================
 Waiting for fixes:
@@ -19,36 +15,6 @@ red_spec_object_put_4_not_accessor_prim
 
 
 
-red_spec_to_descriptor_not_object 
-red_spec_to_descriptor_object 
-red_spec_to_descriptor_1a 
-red_spec_to_descriptor_1b_false 
-red_spec_to_descriptor_1b_true 
-red_spec_to_descriptor_1c 
-red_spec_to_descriptor_2a 
-red_spec_to_descriptor_2b_false 
-red_spec_to_descriptor_2b_true 
-red_spec_to_descriptor_2c 
-red_spec_to_descriptor_3a 
-red_spec_to_descriptor_3b_false 
-red_spec_to_descriptor_3b_true 
-red_spec_to_descriptor_3c 
-red_spec_to_descriptor_4a 
-red_spec_to_descriptor_4b_false 
-red_spec_to_descriptor_4b_true 
-red_spec_to_descriptor_4c 
-red_spec_to_descriptor_5a 
-red_spec_to_descriptor_5b_false 
-red_spec_to_descriptor_5b_true 
-red_spec_to_descriptor_5c_error 
-red_spec_to_descriptor_5c_ok 
-red_spec_to_descriptor_6a 
-red_spec_to_descriptor_6b_false 
-red_spec_to_descriptor_6b_true 
-red_spec_to_descriptor_6c_error 
-red_spec_to_descriptor_6c_ok 
-red_spec_to_descriptor_7_error 
-red_spec_to_descriptor_7_ok 
 
 
 ====================
@@ -69,11 +35,10 @@ red_spec_to_int32_1
 red_spec_to_uint32 
 red_spec_to_uint32_1 
 
-switch
-do_while
 binary ops
 
-new program for prog_block
+
+get_own_property ==> new proof needed
 
 
 ====================
@@ -81,10 +46,16 @@ new program for prog_block
 Martin:
 
 
-new program for to-property-descriptor (it's missing it seems; it's long but easy)
-
 red_javascript_intro 
 (* Need a more precise lemma for [spec_binding_inst], and I need that someone reread the comments I've put in the rule [red_javascript_intro]. *)
+
+do_while
+
+switch
+
+proof for blocks
+
+============================================================================
 
 
 === can be skipped ===
@@ -143,6 +114,39 @@ red_spec_object_delete_args_obj_3
 red_spec_object_delete_args_obj_2_else 
 red_spec_object_delete_args_obj_4 
 
+
+=== semi-libraries ===
+
+red_spec_to_descriptor_not_object 
+red_spec_to_descriptor_object 
+red_spec_to_descriptor_1a 
+red_spec_to_descriptor_1b_false 
+red_spec_to_descriptor_1b_true 
+red_spec_to_descriptor_1c 
+red_spec_to_descriptor_2a 
+red_spec_to_descriptor_2b_false 
+red_spec_to_descriptor_2b_true 
+red_spec_to_descriptor_2c 
+red_spec_to_descriptor_3a 
+red_spec_to_descriptor_3b_false 
+red_spec_to_descriptor_3b_true 
+red_spec_to_descriptor_3c 
+red_spec_to_descriptor_4a 
+red_spec_to_descriptor_4b_false 
+red_spec_to_descriptor_4b_true 
+red_spec_to_descriptor_4c 
+red_spec_to_descriptor_5a 
+red_spec_to_descriptor_5b_false 
+red_spec_to_descriptor_5b_true 
+red_spec_to_descriptor_5c_error 
+red_spec_to_descriptor_5c_ok 
+red_spec_to_descriptor_6a 
+red_spec_to_descriptor_6b_false 
+red_spec_to_descriptor_6b_true 
+red_spec_to_descriptor_6c_error 
+red_spec_to_descriptor_6c_ok 
+red_spec_to_descriptor_7_error 
+red_spec_to_descriptor_7_ok 
 
 
 
