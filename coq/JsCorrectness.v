@@ -104,6 +104,11 @@ Definition follow_stat_while (run : state -> execution_ctx -> resvalue -> label_
   follow_spec
     (stat_while_1 ls e t)
     red_stat (fun S C rv => run S C rv ls e t).
+Definition follow_stat_do_while (run : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result) :=
+  forall ls e t,
+  follow_spec
+    (stat_do_while_1 ls t e)
+    red_stat (fun S C rv => run S C rv ls e t).
 Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
     (fun S C => run S C l x).
@@ -129,6 +134,7 @@ Record runs_type_correct runs :=
     runs_type_correct_function_has_instance :
       follow_function_has_instance (runs_type_function_has_instance runs);
     runs_type_correct_stat_while : follow_stat_while (runs_type_stat_while runs);
+    runs_type_correct_stat_do_while : follow_stat_do_while (runs_type_stat_do_while runs);
     runs_type_correct_object_get_own_prop :
       follow_object_get_own_prop (runs_type_object_get_own_prop runs);
     runs_type_correct_object_get_prop :
@@ -305,7 +311,7 @@ Qed.
 
 Definition if_success_state_post rv0 (K : _ -> _ -> result) o o1 :=
   (o1 = out_div /\ o = o1) \/
-  (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = o1) \/
+  (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = out_ter S (res_value R)) \/
   (exists S R, o1 = out_ter S R /\ res_type R <> restype_throw /\
     o = out_ter S (res_overwrite_value_if_empty rv0 R)) \/
   exists S rv, o1 = out_ter S (res_normal rv) /\
@@ -2817,10 +2823,10 @@ Lemma run_stat_while_correct : forall runs,
 Proof.
   intros runs IH ls e t S C rv o R. unfolds in R.
   run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm R).
-   applys* red_stat_while_1 (rm R2). run_post_if_spec_ter_post_bool K.
+   applys~ red_stat_while_1 (rm R2). run_post_if_spec_ter_post_bool K.
     case_if.
     run red_stat_while_2_true.
-     let_name. applys red_stat_while_3 rv'. case_if; case_if*.
+     let_name. let_simpl. applys red_stat_while_3 rv'. case_if; case_if*.
      case_if in K.
        applys red_stat_while_4_not_continue. rew_logic*. case_if in K.
          run_inv. applys* red_stat_while_5_break.
@@ -2831,7 +2837,31 @@ Proof.
    run_inv. applys red_stat_while_2_false.
 Admitted. (*faster*)
 
-
+Lemma run_stat_do_while_correct : forall runs,
+  runs_type_correct runs ->
+  follow_stat_do_while (run_stat_do_while runs).
+Proof.
+  intros runs IH ls e t S C rv o R. unfolds in R.
+  run red_stat_do_while_1. do 2 let_name.
+  applys~ red_stat_do_while_2 rv'.
+    repeat cases_if~. clear EQrv'.
+  asserts loop_correct: (forall o, loop tt = o ->
+      red_stat S0 C (stat_do_while_6 ls t e rv') o).
+    clear R. introv H. subst loop.
+     run_pre. lets (y1&R2&K): if_spec_ter_post_to_bool (rm R1) (rm H).
+     applys~ red_stat_do_while_6 (rm R2). run_post_if_spec_ter_post_bool K.
+     cases_if.
+      apply~ red_stat_do_while_7_true. apply* IH.
+      run_inv. apply* red_stat_do_while_7_false.
+  clear EQloop. cases_if in R.
+   apply~ red_stat_do_while_3_continue. rewrite decide_def in H. cases_if~ in H.
+   apply~ red_stat_do_while_3_not_continue.
+     rewrite decide_def in H. cases_if~ in H. clear H. cases_if.
+    run_inv. apply~ red_stat_do_while_4_break.
+    apply~ red_stat_do_while_4_not_break. cases_if; run_inv.
+     apply~ red_stat_do_while_5_abort.
+     apply~ red_stat_do_while_5_normal.
+Qed.
 
 Lemma object_proto_is_prototype_of_correct : forall runs,
   runs_type_correct runs ->
@@ -2859,6 +2889,7 @@ Proof.
      skip. (* apply~ run_call_correct.*)
      apply~ run_function_has_instance_correct.
      apply~ run_stat_while_correct.
+     apply~ run_stat_do_while_correct.
      skip. (* TODO:  Use run_object_get_own_prop_correct *)
      skip. (* Todo:  Use run_object_get_prop_correct. *)
      apply~ object_proto_is_prototype_of_correct.
