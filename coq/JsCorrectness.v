@@ -2909,8 +2909,16 @@ Lemma run_stat_switch_no_default_correct : forall runs S C vi rv scs o,
   run_stat_switch_no_default runs S C vi rv scs = o ->
   red_stat S C (stat_switch_nodefault_1 vi rv scs) o.
 Proof.
-  introv IH HR. unfolds in HR.
-Admitted. (* TODO *)
+  introv IH HR. gen S C vi rv o. induction scs; introv HR; unfolds in HR.
+   run_inv. apply~ red_stat_switch_nodefault_1_nil.
+    apply~ red_stat_switch_nodefault_5_nil.
+   destruct a. run red_stat_switch_nodefault_1_cons. let_simpl.
+   apply~ red_stat_switch_nodefault_2. case_if.
+    run red_stat_switch_nodefault_3_true using run_block_correct. rew_list~ in R1.
+     apply~ red_stat_switch_nodefault_4.
+     applys~ run_stat_switch_no_default_end_correct HR.
+    apply~ red_stat_switch_nodefault_3_false.
+Qed.
 
 Lemma run_stat_switch_with_default_end_correct : forall runs S C rv scs o,
   runs_type_correct runs ->
@@ -2924,19 +2932,26 @@ Proof.
     substs. abort.
     substs. tests: (res_is_normal R).
      apply~ red_stat_switch_default_8_abrupt.
-    apply~ red_stat_switch_default_8_normal. apply* IHscs. skip. (* TODO:  Reread the spec' there, that seems strange. *)
+    apply~ red_stat_switch_default_8_normal. apply* IHscs. repeat case_if*.
 Qed.
 
 Lemma run_stat_switch_with_default_default_correct : forall runs S C vi rv ts scs o,
   runs_type_correct runs ->
   run_stat_switch_with_default_default runs S C ts scs = o ->
   red_stat S C (stat_switch_default_5 vi rv ts scs) o.
-Admitted. (* TODO *)
+Proof.
+  introv IH HR. unfolds in HR. run red_stat_switch_default_5
+    using run_block_correct. rew_list~ in R1.
+  apply~ red_stat_switch_default_6.
+  applys~ run_stat_switch_with_default_end_correct HR.
+Qed.
 
 Lemma run_stat_switch_with_default_B_correct : forall runs S C vi rv ts scs o,
   runs_type_correct runs ->
   run_stat_switch_with_default_B runs S C vi rv ts scs = o ->
   red_stat S C (stat_switch_default_B_1 vi rv ts scs) o.
+Proof.
+  introv IH HR. gen S C vi rv o. induction scs; introv HR; unfolds in HR.
 Admitted. (* TODO *)
 
 Lemma run_stat_switch_with_default_A_correct : forall runs S C found vi rv scs1 ts scs2 o,

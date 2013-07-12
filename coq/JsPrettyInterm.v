@@ -582,7 +582,7 @@ with ext_stat :=
   | stat_switch_default_5: value -> resvalue -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_6: out -> list switchclause -> ext_stat
   | stat_switch_default_7: resvalue -> list switchclause -> ext_stat
-  | stat_switch_default_8: out -> list switchclause -> ext_stat
+  | stat_switch_default_8: resvalue -> out -> list switchclause -> ext_stat
 
   | stat_with_1 : stat -> specret value -> ext_stat (* The expression have been executed. *)
 
@@ -1217,7 +1217,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_switch_default_5 _ _ _ _ => None
   | stat_switch_default_6 o _ => Some o 
   | stat_switch_default_7 _ _  => None
-  | stat_switch_default_8 o _ => Some o
+  | stat_switch_default_8 _ o _ => Some o
 
   end.
 
@@ -1345,10 +1345,10 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       ~ res_is_normal R ->
       res_type R <> restype_throw -> (* TODO:  Check *)
       abort_intercepted_stat (stat_switch_nodefault_6 rv (out_ter S R) scs)
-  | abort_intercepted_stat_switch_default_8 : forall S R scs,
+  | abort_intercepted_stat_switch_default_8 : forall S rv R scs,
       ~ res_is_normal R ->
       res_type R <> restype_throw -> (* TODO:  Check *)
-      abort_intercepted_stat (stat_switch_default_8 (out_ter S R) scs)
+      abort_intercepted_stat (stat_switch_default_8 rv (out_ter S R) scs)
 .
 
 Inductive abort_intercepted_expr : ext_expr -> Prop :=

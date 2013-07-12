@@ -2126,7 +2126,7 @@ Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
       Let b := strict_equality_test v1 vi in
       if b then
         if_success (run_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
-          run_stat_switch_end runs S2 C rv scs')
+          run_stat_switch_end runs S2 C rv2 scs')
       else
         run_stat_switch_no_default runs S1 C vi rv scs')
   end.
