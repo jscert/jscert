@@ -1904,13 +1904,6 @@ Proof.
   applys* red_spec_to_integer_1.
 Qed.
 
-Ltac run_select_proj_extra_conversions HT ::= 
-  match HT with
-  | to_primitive => constr:(to_primitive_correct)
-  | to_number => constr:(to_number_correct)
-  | to_string => constr:(to_string_correct)
-  end.
-
 Lemma to_int32_correct : forall runs S C v (y:specret int),
   runs_type_correct runs ->
   to_int32 runs S C v = result_some y -> 
@@ -2009,6 +2002,16 @@ Definition lift2 T (C:T->value) y :=
   | specret_out o => specret_out o
   end.
 
+
+Ltac run_select_proj_extra_conversions HT ::= 
+  match HT with
+  | to_primitive => constr:(to_primitive_correct)
+  | to_number => constr:(to_number_correct)
+  | to_string => constr:(to_string_correct)
+  | to_int32 => constr:(to_int32_correct)
+  | to_uint32 => constr:(to_uint32_correct)
+  end.
+
 Lemma convert_twice_primitive_correct : forall runs S C v1 v2 y,
   runs_type_correct runs ->
   convert_twice_primitive runs S C v1 v2 = result_some y -> 
@@ -2042,6 +2045,159 @@ Proof.
   run red_spec_convert_twice_1.
   unfolds lift2. applys red_spec_convert_twice_2.
 Admitted. (*faster*)
+
+Lemma get_puremath_op_correct : forall op F, 
+  get_puremath_op op = Some F ->
+  puremath_op op F.
+Proof.
+  Hint Constructors puremath_op.
+  introv HR. destruct op; simpls; inverts* HR.
+Admitted. (*faster*)
+
+Lemma get_inequality_op_correct : forall op b1 b2, 
+  get_inequality_op op = Some (b1,b2) ->
+  inequality_op op b1 b2.
+Proof.
+  Hint Constructors inequality_op.
+  introv HR. destruct op; simpls; inverts* HR.
+Admitted. (*faster*)
+
+Lemma get_shift_op_correct : forall op F b, 
+  get_shift_op op = Some (b,F) ->
+  shift_op op b F.
+Proof.
+  Hint Constructors shift_op.
+  introv HR. destruct op; simpls; inverts* HR.
+Admitted. (*faster*)
+
+Lemma get_bitwise_op_correct : forall op F, 
+  get_bitwise_op op = Some F ->
+  bitwise_op op F.
+Proof.
+  Hint Constructors shift_op.
+  introv HR. destruct op; simpls; inverts* HR.
+Admitted. (*faster*)
+
+Lemma run_function_has_instance_correct : forall runs,
+  runs_type_correct runs ->
+  follow_function_has_instance (run_function_has_instance runs).
+Proof.
+  intros runs IH lo S C lv o HR. unfolds in HR. run_simpl.
+  forwards~ M: run_object_method_correct (rm E).
+  applys~ red_spec_function_has_instance_2 M.
+  destruct x as [()|lproto]; tryfalse; run_inv.
+   apply~ red_spec_function_has_instance_3_null.
+   cases_if; run_inv.
+    apply~ red_spec_function_has_instance_3_eq.
+    apply~ red_spec_function_has_instance_3_neq.
+     applys~ runs_type_correct_function_has_instance HR.
+Qed.
+
+Lemma type_of_prim_not_object : forall w,
+  type_of w <> type_object.
+Proof. destruct w; simpl; try congruence. Qed.
+
+Lemma run_object_has_instance_correct : forall runs B S C l v o,
+  runs_type_correct runs ->
+  run_object_has_instance runs B S C l v = result_some (specret_out o) ->
+  red_expr S C (spec_object_has_instance_1 B l v) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  destruct B; tryfalse.
+  destruct v.
+  run_inv. applys* red_spec_object_has_instance_1_function_prim.
+  run red_spec_object_has_instance_1_function_object
+    using run_object_get_correct.
+  destruct v.
+  applys* red_spec_function_has_instance_1_prim.
+    applys* type_of_prim_not_object.
+    applys* run_error_correct.
+  applys red_spec_function_has_instance_1_object.
+   applys* runs_type_correct_function_has_instance.
+Admitted. (* faster*)
+
+ 
+Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
+  runs_type_correct runs ->  
+  run_binary_op runs S C op v1 v2 = o ->
+  red_expr S C (expr_binary_op_3 op v1 v2) o.
+Proof.
+  Hint Resolve type_of_prim_not_object run_error_correct.
+
+  introv IH HR. unfolds in HR.
+  (* Add *)
+  case_if. subst.
+  run red_expr_binary_op_add using convert_twice_primitive_correct.
+  destruct a as [w1 w2]. case_if.
+  run* red_expr_binary_op_add_1_string using convert_twice_string_correct.
+  destruct a as [s1 s2]. run_inv.
+  applys* red_expr_binary_op_add_string_1. 
+  run* red_expr_binary_op_add_1_number using convert_twice_number_correct.
+  destruct a as [n1 n2]. run_inv.
+  applys* red_expr_puremath_op_1.
+  (* Puremath *)
+  case_if. run.
+  run red_expr_puremath_op using convert_twice_number_correct.
+  applys* get_puremath_op_correct.
+  destruct a as [n1 n2]. run_inv.  
+  applys* red_expr_puremath_op_1.
+  (* Shiftop *)
+  case_if. run. destruct x as [b F].
+
+  lets M: red_expr_shift_op b. case_if; subst.
+  run* M. applys* get_shift_op_correct.
+    run red_expr_shift_op_1. applys* red_expr_shift_op_2.
+  run* M. applys* get_shift_op_correct.
+    run red_expr_shift_op_1. applys* red_expr_shift_op_2.
+  (* bitwise *)
+  case_if. run. 
+  run red_expr_bitwise_op. applys* get_bitwise_op_correct.
+  run red_expr_bitwise_op_1. applys* red_expr_bitwise_op_2.
+  (* inequality *)
+  clear n H H0 H1.
+  case_if. run. destruct x as [b1 b2].
+  applys red_expr_inequality_op. applys* get_inequality_op_correct.
+  run red_expr_inequality_op_1 using convert_twice_primitive_correct.
+  destruct a as [w1 w2]. let_name. destruct p as [wa wb]. simpls.
+  sets_eq wr: (inequality_test_primitive wa wb).
+  run_inv. applys_eq* (>> red_expr_inequality_op_2 EQp EQwr) 1.
+   fequals. case_if; case_if; case_if*; case_if*.
+  (* instanceof *)
+  case_if. subst.
+  destruct v2.
+  applys* red_expr_binary_op_instanceof_non_object.
+  run. lets M: run_object_method_correct (rm E).
+  destruct x.
+  applys* red_expr_binary_op_instanceof_normal.
+   simpls.
+   applys* run_object_has_instance_correct.
+  applys* red_expr_binary_op_instanceof_non_instance.
+  (* in *)
+  case_if. subst. destruct v2.
+  applys* red_expr_binary_op_in_non_object. 
+  run red_expr_binary_op_in_object. 
+    applys* red_expr_binary_op_in_1.
+    applys* object_has_prop_correct.
+  (* equal *)
+  clear n n0 H. case_if. subst.
+  applys* red_expr_binary_op_equal. 
+    applys* runs_type_correct_equal.
+  (* disequal *)
+  case_if. subst.
+  run red_expr_binary_op_disequal.
+  applys* red_expr_binary_op_disequal_1.
+  (* strict equality *)
+  case_if. subst.
+  run_inv. applys* red_expr_binary_op_strict_equal.
+  (* strict disequality *)
+  case_if. subst.
+  run_inv. applys* red_expr_binary_op_strict_disequal.
+  (* coma *)
+  case_if. subst.
+  run_inv. applys* red_expr_binary_op_coma.
+Admitted. (*faster*)
+
+
 
 
 (**************************************************************)
@@ -2353,9 +2509,6 @@ Proof.
 Admitted. (* faster *)
 
 
-Lemma type_of_prim_not_object : forall w,
-  type_of w <> type_object.
-Proof. destruct w; simpl; try congruence. Qed.
 
 
 (* to merge to top :: TODO Martin *)
@@ -2491,42 +2644,6 @@ Proof.
      applys* red_expr_object_3_set. 
 Qed.
 
-
-Lemma run_binary_op_correct : forall runs S C (op : binary_op) v1 v2 o,
-  run_binary_op runs S C op v1 v2 = o ->
-  red_expr S C (expr_binary_op_3 op v1 v2) o.
-Admitted. (* TODO NOW *)
-
- (* TODO NOW *)
-(* TODO: for binary op:  
-     (* In *)
-     skip. (* TODO *)
-     (* Equal *)
-     skip. (* TODO *)
-
-     (* Disequal *)
-     skip. (* TODO *)
-     (* Strict equal *)
-     skip. (* TODO *)
-     (* Strict disequal *)
-     skip. (* TODO *)
-     (* Bitwise and *)
-     skip. (* TODO *)
-     (* Bitwise or *)
-     skip. (* TODO *)
-     (* Bitwise xor *)
-     skip. (* TODO *)
-     (* And *)
-     skip. (* TODO *)
-     (* Or *)
-     skip. (* TODO *)
-     (* Comma *)
-     skip. (* TODO *)
-    (* conditionnal *)
-    skip. (* TODO *)
-    (* assign *)
-    skip. (* TODO *)
-*)
 
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
@@ -3004,21 +3121,6 @@ Proof.
 Admitted. (* faster *)
 
 
-Lemma run_function_has_instance_correct : forall runs,
-  runs_type_correct runs ->
-  follow_function_has_instance (run_function_has_instance runs).
-Proof.
-  intros runs IH lo S C lv o HR. unfolds in HR. run_simpl.
-  forwards~ M: run_object_method_correct (rm E).
-  applys~ red_spec_function_has_instance_2 M.
-  destruct x as [()|lproto]; tryfalse; run_inv.
-   apply~ red_spec_function_has_instance_3_null.
-   cases_if; run_inv.
-    apply~ red_spec_function_has_instance_3_eq.
-    apply~ red_spec_function_has_instance_3_neq.
-     applys~ runs_type_correct_function_has_instance HR.
-Qed.
-
 Lemma run_stat_while_correct : forall runs,
   runs_type_correct runs ->
   follow_stat_while (run_stat_while runs).
@@ -3143,3 +3245,4 @@ Proof.
 Qed.
 
 
+ 

@@ -1479,6 +1479,7 @@ Definition run_function_has_instance runs S lv vo : result :=
       end)
   end.
 
+
 Definition run_object_has_instance runs B S C l v : result :=
   match B with
 
@@ -1486,14 +1487,20 @@ Definition run_object_has_instance runs B S C l v : result :=
     match v with
     | value_prim w => out_ter S false
     | value_object lv =>
-      if_value (run_object_get runs S C l "prototype") (fun S1 v =>
-        runs_type_function_has_instance runs S1 lv v)
+      if_value (run_object_get runs S C l "prototype") (fun S1 vproto =>
+        match vproto return result with
+        | value_object lproto =>
+           runs_type_function_has_instance runs S1 lv lproto
+        | value_prim _ =>
+           run_error S1 native_error_type
+        end)
     end
 
   | builtin_has_instance_after_bind =>
     result_not_yet_implemented (* TODO:  Waiting for the specification *)
 
   end.
+
 
 
 (**************************************************************)
@@ -1631,11 +1638,16 @@ Definition convert_twice_string runs S C v1 v2 :=
   convert_twice (@if_string (string * string)) (fun S v => to_string runs S C v) S v1 v2.
 
 
+
+Definition issome T (ot:option T) := 
+  match ot with
+  | Some _ => true
+  | _ => false
+  end.
+
 Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
 
-  match op return result with
-
-  | binary_op_add =>
+  ifb op = binary_op_add then
     if_spec (convert_twice_primitive runs S C v1 v2) ((fun S1 ww => let '(w1,w2) := ww in
       ifb type_of w1 = type_string \/ type_of w2 = type_string then
         if_spec (convert_twice_string runs S1 C w1 w2) ((fun S2 ss => let '(s1,s2) := ss in
@@ -1643,16 +1655,12 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
         else
           if_spec (convert_twice_number runs S1 C w1 w2) ((fun S2 nn => let '(n1,n2) := nn in
             res_out (out_ter S2 (JsNumber.add n1 n2))))))
-
-  | binary_op_mult | binary_op_div | binary_op_mod | binary_op_sub =>
+  else if issome (get_puremath_op op) then
     if_some (get_puremath_op op) (fun mop =>
       if_spec (convert_twice_number runs S C v1 v2) ((fun S1 nn => let '(n1,n2) := nn in
         res_out (out_ter S1 (mop n1 n2)))))  
-  | binary_op_and | binary_op_or =>
-    (* Lazy operators are already dealt with at this point. *)
-    impossible_with_heap_because S "Undealt lazy operator in [run_binary_op]."
 
-  | binary_op_left_shift | binary_op_right_shift | binary_op_unsigned_right_shift =>
+  else if issome (get_shift_op op) then
     if_some (get_shift_op op) (fun so =>
       let '(b_unsigned, F) := so in
       if_spec ((if b_unsigned then to_uint32 else to_int32) runs S C v1) (fun S1 k1 =>
@@ -1660,23 +1668,24 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
           let k2' := JsNumber.modulo_32 k2 in
           res_ter S2 (JsNumber.of_int (F k1 k2')))))
 
-  | binary_op_bitwise_and | binary_op_bitwise_or | binary_op_bitwise_xor =>
-    if_spec (to_int32 runs S C v1) (fun S1 k1 =>
-      if_spec (to_int32 runs S1 C v2) (fun S2 k2 =>
-        if_some (get_bitwise_op op) (fun bo =>
+  else if issome (get_bitwise_op op) then
+    if_some (get_bitwise_op op) (fun bo =>
+      if_spec (to_int32 runs S C v1) (fun S1 k1 =>
+        if_spec (to_int32 runs S1 C v2) (fun S2 k2 =>  
           res_ter S2 (JsNumber.of_int (bo k1 k2)))))
 
-  | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
+  else if issome (get_inequality_op op) then
     if_some (get_inequality_op op) (fun io =>
       let '(b_swap, b_neg) :=  io in
       if_spec (convert_twice_primitive runs S C v1 v2) ((fun S1 ww => let '(w1,w2) := ww in
-        let '(wa, wb) := if b_swap then (w2, w1) else (w1, w2) in
+        Let p := if b_swap then (w2, w1) else (w1, w2) in
+        let '(wa, wb) := p in (* LATER: let pair*)
         let wr := inequality_test_primitive wa wb in
         res_out (out_ter S1 (ifb wr = prim_undef then false
           else ifb b_neg = true /\ wr = true then false
           else wr)))))
 
-  | binary_op_instanceof =>
+  else ifb op = binary_op_instanceof then
     match v2 with
     | value_object l =>
       if_some (run_object_method object_has_instance_ S l) (fun B =>
@@ -1687,34 +1696,34 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     | value_prim _ => run_error S native_error_type
     end
 
-  | binary_op_in =>
+  else ifb op = binary_op_in then
     match v2 with
     | value_object l =>
       if_string (to_string runs S C v1) (fun S2 x =>
-        if_bool (object_has_prop runs S2 C l x) res_ter)
+        object_has_prop runs S2 C l x) 
     | value_prim _ => run_error S native_error_type
     end
 
-  | binary_op_equal | binary_op_disequal =>
-    Let finalPass := fun b =>
-      match op with
-      | binary_op_equal => Some b
-      | binary_op_disequal => Some (negb b)
-      | _ => None
-      end in
+  else ifb op = binary_op_equal then
+    runs_type_equal runs S C v1 v2
+ 
+  else ifb op = binary_op_disequal then
     if_bool (runs_type_equal runs S C v1 v2) (fun S0 b0 =>
-      if_some (finalPass b0) (res_ter S0))
+      (res_ter S0 (negb b0)))
 
-  | binary_op_strict_equal =>
+  else ifb op = binary_op_strict_equal then
     out_ter S (strict_equality_test v1 v2)
 
-  | binary_op_strict_disequal =>
+  else ifb op = binary_op_strict_disequal then
     out_ter S (negb (strict_equality_test v1 v2))
 
-  | binary_op_coma =>
+  else ifb op = binary_op_coma then
     out_ter S v2
 
-  end.
+  else (* binary_op_and | binary_op_or *)
+    (* Lazy operators are already dealt with at this point. *)
+    impossible_with_heap_because S "Undealt lazy operator in [run_binary_op].".
+
 
 Definition run_prepost_op (op : unary_op) : option ((number -> number) * bool) :=
   match op with
