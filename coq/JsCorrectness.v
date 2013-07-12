@@ -72,70 +72,6 @@ Implicit Type T : Type.
 (**************************************************************)
 (** Correctness Properties *)
 
-(* OLD:  Remove asap.
-Definition follow_spec {T Te : Type} (* e.g. T = expr and Te = ext_expr *)
-    (conv : T -> Te)
-    (red : state -> execution_ctx -> Te -> out -> Prop)
-    (run : state -> execution_ctx -> T -> result) := forall S C (e : T) o,
-  run S C e = o -> red S C (conv e) o.
-
-Definition spec_follow_spec {Te A : Type} (* e.g. Te = ext_spec *)
-    (conv : Te)
-    (red : state -> execution_ctx -> Te -> specret A -> Prop)
-    (run : state -> execution_ctx -> specres A) := forall S C sp,
-  run S C = result_some sp -> red S C conv sp.
-
-Definition follow_expr := follow_spec expr_basic red_expr.
-Definition follow_stat := follow_spec stat_basic red_stat.
-Definition follow_prog := follow_spec prog_basic red_prog.
-Definition follow_elements (run : state -> execution_ctx -> elements -> result) :=
-  follow_spec (prog_intro false) red_prog (fun S C els => run S C (LibList.rev els)).
-Definition follow_call (run : state -> execution_ctx -> object_loc -> value -> list value -> result) :=
-  forall l vs,
-  follow_spec (fun v => spec_call l v vs) red_expr (fun S C v => run S C l v vs).
-Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
-  (* Note that this function is related to [spec_function_has_instance_2] instead of
-    [spec_function_has_instance_1] as it's much more closer to the specification and
-    thus much easier to prove. *)
-  forall lv,
-  follow_spec (spec_function_has_instance_2 lv) red_expr
-      (fun S C lo => run S lo lv).
-Definition follow_stat_while (run : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result) :=
-  forall ls e t,
-  follow_spec
-    (stat_while_1 ls e t)
-    red_stat (fun S C rv => run S C rv ls e t).
-Definition follow_stat_do_while (run : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result) :=
-  forall ls e t,
-  follow_spec
-    (stat_do_while_1 ls t e)
-    red_stat (fun S C rv => run S C rv ls e t).
-Definition follow_object_delete (run : state -> execution_ctx -> object_loc -> prop_name -> bool -> result) :=
-  forall l x,
-  follow_spec (spec_object_delete l x) red_expr (fun S C => run S C l x).
-Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
-  forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
-    (fun S C => run S C l x).
-Definition follow_object_get_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
-(*  forall l x, spec_follow_spec (spec_object_get_prop l x) red_spec
-    (fun S C => run S C l x). *)
-  forall S C l x y,
-  run S C l x = result_some y ->
-  red_spec S C (spec_object_get_prop l x) y.
-Definition follow_object_proto_is_prototype_of (run : state -> object_loc -> object_loc -> result) :=
-  forall lthis,
-  follow_spec (spec_call_object_proto_is_prototype_of_2_3 lthis) red_expr
-    (fun S C l => run S lthis l).
-Definition follow_equal (run : state -> execution_ctx -> value -> value -> result) :=
-  forall S C v1 v2 o,
-    run S C v1 v2 = o ->
-    red_expr S C (spec_equal v1 v2) o.
-Definition follow_block (run : state -> execution_ctx -> list stat -> result) :=
-  forall S C ls o,
-    run S C ls = o ->
-    red_stat S C (stat_block (rev ls)) o.
-*)
-
 Record runs_type_correct runs :=
   make_runs_type_correct {
     runs_type_correct_expr : forall S C e o,
@@ -175,7 +111,6 @@ Record runs_type_correct runs :=
        runs_type_equal runs S C v1 v2 = o ->
        red_expr S C (spec_equal v1 v2) o
   }.
-
 
 
 
@@ -2374,14 +2309,6 @@ Lemma type_of_prim_not_object : forall w,
 Proof. destruct w; simpl; try congruence. Qed.
 
 
-(* to merge to top :: TODO Martin *)
-Axiom run_call_correct : forall runs S C l vthis vs o,
-  (* l <> prealloc_global_eval *)
-  runs_type_correct runs ->
-  run_call runs S C l vthis vs = o ->
-  red_expr S C (spec_call l vthis vs) o.
-
-(* todo: needed to be up here *)
 Lemma env_record_implicit_this_value_correct : forall S C L v,
   env_record_implicit_this_value S L = Some v ->
   red_expr S C (spec_env_record_implicit_this_value L) (out_ter S v).
@@ -3010,8 +2937,7 @@ Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
 Admitted. (* Part of libraries, will do afterwards *)
 
 
-(* TODO: merge with the other *)
-Lemma run_call_correct' : forall runs S C l v vs o,
+Lemma run_call_correct : forall runs S C l v vs o,
   runs_type_correct runs ->
   run_call runs S C l v vs = o ->
   red_expr S C (spec_call l v vs) o.
