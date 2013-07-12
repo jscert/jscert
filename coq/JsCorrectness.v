@@ -2793,6 +2793,48 @@ Proof.
    unfolds res_overwrite_value_if_empty. case_if; case_if*. 
 Admitted. (*faster*)
 
+Lemma run_stat_switch_no_default_correct : forall runs S C vi rv scs o,
+  runs_type_correct runs ->
+  run_stat_switch_no_default runs S C vi rv scs = o ->
+  red_stat S C (stat_switch_nodefault_1 vi rv scs) o.
+Admitted. (* TODO *)
+
+Lemma run_stat_switch_with_default_correct : forall runs S C found vi rv scs1 ts scs2 o,
+  runs_type_correct runs ->
+  run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 = o ->
+  red_stat S C (stat_switch_default_A_1 found vi rv scs1 ts scs2) o.
+Admitted. (* TODO *)
+
+Lemma run_stat_switch_correct : forall runs S C labs e sb o,
+  runs_type_correct runs ->
+  run_stat_switch runs S C labs e sb = o ->
+  red_stat S C (stat_switch labs e sb) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_stat_switch. let_name. asserts follow_correct: (forall S C o1 o,
+      follow o1 = res_out o -> red_stat S C (stat_switch_2 o1 labs) o).
+    clear HR. introv HR. substs.
+    do 2 (run_pre; run_post; run_inv; substs); try solve [abort].
+     case_if; run_inv.
+      destruct R. simpls. substs. apply* red_stat_switch_2_break.
+      abort.
+     apply~ red_stat_switch_2_normal.
+     case_if; run_inv; tryfalse.
+      destruct R. simpls. substs. apply* red_stat_switch_2_break.
+  asserts follow_arg: (forall W o,
+    follow W = res_out o -> exists (o1 : out), W = o1).
+    clear HR follow_correct. introv R. substs.
+    do 2 (run_pre; run_post; run_inv; substs); tryfalse; auto*.
+  clear EQfollow. destruct sb.
+   forwards~ (o1&E): follow_arg HR.
+    applys~ red_stat_switch_1_nodefault o1.
+    applys~ run_stat_switch_no_default_correct E.
+    apply~ follow_correct. rewrite~ <- E.
+   forwards~ (o1&E): follow_arg HR.
+    applys~ red_stat_switch_1_default o1.
+    applys~ run_stat_switch_with_default_correct E.
+    apply~ follow_correct. rewrite~ <- E.
+Qed.
 
 Lemma run_stat_correct : forall runs S C t o,
   runs_type_correct runs ->
@@ -2877,7 +2919,7 @@ Proof.
   (* Debugger *)
   run_inv. apply red_stat_debugger.
   (* switch *)
-  skip. (* NOW: wait for switch semantics to be double check *) (* TODO Martin *)
+  applys~ run_stat_switch_correct R.
 Admitted. (* TODO: verify *)
 
 Lemma run_prog_correct : forall runs S C p o,
