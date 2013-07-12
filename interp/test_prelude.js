@@ -13,6 +13,7 @@ var $FAIL = $ERROR
 
 // Gareth's addition, which brings it up to Test262 conformance. Hopefully.
 var t262 = {$ERROR:$ERROR , TestFailureError: function(err){return {__$ERROR__:err}}}
+var Test262Error = function (){}
 // TypeError = function(err){return {__$ERROR__:err}}
 function runTestCase(f) {
     if (!f()) {
