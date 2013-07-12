@@ -11,7 +11,7 @@ Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l lp : object_loc.
 Implicit Type w : prim.
-Implicit Type v vi vp : value.
+Implicit Type v vi vp vthis : value.
 Implicit Type r : ref.
 (*Implicit Type B : builtin.*)
 Implicit Type ty : type.
@@ -473,35 +473,35 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_1 false vi rv nil ts1 scs2) o
 
   | red_stat_switch_default_A_1_cons_true : forall S C e o o1 vi rv ts ts1 scs scs2,  
-      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
   | red_stat_switch_default_A_1_cons_false : forall S C e vi rv ts ts1 scs scs2 y1 o,  
       red_spec S C (spec_expr_get_value e) y1 ->
-      red_stat S C (stat_switch_default_A_2 y1 false vi rv ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_2 y1 vi rv ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 false vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
   | red_stat_switch_default_A_2 : forall S0 S C b vi v1 rv ts scs ts1 scs2 o,  
       b = (strict_equality_test v1 vi) ->
-      red_stat S C (stat_switch_default_A_3 b false vi rv ts scs ts1 scs2) o ->
-      red_stat S0 C (stat_switch_default_A_2 (ret S v1) false vi rv ts scs ts1 scs2) o
+      red_stat S C (stat_switch_default_A_3 b vi rv ts scs ts1 scs2) o ->
+      red_stat S0 C (stat_switch_default_A_2 (ret S v1) vi rv ts scs ts1 scs2) o
 
   | red_stat_switch_default_A_3_false : forall S C b vi rv scs ts ts1 scs2 o,  
-      red_stat S C (stat_switch_default_A_1 b vi rv scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 false b vi rv ts scs ts1 scs2) o (* TODO:  According to the rules, [b] can only be [false] there:  are you sure it should really be there? *)
+      red_stat S C (stat_switch_default_A_1 false vi rv scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_3 false vi rv ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_3_true : forall S C b vi rv scs ts ts1 scs2 o,  
-      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 true b vi rv ts scs ts1 scs2) o (* TODO:  According to the rules, [b] can only be [false] there:  are you sure it should really be there? *)
+      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_3 true vi rv ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_4 : forall S C o1 rv ts scs ts1 scs2 o vi,  
       red_stat S C (stat_block ts) o1 ->
-      red_stat S C (stat_switch_default_A_5 o1 true vi scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o (* TODO:  What's the point if this [true] if there is no [false] branch?  Same question for the [rv]. *)
+      red_stat S C (stat_switch_default_A_5 o1 vi scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_5 : forall S C vi rv scs scs2 ts1 o, 
       red_stat S C (stat_switch_default_A_1 true vi rv scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_5 (out_ter S rv) true vi scs ts1 scs2) o
+      red_stat S C (stat_switch_default_A_5 (out_ter S rv) vi scs ts1 scs2) o
 
 
   (** ----- Switch with default case: search B *)
@@ -1040,8 +1040,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_add_string_1 y1) o ->
       red_expr S0 C (expr_binary_op_add_1 (ret S (v1,v2))) o
 
-  | red_expr_binary_op_add_string_1 : forall S0 S C s1 s2 s o,
-      s = string_concat s1 s2 ->
+  | red_expr_binary_op_add_string_1 : forall S0 S C s1 s2 s,
+      s = String.append s1 s2 ->
       red_expr S0 C (expr_binary_op_add_string_1 (ret S (value_prim s1, value_prim s2))) (out_ter S s)
 
   | red_expr_binary_op_add_1_number : forall S0 S C v1 v2 y1 o,
@@ -1065,7 +1065,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Binary op : shift operations (11.7) *)
 
-  | red_expr_shift_op : forall S C op b_unsigned F ext v1 v2 y1 o,
+  | red_expr_shift_op : forall b_unsigned S C op  F ext v1 v2 y1 o,
       shift_op op b_unsigned F ->
       ext = (if b_unsigned then spec_to_uint32 else spec_to_int32) ->
       red_spec S C (ext v1) y1 ->
@@ -1093,7 +1093,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_inequality_op_2 b_swap b_neg y1) o ->
       red_expr S C (expr_inequality_op_1 b_swap b_neg v1 v2) o
 
-  | red_expr_inequality_op_2 : forall S0 S C (w1 w2 wa wb wr wr':prim) b (b_swap b_neg : bool),
+  | red_expr_inequality_op_2 : forall S0 S C (w1 w2 wa wb wr wr':prim) (b_swap b_neg : bool),
       ((wa,wb) = if b_swap then (w2,w1) else (w1,w2)) ->
       wr = inequality_test_primitive wa wb ->
       (* Note: wr may only be true or false or undef *)
@@ -1471,10 +1471,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   
   (** HasInstance (returns bool) *)
 
-  | red_spec_object_has_instance : forall S C l x B o,
+  | red_spec_object_has_instance : forall S C l v B o,
       object_method object_has_instance_ S l (Some B) ->
-      red_expr S C (spec_object_has_instance_1 B l x) o ->
-      red_expr S C (spec_object_has_instance l x) o
+      red_expr S C (spec_object_has_instance_1 B l v) o ->
+      red_expr S C (spec_object_has_instance l v) o
 
   (** Function calls (returns value) *)
 
@@ -3402,7 +3402,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
    (** Function: HasInstance  (returns bool)  (15.3.5.3) *)
 
-   | red_spec_object_has_instance_1_function_prim : forall S C l w o, (* Step 1 *)
+   | red_spec_object_has_instance_1_function_prim : forall S C l w, (* Step 1 *)
        red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_prim w)) (out_ter S false)
   
    | red_spec_object_has_instance_1_function_object : forall o1 S C l lv o, (* Step 2 *)
