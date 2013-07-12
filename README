@@ -45,6 +45,20 @@ INSTALLATION AND COMPILATION
 
    The first time you do this it WILL FAIL. Run "make" a second time before worrying.
 
+   The following error is normal and can be ignored:
+
+   ,----
+   | Warning: The following logical axioms were encountered:
+   |  binds_equiv_read binds_rem binds_rem_inv indom_equiv_binds
+   | not_indom_rem.
+   | Having invalid logical axiom in the environment when extracting
+   | may lead to incorrect or non-terminating ML terms.
+   `----
+
+   This is because, as reported in the paper, we have not yet proved
+   correctness for all the native libraries.
+
+
 3) Run "./open.sh & " to edit files in CoqIDE
 
 4) Run "make clean" to clean JS files,
