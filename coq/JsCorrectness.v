@@ -1733,6 +1733,7 @@ Proof.
   destruct (ref_base r); tryfalse. destruct* v0. destruct* p.
 Admitted. (* faster *)
 
+
 Lemma ref_put_value_correct : forall runs S C rv v o,
   runs_type_correct runs ->
   ref_put_value runs S C rv v = o ->
@@ -1747,23 +1748,16 @@ Proof.
        applys* run_error_correct.
       applys~ red_spec_ref_put_value_ref_a_2.
        applys* object_put_correct.
-    cases (ref_base r).
-      skip. (*
-      applys* red_spec_ref_put_value_ref_b.
-        applys* ref_is_property_from_not_unresolvable_value.
-         case_if as HC.
-           inverts HC. destruct v0.
-             skip.
-             unfolds ref_kind_of. destruct (ref_base r); tryfalse.
-              destruct v0; tryfalse.
-           destruct v0. 
-             unfold ref_has_primitive_base, ref_kind_of in HC.
-             unfold ref_is_unresolvable, ref_kind_of in n.
-              rewrite Eq in HC, n. destruct p; simpls; tryfalse.
-        *)
-        (* TODO NOW: change the rules or the interpreter *)
-      applys* red_spec_ref_put_value_ref_c.
-        applys* env_record_set_mutable_binding_correct.
+  case_if.
+  cases (ref_base r); tryfalse.
+  case_if; destruct v0; tryfalse.
+  applys* red_spec_ref_put_value_ref_b.
+  case_if. applys* prim_value_put_correct.
+  applys* red_spec_ref_put_value_ref_b.
+  case_if. applys* object_put_correct.
+  cases (ref_base r); tryfalse.
+   applys* red_spec_ref_put_value_ref_c.
+   applys* env_record_set_mutable_binding_correct.
 Admitted. (* faster *)
 
 
@@ -2405,7 +2399,8 @@ Proof.
       N S = o ->
       red_expr S C (spec_binding_inst_8 p bconfig L) o).
       clear HR S o. introv HR. subst N.
-      skip. (* TODO NOW:  Add a comment to explain what is this skip? *)
+      applys red_spec_binding_inst_8.
+        applys* binding_inst_var_decls_correct.
       clear EQN.
     destruct ct.
       destruct funco.
@@ -2737,7 +2732,7 @@ Proof.
 Qed.
 
 
-Lemma env_record_delete_binding : forall runs S C L x o,
+Lemma env_record_delete_binding_correct : forall runs S C L x o,
   runs_type_correct runs ->
   env_record_delete_binding runs S C L x = o ->
   red_expr S C (spec_env_record_delete_binding L x) o.
@@ -2797,9 +2792,9 @@ Proof.
   (* Access *)
   unfolds in R. run red_expr_access.
   run red_expr_access_1. cases_if.
-    forwards: run_error_correct C (rm R). applys red_expr_access_2.
+    forwards [R1 N]: run_error_correct' C (rm R). applys red_expr_access_2.
       applys* red_spec_check_object_coercible_undef_or_null.
-      skip. (* TODO: exploiter le fait que o est un abort / changer le code si besoin*)
+      abort.
     applys red_expr_access_2.
       applys* red_spec_check_object_coercible_return.
      run red_expr_access_3.
@@ -2826,20 +2821,20 @@ Proof.
      let_simpl. let_name. lets: prepost_op_correct (rm E).
      run* red_expr_prepost_3. subst. applys* red_expr_prepost_4.
     destruct u; try solve [ false n; constructors ].
-    (* delete *) 
+    (* delete *) Focus 1.
     run red_expr_delete. destruct rv; run_inv.
       applys* red_expr_delete_1_not_ref. intro; false_invert. 
       applys* red_expr_delete_1_not_ref. intro; false_invert. 
       case_if; run_inv.
         applys* red_expr_delete_1_ref_unresolvable.
-         unfolds ref_is_unresolvable, ref_kind_of. 
-         (* BUG in spec on  "ref_base r = null"
-         sets_eq ba: (ref_base r). destruct ba.
-          run red_expr_delete_1_ref_property.
-          applys* red_expr_delete_1_ref_property.
-           unfolds. unfold ref_kind_of. rewrite <- EQba.
-           destruct v; [destruct p|]; tryfalse; eauto.
-         *) (* TODO NOW :bug if ref_base r = null: nothing applies *) skip.
+        cases (ref_base r).
+          run* red_expr_delete_1_ref_property using to_object_correct.
+            applys* ref_is_property_from_not_unresolvable_value.
+            applys* red_expr_delete_2.
+             applys* object_delete_correct.
+          rename e0 into L. applys* red_expr_delete_1_ref_env_record.
+           applys* env_record_delete_binding_correct.
+       unfolds ref_is_unresolvable, ref_kind_of. 
     (* void *)
     run* red_expr_unary_op. applys red_expr_unary_op_1.  
      applys* red_expr_unary_op_void.
