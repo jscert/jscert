@@ -2183,10 +2183,11 @@ Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 : resu
 Definition run_stat_switch runs S C labs e sb : result :=
   if_spec (run_expr_get_value runs S C e) (fun S1 vi =>
     Let follow := fun W =>
-      if_break W (fun S2 R =>
-        if res_label_in R labs then
-          out_ter S2 (res_value R)
-        else out_ter S2 R) in
+      if_success
+        (if_break W (fun S2 R =>
+           if res_label_in R labs then
+             out_ter S2 (res_value R)
+           else out_ter S2 R)) res_ter in
     match sb with
     | switchbody_nodefault scs =>
       follow (run_stat_switch_no_default runs S1 C vi resvalue_empty scs)
