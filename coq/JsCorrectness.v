@@ -285,7 +285,7 @@ Definition if_success_state_post rv0 (K : _ -> _ -> result) o o1 :=
   (o1 = out_div /\ o = o1) \/
   (exists S R, o1 = out_ter S R /\ res_type R = restype_throw /\ o = out_ter S R) \/
   (exists S R, o1 = out_ter S R /\ res_type R <> restype_throw /\
-    o = out_ter S (res_overwrite_value_if_empty rv0 R)) \/
+    res_type R <> restype_normal /\ o = out_ter S (res_overwrite_value_if_empty rv0 R)) \/
   exists S rv, o1 = out_ter S (res_normal rv) /\
     K S (ifb rv = resvalue_empty then rv0 else rv) = res_out o.
 
@@ -296,7 +296,7 @@ Proof.
   introv E. forwards~ (o1&WE&P): if_ter_out (rm E). subst W. eexists. splits*.
   inversion_clear P as [?|(S&R&?&H)]. branch~ 1.
   substs. destruct R as [rt rv' rl]. destruct~ rt; simpls;
-    try solve [branch 3; repeat eexists; [discriminate | inverts~ H]].
+    try solve [branch 3; repeat eexists; [discriminate | discriminate | inverts~ H]].
    forwards~ (?&?): if_empty_label_out (rm H). simpls. substs.
     branch 4. repeat eexists. auto*.
    inverts H. branch 2. repeat eexists.
@@ -995,7 +995,7 @@ Ltac run_post_core :=
      let S := fresh "S" in let R := fresh "R" in
      let O1 := fresh "O1" in 
      let E1 := fresh "E" in let E2 := fresh "E" in let rv := fresh "rv" in 
-     destruct H as [(Er&Ab)|[(S&R&O1&E1&H)|[(S&R&O1&E1&H)|(S&rv&O1&H)]]];
+     destruct H as [(Er&Ab)|[(S&R&O1&E1&H)|[(S&R&O1&E1&E2&H)|(S&rv&O1&H)]]];
     [ try subst_hyp Er; try subst_hyp Ab; try abort
     | try subst_hyp O1 | try subst_hyp O1 | try subst_hyp O1 ]
   | |- _ => run_post_run_expr_get_value
@@ -2977,7 +2977,6 @@ Proof.
     forwards~ H: run_block_correct R1. rew_list~ in H.
     substs. abort.
     substs. tests: (res_is_normal R).
-     apply~ red_stat_switch_nodefault_6_normal. apply~ IHscs. skip. (* There is an error in the interpreter *)
      apply~ red_stat_switch_nodefault_6_abrupt.
   skip.
 Admitted. (* TODO Martin *)
