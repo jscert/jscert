@@ -3012,6 +3012,12 @@ Proof.
    unfolds res_overwrite_value_if_empty. case_if; case_if*. 
 Admitted. (*faster*)
 
+Lemma run_stat_switch_no_default_end_correct : forall runs S C rv scs o,
+  runs_type_correct runs ->
+  run_stat_switch_end runs S C rv scs = o ->
+  red_stat S C (stat_switch_nodefault_5 rv scs) o.
+Admitted. (* TODO *)
+
 Lemma run_stat_switch_no_default_correct : forall runs S C vi rv scs o,
   runs_type_correct runs ->
   run_stat_switch_no_default runs S C vi rv scs = o ->
@@ -3020,7 +3026,25 @@ Proof.
   introv IH HR. unfolds in HR.
 Admitted. (* TODO *)
 
-Lemma run_stat_switch_with_default_correct : forall runs S C found vi rv scs1 ts scs2 o,
+Lemma run_stat_switch_with_default_end_correct : forall runs S C rv scs o,
+  runs_type_correct runs ->
+  run_stat_switch_end runs S C rv scs = o ->
+  red_stat S C (stat_switch_default_7 rv scs) o.
+Admitted. (* TODO *)
+
+Lemma run_stat_switch_with_default_default_correct : forall runs S C vi rv ts scs o,
+  runs_type_correct runs ->
+  run_stat_switch_with_default_default runs S C ts scs = o ->
+  red_stat S C (stat_switch_default_5 vi rv ts scs) o.
+Admitted. (* TODO *)
+
+Lemma run_stat_switch_with_default_B_correct : forall runs S C vi rv ts scs o,
+  runs_type_correct runs ->
+  run_stat_switch_with_default_B runs S C vi rv ts scs = o ->
+  red_stat S C (stat_switch_default_B_1 vi rv ts scs) o.
+Admitted. (* TODO *)
+
+Lemma run_stat_switch_with_default_A_correct : forall runs S C found vi rv scs1 ts scs2 o,
   runs_type_correct runs ->
   run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 = o ->
   red_stat S C (stat_switch_default_A_1 found vi rv scs1 ts scs2) o.
