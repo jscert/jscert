@@ -1,6 +1,14 @@
 *********************************************************************
 REQUIREMENTS
 
+Easy Option:
+
+Install the latest Vagrant from http://www.vagrantup.com/ then type
+"vagrant up". This will give you a shell-only VM in which you can
+build \jscert. 
+
+Alternatively, read on.
+
 Files compile with Coq v8.4. If your Coq binaries are not in the
 default location (/usr/bin/ or /usr/local/bin/), you need to create a
 file called "settings.sh" and set COQBIN to the appropriate path, e.g.:
