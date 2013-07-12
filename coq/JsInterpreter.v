@@ -1576,23 +1576,6 @@ Definition get_bitwise_op (op : binary_op) : option (int -> int -> int) :=
   end.
 
 
-Definition convert_twice T T0
-    (ifv : resultof T0 -> (state -> T -> specres (T * T)) -> specres (T * T))
-    (KC : state -> value -> resultof T0) S v1 v2 : specres (T * T) :=
-  ifv (KC S v1) (fun S1 vc1 =>
-    ifv (KC S1 v2) (fun S2 vc2 =>
-      res_spec S2 (vc1, vc2))).
-
-Definition convert_twice' T
-    (ifv : result -> (state -> T -> specres (T * T)) -> specres (T * T))
-    (KC : state -> value -> result) S v1 v2
-    (K : state -> T -> T -> result) : result :=
-  (* As [convert_twice] uses [specres] and that we don't have time to convert
-    all intermediate functions, this function is there to backport the new
-    [convert_twice] with the old [if_*]. *)
-  if_spec (convert_twice ifv KC S v1 v2) (fun S' (p : T * T) =>
-    let '(p1, p2) := p in K S' p1 p2).
-
 Definition run_equal runs S C v1 v2 : result :=
   let conv_number := fun S v =>
     to_number runs S C v in
@@ -1628,36 +1611,41 @@ Definition run_equal runs S C v1 v2 : result :=
       dc_conv v2 conv_primitive v1
     else so false).
 
+
+Definition convert_twice T T0
+    (ifv : resultof T0 -> (state -> T -> specres (T * T)) -> specres (T * T))
+    (KC : state -> value -> resultof T0) S v1 v2 : specres (T * T) :=
+  ifv (KC S v1) (fun S1 vc1 =>
+    ifv (KC S1 v2) (fun S2 vc2 =>
+      res_spec S2 (vc1, vc2))).
+
+Definition convert_twice_primitive runs S C v1 v2 :=
+  convert_twice (@if_prim (prim * prim)) (fun S v => to_primitive runs S C v None) S v1 v2.
+
+Definition convert_twice_number runs S C v1 v2 :=
+  convert_twice (@if_number (number * number)) (fun S v => to_number runs S C v) S v1 v2.
+
+Definition convert_twice_string runs S C v1 v2 :=
+  convert_twice (@if_string (string * string)) (fun S v => to_string runs S C v) S v1 v2.
+
+
 Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
-  Let conv_primitive := fun S v =>
-    to_primitive runs S C v None in
-  Let convert_twice_primitive :=
-    convert_twice' (@if_prim (prim * prim)) conv_primitive in
-  Let conv_number := fun S v =>
-    to_number runs S C v in
-  Let convert_twice_number :=
-    convert_twice' (@if_number (number * number)) conv_number in
-  Let conv_string := fun S v =>
-    to_string runs S C v in
-  Let convert_twice_string :=
-    convert_twice' (@if_string (string * string)) conv_string in
 
   match op return result with
 
   | binary_op_add =>
-    convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>
+    if_spec (convert_twice_primitive runs S C v1 v2) ((fun S1 ww => let '(w1,w2) := ww in
       ifb type_of w1 = type_string \/ type_of w2 = type_string then
-        convert_twice_string S1 w1 w2 (fun S2 s1 s2 =>
-          out_ter S2 (s1 ++ s2))
+        if_spec (convert_twice_string runs S1 C w1 w2) ((fun S2 ss => let '(s1,s2) := ss in
+          res_out (out_ter S2 (s1 ++ s2))))
         else
-          convert_twice_number S1 w1 w2 (fun S2 n1 n2 =>
-            out_ter S2 (JsNumber.add n1 n2)))
+          if_spec (convert_twice_number runs S1 C w1 w2) ((fun S2 nn => let '(n1,n2) := nn in
+            res_out (out_ter S2 (JsNumber.add n1 n2))))))
 
   | binary_op_mult | binary_op_div | binary_op_mod | binary_op_sub =>
     if_some (get_puremath_op op) (fun mop =>
-      convert_twice_number S v1 v2 (fun S1 n1 n2 =>
-        out_ter S1 (mop n1 n2)))
-
+      if_spec (convert_twice_number runs S C v1 v2) ((fun S1 nn => let '(n1,n2) := nn in
+        res_out (out_ter S1 (mop n1 n2)))))  
   | binary_op_and | binary_op_or =>
     (* Lazy operators are already dealt with at this point. *)
     impossible_with_heap_because S "Undealt lazy operator in [run_binary_op]."
@@ -1679,12 +1667,12 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
   | binary_op_lt | binary_op_gt | binary_op_le | binary_op_ge =>
     if_some (get_inequality_op op) (fun io =>
       let '(b_swap, b_neg) :=  io in
-      convert_twice_primitive S v1 v2 (fun S1 w1 w2 =>
+      if_spec (convert_twice_primitive runs S C v1 v2) ((fun S1 ww => let '(w1,w2) := ww in
         let '(wa, wb) := if b_swap then (w2, w1) else (w1, w2) in
         let wr := inequality_test_primitive wa wb in
-        out_ter S1 (ifb wr = prim_undef then false
+        res_out (out_ter S1 (ifb wr = prim_undef then false
           else ifb b_neg = true /\ wr = true then false
-          else wr)))
+          else wr)))))
 
   | binary_op_instanceof =>
     match v2 with

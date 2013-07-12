@@ -2019,6 +2019,45 @@ Proof.
 Qed.
 
 
+Definition lift2 T (C:T->value) y :=
+  match y with
+  | specret_val S' (x1,x2) => specret_val S' (C x1, C x2)
+  | specret_out o => specret_out o
+  end.
+
+Lemma convert_twice_primitive_correct : forall runs S C v1 v2 y,
+  runs_type_correct runs ->
+  convert_twice_primitive runs S C v1 v2 = result_some y -> 
+  red_spec S C (spec_convert_twice (spec_to_primitive_auto v1) (spec_to_primitive_auto v2)) (lift2 value_prim y).
+Proof.
+  introv IH HR. unfolds in HR. unfolds in HR.
+  run red_spec_convert_twice.
+  run red_spec_convert_twice_1.
+  unfolds lift2. applys red_spec_convert_twice_2.
+Admitted. (*faster*)
+
+
+Lemma convert_twice_number_correct : forall runs S C v1 v2 y,
+  runs_type_correct runs ->
+  convert_twice_number runs S C v1 v2 = result_some y -> 
+  red_spec S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2)) (lift2 (fun n=>n:value) y).
+Proof.
+  introv IH HR. unfolds in HR. unfolds in HR.
+  run red_spec_convert_twice.
+  run red_spec_convert_twice_1.
+  unfolds lift2. applys red_spec_convert_twice_2.
+Admitted. (*faster*)
+
+Lemma convert_twice_string_correct : forall runs S C v1 v2 y,
+  runs_type_correct runs ->
+  convert_twice_string runs S C v1 v2 = result_some y -> 
+  red_spec S C (spec_convert_twice (spec_to_string v1) (spec_to_string v2)) (lift2 (fun s=>s:value) y).
+Proof.
+  introv IH HR. unfolds in HR. unfolds in HR.
+  run red_spec_convert_twice.
+  run red_spec_convert_twice_1.
+  unfolds lift2. applys red_spec_convert_twice_2.
+Admitted. (*faster*)
 
 
 (**************************************************************)
