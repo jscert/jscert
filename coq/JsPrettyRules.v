@@ -228,51 +228,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       -- See also the definition of [abort_intercepted_stat].
   *)
 
-(* Daniele: old. Remove when new version (below) is accepted. 
-
-  | red_stat_do_while : forall S C labs t1 e2 o,
-      red_stat S C (stat_do_while_1 labs t1 e2 resvalue_empty) o ->
-      red_stat S C (stat_do_while labs t1 e2) o
-
-  | red_stat_do_while_1 : forall S C labs t1 e2 rv o1 o,
-      red_stat S C t1 o1 ->
-      red_stat S C (stat_do_while_2 labs t1 e2 rv o1) o ->
-      red_stat S C (stat_do_while_1 labs t1 e2 rv) o
-
-  | red_stat_do_while_2 : forall rv o1 S0 S C labs t1 e2 rv_old R o,
-      rv = (If res_value R = resvalue_empty then rv_old else res_value R) ->
-      red_stat S C (stat_do_while_3 labs t1 e2 rv R) o ->
-      red_stat S0 C (stat_do_while_2 labs t1 e2 rv_old (out_ter S R)) o 
-
-  | red_stat_do_while_3_break : forall S0 S C labs t1 e2 rv R,
-      (res_type R = restype_break /\ res_label_in R labs) ->
-      red_stat S C (stat_do_while_3 labs t1 e2 rv R) (out_ter S rv)
-
-  | red_stat_do_while_3_abrupt : forall S0 S C labs t1 e2 rv R o,
-      abrupt_res R -> 
-      ~ (res_type R = restype_break /\ res_label_in R labs) ->
-      ~ (res_type R = restype_continue /\ res_label_in R labs) ->
-      red_stat S C (stat_do_while_3 labs t1 e2 rv R) (out_ter S R)
-
-  | red_stat_do_while_3_continue : forall S0 S C labs t1 e2 rv R o,
-      (   (res_type R = restype_continue /\ res_label_in R labs)
-        \/ res_type R = restype_normal) ->
-      red_stat S C (stat_do_while_4 labs t1 e2 rv) o ->      
-      red_stat S C (stat_do_while_3 labs t1 e2 rv R) o
-
-  | red_stat_do_while_4 : forall S0 S C labs t1 e2 rv y1 o,
-      red_spec S C (spec_expr_get_value_conv spec_to_boolean e2) y1 ->
-      red_stat S C (stat_do_while_5 labs t1 e2 rv y1) o ->
-      red_stat S C (stat_do_while_4 labs t1 e2 rv) o
-
-  | red_stat_do_while_5_false : forall S0 S C labs t1 e2 rv,
-      red_stat S0 C (stat_do_while_5 labs t1 e2 rv (vret S false)) (out_ter S rv)
-
-  | red_stat_do_while_5_true : forall S0 S C labs t1 e2 rv o,
-      red_stat S C (stat_do_while_1 labs t1 e2 rv) o ->
-      red_stat S0 C (stat_do_while_5 labs t1 e2 rv (vret S true)) o
-*)
-
   | red_stat_do_while : forall S C labs t1 e2 o,
       red_stat S C (stat_do_while_1 labs t1 e2 resvalue_empty) o ->
       red_stat S C (stat_do_while labs t1 e2) o
@@ -506,35 +461,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** -- Switch with default case *)
 
   (** ----- Switch with default case: search A *)
-(*
-  | red_stat_switch_default_A_1_nil : forall S C vi rv ts1 scs2 o,  
-      red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_1 vi rv nil ts1 scs2) o
-
-  | red_stat_switch_default_A_1_cons : forall S C e o o1 vi rv ts ts1 scs scs2,  
-      red_expr S C (spec_expr_get_value e) o1 ->
-      red_stat S C (stat_switch_default_A_2 o1 vi rv ts scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_1 vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
-
-  | red_stat_switch_default_A_2 : forall S0 S C b vi v1 rv ts scs ts1 scs2 o,  
-      b = (strict_equality_test v1 vi) ->
-      red_stat S C (stat_switch_default_A_3 b vi rv ts scs ts1 scs2) o ->
-      red_stat S0 C (stat_switch_default_A_2 (out_ter S v1) vi rv ts scs ts1 scs2) o
-
-  | red_stat_switch_default_A_3_false : forall S C vi rv scs ts ts1 scs2 o,  
-      red_stat S C (stat_switch_default_A_1 vi rv scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 false vi rv ts scs ts1 scs2) o 
-
-  | red_stat_switch_default_A_3_true : forall S C o1 rv ts scs ts1 scs2 o vi,  
-      red_stat S C (stat_block ts) o1 ->
-      red_stat S C (stat_switch_default_A_4 o1 vi scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 true vi rv ts scs ts1 scs2) o
-
-  | red_stat_switch_default_A_4 : forall S C vi rv scs scs2 ts1 o, 
-      red_stat S C (stat_switch_default_5 vi rv ts1 scs) o ->
-      red_stat S C (stat_switch_default_A_4 (out_ter S rv) vi scs ts1 scs2) o
-*)
-
   | red_stat_switch_default_A_1_nil_true : forall S C b vi rv ts1 scs2 o,  
       red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv nil ts1 scs2) o
@@ -2810,8 +2736,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 *)
 
   (** Shortcut: creates a new function object in the given execution context *)
-  (* Daniele: [spec_creating_function_object] requires the function body as
-     a string as the 2nd argument, but we don't have it. *)
   | red_spec_create_new_function_in : forall S C args bd o,
       red_expr S C (spec_creating_function_object args bd (execution_ctx_lexical_env C) (execution_ctx_strict C)) o ->
       red_expr S C (spec_create_new_function_in C args bd) o
@@ -3109,7 +3033,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_1 l vp) o
 
   | red_spec_call_object_object_define_props_2 : forall S0 S C l lp xs o o1, (* step 3 and 4 *) 
-      object_properties_enumerable_keys_as_list S lp xs -> (*Daniele: define*)
+      object_properties_enumerable_keys_as_list S lp xs -> 
       red_expr S C (spec_call_object_define_props_3 l lp xs nil) o ->
       red_expr S0 C (spec_call_object_define_props_2 (out_ter S lp) l) o
 
@@ -3122,9 +3046,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_4 o1 l lp x xs Descs) o ->
       red_expr S C (spec_call_object_define_props_3 l lp (x::xs) Descs) o
 
-  (* Daniele: !!! Here I put (y:specret attributes) but I think it should be (y:specret descriptor).
-     If I do it I get type error in the next rule, because it says A is expected to be attribute but found descriptor. 
-     I guess this is due to problems with coercions, but I'm not sure how do do it. !!! *)
   | red_spec_call_object_define_props_4 : forall S0 S C v l lp o o1 x xs Descs (y:specret attributes), (* step 5.b *)
       red_spec S C (spec_to_descriptor v) y ->
       red_expr S C (spec_call_object_define_props_5 l lp x xs Descs y) o1 -> 
@@ -4050,9 +3971,6 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_own_prop_2_some_data : forall S C l x A, (* Step 2 through 8 *)
       red_spec S C (spec_object_get_own_prop_2 l x (Some A)) (ret S (full_descriptor_some A)) 
 
-
-
-
   (* Arguments Object: GetOwnProperty (passes a fully-populated property descriptor to the continuation) (10.6) *) 
 
   | red_spec_object_get_own_prop_args_obj : forall S C l x (y:specret full_descriptor) (y1:specret full_descriptor), (* Step 1 *)
@@ -4085,17 +4003,6 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   | red_spec_object_get_own_prop_args_obj_4 : forall S C A, (* Step 6 *)
       red_spec S C (spec_args_obj_get_own_prop_4 A) (ret S (full_descriptor_some A))    
-
-
-
-
-
-
-
-
-
-
-
 
   (** Get value on a reference (returns value) (8.7.1) *)
 
