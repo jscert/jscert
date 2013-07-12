@@ -147,6 +147,128 @@ Definition state_with_new_event S new_event :=
 
 
 (**************************************************************)
+(** ** Conversion used in the semantics of DefinedOwnProperty *)
+
+(** Default data property attributes *)
+
+Definition attributes_data_default := {|
+   attributes_data_value := undef;
+   attributes_data_writable := false;
+   attributes_data_enumerable := false;
+   attributes_data_configurable := false |}.
+
+(** Default accessor property attributes *)
+
+Definition attributes_accessor_default := {|
+   attributes_accessor_get := undef;
+   attributes_accessor_set := undef;
+   attributes_accessor_enumerable := false;
+   attributes_accessor_configurable := false |}.
+
+(** Convert a data property attributes into an accessor property attributes *)
+
+Definition attributes_accessor_of_attributes_data Ad := {|
+   attributes_accessor_get := attributes_accessor_get attributes_accessor_default;
+   attributes_accessor_set := attributes_accessor_set attributes_accessor_default;
+   attributes_accessor_enumerable := attributes_data_enumerable Ad;
+   attributes_accessor_configurable := attributes_data_configurable Ad |}.
+
+(** Convert an accessor property attributes into a data property attributes *)
+
+Definition attributes_data_of_attributes_accessor Aa := {|
+   attributes_data_value := attributes_data_value attributes_data_default;
+   attributes_data_writable := attributes_data_writable attributes_data_default;
+   attributes_data_enumerable := attributes_accessor_enumerable Aa;
+   attributes_data_configurable := attributes_accessor_configurable Aa |}.
+
+(** Updates a data property attributes with a property descriptor *)
+
+Definition attributes_data_update Ad Desc := {|
+   attributes_data_value := unsome_default (attributes_data_value Ad) (descriptor_value Desc);
+   attributes_data_writable := unsome_default (attributes_data_writable Ad) (descriptor_writable Desc);
+   attributes_data_enumerable := unsome_default (attributes_data_enumerable Ad) (descriptor_enumerable Desc);
+   attributes_data_configurable := unsome_default (attributes_data_configurable Ad) (descriptor_configurable Desc) |}.
+
+(** Updates an accessor property attributes with a property descriptor *)
+
+Definition attributes_accessor_update Aa Desc := {|
+   attributes_accessor_get := unsome_default (attributes_accessor_get Aa) (descriptor_get Desc);
+   attributes_accessor_set := unsome_default (attributes_accessor_set Aa) (descriptor_set Desc);
+   attributes_accessor_enumerable := unsome_default (attributes_accessor_enumerable Aa) (descriptor_enumerable Desc);
+   attributes_accessor_configurable := unsome_default (attributes_accessor_configurable Aa) (descriptor_configurable Desc) |}.
+
+(** Updates a property attributes with a property descriptor *)
+
+Definition attributes_update A Desc : attributes := 
+  match A with
+  | attributes_data_of Ad => attributes_data_update Ad Desc
+  | attributes_accessor_of Aa => attributes_accessor_update Aa Desc
+  end.
+
+(** Converts a property descriptor into a data property attributes  *)
+
+Definition attributes_data_of_descriptor Desc :=
+  attributes_data_update attributes_data_default Desc.
+
+(** Converts a property descriptor into an accessor property attributes  *)
+
+Definition attributes_accessor_of_descriptor Desc :=
+  attributes_accessor_update attributes_accessor_default Desc.
+
+(** Converts a property attributes into an property descriptor *)
+
+Definition descriptor_of_attributes A :=
+  match A with
+  | attributes_data_of Ad =>
+    {| descriptor_value := Some (attributes_data_value Ad);
+       descriptor_writable := Some (attributes_data_writable Ad);
+       descriptor_get := None;
+       descriptor_set := None;
+       descriptor_enumerable := Some (attributes_data_enumerable Ad);
+       descriptor_configurable := Some (attributes_data_configurable Ad) |}
+  | attributes_accessor_of Aa =>
+    {| descriptor_value := None;
+       descriptor_writable := None;
+       descriptor_get := Some (attributes_accessor_get Aa);
+       descriptor_set := Some (attributes_accessor_set Aa);
+       descriptor_enumerable := Some (attributes_accessor_enumerable Aa);
+       descriptor_configurable := Some (attributes_accessor_configurable Aa) |}
+  end.
+
+(* Coercion associated to [descriptor_of_attributes] *)
+
+Coercion descriptor_of_attributes : attributes >-> descriptor.
+
+
+(**************************************************************)
+(** ** Type [attributes] *)
+
+(** Returns the value of the configurable field of an attribute *)
+
+Definition attributes_configurable A :=
+  match A with
+  | attributes_data_of Ad => attributes_data_configurable Ad
+  | attributes_accessor_of Aa => attributes_accessor_configurable Aa
+  end.
+
+(** Returns the value of the enumerable field of an attribute *)
+
+Definition attributes_enumerable A :=
+  match A with
+  | attributes_data_of Ad => attributes_data_enumerable Ad
+  | attributes_accessor_of Aa => attributes_accessor_enumerable Aa
+  end.
+
+(** Modifies the configurable field of an attribute *)
+
+Definition attributes_with_configurable A bc' :=
+  match A with
+  | attributes_data_of Ad => attributes_data_of (attributes_data_with_configurable Ad bc')
+  | attributes_accessor_of Aa => attributes_accessor_of (attributes_acccessor_with_configurable Aa bc')
+  end.
+
+
+(**************************************************************)
 (** ** Operations on objects *)
 
 (** Update the state by updating the object heap *)
@@ -301,14 +423,13 @@ Definition object_properties_keys_as_list S l xs :=
     stored at address [l] in [S] (the list can be in any order). *)
 
 Definition object_properties_enumerable_keys_as_list S l xs :=
-  (* !!!
-  
-   !!! 
-  
-   !!!!
-   
-   !!!  TODO: fix the definition to the real thing *)
-  exists P, object_properties S l P /\ heap_keys_as_list P xs.
+  exists P xs', object_properties S l P /\ 
+                heap_keys_as_list P xs' /\
+                LibList.Filters 
+                  (fun (k:prop_name) => 
+                     exists A, Heap.binds P k A /\
+                               attributes_enumerable A) 
+                  xs' xs.
 
 (** Map a function [F] on the properties field of an object,
     and returns the updated object. *)
@@ -534,128 +655,6 @@ Definition descriptor_is_accessor Desc :=
 
 Definition descriptor_is_generic Desc :=
   (~ descriptor_is_data Desc) /\ (~ descriptor_is_accessor Desc).
-
-
-(**************************************************************)
-(** ** Conversion used in the semantics of DefinedOwnProperty *)
-
-(** Default data property attributes *)
-
-Definition attributes_data_default := {|
-   attributes_data_value := undef;
-   attributes_data_writable := false;
-   attributes_data_enumerable := false;
-   attributes_data_configurable := false |}.
-
-(** Default accessor property attributes *)
-
-Definition attributes_accessor_default := {|
-   attributes_accessor_get := undef;
-   attributes_accessor_set := undef;
-   attributes_accessor_enumerable := false;
-   attributes_accessor_configurable := false |}.
-
-(** Convert a data property attributes into an accessor property attributes *)
-
-Definition attributes_accessor_of_attributes_data Ad := {|
-   attributes_accessor_get := attributes_accessor_get attributes_accessor_default;
-   attributes_accessor_set := attributes_accessor_set attributes_accessor_default;
-   attributes_accessor_enumerable := attributes_data_enumerable Ad;
-   attributes_accessor_configurable := attributes_data_configurable Ad |}.
-
-(** Convert an accessor property attributes into a data property attributes *)
-
-Definition attributes_data_of_attributes_accessor Aa := {|
-   attributes_data_value := attributes_data_value attributes_data_default;
-   attributes_data_writable := attributes_data_writable attributes_data_default;
-   attributes_data_enumerable := attributes_accessor_enumerable Aa;
-   attributes_data_configurable := attributes_accessor_configurable Aa |}.
-
-(** Updates a data property attributes with a property descriptor *)
-
-Definition attributes_data_update Ad Desc := {|
-   attributes_data_value := unsome_default (attributes_data_value Ad) (descriptor_value Desc);
-   attributes_data_writable := unsome_default (attributes_data_writable Ad) (descriptor_writable Desc);
-   attributes_data_enumerable := unsome_default (attributes_data_enumerable Ad) (descriptor_enumerable Desc);
-   attributes_data_configurable := unsome_default (attributes_data_configurable Ad) (descriptor_configurable Desc) |}.
-
-(** Updates an accessor property attributes with a property descriptor *)
-
-Definition attributes_accessor_update Aa Desc := {|
-   attributes_accessor_get := unsome_default (attributes_accessor_get Aa) (descriptor_get Desc);
-   attributes_accessor_set := unsome_default (attributes_accessor_set Aa) (descriptor_set Desc);
-   attributes_accessor_enumerable := unsome_default (attributes_accessor_enumerable Aa) (descriptor_enumerable Desc);
-   attributes_accessor_configurable := unsome_default (attributes_accessor_configurable Aa) (descriptor_configurable Desc) |}.
-
-(** Updates a property attributes with a property descriptor *)
-
-Definition attributes_update A Desc : attributes := 
-  match A with
-  | attributes_data_of Ad => attributes_data_update Ad Desc
-  | attributes_accessor_of Aa => attributes_accessor_update Aa Desc
-  end.
-
-(** Converts a property descriptor into a data property attributes  *)
-
-Definition attributes_data_of_descriptor Desc :=
-  attributes_data_update attributes_data_default Desc.
-
-(** Converts a property descriptor into an accessor property attributes  *)
-
-Definition attributes_accessor_of_descriptor Desc :=
-  attributes_accessor_update attributes_accessor_default Desc.
-
-(** Converts a property attributes into an property descriptor *)
-
-Definition descriptor_of_attributes A :=
-  match A with
-  | attributes_data_of Ad =>
-    {| descriptor_value := Some (attributes_data_value Ad);
-       descriptor_writable := Some (attributes_data_writable Ad);
-       descriptor_get := None;
-       descriptor_set := None;
-       descriptor_enumerable := Some (attributes_data_enumerable Ad);
-       descriptor_configurable := Some (attributes_data_configurable Ad) |}
-  | attributes_accessor_of Aa =>
-    {| descriptor_value := None;
-       descriptor_writable := None;
-       descriptor_get := Some (attributes_accessor_get Aa);
-       descriptor_set := Some (attributes_accessor_set Aa);
-       descriptor_enumerable := Some (attributes_accessor_enumerable Aa);
-       descriptor_configurable := Some (attributes_accessor_configurable Aa) |}
-  end.
-
-(* Coercion associated to [descriptor_of_attributes] *)
-
-Coercion descriptor_of_attributes : attributes >-> descriptor.
-
-
-(**************************************************************)
-(** ** Type [attributes] *)
-
-(** Returns the value of the configurable field of an attribute *)
-
-Definition attributes_configurable A :=
-  match A with
-  | attributes_data_of Ad => attributes_data_configurable Ad
-  | attributes_accessor_of Aa => attributes_accessor_configurable Aa
-  end.
-
-(** Returns the value of the enumerable field of an attribute *)
-
-Definition attributes_enumerable A :=
-  match A with
-  | attributes_data_of Ad => attributes_data_enumerable Ad
-  | attributes_accessor_of Aa => attributes_accessor_enumerable Aa
-  end.
-
-(** Modifies the configurable field of an attribute *)
-
-Definition attributes_with_configurable A bc' :=
-  match A with
-  | attributes_data_of Ad => attributes_data_of (attributes_data_with_configurable Ad bc')
-  | attributes_accessor_of Aa => attributes_accessor_of (attributes_acccessor_with_configurable Aa bc')
-  end.
 
 
 (**************************************************************)
