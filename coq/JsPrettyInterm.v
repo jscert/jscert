@@ -151,10 +151,6 @@ Inductive ext_expr :=
   | spec_to_string : value -> ext_expr
   | spec_to_string_1 : out -> ext_expr
   | spec_to_object : value -> ext_expr
-(* Daniele: moved.
-  | spec_to_uint32 : value -> (int -> ext_expr) -> ext_expr
-  | spec_to_uint32_1 : out -> (int -> ext_expr) -> ext_expr
-*)
   | spec_check_object_coercible : value -> ext_expr
 
   (** Extended expressions for comparison *)
@@ -216,29 +212,13 @@ Inductive ext_expr :=
   | spec_object_define_own_prop_6c : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_reject : bool -> ext_expr
   | spec_object_define_own_prop_write : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
-
   | spec_prim_value_get : value -> prop_name -> ext_expr
   | spec_prim_value_get_1 : value -> prop_name -> out -> ext_expr
-
   | spec_prim_value_put : value -> prop_name -> value -> bool -> ext_expr
   | spec_prim_value_put_1 : prim -> prop_name -> value -> bool -> out -> ext_expr
 
-  (*
-  | spec_object_put_special : value -> prop_name -> value -> bool -> ext_expr
-
-  | spec_object_object_get : object_loc -> prop_name -> ext_expr
-  | spec_object_object_get_1 : object_loc -> full_descriptor -> ext_expr
-  | spec_object_object_get_2 : object_loc -> option value -> ext_expr
-  | spec_object_function_get : object_loc -> prop_name -> ext_expr
-  | spec_object_function_get_1 : object_loc -> prop_name -> out -> ext_expr
-  *)
-
-
   (** Extended expressions for operations on references *)
-
-
   | spec_put_value : resvalue -> value -> ext_expr
-
 
   (** Extended expressions for operations on environment records *)
 
@@ -842,10 +822,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_to_string_1 o => Some o
   | spec_to_object _ => None
 
-(* Daniele: moved
-  | spec_to_uint32 _ _ => None
-  | spec_to_uint32_1 o _ => Some o
-*)
   | spec_check_object_coercible _ => None
 
   | spec_eq _ _ => None
