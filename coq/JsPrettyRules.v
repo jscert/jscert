@@ -472,7 +472,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_1 false vi rv nil ts1 scs2) o
 
   | red_stat_switch_default_A_1_cons_true : forall S C e o o1 vi rv ts ts1 scs scs2,  
-      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 rv vi ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
   | red_stat_switch_default_A_1_cons_false : forall S C e vi rv ts ts1 scs scs2 y1 o,  
@@ -490,18 +490,23 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_3 false vi rv ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_3_true : forall S C vi rv scs ts ts1 scs2 o,
-      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 rv vi ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_3 true vi rv ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_4 : forall S C o1 rv ts scs ts1 scs2 o vi,  
       red_stat S C (stat_block ts) o1 ->
-      red_stat S C (stat_switch_default_A_5 o1 vi scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o 
+      red_stat S C (stat_switch_default_A_5 rv o1 vi scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 rv vi ts scs ts1 scs2) o 
 
-  | red_stat_switch_default_A_5 : forall S S0 C vi rv scs scs2 ts1 o, 
-      red_stat S C (stat_switch_default_A_1 true vi rv scs ts1 scs2) o ->
-      red_stat S0 C (stat_switch_default_A_5 (out_ter S rv) vi scs ts1 scs2) o
+  | red_stat_switch_default_A_5 : forall S S0 C vi rv0 rv rv' scs scs2 ts1 o, 
+      rv' = (If rv <> resvalue_empty then rv else rv0) -> (* Added following a point of Section 12.11 of ECMA.  Please reread. *)
+      red_stat S C (stat_switch_default_A_1 true vi rv' scs ts1 scs2) o ->
+      red_stat S0 C (stat_switch_default_A_5 rv0 (out_ter S rv) vi scs ts1 scs2) o
 
+  | red_stat_switch_default_A_5_abrupt : forall S S0 C vi rv R scs scs2 ts1 o, (* TODO:  Reread this rule! *)
+      ~ res_is_normal R ->
+      res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
+      red_stat S0 C (stat_switch_default_A_5 rv (out_ter S R) vi scs ts1 scs2) (out_ter S (res_overwrite_value_if_empty rv R))
 
   (** ----- Switch with default case: search B *)
 

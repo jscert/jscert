@@ -2970,14 +2970,22 @@ Proof.
   introv IH HR. gen S C found vi rv ts scs2 o. induction scs1; introv HR; unfolds in HR.
    case_if.
     apply~ red_stat_switch_default_A_1_nil_true.
+     applys~ run_stat_switch_with_default_default_correct HR.
+    apply~ red_stat_switch_default_A_1_nil_false.
      applys~ run_stat_switch_with_default_B_correct HR.
-    applys~ run_stat_switch_with_default_default_correct HR.
-   destruct a. run red_stat_switch_default_B_1_cons. let_simpl.
-    apply~ red_stat_switch_default_B_2. case_if.
-    run red_stat_switch_default_B_3_true using run_block_correct. rew_list~ in R1.
-     apply~ red_stat_switch_default_B_4.
-     applys~ run_stat_switch_with_default_end_correct HR.
-    apply~ red_stat_switch_default_B_3_false.
+   destruct a. let_name. asserts follow_correct: (forall S o,
+     follow S = res_out o ->
+     red_stat S C (stat_switch_default_A_4 rv vi l scs1 ts scs2) o).
+     clear HR. introv E. substs. run red_stat_switch_default_A_4
+       using run_block_correct. rew_list~ in R1. abort.
+      substs. applys~ red_stat_switch_default_A_5_abrupt.
+      apply~ red_stat_switch_default_A_5. apply~ IHscs1. repeat case_if~.
+    clear EQfollow. case_if.
+     apply~ red_stat_switch_default_A_1_cons_true.
+     run red_stat_switch_default_A_1_cons_false.
+     apply~ red_stat_switch_default_A_2. let_simpl. cases_if.
+      apply~ red_stat_switch_default_A_3_true.
+      apply~ red_stat_switch_default_A_3_false.
 Qed.
 
 Lemma run_stat_switch_correct : forall runs S C labs e sb o,

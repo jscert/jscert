@@ -571,8 +571,8 @@ with ext_stat :=
   | stat_switch_default_A_1: bool -> value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_2: (specret value) -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_3: bool -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_A_4: value -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_A_5: out -> value -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_4: resvalue -> value -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_5: resvalue -> out -> value -> list switchclause -> list stat -> list switchclause -> ext_stat
 
   | stat_switch_default_B_1: value -> resvalue -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_B_2: (specret value) -> value -> resvalue -> list stat -> list stat -> list switchclause -> ext_stat
@@ -1206,8 +1206,8 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_switch_default_A_2 (specret_out o) _ _ _ _ _ _ => Some o
   | stat_switch_default_A_2 (specret_val _ _) _ _ _ _ _ _ => None
   | stat_switch_default_A_3 _ _ _ _ _ _ _  => None
-  | stat_switch_default_A_4 _ _ _ _ _ => None
-  | stat_switch_default_A_5 o _ _ _ _ => Some o
+  | stat_switch_default_A_4 _ _ _ _ _ _ => None
+  | stat_switch_default_A_5 _ o _ _ _ _ => Some o
   | stat_switch_default_B_1 _ _ _ _ => None
   | stat_switch_default_B_2 (specret_out o) _ _ _ _ _ => Some o
   | stat_switch_default_B_2 (specret_val _ _) _ _ _ _ _ => None
@@ -1349,6 +1349,10 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       ~ res_is_normal R ->
       res_type R <> restype_throw -> (* TODO:  Check *)
       abort_intercepted_stat (stat_switch_default_8 rv (out_ter S R) scs)
+  | abort_intercepted_stat_switch_default_A_5 : forall S rv R vi scs ts1 scs2, (* TODO:  Reread *)
+      ~ res_is_normal R ->
+      res_type R <> restype_throw ->
+      abort_intercepted_stat (stat_switch_default_A_5 rv (out_ter S R) vi scs ts1 scs2)
 .
 
 Inductive abort_intercepted_expr : ext_expr -> Prop :=

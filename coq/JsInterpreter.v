@@ -2149,17 +2149,17 @@ Fixpoint run_stat_switch_with_default_B runs S C vi rv ts0 scs : result :=
         run_stat_switch_with_default_B runs S1 C vi rv ts0 scs')
   end.
 
-Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 : result :=
+Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts0 scs2 : result :=
   match scs1 with
   | nil =>
     if found then
-      run_stat_switch_with_default_B runs S C vi rv ts scs2
+      run_stat_switch_with_default_default runs S C ts0 scs2
     else
-      run_stat_switch_end runs S C rv scs2
+      run_stat_switch_with_default_B runs S C vi rv ts0 scs2
   | switchclause_intro e ts :: scs' =>
     Let follow := fun S =>
-      if_success (run_block runs S C (LibList.rev ts)) (fun S1 rv =>
-        run_stat_switch_with_default_A runs S1 C true vi rv scs' ts scs2)
+      if_success_state rv (run_block runs S C (LibList.rev ts)) (fun S1 rv0 =>
+        run_stat_switch_with_default_A runs S1 C true vi rv0 scs' ts0 scs2)
       in
     if found then
       follow S
@@ -2169,7 +2169,7 @@ Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 : resu
         if b then
           follow S1
         else
-          run_stat_switch_with_default_A runs S1 C false vi rv scs' ts scs2)
+          run_stat_switch_with_default_A runs S1 C false vi rv scs' ts0 scs2)
   end.
 
 Definition run_stat_switch runs S C labs e sb : result :=
