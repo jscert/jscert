@@ -499,7 +499,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_4 rv vi ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_5 : forall S S0 C vi rv0 rv rv' scs scs2 ts1 o, 
-      rv' = (If rv <> resvalue_empty then rv else rv0) -> (* Added following a point of Section 12.11 of ECMA.  Please reread. *)
+      rv' = (If rv <> resvalue_empty then rv else rv0) -> (* TODO:  Added following a point of Section 12.11 of ECMA.  Please reread. *)
       red_stat S C (stat_switch_default_A_1 true vi rv' scs ts1 scs2) o ->
       red_stat S0 C (stat_switch_default_A_5 rv0 (out_ter S rv) vi scs ts1 scs2) o
 
@@ -559,7 +559,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_7 rv ((switchclause_intro e ts)::scs)) o
 
   | red_stat_switch_default_8_normal : forall S S0 C rv0 rv rv' scs o,
-      rv' = (If rv <> resvalue_empty then rv else rv0) -> (* Added following the point 9.b.ii of Section 12.11 of ECMA.  Please reread. *)
+      rv' = (If rv <> resvalue_empty then rv else rv0) -> (* TODO:  Added following the point 9.b.ii of Section 12.11 of ECMA.  Please reread. *)
       red_stat S C (stat_switch_default_7 rv' scs) o ->
       red_stat S0 C (stat_switch_default_8 rv0 (out_ter S rv) scs) o
 
