@@ -569,10 +569,10 @@ with ext_stat :=
 
   | stat_switch_default_1: value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_1: bool -> value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_A_2: (specret value) -> bool -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_A_3: bool -> bool -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_A_4: bool -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_A_5: out -> bool -> value -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_2: (specret value) -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_3: bool -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_4: value -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_5: out -> value -> list switchclause -> list stat -> list switchclause -> ext_stat
 
   | stat_switch_default_B_1: value -> resvalue -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_B_2: (specret value) -> value -> resvalue -> list stat -> list stat -> list switchclause -> ext_stat
@@ -1203,11 +1203,11 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
 
   | stat_switch_default_1 _ _ _ _ _ => None
   | stat_switch_default_A_1 _ _ _ _ _ _ => None 
-  | stat_switch_default_A_2 (specret_out o) _ _ _ _ _ _ _ => Some o
-  | stat_switch_default_A_2 (specret_val _ _) _ _ _ _ _ _ _ => None
-  | stat_switch_default_A_3 _ _ _ _ _ _ _ _  => None
-  | stat_switch_default_A_4 _ _ _ _ _ _ _ => None
-  | stat_switch_default_A_5 o _ _ _ _ _ => Some o
+  | stat_switch_default_A_2 (specret_out o) _ _ _ _ _ _ => Some o
+  | stat_switch_default_A_2 (specret_val _ _) _ _ _ _ _ _ => None
+  | stat_switch_default_A_3 _ _ _ _ _ _ _  => None
+  | stat_switch_default_A_4 _ _ _ _ _ => None
+  | stat_switch_default_A_5 o _ _ _ _ => Some o
   | stat_switch_default_B_1 _ _ _ _ => None
   | stat_switch_default_B_2 (specret_out o) _ _ _ _ _ => Some o
   | stat_switch_default_B_2 (specret_val _ _) _ _ _ _ _ => None

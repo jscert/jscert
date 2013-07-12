@@ -473,35 +473,35 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_1 false vi rv nil ts1 scs2) o
 
   | red_stat_switch_default_A_1_cons_true : forall S C e o o1 vi rv ts ts1 scs scs2,  
-      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
   | red_stat_switch_default_A_1_cons_false : forall S C e vi rv ts ts1 scs scs2 y1 o,  
       red_spec S C (spec_expr_get_value e) y1 ->
-      red_stat S C (stat_switch_default_A_2 y1 false vi rv ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_2 y1 vi rv ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 false vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
   | red_stat_switch_default_A_2 : forall S0 S C b vi v1 rv ts scs ts1 scs2 o,  
       b = (strict_equality_test v1 vi) ->
-      red_stat S C (stat_switch_default_A_3 b false vi rv ts scs ts1 scs2) o ->
-      red_stat S0 C (stat_switch_default_A_2 (ret S v1) false vi rv ts scs ts1 scs2) o
+      red_stat S C (stat_switch_default_A_3 b vi rv ts scs ts1 scs2) o ->
+      red_stat S0 C (stat_switch_default_A_2 (ret S v1) vi rv ts scs ts1 scs2) o
 
   | red_stat_switch_default_A_3_false : forall S C b vi rv scs ts ts1 scs2 o,  
-      red_stat S C (stat_switch_default_A_1 b vi rv scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 false b vi rv ts scs ts1 scs2) o (* TODO:  According to the rules, [b] can only be [false] there:  are you sure it should really be there? *)
+      red_stat S C (stat_switch_default_A_1 false vi rv scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_3 false vi rv ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_3_true : forall S C b vi rv scs ts ts1 scs2 o,  
-      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_3 true b vi rv ts scs ts1 scs2) o (* TODO:  According to the rules, [b] can only be [false] there:  are you sure it should really be there? *)
+      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_3 true vi rv ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_4 : forall S C o1 rv ts scs ts1 scs2 o vi,  
       red_stat S C (stat_block ts) o1 ->
-      red_stat S C (stat_switch_default_A_5 o1 true vi scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_4 true vi rv ts scs ts1 scs2) o (* TODO:  What's the point if this [true] if there is no [false] branch?  Same question for the [rv]. *)
+      red_stat S C (stat_switch_default_A_5 o1 vi scs ts1 scs2) o ->
+      red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o 
 
   | red_stat_switch_default_A_5 : forall S C vi rv scs scs2 ts1 o, 
       red_stat S C (stat_switch_default_A_1 true vi rv scs ts1 scs2) o ->
-      red_stat S C (stat_switch_default_A_5 (out_ter S rv) true vi scs ts1 scs2) o
+      red_stat S C (stat_switch_default_A_5 (out_ter S rv) vi scs ts1 scs2) o
 
 
   (** ----- Switch with default case: search B *)
