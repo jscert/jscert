@@ -2411,28 +2411,6 @@ Admitted. (*faster*)
 (**************************************************************)
 (** ** Main theorem *)
 
-
-Lemma run_elements_correct : forall runs,
-  runs_type_correct runs ->
-  follow_elements (run_elements runs).
-Proof.
- (* TODO NOW *)
-
-(* TODO: don't do it because the definition will need to change
-  in order to first process all but the last elements. *)
-(*
-  introv IH. intros rv S C les o HR. induction les.
-  simpls. run_inv. applys* red_prog_1_nil.
-  unfold run_elements' in HR.
-red_prog_1_cons_stat 
-red_prog_2 
-red_prog_3 
-red_prog_1_cons_funcdecl
-*)
-
-
-Admitted. (* NOW *)
-
 Lemma create_new_function_in_correct : forall runs S C args bd o,
   runs_type_correct runs ->
   create_new_function_in runs S C args bd = o ->
@@ -2818,7 +2796,8 @@ Proof.
   run red_stat_block_1.
   subst. applys* red_stat_block_2_throw.
   subst. applys* red_stat_block_2_not_throw.
-  applys* red_stat_block_2_not_throw. simple*. case_if; case_if*. 
+  applys* red_stat_block_2_not_throw. simple*. 
+   unfolds res_overwrite_value_if_empty. case_if; case_if*. 
 Admitted. (*faster*)
 
 
@@ -2912,28 +2891,71 @@ Lemma run_prog_correct : forall runs,
    follow_prog (run_prog runs).
 Proof.
   introv RC. intros S C p o R. unfolds in R. destruct p.
-  (*apply~ red_prog_prog.*) skip. (* TODO, this should work afterwards:  applys~ run_elements_correct R. *)
-Qed.
+  forwards*: run_elements_correct (rev l). rew_list* in H.
+Admitted. (*faster*)
 
-(*
-Lemma run_call_correct : forall runs,
+  (* LATER: generalize statement to handle continuations *)
+Lemma entering_func_code_correct : forall runs S C lf vthis args o,
+  runs_type_correct runs ->
+  entering_func_code runs S C lf vthis args = result_some (specret_out o) ->
+  red_expr S C (spec_entering_func_code lf vthis args (spec_call_default_1 lf)) o.
+Proof.
+  introv IH HR. unfolds in HR. sets_eq K: (spec_call_default_1 lf).
+  run. run. subst x. lets H: run_object_method_correct (rm E).
+  let_name. let_name as M. rename x0 into bd.
+  asserts M_correct: (forall S v o,
+      M S v = res_out o ->
+      red_expr S C (spec_entering_func_code_3 lf args str bd v K) o).
+    clears HR S o. introv HR. subst M.
+    run. run. subst x. lets H: run_object_method_correct (rm E).
+    let_name. destruct p as [lex' S1]. let_name. 
+    run* (@red_spec_entering_func_code_3 lex' S1 C'). 
+    applys* red_spec_entering_func_code_4.
+    subst K. applys* run_call_default_correct.
+    clear EQM.  
+  applys* red_spec_entering_func_code str.
+  case_if; subst str. 
+    applys* red_spec_entering_func_code_1_strict.
+    destruct vthis.
+      destruct p. (* LATER: improve *)
+        applys* red_spec_entering_func_code_1_null_or_undef.
+        applys* red_spec_entering_func_code_1_null_or_undef.
+        run red_spec_entering_func_code_1_not_object.
+          simpls. splits; congruence.
+          applys* to_object_correct.
+          applys* red_spec_entering_func_code_2.
+        run red_spec_entering_func_code_1_not_object.
+          simpls. splits; congruence.
+          applys* to_object_correct.
+          applys* red_spec_entering_func_code_2.
+        run red_spec_entering_func_code_1_not_object.
+          simpls. splits; congruence.
+          applys* to_object_correct.
+          applys* red_spec_entering_func_code_2. 
+      applys* red_spec_entering_func_code_1_object.
+Admitted. (* faster *)
+
+Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
+  runs_type_correct runs ->
+  run_call_prealloc runs S C B vthis args = o ->
+  red_expr S C (spec_call_prealloc B vthis args) o.
+Admitted. (* Part of libraries, will do afterwards *)
+
+
+(* TODO: merge with the other *)
+Lemma run_call_correct' : forall runs,
   runs_type_correct runs ->
   follow_call (run_call runs).
 Proof.
-   intros runs RC lthis vs S' C v o R. unfolds in R.
-Admitted. (* OLD:
-   intros l vs S C v S' res R. simpls. unfolds in R. unmonad.
-   name_object_method. do 2 (destruct B as [B|]; tryfalse). destruct B; tryfalse.
-    (* Call Default *)
-    skip. (* TODO *)
-    (* Call Prealloc *)
-    splits.
-     apply~ red_spec_call. applys run_object_method_correct EQB.
-      apply~ red_spec_call_1_prealloc. unmonad.
-      skip. (* TODO *)
-     skip. (* TODO *)
-*)
-*)
+  introv IH HR. simpls. unfolds in HR. 
+  run. run. subst. lets H: run_object_method_correct (rm E).
+  applys* red_spec_call. clear H.
+  destruct x0; tryfalse.
+    applys* red_spec_call_1_default. applys* red_spec_call_default.
+     applys* entering_func_code_correct.
+    applys* red_spec_call_1_prealloc. applys* run_call_prealloc_correct.
+Admitted. (* faster *)
+
 
 Lemma run_function_has_instance_correct : forall runs,
   runs_type_correct runs ->

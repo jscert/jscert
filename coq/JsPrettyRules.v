@@ -117,7 +117,7 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
   | red_prog_2 : forall S0 S C R R' rv,
       R' = (res_overwrite_value_if_empty rv R) ->
-      red_prog S0 C (prog_2 rv (out_ter S R)) (out_ter S R').
+      red_prog S0 C (prog_2 rv (out_ter S R)) (out_ter S R')
         (* LATER: strange, the spec does not say the same thing as for blocs,
            i.e. it's being implicit about exceptions *)
 
@@ -2163,7 +2163,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_entering_func_code_3 lf args true bd vthis K) o -> 
       red_expr S C (spec_entering_func_code_1 lf args bd vthis strictness_true K) o
 
-  | red_spec_entering_func_code_1_null_or_undef : forall S C lf args str bd vthis K o, (* Step 2 *)
+  | red_spec_entering_func_code_1_null_or_undef : forall S C lf args bd vthis K o, (* Step 2 *)
       (vthis = null \/ vthis = undef) ->
       red_expr S C (spec_entering_func_code_3 lf args false bd prealloc_global K) o ->
       red_expr S C (spec_entering_func_code_1 lf args bd vthis strictness_false K) o
@@ -2182,14 +2182,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_entering_func_code_3 lf args strictness_false bd lthis K) o ->
       red_expr S C (spec_entering_func_code_1 lf args bd lthis strictness_false K) o
 
-  | red_spec_entering_func_code_3 : forall o1 S C lf args str bd vthis lex lex' S' C' K o, (* Steps 5 through 9 *)
+  | red_spec_entering_func_code_3 : forall lex' S' C' o1 S C lf args str bd vthis lex  K o, (* Steps 5 through 9 *)
       object_scope S lf (Some lex) ->
       (lex', S') = lexical_env_alloc_decl S lex ->
       C' = execution_ctx_intro_same lex' vthis str ->
       red_expr S' C' (spec_binding_inst codetype_func (Some lf) (funcbody_prog bd) args) o1 -> 
       red_expr S' C' (spec_entering_func_code_4 o1 K) o ->
       red_expr S C (spec_entering_func_code_3 lf args str bd vthis K) o 
-      
+
   | red_spec_entering_func_code_4 : forall S0 S C K o, (* Call continuation *) 
       red_expr S C K o ->
       red_expr S0 C (spec_entering_func_code_4 (out_void S) K) o 
