@@ -722,13 +722,11 @@ Fixpoint binary_op_compare op1 op2 :=
 
 Global Instance binary_op_comparable : Comparable binary_op.
 Proof.
-(*
-  applys (comparable_beq binary_op_compare). intros x y.
+  applys (comparable_beq binary_op_compare). (* intros x y.
   destruct x; destruct y; simpl; rew_refl; iff;
-   tryfalse; auto; try congruence.
+   tryfalse; auto; try congruence. *)
+skip. (*otherwise proof too slow*)
 Qed.
-*)
-Admitted. (*otherwise proof too slow*)
 
 (**************************************************************)
 (** ** Type [expr] *)

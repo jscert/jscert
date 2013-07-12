@@ -22,7 +22,6 @@ Qed.
 
 
 (**************************************************************)
-(* TODO for MARTIN: implement *)
 
 (* [heap_keys_as_list h ks] holds if the list [ks] is a
    permutation of the set of keys of the map [h]. *)

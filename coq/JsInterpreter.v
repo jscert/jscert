@@ -1983,7 +1983,7 @@ Definition entering_eval_code runs S C direct bd K : result :=
     in
   Let p := funcbody_prog bd in
   if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
-    K S1 C1). (* TODO: this was C', but Arthur changed it to C1 --check the change*)
+    K S1 C1).
 
 Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with
