@@ -407,7 +407,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       res_label_in R labs ->
       red_stat S0 C (stat_switch_2 (out_ter S R) labs) (out_ter S (res_normal rv))
 
-  | red_stat_switch_2_normal : forall S0 S C rv labs, (* step 4 *)
+  | red_stat_switch_2_normal : forall S0 R S C rv lab labs, (* step 4 *)
+      (R = res_intro restype_break rv lab /\ res_label_in R labs) ->
       red_stat S0 C (stat_switch_2 (out_ter S rv) labs) (out_ter S rv)
 
   (** -- Switch without default case *)
@@ -462,12 +463,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** ----- Switch with default case: search A *)
 
-  | red_stat_switch_default_A_1_nil_true : forall S C b vi rv ts1 scs2 o,  
+  | red_stat_switch_default_A_1_nil_true : forall S C vi rv ts1 scs2 o,  
       (*red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->*)
       red_stat S C (stat_switch_default_5 vi rv ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv nil ts1 scs2) o
 
-  | red_stat_switch_default_A_1_nil_false : forall S C b vi rv ts1 scs2 o,
+  | red_stat_switch_default_A_1_nil_false : forall S C vi rv ts1 scs2 o,
       (*red_stat S C (stat_switch_default_5 vi rv ts1 scs2) o ->  *)
       red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 false vi rv nil ts1 scs2) o
@@ -486,11 +487,11 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_3 b vi rv ts scs ts1 scs2) o ->
       red_stat S0 C (stat_switch_default_A_2 (ret S v1) vi rv ts scs ts1 scs2) o
 
-  | red_stat_switch_default_A_3_false : forall S C b vi rv scs ts ts1 scs2 o,  
+  | red_stat_switch_default_A_3_false : forall S C vi rv scs ts ts1 scs2 o,  
       red_stat S C (stat_switch_default_A_1 false vi rv scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_3 false vi rv ts scs ts1 scs2) o 
 
-  | red_stat_switch_default_A_3_true : forall S C b vi rv scs ts ts1 scs2 o,  
+  | red_stat_switch_default_A_3_true : forall S C vi rv scs ts ts1 scs2 o,  
       red_stat S C (stat_switch_default_A_4 vi ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_3 true vi rv ts scs ts1 scs2) o 
 
