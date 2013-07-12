@@ -90,7 +90,6 @@ Proof.
   applys (comparable_beq attributes_data_compare). intros x y.
   destruct x; destruct y; simpl; rew_refl; iff H;
     [lets~ (H1&H2&H3&H4): (rm H) | inverts~ H]; congruence.
-  (* Note that this is not the usual proof, which didn't worked there. -- Martin. *)
 Qed.
 
 
@@ -112,7 +111,6 @@ Proof.
   applys (comparable_beq attributes_accessor_compare). intros x y.
   destruct x; destruct y; simpl; rew_refl; iff H;
     [lets~ (H1&H2&H3&H4): (rm H) | inverts~ H]; congruence.
-  (* Note that this is not the usual proof, which didn't worked there. -- Martin. *)
 Qed.
 
 

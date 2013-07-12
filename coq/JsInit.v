@@ -178,7 +178,7 @@ Definition global_is_nan_function_object :=
 Definition global_is_finite_function_object :=
   object_create_prealloc_call prealloc_global_is_finite 1 Heap.empty.
 
-(* Daniele: need to add something similar for constructors
+(* LATER: need to add something similar for constructors
    (basically everything which is after 'isFinite')? *)
 
 (**************************************************************)
@@ -207,7 +207,6 @@ Definition object_prealloc_object :=
 Definition object_get_proto_of_function_object :=
   object_create_prealloc_call prealloc_object_get_proto_of 1 Heap.empty.
 
-(* Daniele: I added the following lines... *)
 Definition object_get_own_prop_descriptor_function_object :=
   object_create_prealloc_call prealloc_object_get_own_prop_descriptor 1 Heap.empty.
 Definition object_get_own_prop_name_function_object :=
@@ -248,7 +247,7 @@ Definition object_prealloc_object_proto :=
   let P := write_native P "propertyIsEnumerable" prealloc_object_proto_prop_is_enumerable in
   object_create_builtin null "Object" P.
 
-(* Daniele: in the following definitions, why [object_proto_to_string_function_object]
+(* LATER: in the following definitions, why [object_proto_to_string_function_object]
    and [object_proto_value_of_function_object] have parameter 0 while 
    [object_proto_is_prototype_of_function_object]? I don't find it in the spec. *)
 
@@ -270,9 +269,8 @@ Definition object_proto_prop_is_enumerable_function_object :=
 Definition object_prealloc_function :=
   let P := Heap.empty in
   let P := write_constant P "prototype" (value_object prealloc_function_proto) in
-  (*let P := write_native P "get_prototype_of" prealloc_object_get_proto_of in*) (* This one seems odd, doesn't it? -- Martin *) (* Daniele: yes it does. Remove? *)
 
-  (* Daniele: commented line below: needed or captured by [object_create_prealloc_constructor]?*)
+  (* LATER: commented line below: needed or captured by [object_create_prealloc_constructor]?*)
   (* let P := write_constant P "length" 1 in *) 
   object_create_prealloc_constructor prealloc_function 1 P.
 
@@ -290,7 +288,7 @@ Definition object_prealloc_function_proto :=
   (* let P := write_native P "bind" prealloc_function_proto_bind in *) (* LATER *)
   (* LATER: complete list *)
 
-  (* Daniele: why this construct here and not the usual (see other builtins), i.e. just 
+  (* LATER: why this construct here and not the usual (see other builtins), i.e. just 
      [object_create_builtin prealloc_object_proto "Function" P]? *)
   let O := object_create_builtin prealloc_object_proto "Function" P in
   object_with_invokation O None (Some (call_prealloc prealloc_function_proto)) None.
@@ -298,15 +296,12 @@ Definition object_prealloc_function_proto :=
 (**************************************************************)
 (** Number object *)
 
-(* Daniele: ? *)
 
 Definition object_prealloc_number :=
   let P := Heap.empty in
-  (* TODO: what does this mean? --:: Daniele: use [prealloc_function_proto] when available *)
-
-  (* Daiva: The spec says that Number.prototype is Number prototype object defined in 15.7.4 -- not a function prototype object. *)
-
-  (* Daniele: as Daiva says, I think this is correct. The internal prototype internal property is function_proto, and this is done by [object_create_prealloc_constructo] below. Instead, the Number.prototype property (following line) is the number.prototype object. *)
+  (* LATER: what does this mean? --:: Daniele: use [prealloc_function_proto] when available
+   Daiva: The spec says that Number.prototype is Number prototype object defined in 15.7.4 -- not a function prototype object.
+   Daniele: as Daiva says, I think this is correct. The internal prototype internal property is function_proto, and this is done by [object_create_prealloc_constructo] below. Instead, the Number.prototype property (following line) is the number.prototype object. *)
 
   let P := write_constant P "prototype" prealloc_number_proto in
   let P := write_constant P "NaN" JsNumber.nan in
@@ -380,8 +375,8 @@ Definition object_prealloc_bool_proto :=
   let P := write_native P "toString" prealloc_bool_proto_to_string in   
   let P := write_native P "valueOf" prealloc_bool_proto_value_of in
   let O := object_create_builtin prealloc_object_proto "Boolean" P in
-  (* The spec does not say explicitly that [[PrimitiveValue]] is false. It says that object's value is false (15.6.4). TODO: do we need to change anything?*)
-  (* Daniele: moreover: 14.6.5: "The [[PrimitiveValue]] internal property is the Boolean value represented by this Boolean object." ...  *)
+  (* The spec does not say explicitly that [[PrimitiveValue]] is false. It says that object's value is false (15.6.4). LATER: do we need to change anything?
+  Daniele: moreover: 14.6.5: "The [[PrimitiveValue]] internal property is the Boolean value represented by this Boolean object." ...  *)
   object_with_primitive_value O false.
   
 Definition bool_proto_to_string_function_object :=
@@ -428,9 +423,6 @@ Definition object_prealloc_error :=
 
 (**************************************************************)
 (** Error prototype object *)
-
-(* TODO: the way we handle the property "constructor" everywhere in the file is boggous *)
-(* Daniele: why/how? *)
 
 Definition object_prealloc_error_proto :=
   let P := Heap.empty in
@@ -482,7 +474,7 @@ Definition throw_type_error_object :=  (* TODO: check this *)
 (**************************************************************)
 (** Initial object heap *)
 
-(* Daniele: as Arthur suggested, I had to split the definition of object_heap_initial_function_objects_1 into several bits. Otherwise, there seems to be an issue with non-termination - don't know why. The full definition is commented below. *)
+(* LATER: understand why Coq bugs if definition involves too many let *)
 
 Definition object_heap_initial_function_objects_1 (h : Heap.heap object_loc object) :=
   (* ThrowTypeError Function object *)
@@ -530,54 +522,6 @@ Definition object_heap_initial_function_objects (h : Heap.heap object_loc object
   let h := Heap.write h prealloc_error_proto_to_string error_proto_to_string_function_object in h.
 
 
-
-
-
-(*
-Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
-  (* ThrowTypeError Function object *)
-  let h := Heap.write h prealloc_throw_type_error throw_type_error_object in
-
-  (* Function objects of Global object *)
-  let h := Heap.write h prealloc_global_eval global_eval_function_object in
-  let h := Heap.write h prealloc_global_is_nan global_is_nan_function_object in
-  let h := Heap.write h prealloc_global_is_finite global_is_finite_function_object in
-  
-  (* Function objects of Object *)
-  let h := Heap.write h prealloc_object_get_proto_of object_get_proto_of_function_object in
-(* Daniele: I think the following lines are needed. However, if I uncomment them on my system, and run make, 
-   the thing is extremely slow. Actually I don't know if it terminates... 
-  let h := Heap.write h prealloc_object_get_own_prop_descriptor object_get_own_prop_descriptor_function_object in
-  let h := Heap.write h prealloc_object_get_own_prop_name object_get_own_prop_name_function_object in
-  let h := Heap.write h prealloc_object_create object_create_function_object in
-  let h := Heap.write h prealloc_object_define_prop object_define_prop_function_object in
-  let h := Heap.write h prealloc_object_define_properties object_define_properties_function_object in
-  let h := Heap.write h prealloc_object_seal object_seal_function_object in
-  let h := Heap.write h prealloc_object_freeze object_freeze_function_object in
-  let h := Heap.write h prealloc_object_prevent_extensions object_prevent_extensions_function_object in
-  let h := Heap.write h prealloc_object_is_sealed object_is_sealed_function_object in
-  let h := Heap.write h prealloc_object_is_frozen object_is_frozen_function_object in
-  let h := Heap.write h prealloc_object_is_extensible object_is_extensible_function_object in
-*)
-  (* Function objects of Object.prototype *)
-  let h := Heap.write h prealloc_object_proto_to_string object_proto_to_string_function_object in
-  let h := Heap.write h prealloc_object_proto_value_of object_proto_value_of_function_object in
-  let h := Heap.write h prealloc_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
-  let h := Heap.write h prealloc_object_proto_prop_is_enumerable object_proto_prop_is_enumerable_function_object in
-
-  (* Function objects of Boolean.prototype *)
-  let h := Heap.write h prealloc_bool_proto_to_string bool_proto_to_string_function_object in
-  let h := Heap.write h prealloc_bool_proto_value_of bool_proto_value_of_function_object in
-  
-  (* Function objects of Number.prototype *)
-  let h := Heap.write h prealloc_number_proto_to_string number_proto_to_string_function_object in
-  let h := Heap.write h prealloc_number_proto_value_of number_proto_value_of_function_object in 
-
-  (* Function objects of Error.prototype *)
-  let h := Heap.write h prealloc_error_proto_to_string error_proto_to_string_function_object in
-
-  h.
-*)
 Definition object_heap_initial :=
   let h : Heap.heap object_loc object := Heap.empty in
   let h := Heap.write h prealloc_global object_prealloc_global in

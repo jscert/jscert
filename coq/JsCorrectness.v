@@ -4,6 +4,7 @@ Require Import LibFix LibList.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 Require Import JsInterpreter JsPrettyInterm JsPrettyRules.
 
+(**************************************************************)
 (* TODO:  Move to Shared. *)
 
 Lemma decide_def : forall {P:Prop} `{Decidable P},
@@ -13,9 +14,6 @@ Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
 Lemma decide_cases : forall (P:Prop) `{Decidable P},
   (P /\ decide P = true) \/ (~ P /\ decide P = false).
 Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
-
-
-
 
 Ltac tryfalse_nothing :=
   try match goal with x: nothing |- _ => destruct x end;
@@ -390,7 +388,6 @@ Proof.
   branch 3. inverts* E. 
 Admitted. (*faster*)
 
-
 (* TODO: misssing 
     if_normal_continue_or_break *)
 
@@ -645,78 +642,6 @@ Proof.
   destruct R; tryfalse. exists___*.
 Qed.
 
-(* proofs of old monadic lemmas, might be useful
-Lemma if_success_out : forall res K S R,
-  if_success res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists rv,
-    R' = res_normal rv /\
-    K S' rv = out_ter S R).
-Proof.
-  introv H. deal_with_ter H; substs.
-  sets_eq t Et: (res_type R0). repeat eexists.
-  rewrite~ res_overwrite_value_if_empty_empty in HE.
-  destruct t; try solve [ left; inverts HE; rewrite <- Et; splits~; discriminate ].
-  forwards~ (E1&E2): if_empty_label_out (rm HE).
-  right. destruct R0. simpls. substs. repeat eexists. auto*.
-Qed.
-
-Lemma if_value_out : forall res K S R,
-  if_value res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists v,
-    R' = res_val v /\
-    K S' v = out_ter S R).
-Proof.
-  introv H. deal_with_regular_lemma H if_success_out; substs.
-   repeat eexists. left~.
-   destruct~ rv; tryfalse. repeat eexists. right. eexists. auto*.
-Qed.
-
-Lemma if_object_out : forall res K S R,
-  if_object res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists l,
-    R' = res_val (value_object l) /\
-    K S' l = out_ter S R).
-Proof.
-  introv H. deal_with_regular_lemma H if_value_out; substs.
-   repeat eexists. left~.
-   destruct~ v; tryfalse. repeat eexists. right. eexists. auto*.
-Qed.
-
-Lemma if_string_out : forall res K S R,
-  if_string res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists s,
-    R' = res_val (prim_string s) /\
-    K S' s = out_ter S R).
-Proof.
-  introv H. deal_with_regular_lemma H if_value_out; substs.
-   repeat eexists. left~.
-   destruct~ v; tryfalse. destruct~ p; tryfalse. repeat eexists. right. eexists. auto*.
-Qed.
-
-Lemma if_success_primitive_out : forall res K S R,
-  if_success_primitive res K = out_ter S R ->
-  if_regular_lemma res S R (fun S' R' => exists p,
-    R' = res_val (p : prim) /\
-    K S' p = out_ter S R).
-Proof.
-  introv H. deal_with_regular_lemma H if_value_out; substs.
-   repeat eexists. left~.
-   destruct~ v; tryfalse. repeat eexists. right. eexists. auto*.
-Qed.
-
-Lemma if_not_throw_out : forall res K S R,
-  if_not_throw res K = out_ter S R ->
-  exists S0 R0, res = out_ter S0 R0 /\
-    ((res_type R0 = restype_throw /\ S = S0 /\ R = R0) \/
-     (res_type R0 <> restype_throw /\ K S0 R0 = out_ter S R)).
-Proof.
-  introv H. deal_with_ter H. substs. destruct R0 as [rt rv rl]; simpls.
-  tests: (rt = restype_throw).
-   repeat eexists. left. inverts~ HE.
-   destruct rt; tryfalse; repeat eexists; right; inverts~ HE.
-Qed.
-*)
-
 
 (************************************************************)
 (* ** Correctness tactics *)
@@ -785,15 +710,12 @@ Ltac run_select_ifres H :=
   | ?x => run_select_extra T
   end end.
 
-
-
 (* template:
 Ltac run_select_extra T ::=
   match T with
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out) 
   end.
 *)
-
 
 (** [run_select_proj] is used to obtain automatically
     the right correctness lemma out of the correctness record *)
@@ -887,13 +809,15 @@ Tactic Notation "run_pre" hyp(H) "as" ident(o1) ident(R1) ident(K) :=
   run_pre_core T o1 R1 K.
 
 Tactic Notation "run_pre_ifres" "as" ident(o1) ident(R1) :=
-  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; 
+  (* LATER: improve unfolds *)
   match goal with H: _ = result_some _ |- _ =>
     let T := fresh in rename H into T;
     run_pre_ifres T o1 R1 H end.
 
 Tactic Notation "run_pre" "as" ident(o1) ident(R1) :=
-  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *;
+  (* LATER: improve unfolds *)
   match goal with H: _ = result_some _ |- _ =>
     let T := fresh in rename H into T;
     run_pre_core T o1 R1 H end.
@@ -1002,7 +926,6 @@ Ltac run_post_core :=
   | |- _ => run_post_extra
   end.
  
-
 (* template
 Ltac run_post_extra ::=
   let Er := fresh "Er" in let Ab := fresh "Ab" in
@@ -1012,7 +935,6 @@ Ltac run_post_extra ::=
   end.
 
 *)
-
 
 Tactic Notation "run_post" :=
   run_post_core.
@@ -1140,7 +1062,8 @@ Tactic Notation "run_simpl" ident(H) "as" ident(K) :=
   run_simpl_core T K.
 
 Tactic Notation "run_simpl" :=
-  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; (* I added this for it does not work, but any better solution is welcomed! -- Martin *)
+  unfold result_some_out in *; unfold res_to_res_void in * ; unfold result_out in *; unfold res_out in *; 
+  (* LATER: handle unfold *)
   match goal with H: _ = result_some _ |- _ =>
     let H' := fresh in rename H into H';
     run_simpl_core H' H
@@ -2815,7 +2738,7 @@ Proof.
   (* call *)
   applys* run_expr_call_correct.
   (* unary operators *)
-  unfolds in R. case_if as N. (*todo: other branch *)
+  unfolds in R. case_if as N. 
     run* red_expr_prepost. run red_expr_prepost_1_valid.
      run red_expr_prepost_2. run. destruct x as [F ispre].
      let_simpl. let_name. lets: prepost_op_correct (rm E).

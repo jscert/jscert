@@ -373,7 +373,7 @@ Definition object_set_property S l x A :=
 searching the prototype chain of l in S for a field named x will be
 res. If it finds it, we get Some result, otherwise None *)
 
-(* Daniele: moved to JSPrettyRules
+(* LATER: moved to JSPrettyRules
 Inductive search_proto_chain : state -> object_loc -> prop_name -> option object_loc -> Prop :=
   | search_proto_chain_found : forall S l x,
                                  object_has_property S l x ->
@@ -392,7 +392,7 @@ Inductive search_proto_chain : state -> object_loc -> prop_name -> option object
 (** [make_delete_event S l x ev] constructs a delete_event "ev" which
 records the deletion of the property (l,x) in the state S. *)
 
-(* Daniele: moved to JSPrettyRules
+(* LATER: moved to JSPrettyRules
 Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop :=
   | make_delete_event_intro : forall S l x res ev,
                                 search_proto_chain S l x res ->
@@ -419,8 +419,7 @@ Definition object_new vproto sclass :=
 
 (** True is its argument is a data *)
 
-(* In practice, this function is used as [attributes_is_data A = true] using an implicit [isTrue]:  wouldn't it be better if it were a boolean instead of a proposition? -- Martin. 
-   TODO: can't we simply use pattern matching instead? *)
+(* LATER:  In practice, this function is used as [attributes_is_data A = true] using an implicit [isTrue]:  wouldn't it be better if it were a boolean instead of a proposition?  *)
 
 Definition attributes_is_data A : Prop := 
   match A with

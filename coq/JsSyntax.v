@@ -9,7 +9,7 @@ Require JsNumber.
 Notation "'number'" := (JsNumber.number).
 
 
-(* There seems to be problems with modules and I've temporarily added
+(* LATER: There seems to be problems with modules and I've temporarily added
   this lemma to avoid those troubles, but there surely is a better
   solution for it. -- Martin. *)
 Lemma Heap_binds_func : forall (K V : Type) `{Comparable K}

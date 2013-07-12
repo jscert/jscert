@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import JsSemanticsAux. (* Martin:  Should proofs files not to be included in the trusted base? *)
+Require Import JsSemanticsAux. 
 Implicit Types h : heap.
 
 

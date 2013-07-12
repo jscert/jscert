@@ -3,7 +3,8 @@ Require Export LibTactics LibCore LibString LibFset LibSet.
 Generalizable Variables A B.
 Require Export LibProd.
 
-
+(** This file contains lots of definitions that will all get
+    merged in the TLC library, a general-purpose library for Coq. *)
 
 (**************************************************************)
 (** ** LATER: move to LibTactics *)
@@ -176,7 +177,7 @@ Lemma split_same_length : forall A B (l : list (A * B)) l1 l2,
 Proof.
   introv. gen l1 l2. induction l.
    introv E. inverts~ E.
-   introv E. destruct a. simpl in E. sets_eq L: (split l). (* Martin:  There may be a simpler way to do it... *)
+   introv E. destruct a. simpl in E. sets_eq L: (split l).
     destruct L as (la&lb). inverts~ E.
     forwards~ E: IHl la lb.
     unfolds. do 2 rewrite fold_right_cons. unfolds in E. rewrite~ E.
@@ -569,7 +570,7 @@ Qed.
 Class FunctionalPred A (P:A->Prop) := functionalpred_make {
     functional_pred : forall x y, P x -> P y -> x = y }.
 
-Global Instance apply_if_exists_pickable : (* Is that a good idea? -- Martin *)
+Global Instance apply_if_exists_pickable :
   forall (A B : Type) (P : A -> Prop) (f : A -> B),
   Pickable P -> FunctionalPred P ->
   Pickable (fun v => exists x, P x /\ f x = v).
@@ -623,7 +624,7 @@ Definition string_sub s (n l : int) : string :=
 (* todo: move *)
 Axiom ascii_compare : Ascii.ascii -> Ascii.ascii -> bool.
 Global Instance ascii_comparable : Comparable Ascii.ascii.
-Proof. applys (comparable_beq ascii_compare). skip. Qed. (* I need at least this for the extraction -- Martin. *)
+Proof. applys (comparable_beq ascii_compare). skip. Qed. 
 Axiom int_lt_dec : forall k1 k2 : int, Decidable (k1 < k2).
 
 (* todo: implement using lib *)
@@ -638,11 +639,6 @@ Definition morph_option {B C : Type} (c : C) (f : B -> C) (op : option B) : C :=
   | None => c
   | Some b => f b
   end.
-
-(* TODO: find more explicit name suggesting that a function is extracted *)
-(* I'm not sure to fully understand that comment:  it does not extract as a function.  If I used a function to implement it, it was to avoid it always raise an exception in the extracted OCaml code :) -- Martin. *)
-(*Definition extract_from_option {B : Type} `{Inhab B} (op : option B) : B :=
-  morph_option (fun _ : unit => arbitrary) (fun (b : B) _ => b) op tt.*) (* I guess it's in fact better to remove this black magic from this file :) -- Martin. *)
 
 Definition unmonad_option {B : Type} (default : B) (op : option B) : B :=
   morph_option default id op.
@@ -746,7 +742,6 @@ Proof.
   introv CA CB. applys comparable_beq (@prod_compare A B _ _). intros x y.
   destruct x; destruct y; simpl; rew_refl; iff H; inverts~ H;
    tryfalse; auto; try congruence.
-  (* Note that this is not the usual proof, which didn't worked there. -- Martin. *)
 Qed.
 
 

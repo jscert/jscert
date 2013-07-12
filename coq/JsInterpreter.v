@@ -1867,7 +1867,6 @@ Definition run_var_decl_item runs S C x eo : result :=
             out_ter S3 x)))
   end.
 
-(* TODO: new definition to be checked *)
 Fixpoint run_var_decl runs S C xeos : result :=
   match xeos with
   | nil => out_ter S res_empty
@@ -1875,26 +1874,6 @@ Fixpoint run_var_decl runs S C xeos : result :=
      if_value (run_var_decl_item runs S C x eo) (fun S1 vname =>
         run_var_decl runs S1 C xeos')
   end.
-
-(* TODO: deprecated old definition to delete after above is checked
-
-Fixpoint run_var_decl runs S C xeos {struct xeos} : result :=
-  match xeos with
-  | nil => out_ter S res_empty
-  | (x, eo) :: xeos' =>
-    Let follow := fun S' =>
-      run_var_decl runs S' C xeos'
-    in
-    match eo with
-    | None => follow S
-    | Some e =>
-      if_spec_ter (run_expr_get_value runs S C e) (fun S1 v =>
-        if_spec_ter (identifier_resolution runs S1 C x) (fun S2 ir =>
-          if_void (ref_put_value runs S2 C ir v) (fun S3 =>
-            follow S3)))
-    end
-  end.
-*)
 
 Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr) : specres (list value) :=
   match es with

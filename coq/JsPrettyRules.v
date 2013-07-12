@@ -222,7 +222,6 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   | red_stat_if_1_false_implicit : forall S0 S C t2,
       red_stat S0 C (stat_if_1 (vret S false) t2 None) (out_ter S resvalue_empty)
-      (* I've changed this rule, please check. -- Martin. *)
 
   (** Do-while statement (12.6.1)
       -- See also the definition of [abort_intercepted_stat].
@@ -1430,7 +1429,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_put : forall S C l x v throw B o,
       object_method object_put_ S l B ->
-      (* TODO: Daiva: Double check [this] value *)
+      (* LATER: Daiva: Double check [this] value *)
       red_expr S C (spec_object_put_1 B l l x v throw) o ->
       red_expr S C (spec_object_put l x v throw) o
 
@@ -1611,15 +1610,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
 
-(* OLD, see fix below (Note that I'm not very proud of the result:  TODO:  split it in two and do the same with the others)
-  | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o, (* Step 4 *)
-      red_spec S C (spec_object_get_prop l x) y1 ->
-      red_expr S C (spec_object_put_4 vthis l x v throw y1) o ->
-      red_expr S0 C (spec_object_put_3 vthis l x v throw (ret (T:=full_descriptor) S (attributes_accessor_of Aa))) o
-      (* According to the spec, it should be every cases that are not [attributes_data_of].  
-        There thus lacks a case there:  [full_descriptor_undef]. -- Martin *)
-*)
-
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o D, (* Step 4 *)
       (D = full_descriptor_undef) \/ (D = (attributes_accessor_of Aa)) ->
       red_spec S C (spec_object_get_prop l x) y1 ->
@@ -1634,23 +1624,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S0 C (spec_object_put_4 vthis l x v throw (dret S (attributes_accessor_of Aa))) o
 
-(* Daniele: old. see fix below.
-  | red_spec_object_put_4_not_accessor_object : forall S0 S C (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
-      Desc = descriptor_intro_data v true true true ->
-      red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
-      red_expr S C (spec_object_put_5 o1) o ->
-      red_expr S0 C (spec_object_put_4 lthis l x v throw (dret S (attributes_data_of Ad))) o
-      (* According to the spec, it should be every cases that are not [attributes_accessor_of].  There thus (unless it's not possible?) lacks a case there:  [full_descriptor_undef]. -- Martin *)
-*)
-
   | red_spec_object_put_4_not_accessor_object : forall S0 S C D (lthis:object_loc) l x v throw Ad Desc o1 o, (* Step 6 *)
       (D = full_descriptor_undef) \/  (D = (attributes_data_of Ad)) ->
       Desc = descriptor_intro_data v true true true ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
       red_expr S0 C (spec_object_put_4 lthis l x v throw (dret S D)) o
-
-
 
   | red_spec_object_put_4_not_accessor_prim : forall S0 S C (wthis:prim) D l x v throw Ad o, (* Step 6, for prim values *)
       (D = full_descriptor_undef) \/ (D = (attributes_data_of Ad)) ->
@@ -1756,7 +1735,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_define_own_prop_2 : forall S0 S C l x Desc throw An bext o, (* Step 2 *)
       object_extensible S l bext ->
       red_expr S C (spec_object_define_own_prop_3 l x Desc throw An bext) o ->
-      red_expr S0 C (spec_object_define_own_prop_2 l x Desc throw (ret S An)) o (* This [An] is a [full_descriptor]:  why not calling it [D]? -- Martin *)
+      red_expr S0 C (spec_object_define_own_prop_2 l x Desc throw (ret S An)) o 
+      (* LATER: This [An] is a [full_descriptor]:  why not calling it [D]? -- Martin *)
 
   | red_spec_object_define_own_prop_3_undef_false : forall S C l x Desc throw o, (* Step 3 *)
       red_expr S C (spec_object_define_own_prop_reject throw) o ->
@@ -2138,14 +2118,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C K o ->
       red_expr S0 C (spec_entering_func_code_4 (out_void S) K) o 
 
-      (*  TODO:   
-          interpreter schema:
-             red_entering_func_code S C f :=
-                let C' = ... in
-                if_void (red_binding_inst S C' f) (fun S' =>
-                   red_call S' C' f.body)  // K=red_call
-          *)
-
 
   (*------------------------------------------------------------*)
   (** Binding instantiation (10.5) *)   
@@ -2165,8 +2137,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_formal_params_1_not_declared : forall S0 S C args L x xs str v o o1, (* Step 4d iv *)
       red_expr S C (spec_env_record_create_mutable_binding L x None) o1 ->
       (* LATER(Daiva): are we sure that deletable_opt above is None, meaning that the item
-         will not be deletable? it's worth testing in an implementation if you can delete an arg binding. *)
-      (* gds: I believe this is correct. I'm leaving the comment in, but changing to LATER because it's an interesting area to test later. *)
+         will not be deletable? it's worth testing in an implementation if you can delete an arg binding. 
+         gds: I believe this is correct. I'm leaving the comment in, but changing to LATER because it's an interesting area to test later. *)
       red_expr S C (spec_binding_inst_formal_params_2 args L x xs str v o1) o ->
       red_expr S0 C (spec_binding_inst_formal_params_1 args L x xs str v (out_ter S false)) o
       
@@ -2291,7 +2263,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_var_decls_cons : forall o1 L S C vd vds bconfig str o, (* Step 8b *)
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
       red_expr S C (spec_binding_inst_var_decls_1 L vd vds bconfig str o1) o ->
-      red_expr S C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o (* I've change this rule as the previous version was weird, but please check it. -- Martin. *)
+      red_expr S C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o 
+      (* LATER: I've change this rule as the previous version was weird, but please check it. -- Martin. *)
 
   | red_spec_binding_inst_var_decls_1_true : forall L S0 S C vd vds bconfig str o, (* Step 8c *)
       red_expr S C (spec_binding_inst_var_decls L vds bconfig str) o ->
@@ -3572,7 +3545,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Throw an error *)
 
   | red_spec_error : forall S C ne o1 o, 
-      red_expr S C (spec_build_error (prealloc_native_error_proto ne) undef) o1 -> (* I'm not sure, but shalln't this [prealloc_native_error_proto] be a [prealloc_native_error]? -- Martin *)
+      red_expr S C (spec_build_error (prealloc_native_error_proto ne) undef) o1 -> 
+      (* LATER: I'm not sure, but shalln't this [prealloc_native_error_proto] be a [prealloc_native_error]? -- Martin *)
       red_expr S C (spec_error_1 o1) o ->
       red_expr S C (spec_error ne) o 
 
@@ -4022,7 +3996,8 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       ref_base r = ref_base_type_value v ->
       ext_get = (If ref_has_primitive_base r
         then spec_prim_value_get
-        else spec_object_get) -> (* It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
+        else spec_object_get) ->
+        (* LATER: It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
       red_expr S C (ext_get v (ref_name r)) o1 ->
       red_spec S C (spec_get_value_ref_b_1 o1) y ->
       red_spec S C (spec_get_value r) y

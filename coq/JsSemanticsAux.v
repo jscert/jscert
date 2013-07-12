@@ -50,9 +50,6 @@ Scheme red_expr_ind' := Induction for red_expr Sort Prop
   with red_stat_ind' := Induction for red_stat Sort Prop
   with red_prog_ind' := Induction for red_prog Sort Prop.
 
-(* Combined Scheme red_ind from red_expr_ind',
-  red_expr_lazy_binary_op_ind', red_stat_ind', red_prog_ind'. *) (* Martin:  Do not work. *)
-
 End Red_induct.
 
 
@@ -84,11 +81,6 @@ Definition extract_heap_from_output_prog default o :=
   | out_prog_div => default
   | out_prog_ter h _ => h
   end.
-
-
-(* Martin:  I just realised I could have befined the following by a predicate using `Inductive'.  I hope that won't yield problems... *)
-
-(* Martin:  I've defined them in this order as by chance this avoid recursive calls. *)
 
 Fixpoint correct_ext_prog (h : heap) (P : ext_prog) : Prop :=
   match P with

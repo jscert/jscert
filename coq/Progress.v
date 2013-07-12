@@ -8,6 +8,9 @@
 ~ ? lines of definitions in Preliminary 
 ~ ? lines of proofs (SyntaxAux, PreliminaryAux, IntermAux)
 
+~ 3300 lines of correctness proofs jsref/jscert
+
+
 ============================================================================
 
 
