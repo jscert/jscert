@@ -2980,7 +2980,7 @@ Proof.
      apply~ red_stat_switch_nodefault_6_normal. apply~ IHscs. skip. (* There is an error in the interpreter *)
      apply~ red_stat_switch_nodefault_6_abrupt.
   skip.
-Admitted. (* TODO *)
+Admitted. (* TODO Martin *)
 
 Lemma run_stat_switch_no_default_correct : forall runs S C vi rv scs o,
   runs_type_correct runs ->
@@ -3041,7 +3041,7 @@ Proof.
     apply~ follow_correct. rewrite~ <- E.
    forwards~ (o1&E): follow_arg HR.
     applys~ red_stat_switch_1_default o1.
-    applys~ run_stat_switch_with_default_correct E.
+    applys~ run_stat_switch_with_default_A_correct E.
     apply~ follow_correct. rewrite~ <- E.
 Qed.
 
