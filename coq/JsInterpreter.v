@@ -1424,8 +1424,9 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
       Let follow := fun S' vthis' =>
         if_some (run_object_method object_scope_ S' lf) (fun lexo =>
           if_some lexo (fun lex =>
-            let '(lex', S1) := lexical_env_alloc_decl S' lex in
-            let C' := execution_ctx_intro_same lex' vthis' str in
+            Let p := lexical_env_alloc_decl S' lex in
+            let '(lex', S1) := p in 
+            Let C' := execution_ctx_intro_same lex' vthis' str in
             if_void (execution_ctx_binding_inst runs S1 C' codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
             run_call_default runs S2 C' lf)))
         in
@@ -1438,7 +1439,6 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
         | undef => follow S prealloc_global
         | value_prim _ => if_value (to_object S vthis) follow
         end)).
-
 
 (**************************************************************)
 
