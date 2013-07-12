@@ -1733,6 +1733,7 @@ Proof.
   destruct (ref_base r); tryfalse. destruct* v0. destruct* p.
 Admitted. (* faster *)
 
+
 Lemma ref_put_value_correct : forall runs S C rv v o,
   runs_type_correct runs ->
   ref_put_value runs S C rv v = o ->
@@ -1747,23 +1748,16 @@ Proof.
        applys* run_error_correct.
       applys~ red_spec_ref_put_value_ref_a_2.
        applys* object_put_correct.
-    cases (ref_base r).
-      skip. (*
-      applys* red_spec_ref_put_value_ref_b.
-        applys* ref_is_property_from_not_unresolvable_value.
-         case_if as HC.
-           inverts HC. destruct v0.
-             skip.
-             unfolds ref_kind_of. destruct (ref_base r); tryfalse.
-              destruct v0; tryfalse.
-           destruct v0. 
-             unfold ref_has_primitive_base, ref_kind_of in HC.
-             unfold ref_is_unresolvable, ref_kind_of in n.
-              rewrite Eq in HC, n. destruct p; simpls; tryfalse.
-        *)
-        (* TODO NOW: change the rules or the interpreter *)
-      applys* red_spec_ref_put_value_ref_c.
-        applys* env_record_set_mutable_binding_correct.
+  case_if.
+  cases (ref_base r); tryfalse.
+  case_if; destruct v0; tryfalse.
+  applys* red_spec_ref_put_value_ref_b.
+  case_if. applys* prim_value_put_correct.
+  applys* red_spec_ref_put_value_ref_b.
+  case_if. applys* object_put_correct.
+  cases (ref_base r); tryfalse.
+   applys* red_spec_ref_put_value_ref_c.
+   applys* env_record_set_mutable_binding_correct.
 Admitted. (* faster *)
 
 

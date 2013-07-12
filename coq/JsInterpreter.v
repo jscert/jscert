@@ -956,6 +956,7 @@ Definition prim_value_put runs S C w x v str : result_void :=
   if_object (to_object S w) (fun S1 l =>
     object_put_complete runs builtin_put_default S1 C w l x v str).
 
+
 Definition ref_put_value runs S C rv v : result_void :=
   match rv with
   | resvalue_value v => run_error S native_error_ref
@@ -965,15 +966,27 @@ Definition ref_put_value runs S C rv v : result_void :=
         run_error S native_error_ref
       else
         object_put runs S C prealloc_global (ref_name r) v throw_false)
-    else
+    else ifb ref_is_property r then
+      (* LATER: simplify impossible cases*)
       match ref_base r with
-      | ref_base_type_value (value_object l) =>
-        object_put runs S C l (ref_name r) v (ref_strict r)
-      | ref_base_type_value (value_prim w) =>
+      | ref_base_type_value v' =>
         ifb ref_kind_of r = ref_kind_primitive_base then
-          prim_value_put runs S C w (ref_name r) v (ref_strict r)
+          match v' with 
+          | value_prim w => prim_value_put runs S C w (ref_name r) v (ref_strict r)
+          | _ => impossible_with_heap_because S "[ref_put_value] impossible case"
+          end
         else
-          impossible_with_heap_because S "[ref_put_value] found a primitive base whose kind is not a primitive!"
+          match v' with 
+          | value_object l => object_put runs S C l (ref_name r) v (ref_strict r)
+          | _ => impossible_with_heap_because S "[ref_put_value] impossible case"
+          end
+      | ref_base_type_env_loc L => 
+        impossible_with_heap_because S "[ref_put_value] contradicts ref_is_property"
+      end
+    else 
+      match ref_base r with
+      | ref_base_type_value _ =>
+        impossible_with_heap_because S "[ref_put_value] impossible spec"
       | ref_base_type_env_loc L =>
         env_record_set_mutable_binding runs S C L (ref_name r) v (ref_strict r)
       end
