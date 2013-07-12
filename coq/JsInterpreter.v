@@ -404,9 +404,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
-    runs_type_equal : state -> execution_ctx -> value -> value -> result;
-    runs_type_block : state -> execution_ctx -> list stat -> result;
-    runs_type_elements : state -> execution_ctx -> elements -> result
+    runs_type_equal : state -> execution_ctx -> value -> value -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -1897,12 +1895,12 @@ Fixpoint run_list_expr runs S1 C (vs : list value) (es : list expr) : specres (l
       run_list_expr runs S2 C (v :: vs) es')
   end.
 
-Definition run_block runs S C (ts_rev : list stat) : result :=
+Fixpoint run_block runs S C (ts_rev : list stat) : result :=
   match ts_rev with
   | nil =>
     res_ter S resvalue_empty
   | t :: ts_rev' =>
-    if_success (runs_type_block runs S C ts_rev') (fun S0 rv0 =>
+    if_success (run_block runs S C ts_rev') (fun S0 rv0 =>
       if_success_state rv0 (runs_type_stat runs S0 C t) out_ter)
   end.
 
@@ -2126,7 +2124,7 @@ Fixpoint run_stat_switch_end runs S C rv scs : result :=
   | nil =>
     out_ter S rv
   | switchclause_intro e ts :: scs' =>
-    if_success_state rv (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv1 =>
+    if_success_state rv (run_block runs S C (LibList.rev ts)) (fun S1 rv1 =>
       run_stat_switch_end runs S1 C rv1 scs')
   end.
 
@@ -2138,14 +2136,14 @@ Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
     if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
       Let b := strict_equality_test v1 vi in
       if b then
-        if_success (runs_type_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
+        if_success (run_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
           run_stat_switch_end runs S2 C rv scs')
       else
         run_stat_switch_no_default runs S1 C vi rv scs')
   end.
 
 Definition run_stat_switch_with_default_default runs S C ts scs : result :=
-  if_success (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv =>
+  if_success (run_block runs S C (LibList.rev ts)) (fun S1 rv =>
     run_stat_switch_end runs S1 C rv scs).
 
 Fixpoint run_stat_switch_with_default_B runs S C vi rv ts scs : result :=
@@ -2156,7 +2154,7 @@ Fixpoint run_stat_switch_with_default_B runs S C vi rv ts scs : result :=
     if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
       Let b := strict_equality_test v1 vi in
       if b then
-        if_success (runs_type_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
+        if_success (run_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
           run_stat_switch_end runs S2 C rv scs')
       else
         run_stat_switch_with_default_B runs S1 C vi rv ts scs')
@@ -2171,7 +2169,7 @@ Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 : resu
       run_stat_switch_end runs S C rv scs2
   | switchclause_intro e ts :: scs' =>
     Let follow := fun S =>
-      if_success (runs_type_block runs S C (LibList.rev ts)) (fun S1 rv =>
+      if_success (run_block runs S C (LibList.rev ts)) (fun S1 rv =>
         run_stat_switch_with_default_A runs S1 C true vi rv scs' ts scs2)
       in
     if found then
@@ -2368,12 +2366,12 @@ Definition run_stat runs S C t : result :=
 
 (**************************************************************)
 
-Definition run_elements runs S C (els_rev : elements) : result :=
+Fixpoint run_elements runs S C (els_rev : elements) : result :=
   match els_rev with
   | nil =>
     out_ter S resvalue_empty
   | el :: els_rev' =>
-    if_success (runs_type_elements runs S C els_rev') (fun S0 rv0 =>
+    if_success (run_elements runs S C els_rev') (fun S0 rv0 =>
       match el with
       | element_stat t =>
         if_ter (runs_type_stat runs S0 C t) (fun S1 R1 =>
@@ -2670,9 +2668,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
-      runs_type_equal := fun S _ _ _ => result_bottom S;
-      runs_type_block := fun S _ _ => result_bottom S;
-      runs_type_elements := fun S _ _ => result_bottom S
+      runs_type_equal := fun S _ _ _ => result_bottom S
     |}
   | S max_step' =>
     let wrap {A : Type} (f : runs_type -> state -> A) S : A :=
@@ -2694,9 +2690,7 @@ Fixpoint runs max_step : runs_type :=
         wrap run_object_get_prop;
       runs_type_object_proto_is_prototype_of :=
         wrap object_proto_is_prototype_of;
-      runs_type_equal := wrap run_equal;
-      runs_type_block := wrap run_block;
-      runs_type_elements := wrap run_elements
+      runs_type_equal := wrap run_equal
     |}
   end.
 
