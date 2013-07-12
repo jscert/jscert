@@ -1383,8 +1383,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (*------------------------------------------------------------*)
   (** ** Conversions (9) *)
-
-  (* TODO:  spec_to_primitive_auto *)
   
   | red_spec_prim_new_object_bool : forall S C b S' l,
       let O1 := object_new prealloc_bool_proto "Boolean" in 

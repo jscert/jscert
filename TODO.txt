@@ -601,3 +601,34 @@ Definition descriptor_with_configurable_false Desc :=
 
 
 
+
+
+Definition convert_twice T T0
+    (ifv : resultof T0 -> (state -> T -> specres (T * T)) -> specres (T * T))
+    (KC : state -> value -> resultof T0) S v1 v2 : specres (T * T) :=
+  ifv (KC S v1) (fun S1 vc1 =>
+    ifv (KC S1 v2) (fun S2 vc2 =>
+      res_spec S2 (vc1, vc2))).
+
+Definition convert_twice' T
+    (ifv : result -> (state -> T -> specres (T * T)) -> specres (T * T))
+    (KC : state -> value -> result) S v1 v2
+    (K : state -> T -> T -> result) : result :=
+  (* As [convert_twice] uses [specres] and that we don't have time to convert
+    all intermediate functions, this function is there to backport the new
+    [convert_twice] with the old [if_*]. *)
+  if_spec (convert_twice ifv KC S v1 v2) (fun S' (p : T * T) =>
+    let '(p1, p2) := p in K S' p1 p2).
+
+Definition convert_twice_primitive :=
+    convert_twice' (@if_prim (prim * prim)) conv_primitive in
+
+    Definition to_stuff_correct F E := forall runs S C v o,
+  runs_type_correct runs ->
+  F runs S C v = o :> result -> 
+  red_expr S C (E v) o.
+
+    Let unpair := fun (A B : Type) (K:state->A->A->B) =>
+    (fun S (p:A*A) => let '(x1,x2) := p in K S x1 x2) in
+
+
