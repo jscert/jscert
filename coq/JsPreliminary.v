@@ -105,7 +105,7 @@ Definition type_of v :=
   | value_object _ => type_object
   end.
 
-(** Definition of the "SameValue" algorithm, which appears to
+(** LATER: Definition of the "SameValue" algorithm, which appears to
     be equivalent to logical equality. The spec states:
 
     Definition value_same v1 v2 :=
