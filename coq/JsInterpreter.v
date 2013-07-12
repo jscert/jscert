@@ -767,13 +767,13 @@ Fixpoint lexical_env_get_identifier_ref runs S C X x str : specres ref :=
 Definition object_delete_default runs S C l x str : result :=
   if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
     match D with
-    | full_descriptor_undef => res_ter S true
+    | full_descriptor_undef => res_ter S1 true
     | full_descriptor_some A =>
       if attributes_configurable A then
         if_some (pick_option (object_rem_property S1 l x)) (fun S' =>
           res_ter S' true)
       else
-        out_error_or_cst S str native_error_type false
+        out_error_or_cst S1 str native_error_type false
     end).
 
 Definition object_delete runs S C l x str : result :=

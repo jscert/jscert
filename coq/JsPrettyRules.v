@@ -1679,7 +1679,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_delete_1 builtin_delete_default l x throw) o  
 
   | red_spec_object_delete_2_undef : forall S0 S C l x throw, (* Step 2 *)
-      red_expr S C (spec_object_delete_2 l x throw (ret S0 full_descriptor_undef)) (out_ter S true)
+      red_expr S0 C (spec_object_delete_2 l x throw (ret S full_descriptor_undef)) (out_ter S true)
 
   (* LATER: tracing events for for-in; see rule below for now.
   | red_spec_object_delete_2_some_configurable : forall S0 S C l x throw A S' o ev, (* Step 3 *)
