@@ -2983,8 +2983,8 @@ Proof.
     substs. abort.
     substs. tests: (res_is_normal R).
      apply~ red_stat_switch_nodefault_6_abrupt.
-  skip.
-Admitted. (* TODO Martin *)
+    apply~ red_stat_switch_nodefault_6_normal. apply* IHscs. repeat case_if*.
+Qed.
 
 Lemma run_stat_switch_no_default_correct : forall runs S C vi rv scs o,
   runs_type_correct runs ->
@@ -2998,7 +2998,16 @@ Lemma run_stat_switch_with_default_end_correct : forall runs S C rv scs o,
   runs_type_correct runs ->
   run_stat_switch_end runs S C rv scs = o ->
   red_stat S C (stat_switch_default_7 rv scs) o.
-Admitted. (* TODO *)
+Proof.
+  introv IH HR. gen S C rv o. induction scs; introv HR; unfolds in HR.
+   run_inv. apply~ red_stat_switch_default_7_nil.
+   destruct a as [e ts]. run red_stat_switch_default_7_cons.
+    forwards~ H: run_block_correct R1. rew_list~ in H.
+    substs. abort.
+    substs. tests: (res_is_normal R).
+     apply~ red_stat_switch_default_8_abrupt.
+    apply~ red_stat_switch_default_8_normal. apply* IHscs. skip.
+Qed.
 
 Lemma run_stat_switch_with_default_default_correct : forall runs S C vi rv ts scs o,
   runs_type_correct runs ->
