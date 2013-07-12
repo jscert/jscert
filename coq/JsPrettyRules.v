@@ -461,12 +461,15 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** -- Switch with default case *)
 
   (** ----- Switch with default case: search A *)
+
   | red_stat_switch_default_A_1_nil_true : forall S C b vi rv ts1 scs2 o,  
-      red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->
+      (*red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->*)
+      red_stat S C (stat_switch_default_5 vi rv ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv nil ts1 scs2) o
 
-  | red_stat_switch_default_A_1_nil_false : forall S C b vi rv ts1 scs2 o,  
-      red_stat S C (stat_switch_default_5 vi rv ts1 scs2) o ->
+  | red_stat_switch_default_A_1_nil_false : forall S C b vi rv ts1 scs2 o,
+      (*red_stat S C (stat_switch_default_5 vi rv ts1 scs2) o ->  *)
+      red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 false vi rv nil ts1 scs2) o
 
   | red_stat_switch_default_A_1_cons_true : forall S C e o o1 vi rv ts ts1 scs scs2,  
