@@ -637,8 +637,13 @@ Definition if_object_spec_post T K (y:specret T) o :=
 Lemma if_object_spec : forall T W K (y : specret T),
   if_object W K = result_some y ->
   exists (o : out), W = o /\ if_object_spec_post K y o.
-Admitted. (* NOW *)
-
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1&WE&P): if_value_spec (rm E). exists o1. split~.
+  unfolds. unfolds in P.
+  inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
+  destruct R; tryfalse. exists___*.
+Qed.
 
 (* proofs of old monadic lemmas, might be useful
 Lemma if_success_out : forall res K S R,
@@ -1433,7 +1438,7 @@ Proof.
         applys* red_spec_object_define_own_prop_6c_1.
         applys* red_spec_object_define_own_prop_6c_2.  
   (* arguments object *)
-  skip. (* Arguments object: postponed *)
+  skip. (* LATER: Arguments object: postponed *)
 Admitted. (* faster *)
 
 Lemma prim_new_object_correct : forall S C w o,
@@ -1480,7 +1485,7 @@ Proof.
   applys* red_spec_prim_value_get_1.
   (* TODO: problem with the "this" which is a value or object_loc ?
   lets: object_get_builtin_correct.
-  *) skip.
+  *) skip. (* NOW? *)
 Qed.
 
 Lemma object_put_complete_correct : forall runs S C B vthis l x v str o,
@@ -2193,7 +2198,7 @@ Proof.
       N S = o ->
       red_expr S C (spec_binding_inst_8 p bconfig L) o).
       clear HR S o. introv HR. subst N.
-      skip.
+      skip. (* TODO NOW:  Add a comment to explain what is this skip? *)
       clear EQN.
     destruct ct.
       destruct funco.
@@ -2533,27 +2538,35 @@ Proof.
   (* default *)
   subst*.
   (* argument object *)
-  skip. (* Argument object: proof postponed *)
+  skip. (* LATER:  Argument object: proof postponed *)
 Admitted. (*faster*)
 
+Lemma object_delete_default_correct : forall runs S C l x str o,
+  runs_type_correct runs ->
+  object_delete_default runs S C l x str = o ->
+  red_expr S C (spec_object_delete_1 builtin_delete_default l x str) o.
+Proof.
+  introv IH HR. unfolds in HR. run red_spec_object_delete_1_default. destruct a.
+   run_inv. applys red_spec_object_delete_2_undef. (* This rule is erroneous, the conclusion should contains [S0] instead [S]. *)
+   case_if.
+     run. forwards B: @pick_option_correct (rm E).
+       applys_eq* red_spec_object_delete_2_some_configurable 1. 
+     applys* red_spec_object_delete_3_some_non_configurable.
+      applys* out_error_or_cst_correct.
+Qed.
 
 Lemma object_delete_correct : forall runs S C l x str o,
   runs_type_correct runs ->
   object_delete runs S C l x str = o ->
   red_expr S C (spec_object_delete l x str) o.
 Proof.
-(*  introv IH HR. unfolds in HR. run. rename x0 into B. 
+  introv IH HR. unfolds in HR. run. rename x0 into B. 
   applys* red_spec_object_delete.
    applys* run_object_method_correct. clear E.
-  destruct B; tryfalse.
-  run red_spec_object_delete_1_default. destruct a.
-    run_inv. applys red_spec_object_delete_2_undef. (* This rule is erroneous, the conclusion should contains [S0] instead [S]. *)
-    case_if.
-      run. forwards B: @pick_option_correct (rm E).
-        applys_eq* red_spec_object_delete_2_some_configurable 1. 
-      applys* red_spec_object_delete_3_some_non_configurable.
-       applys* out_error_or_cst_correct.*)
-Admitted.  (* TODO *)
+  destruct B.
+   applys~ object_delete_default_correct HR.
+   skip. (* LATER:  argument object *)
+Qed.
 
 
 Lemma env_record_delete_binding : forall runs S C L x o,
@@ -2797,6 +2810,8 @@ Lemma run_stat_switch_no_default_correct : forall runs S C vi rv scs o,
   runs_type_correct runs ->
   run_stat_switch_no_default runs S C vi rv scs = o ->
   red_stat S C (stat_switch_nodefault_1 vi rv scs) o.
+Proof.
+  introv IH HR. unfolds in HR.
 Admitted. (* TODO *)
 
 Lemma run_stat_switch_with_default_correct : forall runs S C found vi rv scs1 ts scs2 o,

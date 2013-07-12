@@ -33,7 +33,7 @@ run_elements preuve
 
 Martin:
 
---switch--> code (half done) & proof
+--switch--> proof
 
 
 ============================================================================
