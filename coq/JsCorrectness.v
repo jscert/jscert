@@ -2969,6 +2969,16 @@ Lemma run_stat_switch_no_default_end_correct : forall runs S C rv scs o,
   runs_type_correct runs ->
   run_stat_switch_end runs S C rv scs = o ->
   red_stat S C (stat_switch_nodefault_5 rv scs) o.
+Proof.
+  introv IH HR. gen S C rv o. induction scs; introv HR; unfolds in HR.
+   run_inv. apply~ red_stat_switch_nodefault_5_nil.
+   destruct a as [e ts]. run red_stat_switch_nodefault_5_cons.
+    forwards~ H: run_block_correct R1. rew_list~ in H.
+    substs. abort.
+    substs. tests: (res_is_normal R).
+     apply~ red_stat_switch_nodefault_6_normal. apply~ IHscs. skip. (* There is an error in the interpreter *)
+     apply~ red_stat_switch_nodefault_6_abrupt.
+  skip.
 Admitted. (* TODO *)
 
 Lemma run_stat_switch_no_default_correct : forall runs S C vi rv scs o,
