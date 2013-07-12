@@ -2951,14 +2951,34 @@ Lemma run_stat_switch_with_default_B_correct : forall runs S C vi rv ts scs o,
   run_stat_switch_with_default_B runs S C vi rv ts scs = o ->
   red_stat S C (stat_switch_default_B_1 vi rv ts scs) o.
 Proof.
-  introv IH HR. gen S C vi rv o. induction scs; introv HR; unfolds in HR.
-Admitted. (* TODO *)
+  introv IH HR. gen S C vi rv ts o. induction scs; introv HR; unfolds in HR.
+   apply~ red_stat_switch_default_B_1_nil.
+    applys~ run_stat_switch_with_default_default_correct HR.
+   destruct a. run red_stat_switch_default_B_1_cons. let_simpl.
+    apply~ red_stat_switch_default_B_2. case_if.
+    run red_stat_switch_default_B_3_true using run_block_correct. rew_list~ in R1.
+     apply~ red_stat_switch_default_B_4.
+     applys~ run_stat_switch_with_default_end_correct HR.
+    apply~ red_stat_switch_default_B_3_false.
+Qed.
 
 Lemma run_stat_switch_with_default_A_correct : forall runs S C found vi rv scs1 ts scs2 o,
   runs_type_correct runs ->
   run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 = o ->
   red_stat S C (stat_switch_default_A_1 found vi rv scs1 ts scs2) o.
-Admitted. (* TODO *)
+Proof.
+  introv IH HR. gen S C found vi rv ts scs2 o. induction scs1; introv HR; unfolds in HR.
+   case_if.
+    apply~ red_stat_switch_default_A_1_nil_true.
+     applys~ run_stat_switch_with_default_B_correct HR.
+    applys~ run_stat_switch_with_default_default_correct HR.
+   destruct a. run red_stat_switch_default_B_1_cons. let_simpl.
+    apply~ red_stat_switch_default_B_2. case_if.
+    run red_stat_switch_default_B_3_true using run_block_correct. rew_list~ in R1.
+     apply~ red_stat_switch_default_B_4.
+     applys~ run_stat_switch_with_default_end_correct HR.
+    apply~ red_stat_switch_default_B_3_false.
+Qed.
 
 Lemma run_stat_switch_correct : forall runs S C labs e sb o,
   runs_type_correct runs ->

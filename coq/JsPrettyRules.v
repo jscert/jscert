@@ -523,7 +523,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_B_1 vi rv ts1 scs) o ->
       red_stat S C (stat_switch_default_B_3 false vi rv ts ts1 scs) o 
 
-  | red_stat_switch_nodefault_B_3_true : forall S C o1 rv ts scs ts1 o vi,
+  | red_stat_switch_default_B_3_true : forall S C o1 rv ts scs ts1 o vi,
       red_stat S C (stat_block ts) o1 ->
       red_stat S C (stat_switch_default_B_4 o1 ts1 scs) o ->
       red_stat S C (stat_switch_default_B_3 true vi rv ts ts1 scs) o 

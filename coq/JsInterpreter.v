@@ -2135,18 +2135,18 @@ Definition run_stat_switch_with_default_default runs S C ts scs : result :=
   if_success (run_block runs S C (LibList.rev ts)) (fun S1 rv =>
     run_stat_switch_end runs S1 C rv scs).
 
-Fixpoint run_stat_switch_with_default_B runs S C vi rv ts scs : result :=
+Fixpoint run_stat_switch_with_default_B runs S C vi rv ts0 scs : result :=
   match scs with
   | nil =>
-    run_stat_switch_with_default_default runs S C ts scs
+    run_stat_switch_with_default_default runs S C ts0 scs
   | switchclause_intro e ts :: scs' =>
     if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
       Let b := strict_equality_test v1 vi in
       if b then
         if_success (run_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
-          run_stat_switch_end runs S2 C rv scs')
+          run_stat_switch_end runs S2 C rv2 scs')
       else
-        run_stat_switch_with_default_B runs S1 C vi rv ts scs')
+        run_stat_switch_with_default_B runs S1 C vi rv ts0 scs')
   end.
 
 Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts scs2 : result :=
