@@ -44,13 +44,18 @@ INSTALLATION AND COMPILATION
 
 
 *********************************************************************
-TESTING OTHER PLATFORMS
+TESTING
 
 We have a test harness that can run our tests (currenly mostly the
 test262 ones) on JSRef, LambdaS5, SpiderMonkey and node.js. To test
 JSRef, just do:
 
- $ make run_tests
+ $ ./runtests.py
+
+This will take an extremely long time. To run only the interesting
+tests (which will only take a very long time) do:
+
+ $ ./runtests.py `cat interesting_tests.txt`
 
 To test SpiderMonkey, you will first have to install it. You can find
 instructions here:
