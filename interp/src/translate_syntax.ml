@@ -190,7 +190,21 @@ and exp_to_stat exp : JsSyntax.stat =
       | If (e1, e2, None) -> JsSyntax.Coq_stat_if (exp_to_exp e1, f e2, None)
       | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* TODO:  We could actually do something there now *)
       | For (e1, e2, e3, e4) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
-      | Switch (e1, e2s) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | Switch (e1, e2s) -> 
+        let (firstpart, defaultcase, secondpart) = List.fold_left (fun (fi, de, se) el -> (
+          if de = None then
+          match el with
+            | (DefaultCase, {exp_stx = Block es}) -> (fi, Some (List.map f es), [])
+            | (Case cexp, {exp_stx = Block es}) -> (fi @ [JsSyntax.Coq_switchclause_intro (exp_to_exp cexp, List.map f es)], None, [])
+            | _ -> raise CannotHappen
+          else match el with
+            | (Case cexp, {exp_stx = Block es}) -> (fi, de, se @ [JsSyntax.Coq_switchclause_intro (exp_to_exp cexp, List.map f es)])
+            | _ -> raise CannotHappen           
+          )) ([], None, []) e2s in
+        let switchbody = match defaultcase with
+          | None -> JsSyntax.Coq_switchbody_nodefault firstpart
+          | Some de -> JsSyntax.Coq_switchbody_withdefault (firstpart, de, secondpart) in
+        JsSyntax.Coq_stat_switch ([], exp_to_exp e1, switchbody)
       | Block es -> JsSyntax.Coq_stat_block (List.map f es)
 
       | Script _ -> raise Parser.InvalidArgument
