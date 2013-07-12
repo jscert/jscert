@@ -3001,7 +3001,7 @@ Proof.
     substs. abort.
     substs. tests: (res_is_normal R).
      apply~ red_stat_switch_default_8_abrupt.
-    apply~ red_stat_switch_default_8_normal. apply* IHscs. skip.
+    apply~ red_stat_switch_default_8_normal. apply* IHscs. skip. (* TODO:  Reread the spec' there, that seems strange. *)
 Qed.
 
 Lemma run_stat_switch_with_default_default_correct : forall runs S C vi rv ts scs o,

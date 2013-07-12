@@ -554,8 +554,8 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_8 o1 scs) o ->
       red_stat S C (stat_switch_default_7 rv ((switchclause_intro e ts)::scs)) o
 
-  | red_stat_switch_default_8_normal : forall S S0 C rv scs o, 
-      red_stat S C (stat_switch_default_7 rv scs) o ->
+  | red_stat_switch_default_8_normal : forall S S0 C rv scs o,
+      red_stat S C (stat_switch_default_7 rv scs) o -> (* Why isn' the new [rv] merge with the older one? *)
       red_stat S0 C (stat_switch_default_8 (out_ter S rv) scs) o
 
   | red_stat_switch_default_8_abrupt : forall S S0 C R scs rv, 
