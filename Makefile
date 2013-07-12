@@ -271,7 +271,7 @@ interp/src/run_js.cmx: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmx
 
 interp/src/run_jsbisect.ml: interp/src/run_js.ml
 	cp $< $@
-	sed -e $$'s|JsInterpreter|JsInterpreterBisect|' $@ > $@.bak
+	sed -e 's|JsInterpreter|JsInterpreterBisect|' $@ > $@.bak
 	mv $@.bak $@
 
 interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmx
@@ -318,7 +318,7 @@ clean: clean_cm
 	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
 	bash -c "rm -f .depend" || echo ok
 	bash -c "rm -f interp/src/extract/*.{ml,mli}" || echo ok
-	bash -c "rm -f interp/run_js interp/run_jsbisect" || echo ok
+	bash -c "rm -f interp/run_js interp/run_jsbisect interp/run_jsbisect.ml" || echo ok
 
 clean_all: clean
 	find . -iname "*.vo" -exec rm {} \;
