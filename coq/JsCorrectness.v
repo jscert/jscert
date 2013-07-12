@@ -2005,7 +2005,7 @@ Lemma get_bitwise_op_correct : forall op F,
   get_bitwise_op op = Some F ->
   bitwise_op op F.
 Proof.
-  Hint Constructors shift_op.
+  Hint Constructors bitwise_op.
   introv HR. destruct op; simpls; inverts* HR.
 Admitted. (*faster*)
 
