@@ -1343,9 +1343,11 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_switch_2 (out_ter S R) labs)
   | abort_intercepted_stat_switch_nodefault_6 : forall S rv R scs,
       ~ res_is_normal R ->
+      res_type R <> restype_throw -> (* TODO:  Check *)
       abort_intercepted_stat (stat_switch_nodefault_6 rv (out_ter S R) scs)
   | abort_intercepted_stat_switch_default_8 : forall S R scs,
       ~ res_is_normal R ->
+      res_type R <> restype_throw -> (* TODO:  Check *)
       abort_intercepted_stat (stat_switch_default_8 (out_ter S R) scs)
 .
 

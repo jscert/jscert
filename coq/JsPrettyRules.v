@@ -447,16 +447,16 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_nodefault_6 rv o1 scs) o ->
       red_stat S C (stat_switch_nodefault_5 rv ((switchclause_intro e ts)::scs)) o
 
-  | red_stat_switch_nodefault_6_normal : forall S C R rv rv' scs o, 
+  | red_stat_switch_nodefault_6_normal : forall S0 S C R rv rv' scs o, 
       rv' = (If (res_value R <> resvalue_empty) then (res_value R) else rv) ->
       red_stat S C (stat_switch_nodefault_5 rv' scs) o ->
-      red_stat S C (stat_switch_nodefault_6 rv (out_ter S rv) scs) o
+      red_stat S0 C (stat_switch_nodefault_6 rv (out_ter S R) scs) o
 
-  | red_stat_switch_nodefault_6_abrupt : forall S C R R' scs rv, 
+  | red_stat_switch_nodefault_6_abrupt : forall S S0 C R R' scs rv, 
       ~ res_is_normal R ->
       res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       R' = (res_overwrite_value_if_empty rv R) ->
-      red_stat S C (stat_switch_nodefault_6 rv (out_ter S R) scs) (out_ter S R')
+      red_stat S0 C (stat_switch_nodefault_6 rv (out_ter S R) scs) (out_ter S R')
 
   (** -- Switch with default case *)
 
@@ -558,10 +558,10 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_7 rv scs) o ->
       red_stat S C (stat_switch_default_8 (out_ter S rv) scs) o
 
-  | red_stat_switch_default_8_abrupt : forall S C R scs rv, 
+  | red_stat_switch_default_8_abrupt : forall S S0 C R scs rv, 
       ~ res_is_normal R ->
       res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
-      red_stat S C (stat_switch_default_8 (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
+      red_stat S0 C (stat_switch_default_8 (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
 
   (** Labelled statement (12.12) 
       -- See also the definition of [abort_intercepted_stat]. *)
