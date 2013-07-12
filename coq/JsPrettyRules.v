@@ -11,7 +11,7 @@ Implicit Type s : string.
 Implicit Type i : literal.
 Implicit Type l lp : object_loc.
 Implicit Type w : prim.
-Implicit Type v vi vp : value.
+Implicit Type v vi vp vthis : value.
 Implicit Type r : ref.
 (*Implicit Type B : builtin.*)
 Implicit Type ty : type.
@@ -1041,8 +1041,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_add_string_1 y1) o ->
       red_expr S0 C (expr_binary_op_add_1 (ret S (v1,v2))) o
 
-  | red_expr_binary_op_add_string_1 : forall S0 S C s1 s2 s o,
-      s = string_concat s1 s2 ->
+  | red_expr_binary_op_add_string_1 : forall S0 S C s1 s2 s,
+      s = String.append s1 s2 ->
       red_expr S0 C (expr_binary_op_add_string_1 (ret S (value_prim s1, value_prim s2))) (out_ter S s)
 
   | red_expr_binary_op_add_1_number : forall S0 S C v1 v2 y1 o,
@@ -1066,7 +1066,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Binary op : shift operations (11.7) *)
 
-  | red_expr_shift_op : forall S C op b_unsigned F ext v1 v2 y1 o,
+  | red_expr_shift_op : forall b_unsigned S C op  F ext v1 v2 y1 o,
       shift_op op b_unsigned F ->
       ext = (if b_unsigned then spec_to_uint32 else spec_to_int32) ->
       red_spec S C (ext v1) y1 ->
@@ -1094,7 +1094,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_inequality_op_2 b_swap b_neg y1) o ->
       red_expr S C (expr_inequality_op_1 b_swap b_neg v1 v2) o
 
-  | red_expr_inequality_op_2 : forall S0 S C (w1 w2 wa wb wr wr':prim) b (b_swap b_neg : bool),
+  | red_expr_inequality_op_2 : forall S0 S C (w1 w2 wa wb wr wr':prim) (b_swap b_neg : bool),
       ((wa,wb) = if b_swap then (w2,w1) else (w1,w2)) ->
       wr = inequality_test_primitive wa wb ->
       (* Note: wr may only be true or false or undef *)
@@ -1472,10 +1472,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   
   (** HasInstance (returns bool) *)
 
-  | red_spec_object_has_instance : forall S C l x B o,
+  | red_spec_object_has_instance : forall S C l v B o,
       object_method object_has_instance_ S l (Some B) ->
-      red_expr S C (spec_object_has_instance_1 B l x) o ->
-      red_expr S C (spec_object_has_instance l x) o
+      red_expr S C (spec_object_has_instance_1 B l v) o ->
+      red_expr S C (spec_object_has_instance l v) o
 
   (** Function calls (returns value) *)
 
@@ -1680,7 +1680,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_delete_1 builtin_delete_default l x throw) o  
 
   | red_spec_object_delete_2_undef : forall S0 S C l x throw, (* Step 2 *)
-      red_expr S C (spec_object_delete_2 l x throw (ret S0 full_descriptor_undef)) (out_ter S true)
+      red_expr S0 C (spec_object_delete_2 l x throw (ret S full_descriptor_undef)) (out_ter S true)
 
   (* LATER: tracing events for for-in; see rule below for now.
   | red_spec_object_delete_2_some_configurable : forall S0 S C l x throw A S' o ev, (* Step 3 *)
@@ -3403,7 +3403,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
    (** Function: HasInstance  (returns bool)  (15.3.5.3) *)
 
-   | red_spec_object_has_instance_1_function_prim : forall S C l w o, (* Step 1 *)
+   | red_spec_object_has_instance_1_function_prim : forall S C l w, (* Step 1 *)
        red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_prim w)) (out_ter S false)
   
    | red_spec_object_has_instance_1_function_object : forall o1 S C l lv o, (* Step 2 *)

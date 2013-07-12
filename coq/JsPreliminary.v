@@ -1288,9 +1288,9 @@ Inductive shift_op : binary_op -> bool -> (int -> int -> int) -> Prop :=
 
 Inductive inequality_op : binary_op -> bool -> bool -> Prop := 
   | inequality_op_lt : inequality_op binary_op_lt false false 
-  | inequality_op_gt : inequality_op binary_op_lt true false  
-  | inequality_op_le : inequality_op binary_op_lt true true 
-  | inequality_op_ge : inequality_op binary_op_lt false true.
+  | inequality_op_gt : inequality_op binary_op_gt true false  
+  | inequality_op_le : inequality_op binary_op_le true true 
+  | inequality_op_ge : inequality_op binary_op_ge false true.
 
 (** Characterizes lazy binary operators (&& and ||),
     and the boolean value for which the first operand triggers 
