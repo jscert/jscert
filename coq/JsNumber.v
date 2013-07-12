@@ -50,9 +50,9 @@ Parameter lt_bool : number -> number -> bool.
 Definition add : number -> number -> number :=
   Fappli_IEEE_bits.b64_plus Fappli_IEEE.mode_NE.
 
-Parameter sub : number -> number -> number. (*todo: bind *)
+Parameter sub : number -> number -> number. (* todo: bind *)
 
-Parameter fmod : number -> number -> number. (*todo: bind *)
+Parameter fmod : number -> number -> number. (* todo: bind *)
 
 Definition mult : number -> number -> number :=
   Fappli_IEEE_bits.b64_mult Fappli_IEEE.mode_NE.

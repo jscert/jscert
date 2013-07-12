@@ -201,7 +201,7 @@ Definition object_prealloc_object :=
   let P := write_native P "isSealed" prealloc_object_is_sealed in
   let P := write_native P "isFrozen" prealloc_object_is_frozen in
   let P := write_native P "isExtensible" prealloc_object_is_extensible in
-  (*LATER: let P := write_native P "keys" prealloc_object_keys in*)
+  (* LATER: let P := write_native P "keys" prealloc_object_keys in*)
   object_create_prealloc_constructor prealloc_object 1 P.
 
 Definition object_get_proto_of_function_object :=

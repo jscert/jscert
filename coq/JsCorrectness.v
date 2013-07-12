@@ -579,7 +579,7 @@ Proof.
   forwards~ (o1&WE&P): if_value_spec (rm E). exists o1. split~.
   unfolds. unfolds in P.
   inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
-  destruct R; tryfalse. destruct p; tryfalse. exists___*.
+  destruct R; tryfalse. exists___*.
 Admitted. (*faster*)
 
 Definition if_bool_spec_post T K (y:specret T) o :=
