@@ -101,9 +101,9 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
 
   | red_prog_nil : forall S C str,
       red_prog S C (prog_intro str nil) (out_ter S resvalue_empty)
-      
+
   | red_prog_cons : forall S C str el els o1 o,
-      red_prog S C (prog_intro str els) o1 ->
+      red_prog S C (prog_intro str els) o1 -> (* This use of [prog_intro] as an intermediate form is not really nice... there should be an additionnal intermediate form there.  Furthermore, what's the use of this [str] here? *)
       red_prog S C (prog_1 o1 el) o ->
       red_prog S C (prog_intro str (els++(el::nil))) o
  

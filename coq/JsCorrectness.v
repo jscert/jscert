@@ -72,6 +72,7 @@ Implicit Type T : Type.
 (**************************************************************)
 (** Correctness Properties *)
 
+(* OLD:  Remove asap.
 Definition follow_spec {T Te : Type} (* e.g. T = expr and Te = ext_expr *)
     (conv : T -> Te)
     (red : state -> execution_ctx -> Te -> out -> Prop)
@@ -87,17 +88,17 @@ Definition spec_follow_spec {Te A : Type} (* e.g. Te = ext_spec *)
 Definition follow_expr := follow_spec expr_basic red_expr.
 Definition follow_stat := follow_spec stat_basic red_stat.
 Definition follow_prog := follow_spec prog_basic red_prog.
-Definition follow_elements (_ : state -> execution_ctx -> elements -> result) :=
-  True. (* TODO, add the [rev]:  follow_spec (prog_1 resvalue_empty (* This will change at the same time than the spec. *)) red_prog. *)
+Definition follow_elements (run : state -> execution_ctx -> elements -> result) :=
+  follow_spec (prog_intro false) red_prog (fun S C els => run S C (LibList.rev els)).
 Definition follow_call (run : state -> execution_ctx -> object_loc -> value -> list value -> result) :=
   forall l vs,
-    follow_spec (fun v => spec_call l v vs) red_expr (fun S C v => run S C l v vs).
+  follow_spec (fun v => spec_call l v vs) red_expr (fun S C v => run S C l v vs).
 Definition follow_function_has_instance (run : state -> object_loc -> value -> result) :=
   (* Note that this function is related to [spec_function_has_instance_2] instead of
     [spec_function_has_instance_1] as it's much more closer to the specification and
     thus much easier to prove. *)
   forall lv,
-    follow_spec (spec_function_has_instance_2 lv) red_expr
+  follow_spec (spec_function_has_instance_2 lv) red_expr
       (fun S C lo => run S lo lv).
 Definition follow_stat_while (run : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result) :=
   forall ls e t,
@@ -110,7 +111,8 @@ Definition follow_stat_do_while (run : state -> execution_ctx -> resvalue -> lab
     (stat_do_while_1 ls t e)
     red_stat (fun S C rv => run S C rv ls e t).
 Definition follow_object_delete (run : state -> execution_ctx -> object_loc -> prop_name -> bool -> result) :=
-  True. (* TODO *)
+  forall l x,
+  follow_spec (spec_object_delete l x) red_expr (fun S C => run S C l x).
 Definition follow_object_get_own_prop (run : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor) :=
   forall l x, spec_follow_spec (spec_object_get_own_prop l x) red_spec
     (fun S C => run S C l x).
@@ -122,40 +124,56 @@ Definition follow_object_get_prop (run : state -> execution_ctx -> object_loc ->
   red_spec S C (spec_object_get_prop l x) y.
 Definition follow_object_proto_is_prototype_of (run : state -> object_loc -> object_loc -> result) :=
   forall lthis,
-    follow_spec (spec_call_object_proto_is_prototype_of_2_3 lthis) red_expr
-      (fun S C l => run S lthis l).
+  follow_spec (spec_call_object_proto_is_prototype_of_2_3 lthis) red_expr
+    (fun S C l => run S lthis l).
 Definition follow_equal (run : state -> execution_ctx -> value -> value -> result) :=
   forall S C v1 v2 o,
     run S C v1 v2 = o ->
     red_expr S C (spec_equal v1 v2) o.
+Definition follow_block (run : state -> execution_ctx -> list stat -> result) :=
+  forall S C ls o,
+    run S C ls = o ->
+    red_stat S C (stat_block (rev ls)) o.
+*)
 
-(* TODO: inline definitions here in a readable way like at the end *)
 Record runs_type_correct runs :=
   make_runs_type_correct {
-    runs_type_correct_expr : follow_expr (runs_type_expr runs);
-    runs_type_correct_stat : follow_stat (runs_type_stat runs);
-    runs_type_correct_prog : follow_prog (runs_type_prog runs);
-    runs_type_correct_call : follow_call (runs_type_call runs);
-    runs_type_correct_function_has_instance :
-      follow_function_has_instance (runs_type_function_has_instance runs);
-    runs_type_correct_stat_while : follow_stat_while (runs_type_stat_while runs);
-    runs_type_correct_stat_do_while : follow_stat_do_while (runs_type_stat_do_while runs);
-    runs_type_correct_object_delete :
-      follow_object_delete (runs_type_object_delete runs);
-    runs_type_correct_object_get_own_prop :
-      follow_object_get_own_prop (runs_type_object_get_own_prop runs);
-    runs_type_correct_object_get_prop :
-      follow_object_get_prop (runs_type_object_get_prop runs);
-    runs_type_correct_object_proto_is_prototype_of :
-      follow_object_proto_is_prototype_of (runs_type_object_proto_is_prototype_of runs);
-    runs_type_correct_equal :
-      follow_equal (runs_type_equal runs);
-    runs_type_correct_block : forall runs S C ls o,
-      runs_type_block runs S C ls = o ->
-      red_stat S C (stat_block (rev ls)) o;
-    runs_type_correct_elements : forall runs S C str ls o,
-      runs_type_elements runs S C ls = o ->
-      red_prog S C (prog_intro str (rev ls)) o
+    runs_type_correct_expr : forall S C e o,
+       runs_type_expr runs S C e = o ->
+       red_expr S C (expr_basic e) o;
+    runs_type_correct_stat : forall S C t o,
+       runs_type_stat runs S C t = o ->
+       red_stat S C (stat_basic t) o;
+    runs_type_correct_prog : forall S C p o,
+       runs_type_prog runs S C p = o ->
+       red_prog S C (prog_basic p) o;
+    runs_type_correct_call : forall S C l v vs o,
+       runs_type_call runs S C l v vs = o ->
+       red_expr S C (spec_call l v vs) o;
+    runs_type_correct_function_has_instance : forall S C (lo lv : object_loc) o,
+       runs_type_function_has_instance runs S lo lv = o ->
+       red_expr S C (spec_function_has_instance_2 lv lo) o;
+    runs_type_correct_stat_while : forall S C rv ls e t o,
+       runs_type_stat_while runs S C rv ls e t = o ->
+       red_stat S C (stat_while_1 ls e t rv) o;
+    runs_type_correct_stat_do_while : forall S C rv ls e t o,
+       runs_type_stat_do_while runs S C rv ls e t = o ->
+       red_stat S C (stat_do_while_1 ls t e rv) o;
+    runs_type_correct_object_delete : forall S C l x str o,
+       runs_type_object_delete runs S C l x str = o ->
+       red_expr S C (spec_object_delete l x str) o;
+    runs_type_correct_object_get_own_prop : forall S C l x sp,
+       runs_type_object_get_own_prop runs S C l x = result_some sp ->
+       red_spec S C (spec_object_get_own_prop l x) sp;
+    runs_type_correct_object_get_prop : forall S C l x sp,
+       runs_type_object_get_prop runs S C l x = result_some sp ->
+       red_spec S C (spec_object_get_prop l x) sp;
+    runs_type_correct_object_proto_is_prototype_of : forall S C lthis l o,
+       runs_type_object_proto_is_prototype_of runs S lthis l = o ->
+       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o;
+    runs_type_correct_equal : forall S C v1 v2 o,
+       runs_type_equal runs S C v1 v2 = o ->
+       red_expr S C (spec_equal v1 v2) o
   }.
 
 
@@ -859,8 +877,6 @@ Ltac run_select_proj H :=
   | runs_type_object_get_prop => constr:(runs_type_correct_object_get_prop)
   | runs_type_object_proto_is_prototype_of => constr:(runs_type_correct_object_proto_is_prototype_of) 
   | runs_type_equal => constr:(runs_type_correct_equal) 
-  | runs_type_block => constr:(runs_type_correct_block) 
-  | runs_type_elements => constr:(runs_type_correct_elements) 
   | ?x => run_select_proj_extra_error HT
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
@@ -2362,7 +2378,7 @@ Proof. destruct w; simpl; try congruence. Qed.
 Axiom run_call_correct : forall runs S C l vthis vs o,
   (* l <> prealloc_global_eval *)
   runs_type_correct runs ->
-  runs_type_call runs S C l vthis vs = o ->
+  run_call runs S C l vthis vs = o ->
   red_expr S C (spec_call l vthis vs) o.
 
 (* todo: needed to be up here *)
@@ -2397,7 +2413,7 @@ Proof.
     clear HR S o. introv HR. subst M.
     case_if.
       subst. applys red_expr_call_5_eval. applys* run_eval_correct.
-      applys* red_expr_call_5_not_eval. applys* run_call_correct.
+      applys* red_expr_call_5_not_eval. apply* IH.
     clear EQM.
   subst. destruct rv; tryfalse.
     applys* red_expr_call_4_not_ref.
@@ -2642,11 +2658,12 @@ Proof.
   applys* lexical_env_get_identifier_ref_correct. 
 Qed.
 
-Lemma run_expr_correct : forall runs,
+Lemma run_expr_correct : forall runs S C e o,
   runs_type_correct runs ->
-   follow_expr (run_expr runs).
+  run_expr runs S C e = o ->
+  red_expr S C (expr_basic e) o.
 Proof.
-  introv IH. intros S C e o R. unfolds in R.  
+  introv IH R. unfolds in R.  
   destruct e as [ | | | pds | | |  | | | | | | ].
   (* this *)
   run_inv. apply~ red_expr_this.
@@ -2820,11 +2837,12 @@ Lemma run_elements_correct : forall runs S C str ls o,
   run_elements runs S C ls = o ->
   red_prog S C (prog_intro str (rev ls)) o.
 Proof.
-  introv IH HR. unfolds in HR. destruct ls; rew_list.
+  introv IH HR. gen S C str o.
+  induction ls; introv HR; unfolds in HR; rew_list.
   run_inv. applys* red_prog_nil.
   run_pre. eauto. applys* red_prog_cons. run_post. clear R1.
    (* run* red_prog_cons. ==> LATER: should work*)
-  destruct e.
+  destruct a.
   run red_prog_1_stat. applys* red_prog_2.
   run_inv. applys red_prog_1_funcdecl.
 Admitted. (*faster*)
@@ -2835,7 +2853,8 @@ Lemma run_block_correct : forall runs S C ls o,
   run_block runs S C ls = o ->
   red_stat S C (stat_block (rev ls)) o.
 Proof.
-  introv IH HR. unfolds in HR. destruct ls; rew_list.
+  introv IH HR. gen S C o.
+  induction ls; introv HR; unfolds in HR; rew_list.
   run_inv. applys* red_stat_block_nil.
   run_pre. eauto. applys* red_stat_block_cons. 
   run_post. clear R1.
@@ -2848,11 +2867,12 @@ Proof.
 Admitted. (*faster*)
 
 
-Lemma run_stat_correct : forall runs,
+Lemma run_stat_correct : forall runs S C t o,
   runs_type_correct runs ->
-   follow_stat (run_stat runs).
+  run_stat runs S C t = o ->
+  red_stat S C (stat_basic t) o.
 Proof.
-  introv RC. intros S C t o R. unfolds in R. 
+  introv RC R. unfolds in R. 
   destruct t as [ | | ls | ls | e t1 t2o | labs t e | labs e t | e t 
      | e | eo | labo | labo | t co fo | | | eo | ]. 
   (* Expression *)
@@ -2933,11 +2953,12 @@ Proof.
   skip. (* NOW: wait for switch semantics to be double check *) (* TODO Martin *)
 Admitted. (* TODO: verify *)
 
-Lemma run_prog_correct : forall runs,
+Lemma run_prog_correct : forall runs S C p o,
   runs_type_correct runs ->
-   follow_prog (run_prog runs).
+  run_prog runs S C p = o ->
+  red_prog S C (prog_basic p) o.
 Proof.
-  introv RC. intros S C p o R. unfolds in R. destruct p.
+  introv RC R. unfolds in R. destruct p.
   forwards*: run_elements_correct (rev l). rew_list* in H.
 Admitted. (*faster*)
 
@@ -2990,9 +3011,10 @@ Admitted. (* Part of libraries, will do afterwards *)
 
 
 (* TODO: merge with the other *)
-Lemma run_call_correct' : forall runs,
+Lemma run_call_correct' : forall runs S C l v vs o,
   runs_type_correct runs ->
-  follow_call (run_call runs).
+  run_call runs S C l v vs = o ->
+  red_expr S C (spec_call l v vs) o.
 Proof.
   introv IH HR. simpls. unfolds in HR. 
   run. run. subst. lets H: run_object_method_correct (rm E).
@@ -3004,9 +3026,10 @@ Proof.
 Admitted. (* faster *)
 
 
-Lemma run_function_has_instance_correct : forall runs,
+Lemma run_function_has_instance_correct : forall runs S C (lo lv : object_loc) o,
   runs_type_correct runs ->
-  follow_function_has_instance (run_function_has_instance runs).
+  run_function_has_instance runs S lo lv = o ->
+  red_expr S C (spec_function_has_instance_2 lv lo) o.
 Proof.
   intros runs IH lo S C lv o HR. unfolds in HR. run_simpl.
   forwards~ M: run_object_method_correct (rm E).
@@ -3019,9 +3042,10 @@ Proof.
      applys~ runs_type_correct_function_has_instance HR.
 Qed.
 
-Lemma run_stat_while_correct : forall runs,
+Lemma run_stat_while_correct : forall runs S C rv ls e t o,
   runs_type_correct runs ->
-  follow_stat_while (run_stat_while runs).
+  run_stat_while runs S C rv ls e t = o ->
+  red_stat S C (stat_while_1 ls e t rv) o.
 Proof.
   intros runs IH ls e t S C rv o R. unfolds in R.
   run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
@@ -3039,11 +3063,12 @@ Proof.
    run_inv. applys red_stat_while_2_false.
 Admitted. (*faster*)
 
-Lemma run_stat_do_while_correct : forall runs,
+Lemma run_stat_do_while_correct : forall runs S C rv ls e t o,
   runs_type_correct runs ->
-  follow_stat_do_while (run_stat_do_while runs).
+  run_stat_do_while runs S C rv ls e t = o ->
+  red_stat S C (stat_do_while_1 ls t e rv) o.
 Proof.
-  intros runs IH ls e t S C rv o R. unfolds in R.
+  introv IH R. unfolds in R.
   run red_stat_do_while_1. do 2 let_name.
   applys~ red_stat_do_while_2 rv'.
     repeat cases_if~. clear EQrv'.
@@ -3065,18 +3090,19 @@ Proof.
      apply~ red_stat_do_while_5_normal.
 Qed.
 
-Lemma object_proto_is_prototype_of_correct : forall runs,
+Lemma object_proto_is_prototype_of_correct : forall runs S C lthis l o,
   runs_type_correct runs ->
-  follow_object_proto_is_prototype_of
-    (object_proto_is_prototype_of runs).
+  object_proto_is_prototype_of runs S lthis l = o ->
+  red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o.
 Admitted. (* Part of libraries: postponed for now *)
 
 
-Lemma run_equal_correct : forall runs,
+Lemma run_equal_correct : forall runs S C v1 v2 o,
   runs_type_correct runs ->
-  follow_equal (run_equal runs).
+  run_equal runs S C v1 v2 = o ->
+  red_expr S C (spec_equal v1 v2) o.
 Proof.
-  intros runs IH S C v1 v2 o R. unfolds in R. let_simpl.
+  introv IH R. unfolds in R. let_simpl.
   apply~ red_spec_equal. cases_if.
    run_inv. rewrite e. apply~ red_spec_equal_1_same_type.
    apply~ red_spec_equal_1_diff_type. let_name.
@@ -3108,28 +3134,21 @@ Theorem runs_correct : forall num,
   runs_type_correct (runs num).
 Proof.
   induction num.
-   constructors; 
+   constructors;
      try (introv M; inverts M; introv P; inverts P).
-   (* lets [IHe IHs IHp IHc IHhi IHw IHowp IHop IHpo IHeq]: (rm IHnum). *)
-skip. (* TODO MARTIN: *)
-skip.
-skip.
    constructors.
-     apply~ run_expr_correct.
-     apply~ run_stat_correct.
-     apply~ run_prog_correct.
-     skip. (* apply~ run_call_correct.*)
-     apply~ run_function_has_instance_correct.
-     apply~ run_stat_while_correct.
-     apply~ run_stat_do_while_correct.
-     skip. (* TODO MARTIN:  Use object_delete_correct *)
-     skip. (* TODO MARTIN:  Use run_object_get_own_prop_correct *)
-     skip. (* TODO MARTIN:  Use run_object_get_prop_correct. *)
-     apply~ object_proto_is_prototype_of_correct.
-     apply~ run_equal_correct.
-
-skip.
-skip.
+     introv. apply~ run_expr_correct.
+     introv. apply~ run_stat_correct.
+     introv. apply~ run_prog_correct.
+     introv. apply~ run_call_correct.
+     introv. apply~ run_function_has_instance_correct.
+     introv. apply~ run_stat_while_correct.
+     introv. apply~ run_stat_do_while_correct.
+     introv. apply~ object_delete_correct.
+     introv. apply~ run_object_get_own_prop_correct.
+     introv. apply~ run_object_get_prop_correct.
+     introv. apply~ object_proto_is_prototype_of_correct.
+     introv. apply~ run_equal_correct.
 Qed.
 
 Theorem run_javascript_correct : forall runs p o,
