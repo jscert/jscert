@@ -124,7 +124,7 @@ tags: $(JS_SRC)
 
 init:
 	cd ../../../; git submodule init; git submodule update
-	svn checkout -r 214 svn://scm.gforge.inria.fr/svn/tlc/branches/v3.1 tlc
+	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk tlc
 	tar -xzf flocq-2.1.0.tar.gz
 	mv flocq-2.1.0 flocq
 	# chmod +x interp/run.py -- no longer necesarry
