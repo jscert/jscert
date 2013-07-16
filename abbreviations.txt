@@ -17,6 +17,7 @@ Abbreviations used in the formalization:
   - spec for specification
   - inst for instantiation
   - res for result/completion triple
+  - out for outcome
 
 From LibHeap
   - rem for remove
