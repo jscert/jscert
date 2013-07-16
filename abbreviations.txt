@@ -16,6 +16,7 @@ Abbreviations used in the formalization:
   - proto for prototype
   - spec for specification
   - inst for instantiation
+  - res for result/completion triple
 
 From LibHeap
   - rem for remove
