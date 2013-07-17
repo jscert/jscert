@@ -1410,7 +1410,7 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
   end.
 
 Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option object_loc) p (args : list value) : result_void :=
-  match (execution_ctx_variable_env C) with
+  match execution_ctx_variable_env C with
   | nil => impossible_with_heap_because S
     "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst]."
   | L::_ =>
@@ -1427,7 +1427,8 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
           match ct, funco, bdefined with
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
-          | codetype_func, _, false => impossible_with_heap_because S2 "Strange `arguments' object in [execution_ctx_binding_inst]."
+          | codetype_func, _, false =>
+            impossible_with_heap_because S2 "Strange `arguments' object in [execution_ctx_binding_inst]."
           | _, _, _ => follow2 S2
           end))
       in 
