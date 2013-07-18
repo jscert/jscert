@@ -2558,7 +2558,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     | null => out_ter S "[object Null]"
     | _ =>
       if_object (to_object S vthis) (fun S1 l =>
-        if_some (run_object_method object_class_ S l) (fun s =>
+        if_some (run_object_method object_class_ S1 l) (fun s =>
           res_ter S1 ("[object " ++ s ++ "]")))
     end
 
@@ -2594,8 +2594,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     out_ter S (convert_value_to_boolean v)
 
   | prealloc_bool_proto_to_string =>
-    if_bool (bool_proto_value_of_call S vthis) (fun S b =>
-      res_ter S (convert_bool_to_string b))
+    if_bool (bool_proto_value_of_call S vthis) (fun S' b =>
+      res_ter S' (convert_bool_to_string b))
 
   | prealloc_bool_proto_value_of =>
     bool_proto_value_of_call S vthis
