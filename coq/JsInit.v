@@ -145,8 +145,8 @@ Definition object_prealloc_global_properties :=
   (* LATER: 15.1.3 URI Handling Function Properties *)
   let P := write_native P "Object" prealloc_object in
   let P := write_native P "Function" prealloc_function in
-  (* LATER: let P := write_native P "Array" prealloc_array in
-  let P := write_native P "String" prealloc_string in*)
+  (* LATER: let P := write_native P "Array" prealloc_array in *)
+  let P := write_native P "String" prealloc_string in
   let P := write_native P "Boolean" prealloc_bool in
   let P := write_native P "Number" prealloc_number in
   (* LATER: let P := write_native P "Math" prealloc_math in *)
@@ -357,6 +357,7 @@ Definition number_proto_value_of_function_object :=
 (** Can't be left outside the heap as there are objects pointing on it. *)
 Definition object_prealloc_string_proto :=
   let P := Heap.empty in
+  let P := write_native P "constructor" prealloc_string in
   (* LATER *)
   let O := object_create_builtin prealloc_object_proto "String" P in (* This is only temporary. *)
   object_with_primitive_value O "". (* This also. *)

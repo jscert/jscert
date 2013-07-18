@@ -710,7 +710,8 @@ Definition prim_new_object S w : result :=
       Let O :=  object_with_primitive_value O1 s in
       let '(l, S1) := object_alloc S O in
       out_ter S1 l
-  | _ => impossible_with_heap_because S "[prim_new_object] received an null or undef."
+  | _ =>
+    impossible_with_heap_because S "[prim_new_object] received an null or undef."
   end.
   
 Definition to_object S v : result :=
