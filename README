@@ -34,6 +34,9 @@ INSTALLATION AND COMPILATION
 
 1) Run "make init" to install the parser, TLC, and Flocq (requires subversion)
 
+   The parser requires a java runtime environment (version 6). On debian you can get one by running
+   "sudo apt-get install openjdk-6-jre".
+
 1') If you did not obtain the files through git (typically if you got
     a snapshot), you then need to fetch the parser manually:
     
