@@ -25,7 +25,7 @@ interpreter.
 INSTALLATION AND COMPILATION
 
 0) Get coq, ocaml >= 4.0, ocamlfind and xml-light. Most of the project
-   devs seem to be using opam to manage this installs, which you can
+   devs seem to be using opam to manage these installs, which you can
    get from here:
 
    http://opam.ocamlpro.com/
