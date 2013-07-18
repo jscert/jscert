@@ -115,6 +115,7 @@ Definition write_prop_attributes_for_global_object P name value :=
   Heap.write P name (prop_attributes_for_global_object value)
 *)
 
+
 (**************************************************************)
 (** Global object *)
 
@@ -353,7 +354,13 @@ Definition number_proto_value_of_function_object :=
 (**************************************************************)
 (** String prototype object *)
 
-(* LATER *)
+(** Can't be left outside the heap as there are objects pointing on it. *)
+Definition object_prealloc_string_proto :=
+  let P := Heap.empty in
+  (* LATER *)
+  let O := object_create_builtin prealloc_object_proto "String" P in (* This is only temporary. *)
+  object_with_primitive_value O "". (* This also. *)
+
 
 (**************************************************************)
 (** Bool object *)
@@ -535,9 +542,9 @@ Definition object_heap_initial :=
   let h := Heap.write h prealloc_function_proto object_prealloc_function_proto in
   (* LATER : update and uncomment once definitions have been completed
   let h := Heap.write h prealloc_array_proto object_prealloc_array_proto in
-  let h := Heap.write h prealloc_string_proto object_prealloc_string_proto in
   let h := Heap.write h prealloc_eval_proto object_prealloc_eval_proto in
   *)
+  let h := Heap.write h prealloc_string_proto object_prealloc_string_proto in
   let h := Heap.write h prealloc_error_proto object_prealloc_error_proto in
   let h := Heap.write h (prealloc_native_error_proto native_error_eval) (object_prealloc_native_error_proto native_error_eval) in
   let h := Heap.write h (prealloc_native_error_proto native_error_range) (object_prealloc_native_error_proto native_error_range) in
