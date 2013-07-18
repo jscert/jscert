@@ -1,9 +1,9 @@
-let run_object_heap_set_extensible b s l =\\\n
-  let opt = object_binds_pickable_option s l in\\\n
-    begin match opt with\\\n
-      \| None -> prerr_endline (Printf.sprintf \"Warning: in run_object_heap_set_extensible the location \%s is unfetchable.\" (Prheap.prloc l))\\\n
-      \| _ -> ()\\\n
-    end;\\\n
-    option_map (fun o -> object_write s l (object_set_extensible o b)) opt\\\n
-\\\n
+let run_object_heap_set_extensible b s l =\n
+  let opt = object_binds_pickable_option s l in\n
+    begin match opt with\n
+      \| None -> prerr_endline (Printf.sprintf \"Warning: in run_object_heap_set_extensible the location \%s is unfetchable.\" (Prheap.prloc l))\n
+      \| _ -> ()\n
+    end;\n
+    option_map (fun o -> object_write s l (object_set_extensible o b)) opt\n
+\n
 type runs_type =
