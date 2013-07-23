@@ -190,7 +190,7 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	mv *.ml interp/src/extract/
 	mv *.mli interp/src/extract/
 	cp interp/src/extract/JsInterpreter.mli interp/src/extract/JsInterpreterBisect.mli
-	perl -pe 's|\(\*\* val object_put_complete :|$(REFGETVALUE)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
+	perl -pe 's|res_res \(run_error s Coq_native_error_ref\)|$(REFGETVALUE)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
 	perl -pe 's/\(\*\* val run_object_heap_set_extensible :/$(RUNOBJECTMETHOD)/' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
 	perl -pe 's/type runs_type =/$(RUNOBJECTHEAP)/' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
 	perl -pe 's/    result_val s \(ref_create_value \(Coq_value_prim Coq_prim_undef\) x0 str\)/$(ENVGETIDENTIFIER)/' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
