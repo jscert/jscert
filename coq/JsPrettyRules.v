@@ -380,7 +380,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   | red_stat_with_1 : forall S0 S S' C t2 l o lex lex' C',
       lex = execution_ctx_lexical_env C ->
       (lex',S') = lexical_env_alloc_object S lex l provide_this_true ->
-      C' = execution_ctx_with_lex_this C lex' l ->
+      C' = execution_ctx_with_lex C lex' ->
       red_stat S' C' t2 o ->
       red_stat S0 C (stat_with_1 t2 (vret S l)) o
 
