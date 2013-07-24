@@ -136,18 +136,37 @@ def main():
     import doctest
     doctest.testmod()
 
-    parser = argparse.ArgumentParser(description='check whether everything '
-                                     'still works after "Admitted." has been '
-                                     'replaced with "Qed."')
+    parser = argparse.ArgumentParser(description='''\
+                check whether everything still works after "Admitted." has \
+                been replaced with "Qed.".
+                If something goes wrong "runcheck.py reset" should get you
+                back into your old state.''',
+                epilog='''Details:
+                runcheck.py has three stages:
+
+                1. start: Save the current git working tree (tracked files \
+                only) and index. Replace instances of "Admitted. (* faster \
+                *)" with "Qed.". If successful, GOTO 2.
+                2. continue: Run two passes of make on the sources. If \
+                successful, GOTO 3. If this fails, you can either make manual \
+                adjustments and call "runcheck.py continue" or get back \
+                to the old state by manually calling "runcheck.py reset".
+                3. reset: Reset the working tree and index back to their
+                previous state.''')
+
     subparsers = parser.add_subparsers()
-    parser_start = subparsers.add_parser('start', help='start the check')
+    parser_start = subparsers.add_parser('start',
+                                         help='start the check')
     parser_start.add_argument('--all', '-a',
                               action='store_true',
-                              help='process all instances of "Admitted."')
+                              help='process all instances of "Admitted.", not'
+                              'just "Admitted. (* faster *) and its likes.')
     parser_start.set_defaults(func=start)
-    parser_continue = subparsers.add_parser('continue', help='continue an interrupted check')
+    parser_continue = subparsers.add_parser('continue',
+                                            help='continue an interrupted check')
     parser_continue.set_defaults(func=kontinue)
-    parser_reset = subparsers.add_parser('reset', help='reset to pre-check state')
+    parser_reset = subparsers.add_parser('reset',
+                                         help='reset to pre-check state')
     parser_reset.set_defaults(func=reset)
 
     args = parser.parse_args()
