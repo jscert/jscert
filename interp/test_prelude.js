@@ -20,3 +20,11 @@ function runTestCase(f) {
         $ERROR("runTestCase returned false")
     }
 }
+
+// Used in some places to fetch the global object
+function fnGlobalObject() {
+    return this
+}
+
+// This could be used to print ...
+function $PRINT(s){ }
