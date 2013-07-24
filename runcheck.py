@@ -13,6 +13,8 @@ import subprocess
 LOCKFILE = '.runcheck.lock'
 LOGFILE = 'runcheck_make.log'
 
+NOSTASH = 'NOSTASH'
+
 logger = logging.getLogger("runcheck")
 
 def admitted_faster_to_qed(s):
@@ -74,8 +76,12 @@ def start(args):
         with os.fdopen(os.open(LOCKFILE, 
                                os.O_EXCL | os.O_CREAT | os.O_RDWR), 'w') as f:
             rev = subprocess.check_output(['git', 'stash', 'create'])
-            f.write(rev)
-            logger.info('Stashed working tree and index in {0}'.format(rev))
+            if rev == '':
+                f.write(NOSTASH)
+                logger.info('No need to stash.')
+            else:
+                f.write(rev)
+                logger.info('Stashed working tree and index in {0}.'.format(rev))
 
             transform = admitted_faster_to_qed
             if args.all:
@@ -126,12 +132,13 @@ def reset(args):
     try:
         with os.fdopen(os.open(LOCKFILE, os.O_RDWR)) as f:
             rev = f.read(40) #40 = length of a sha1 in hex
-            if len(rev) != 40:
+            if rev != NOSTASH and len(rev) != 40:
                 raise Exception('Could not read revision from lock!')
             logger.info('Restoring HEAD')
             subprocess.check_call(['git', 'reset', '--hard', 'HEAD'])
-            logger.info('Applying stash {0}'.format(rev))
-            subprocess.check_call(['git', 'stash', 'apply', '--index', rev])
+            if rev != NOSTASH:
+                logger.info('Applying stash {0}'.format(rev))
+                subprocess.check_call(['git', 'stash', 'apply', '--index', rev])
             logger.info('Your tree is back in its old state. :)')
     except OSError:
         logger.error('Could not find/acquire lock. Aborting...')
