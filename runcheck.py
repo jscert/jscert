@@ -105,7 +105,7 @@ def kontinue(args):
         with os.fdopen(os.open(LOCKFILE, os.O_RDWR)):
             logger.info('Running first make pass')
             subprocess.check_call('echo "First make pass:" > ' + LOGFILE, shell=True)
-            subprocess.check_call('make >> ' + LOGFILE, shell=True)
+            subprocess.call('make >> ' + LOGFILE, shell=True) #The first make may fail!
             logger.info('Running second make pass')
             subprocess.check_call('echo "Second make pass:" >> ' + LOGFILE, shell=True)
             subprocess.check_call('make >> ' + LOGFILE, shell=True)
