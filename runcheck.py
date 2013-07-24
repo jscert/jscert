@@ -13,6 +13,8 @@ import subprocess
 LOCKFILE = '.runcheck.lock'
 LOGFILE = 'runcheck_make.log'
 
+logger = logging.getLogger("runcheck")
+
 def admitted_faster_to_qed(s):
     """Replaces instances of "Admitted. (* faster *)" with "Qed."
 
@@ -71,15 +73,19 @@ def start(args):
     try:
         with os.fdopen(os.open(LOCKFILE, 
                                os.O_EXCL | os.O_CREAT | os.O_RDWR), 'w') as f:
-            f.write(subprocess.check_output(['git', 'stash', 'create']))
+            rev = subprocess.check_output(['git', 'stash', 'create'])
+            f.write(rev)
+            logger.info('Stashed working tree and index in {0}'.format(rev))
 
             transform = admitted_faster_to_qed
             if args.all:
                 transform = admitted_to_qed
+            logger.info('Start transforming coq source.')
             transform_all(transform)
+            logger.info('Done transforming coq source.')
     except OSError as err:
         if err.errno == errno.EEXIST:
-            logging.error('Could not create lock. '
+            logger.error('Could not create lock. '
                           'You should probably run "runcheck.py reset". '
                           'If you believe that this is a mistake, you can '
                           'delete the lockfile {0}'.format(LOCKFILE))
@@ -87,7 +93,7 @@ def start(args):
         else:
             raise
     except subprocess.CalledProcessError:
-        logging.error('Failed to save current state.')
+        logger.error('Failed to save current state.')
         os.remove(LOCKFILE)
         exit(1)
 
@@ -97,18 +103,18 @@ def start(args):
 def kontinue(args):
     try:
         with os.fdopen(os.open(LOCKFILE, os.O_RDWR)):
-            logging.info('Running first make pass')
+            logger.info('Running first make pass')
             subprocess.check_call('echo "First make pass:" > ' + LOGFILE, shell=True)
             subprocess.check_call('make >> ' + LOGFILE, shell=True)
-            logging.info('Running second make pass')
+            logger.info('Running second make pass')
             subprocess.check_call('echo "Second make pass:" >> ' + LOGFILE, shell=True)
             subprocess.check_call('make >> ' + LOGFILE, shell=True)
-            logging.info('make done')
+            logger.info('make done')
     except OSError:
-        logging.error('Could not find/acquire lock. Aborting...')
+        logger.error('Could not find/acquire lock. Aborting...')
         exit(1)
     except subprocess.CalledProcessError:
-        logging.error('make complained. Check {0} for details. '
+        logger.error('make complained. Check {0} for details. '
                       'Then you can either "runcheck.py continue" or '
                       '"runcheck.py reset".'.format(LOGFILE))
         exit(1)
@@ -122,17 +128,17 @@ def reset(args):
             rev = f.read(40) #40 = length of a sha1 in hex
             if len(rev) != 40:
                 raise Exception('Could not read revision from lock!')
-            logging.info('Restoring HEAD')
+            logger.info('Restoring HEAD')
             subprocess.check_call(['git', 'reset', '--hard', 'HEAD'])
-            logging.info('Apllying stash {0}'.format(rev))
+            logger.info('Applying stash {0}'.format(rev))
             subprocess.check_call(['git', 'stash', 'apply', '--index', rev])
-            logging.info('Your tree is back in its old state. :)')
+            logger.info('Your tree is back in its old state. :)')
     except OSError:
-        logging.error('Could not find/acquire lock. Aborting...')
+        logger.error('Could not find/acquire lock. Aborting...')
         exit(1)
     else:
         os.remove(LOCKFILE)
-        logging.info('Removed lock')
+        logger.info('Removed lock')
 
 def main():
     import doctest
@@ -175,5 +181,10 @@ def main():
     args.func(args)
 
 if __name__ == '__main__':
-    logging.getLogger().setLevel(logging.INFO)
+    # Logging setup
+    formatter = logging.Formatter(fmt='runcheck.py: %(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
     main()
