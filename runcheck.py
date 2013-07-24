@@ -125,7 +125,7 @@ def reset(args):
             logging.info('Restoring HEAD')
             subprocess.check_call(['git', 'reset', '--hard', 'HEAD'])
             logging.info('Apllying stash {0}'.format(rev))
-            subprocess.check_call(['git', 'stash', 'apply', rev])
+            subprocess.check_call(['git', 'stash', 'apply', '--index', rev])
             logging.info('Your tree is back in its old state. :)')
     except OSError:
         logging.error('Could not find/acquire lock. Aborting...')
