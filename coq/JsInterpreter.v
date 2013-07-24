@@ -2400,11 +2400,11 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
   | prealloc_object_get_proto_of =>
-    let v := get_arg 0 args in
-    ifb type_of v <> type_object then
-      run_error S native_error_type
-    else
-      out_ter S (resvalue_ref (ref_create_value v "prototype" false))
+    match get_arg 0 args with
+    | value_object l => 
+      if_some (run_object_method object_proto_ S l) (fun proto => res_ter S proto)
+    | value_prim _ => run_error S native_error_type
+    end
 
   | prealloc_object_get_own_prop_descriptor =>
     match get_arg 0 args with
