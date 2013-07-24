@@ -11,6 +11,7 @@ import string
 import subprocess
 
 LOCKFILE = '.runcheck.lock'
+LOGFILE = 'runcheck_make.log'
 
 def admitted_faster_to_qed(s):
     """Replaces instances of "Admitted. (* faster *)" with "Qed."
@@ -68,7 +69,8 @@ def transform_all(transform):
 def start(args):
     # Acquire lock, save state, transform coq sources
     try:
-        with os.fdopen(os.open(LOCKFILE, os.O_EXCL | os.O_CREAT | os.O_RDWR), 'w') as f:
+        with os.fdopen(os.open(LOCKFILE, 
+                               os.O_EXCL | os.O_CREAT | os.O_RDWR), 'w') as f:
             f.write(subprocess.check_output(['git', 'stash', 'create']))
 
             transform = admitted_faster_to_qed
@@ -96,19 +98,19 @@ def kontinue(args):
     try:
         with os.fdopen(os.open(LOCKFILE, os.O_RDWR)):
             logging.info('Running first make pass')
-            subprocess.check_call('echo "First make pass:" > runcheck_make.log', shell=True)
-            subprocess.check_call('make >> runcheck_make.log', shell=True)
+            subprocess.check_call('echo "First make pass:" > ' + LOGFILE, shell=True)
+            subprocess.check_call('make >> ' + LOGFILE, shell=True)
             logging.info('Running second make pass')
-            subprocess.check_call('echo "Second make pass:" >> runcheck_make.log', shell=True)
-            subprocess.check_call('make >> runcheck_make.log', shell=True)
+            subprocess.check_call('echo "Second make pass:" >> ' + LOGFILE, shell=True)
+            subprocess.check_call('make >> ' + LOGFILE, shell=True)
             logging.info('make done')
     except OSError:
         logging.error('Could not find/acquire lock. Aborting...')
         exit(1)
     except subprocess.CalledProcessError:
-        logging.error('make complained. Check runcheck_make.log for details. '
+        logging.error('make complained. Check {0} for details. '
                       'Then you can either "runcheck.py continue" or '
-                      '"runcheck.py reset".')
+                      '"runcheck.py reset".'.format(LOGFILE))
         exit(1)
 
     # Everything went well, reset
