@@ -488,6 +488,16 @@ Inductive ext_expr :=
   | spec_call_array_proto_pop_3_nonempty_4 : object_loc -> value -> value -> out -> ext_expr
   | spec_call_array_proto_pop_3_nonempty_5 : value -> out -> ext_expr
 
+  | spec_call_array_proto_push_1 : out -> list value -> ext_expr
+  | spec_call_array_proto_push_2 : object_loc -> list value -> out -> ext_expr
+  | spec_call_array_proto_push_3 : object_loc -> list value -> (specret int) -> ext_expr
+  | spec_call_array_proto_push_4 : object_loc -> list value -> int -> ext_expr
+  | spec_call_array_proto_push_4_nonempty_1 : object_loc -> list value -> int -> value -> ext_expr
+  | spec_call_array_proto_push_4_nonempty_2 : object_loc -> list value -> int -> value -> out -> ext_expr
+  | spec_call_array_proto_push_4_nonempty_3 : object_loc -> list value -> int -> value -> out -> ext_expr
+  | spec_call_array_proto_push_5 : object_loc -> value -> ext_expr
+  | spec_call_array_proto_push_6 : value -> out -> ext_expr
+
   | spec_construct_bool_1 : out -> ext_expr
   | spec_call_bool_proto_to_string_1 : out -> ext_expr
   | spec_call_bool_proto_value_of_1 : value -> ext_expr
@@ -1144,6 +1154,16 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_array_proto_pop_3_nonempty_3 _ _ o => Some o
   | spec_call_array_proto_pop_3_nonempty_4 _ _ _ o => Some o
   | spec_call_array_proto_pop_3_nonempty_5 _ o => Some o
+
+  | spec_call_array_proto_push_1 o _ => Some o
+  | spec_call_array_proto_push_2 _ _ o => Some o
+  | spec_call_array_proto_push_3 _ _ y => out_of_specret y
+  | spec_call_array_proto_push_4 _ _ _ => None
+  | spec_call_array_proto_push_4_nonempty_1 _ _ _ _ => None
+  | spec_call_array_proto_push_4_nonempty_2 _ _ _ _ o => Some o
+  | spec_call_array_proto_push_4_nonempty_3 _ _ _ _ o => Some o
+  | spec_call_array_proto_push_5 _ _ => None
+  | spec_call_array_proto_push_6 _ o => Some o
 
   | spec_call_bool_proto_to_string_1 o => Some o
   | spec_call_bool_proto_value_of_1 _ => None

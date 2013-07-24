@@ -3413,6 +3413,60 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_array_proto_pop_3_nonempty_5 : forall S0 S C velem r0, (* 5e *)
       red_expr S0 C (spec_call_array_proto_pop_3_nonempty_5 velem (out_ter S r0)) (out_ter S velem)
 
+  (** Array.prototype.push() (returns value)  (15.4.4.7) *)
+
+  | red_spec_call_array_proto_push : forall S0 S C vthis args o o1, (* 1 *)
+      red_expr S C (spec_to_object vthis) o1 ->
+      red_expr S C (spec_call_array_proto_push_1 o1 args) o ->
+      red_expr S C (spec_call_prealloc prealloc_array_proto_push vthis args) o
+
+  | red_spec_call_array_proto_push_1 : forall S0 S C l args o o1, (* 2 *)
+      red_expr S C (spec_object_get l "length") o1 ->
+      red_expr S C (spec_call_array_proto_push_2 l args o1) o ->
+      red_expr S0 C (spec_call_array_proto_push_1 (out_ter S l) args) o
+
+  | red_spec_call_array_proto_push_2 : forall S0 S C l args vlen y o, (* 3 *)
+      red_spec S C (spec_to_uint32 vlen) y ->
+      red_expr S C (spec_call_array_proto_push_3 l args y) o ->
+      red_expr S0 C (spec_call_array_proto_push_2 l args (out_ter S vlen)) o
+
+    (* don't need 4, because args is a list already *)
+
+  | red_spec_call_array_proto_push_3 : forall S0 S C l args lenuint32 o,
+      red_expr S C (spec_call_array_proto_push_4 l args lenuint32) o ->
+      red_expr S0 C (spec_call_array_proto_push_3 l args (ret S lenuint32)) o
+
+  | red_spec_call_array_proto_push_4_empty : forall S C l lenuint32 o, (* 5 *)
+      red_expr S C (spec_call_array_proto_push_5 l (JsNumber.of_int lenuint32)) o ->
+      red_expr S C (spec_call_array_proto_push_4 l nil lenuint32) o
+
+  | red_spec_call_array_proto_push_4_nonempty : forall S C l v vs lenuint32 o, (* 5a *)
+      red_expr S C (spec_call_array_proto_push_4_nonempty_1 l vs lenuint32 v) o ->
+      red_expr S C (spec_call_array_proto_push_4 l (v::vs) lenuint32) o
+
+  | red_spec_call_array_proto_push_4_nonempty_1 : forall S C l v vs lenuint32 o o1, (* 5b *)
+      red_expr S C (spec_to_string (JsNumber.of_int lenuint32)) o1 ->
+      red_expr S C (spec_call_array_proto_push_4_nonempty_2 l vs lenuint32 v o1) o ->
+      red_expr S C (spec_call_array_proto_push_4_nonempty_1 l vs lenuint32 v) o
+
+  | red_spec_call_array_proto_push_4_nonempty_2 : forall S0 S C l vindx v vs lenuint32 o o1, (* 5b *)
+      red_expr S C (spec_object_put l vindx v throw_true) o1 ->
+      red_expr S C (spec_call_array_proto_push_4_nonempty_3 l vs lenuint32 v o1) o ->
+      red_expr S0 C (spec_call_array_proto_push_4_nonempty_2 l vs lenuint32 v (out_ter S vindx)) o
+
+  | red_spec_call_array_proto_push_4_nonempty_3 : forall S0 S C l v vs lenuint32 o r0, (* 5c *)
+      red_expr S C (spec_call_array_proto_push_4 l vs (lenuint32 + 1)) o ->
+      red_expr S0 C (spec_call_array_proto_push_4_nonempty_3 l vs lenuint32 v (out_ter S r0)) o
+
+  | red_spec_call_array_proto_push_5 : forall S C l vlen o o1, (* 6 *)
+      red_expr S C (spec_object_put l "length" vlen throw_true) o1 ->
+      red_expr S C (spec_call_array_proto_push_6 vlen o1) o ->
+      red_expr S C (spec_call_array_proto_push_5 l vlen) o
+
+  | red_spec_call_array_proto_push_6 : forall S0 S C vlen r0, (* 7 *)
+      red_expr S0 C (spec_call_array_proto_push_6 vlen (out_ter S r0)) (out_ter S vlen)
+    
+  (*------------------------------------------------------------*)
   (** ** Function builtin functions *)
   
   (** Function.prototype() -- always return undefined  (15.3.4) *)
