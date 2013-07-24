@@ -349,6 +349,9 @@ Definition number_proto_value_of_function_object :=
 (**************************************************************)
 (** String object *)
 
+Definition object_prealloc_string :=
+  let P := Heap.empty in
+  object_create_prealloc_constructor prealloc_function 1 P.
 (* LATER *)
 
 (**************************************************************)
@@ -545,6 +548,7 @@ Definition object_heap_initial :=
   let h := Heap.write h prealloc_array_proto object_prealloc_array_proto in
   let h := Heap.write h prealloc_eval_proto object_prealloc_eval_proto in
   *)
+  let h := Heap.write h prealloc_string object_prealloc_string in
   let h := Heap.write h prealloc_string_proto object_prealloc_string_proto in
   let h := Heap.write h prealloc_error_proto object_prealloc_error_proto in
   let h := Heap.write h (prealloc_native_error_proto native_error_eval) (object_prealloc_native_error_proto native_error_eval) in
