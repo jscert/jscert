@@ -271,6 +271,7 @@ Inductive prealloc :=
   | prealloc_array_is_array
   | prealloc_array_proto
   | prealloc_array_proto_to_string (* LATER: support *)
+  | prealloc_array_proto_pop
   | prealloc_string
   | prealloc_string_proto
   | prealloc_string_proto_to_string (* LATER: support *)

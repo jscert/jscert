@@ -476,7 +476,18 @@ Inductive ext_expr :=
   | spec_call_object_proto_prop_is_enumerable_2 : value -> out -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_4 : (specret full_descriptor) -> ext_expr
-  
+
+  | spec_call_array_proto_pop_1 : out -> ext_expr
+  | spec_call_array_proto_pop_2 : object_loc -> out -> ext_expr
+  | spec_call_array_proto_pop_3 : object_loc -> (specret int) -> ext_expr
+  | spec_call_array_proto_pop_3_empty_1 : object_loc -> ext_expr
+  | spec_call_array_proto_pop_3_empty_2 : out -> ext_expr
+  | spec_call_array_proto_pop_3_nonempty_1 : object_loc -> int -> ext_expr
+  | spec_call_array_proto_pop_3_nonempty_2 : object_loc -> out -> ext_expr
+  | spec_call_array_proto_pop_3_nonempty_3 : object_loc -> value -> out -> ext_expr
+  | spec_call_array_proto_pop_3_nonempty_4 : object_loc -> value -> value -> out -> ext_expr
+  | spec_call_array_proto_pop_3_nonempty_5 : value -> out -> ext_expr
+
   | spec_construct_bool_1 : out -> ext_expr
   | spec_call_bool_proto_to_string_1 : out -> ext_expr
   | spec_call_bool_proto_value_of_1 : value -> ext_expr
@@ -1123,6 +1134,17 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_proto_prop_is_enumerable_3 o _ => Some o
   | spec_call_object_proto_prop_is_enumerable_4 _ => None
   
+  | spec_call_array_proto_pop_1 o => Some o
+  | spec_call_array_proto_pop_2 _ o => Some o
+  | spec_call_array_proto_pop_3 _ y  => out_of_specret y
+  | spec_call_array_proto_pop_3_empty_1 _ => None
+  | spec_call_array_proto_pop_3_empty_2 o => Some o
+  | spec_call_array_proto_pop_3_nonempty_1 _ _ => None
+  | spec_call_array_proto_pop_3_nonempty_2 _ o => Some o
+  | spec_call_array_proto_pop_3_nonempty_3 _ _ o => Some o
+  | spec_call_array_proto_pop_3_nonempty_4 _ _ _ o => Some o
+  | spec_call_array_proto_pop_3_nonempty_5 _ o => Some o
+
   | spec_call_bool_proto_to_string_1 o => Some o
   | spec_call_bool_proto_value_of_1 _ => None
   | spec_call_bool_proto_value_of_2 _ => None

@@ -3356,6 +3356,63 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
        red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 A)) (out_ter S b)
 
   (*------------------------------------------------------------*)
+  (** Array.prototype.pop() (returns value)  (15.4.4.6) *)
+  
+  | red_spec_call_array_proto_pop : forall S C vthis l o o1 args, (* 1 *)
+      red_expr S C (spec_to_object vthis) o1 ->
+      red_expr S C (spec_call_array_proto_pop_1 o1) o ->
+      red_expr S C (spec_call_prealloc prealloc_array_proto_pop vthis args) o
+
+  | red_spec_call_array_proto_pop_1 : forall S0 S C l o o1, (* 2 *)
+      red_expr S C (spec_object_get l "length") o1 ->
+      red_expr S C (spec_call_array_proto_pop_2 l o1) o ->
+      red_expr S0 C (spec_call_array_proto_pop_1 (out_ter S l)) o
+
+  | red_spec_call_array_proto_pop_2 : forall S0 S C l vlen o y, (* 3 *)
+      red_spec S C (spec_to_uint32 vlen) y ->
+      red_expr S C (spec_call_array_proto_pop_3 l y) o ->
+      red_expr S0 C (spec_call_array_proto_pop_2 l (out_ter S vlen)) o
+
+  | red_spec_call_array_proto_pop_3_empty : forall S0 S C l o, (* 4 *)
+      red_expr S C (spec_call_array_proto_pop_3_empty_1 l) o ->
+      red_expr S0 C (spec_call_array_proto_pop_3 l (ret S (0 : int))) o
+
+  | red_spec_call_array_proto_pop_3_empty_1 : forall S0 S C l o o1, (* 4a *)
+      red_expr S C (spec_object_put l "length" 0 throw_true) o1 ->
+      red_expr S C (spec_call_array_proto_pop_3_empty_2 o1) o ->
+      red_expr S C (spec_call_array_proto_pop_3_empty_1 l) o
+
+  | red_spec_call_array_proto_pop_3_empty_2 : forall S0 S C r0, (* 4b *)
+      red_expr S0 C (spec_call_array_proto_pop_3_empty_2 (out_ter S r0)) (out_ter S undef)
+
+  | red_spec_call_array_proto_pop_3_nonempty : forall S0 S C l (lenuint32 : int) o, (* 5 *)
+      lenuint32 > 0 ->
+      red_expr S C (spec_call_array_proto_pop_3_nonempty_1 l lenuint32) o ->
+      red_expr S0 C (spec_call_array_proto_pop_3 l (ret S lenuint32)) o
+
+  | red_spec_call_array_proto_pop_3_nonempty_1 : forall S0 S C l lenuint32 o o1, (* 5a *)
+      red_expr S C (spec_to_string (lenuint32 - 1)) o1 ->
+      red_expr S C (spec_call_array_proto_pop_3_nonempty_2 l o1) o ->
+      red_expr S C (spec_call_array_proto_pop_3_nonempty_1 l lenuint32) o
+
+  | red_spec_call_array_proto_pop_3_nonempty_2 : forall S0 S C l vindx (velem : value) o o1, (* 5b *)
+      red_expr S C (spec_object_get l vindx) o1 ->
+      red_expr S C (spec_call_array_proto_pop_3_nonempty_3 l vindx o1) o ->
+      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_2 l (out_ter S vindx)) o
+
+  | red_spec_call_array_proto_pop_3_nonempty_3 : forall S0 S C l vindx velem o o1, (* 5c *)
+      red_expr S C (spec_object_delete l vindx throw_true) o1 ->
+      red_expr S C (spec_call_array_proto_pop_3_nonempty_4 l vindx velem o1) o ->
+      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_3 l vindx (out_ter S velem)) o
+
+  | red_spec_call_array_proto_pop_3_nonempty_4 : forall S0 S C l vindx velem o o1 r0, (* 5d *)
+      red_expr S C (spec_object_put l "length" vindx throw_true) o1 ->
+      red_expr S C (spec_call_array_proto_pop_3_nonempty_5 velem o1) o ->
+      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_4 l vindx velem (out_ter S r0)) o
+
+  | red_spec_call_array_proto_pop_3_nonempty_5 : forall S0 S C velem r0, (* 5e *)
+      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_5 velem (out_ter S r0)) (out_ter S velem)
+
   (** ** Function builtin functions *)
   
   (** Function.prototype() -- always return undefined  (15.3.4) *)
