@@ -57,6 +57,8 @@ let prprealloc = function
   | Coq_prealloc_array -> "Coq_prealloc_array"
   | Coq_prealloc_array_is_array -> "Coq_prealloc_array_is_array"
   | Coq_prealloc_array_proto -> "Coq_prealloc_array_proto"
+  | Coq_prealloc_array_proto_pop -> "Coq_prealloc_array_proto_pop"
+  | Coq_prealloc_array_proto_push -> "Coq_prealloc_array_proto_push"
   | Coq_prealloc_array_proto_to_string -> "Coq_prealloc_array_proto_to_string"
   | Coq_prealloc_string -> "Coq_prealloc_string"
   | Coq_prealloc_string_proto -> "Coq_prealloc_string_proto"

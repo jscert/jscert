@@ -2380,6 +2380,19 @@ Definition run_prog runs S C p : result :=
 
 (**************************************************************)
 
+(* TODO *)
+Fixpoint push runs S C l args ilen: result :=
+  Let vlen := JsNumber.of_int ilen
+  in match args with
+  | nil =>
+    if_not_throw (object_put runs S C l "length" vlen throw_true) (fun S _ =>
+      out_ter S vlen)
+  | v::vs =>
+    if_string (to_string runs S C vlen) (fun S slen =>
+      if_not_throw (object_put runs S C l slen v throw_true) (fun S _ =>
+        push runs S C l vs (ilen + 1)))
+  end.
+
 Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   match B with
 
@@ -2622,6 +2635,31 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
 
   | prealloc_throw_type_error =>
     run_error S native_error_type
+
+  | prealloc_array_proto_pop =>
+    if_object (to_object S vthis) (fun S l =>
+      if_value (run_object_get runs S C l "length") (fun S vlen =>
+        if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+          (* TODO: decide (ilen = 0) doesn't work atm.
+             Make this code more elegant once it does. *)
+          match decide (ilen < 0), decide (0 < ilen) with
+          | false, false =>
+            if_not_throw (object_put runs S C l "length" JsNumber.zero throw_true) (fun S _ =>
+              out_ter S undef)
+          | false, true =>
+            if_string (to_string runs S C (JsNumber.of_int (ilen - 1))) (fun S sindx =>
+              if_value (run_object_get runs S C l sindx) (fun S velem =>
+                if_not_throw (object_delete_default runs S C l sindx throw_true) (fun S _ =>
+                  if_not_throw (object_put runs S C l "length" sindx throw_true) (fun S _ =>
+                    out_ter S velem))))
+          | _, _ => result_impossible
+          end)))
+
+  | prealloc_array_proto_push =>
+    if_object (to_object S vthis) (fun S l =>
+      if_value (run_object_get runs S C l "length") (fun S vlen =>
+        if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+          push runs S C l args ilen)))
 
   | _ =>
     result_not_yet_implemented (* LATER *)
