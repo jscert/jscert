@@ -12,7 +12,7 @@
 universe        = vanilla
 
 # This defines the path of the executable we want to run.
-executable      = condor_tests.cmd
+executable      = ~/Documents/jscert/src/core/trunk/condor_tests.cmd
 
 # This specifies where data sent to STDOUT by the executable should be
 # directed to.
