@@ -3423,8 +3423,39 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (*------------------------------------------------------------*)
   (** ** Array builtin functions *)
+
+  (** new Array() (returns object_loc)  (15.4.2.1) *)
+  (** new Array(value, [value]) (returns object_loc)  (15.4.2.1) *)
+  (* This constructor only applies if there are zero arguments or at least two
+  arguments. Otherwise the spec mandates the use of 15.4.2.2. *)
+
+  | red_spec_call_array_new_no_args : forall S C args o,
+      args = nil ->
+      red_expr S C (spec_call_array_new_1 args) o ->
+      red_expr S C (spec_construct_prealloc prealloc_array args) o
+
+  | red_spec_call_array_new_multiple_args : forall S C args v1 v2 vs o,
+      args = v1::v2::vs ->
+      red_expr S C (spec_call_array_new_1 args) o ->
+      red_expr S C (spec_construct_prealloc prealloc_array args) o
+
+  | red_spec_call_array_new_1 : forall S S' C args O l o,
+      O = object_new prealloc_array_proto "Array" ->
+      (l, S') = object_alloc S O ->
+      red_expr S' C (spec_call_array_new_2 l args 0) o ->
+      red_expr S C (spec_call_array_new_1 args) o
+
+  | red_spec_call_array_new_2_nonempty: forall S S' C O l A v vs ilen o,
+      object_set_property S l (JsNumber.to_string (JsNumber.of_int ilen)) (attributes_data_intro v true true true) S' ->
+      red_expr S' C (spec_call_array_new_2 l vs (ilen + 1)) o ->
+      red_expr S C (spec_call_array_new_2 l (v::vs) ilen) o
+
+  | red_spec_call_array_new_2_empty: forall S S' C O l ilen o,
+      object_set_property S l "length" (attributes_data_intro (JsNumber.of_int ilen) true true true) S' ->
+      red_expr S C (spec_call_array_new_2 l nil ilen) (out_ter S' l)
+
   (** Array.prototype.pop() (returns value)  (15.4.4.6) *)
-  
+
   | red_spec_call_array_proto_pop : forall S C vthis l o o1 args, (* 1 *)
       red_expr S C (spec_to_object vthis) o1 ->
       red_expr S C (spec_call_array_proto_pop_1 o1) o ->
@@ -3532,7 +3563,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_array_proto_push_6 : forall S0 S C vlen r0, (* 7 *)
       red_expr S0 C (spec_call_array_proto_push_6 vlen (out_ter S r0)) (out_ter S vlen)
-    
+
   (* LATER: special implementation of get_own_property *)
 
   (*------------------------------------------------------------*)
