@@ -70,6 +70,9 @@ progOpts = Options
                            "%Warning: ref_get_value returns the undefined value on % . RegExp%",
                            "%Warning: ref_get_value returns the undefined value on % . apply%",
                            "%Warning: ref_get_value returns the undefined value on % . bind%",
+                           "%Warning: ref_get_value returns the undefined value on % . indexOf%",
+                           "%Warning: ref_get_value returns the undefined value on % . match%",
+                           "%Warning: ref_get_value returns the undefined value on % . charAt%",
                            "%Warning: ref_get_value returns the undefined value on % . keys%"]
                           &= help "All the things we want to check from stderr"
            }
