@@ -168,6 +168,9 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                       -- Not tests that we've explicitly noted as "Ignorable"
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description LIKE \"Ignorable%\")) AND "
+                                      -- Not buggy tests
+                                      ++ "test_id NOT IN (select test_id from fail_group_memberships where group_id IN "
+                                      ++   "(SELECT id from fail_groups where reason LIKE \"%Buggy Test%\")) AND "
                                       -- Only tests from Test262
                                       ++ "test_id IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description=\"Test262 Tests\")) AND "
