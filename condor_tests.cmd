@@ -28,17 +28,17 @@ executable      = ~/Documents/jscert/src/core/trunk/condor_tests.sh
 # data would be lost as each job would overwrite the same file in an 
 # uncontrolled manner.  Thus, we direct STDOUT for each job to a uniquely 
 # named file.
-output          = testing.$(Process).out
+output          = ~/logs/testing.$(Process).out
 
 # As above, but for STDERR.
-error           = testing.$(Process).err
+error           = ~/logs/testing.$(Process).err
 
 # Condor can write a time-ordered log of events related to this job-set
 # to a file we specify.  This specifies where that file should be written.
-log             = testing.log
+log             = ~/logs/testing.log
 
 # This specifies what commandline arguments should be passed to the executable.
-arguments       = -n -m -p
+arguments       = 
 
 # This specifies that the specification, as parsed up to this point, should be 
 # submitted 5 times.  (If the number is omitted, the number '1' is assumed.)
