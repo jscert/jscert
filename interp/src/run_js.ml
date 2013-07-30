@@ -91,90 +91,86 @@ let _ =
             exp'
     with
     | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
-		print_endline "\n\nA `nothing' object has been created.\n" ;
-		print_endline "\n\nFIXME:  this should be impossible!\n" ;
-		exit_if_test ()
+		  print_endline "\n\nA `nothing' object has been created.\n" ;
+		  print_endline "\n\nFIXME:  this should be impossible!\n" ;
+		  exit_if_test ()
     | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_out o) ->
-       begin
-         match o with
-         | JsSyntax.Coq_out_ter (state, res) ->
-            begin
-			  if !printHeap then
-			    print_endline
-					(Prheap.prstate !skipInit state) ;
-              match JsSyntax.res_type res with
-              | JsSyntax.Coq_restype_normal ->
-                 (if (not !test) then
-      		     begin
-                     match JsSyntax.res_value res with
-                     | JsSyntax.Coq_resvalue_value v ->
-                        print_endline "\n\nResult:\n";
-                        print_endline (Prheap.prvalue v)
-                     | JsSyntax.Coq_resvalue_ref re ->
-                        print_endline ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness from the result. -- Martin *)
-      	                                   Prheap.string_of_char_list re.JsSyntax.ref_name ^
-      		                                   " and of value:\n\t" ^
-      	                                       (match get_value_ref state re with
-      	                                        | Some v -> Prheap.prvalue v
-      	                                        | None -> "Unknown!") ^ "\n")
-                     | JsSyntax.Coq_resvalue_empty ->
-                        print_endline "\n\nNo result\n"
-				 end;
-				 pr_test state)
-              | JsSyntax.Coq_restype_break ->
-				print_endline "\n\nBREAK\n" ;
-				exit_if_test ()
-              | JsSyntax.Coq_restype_continue ->
-				print_endline "\n\nCONTINUE\n" ;
-				exit_if_test ()
-			  | JsSyntax.Coq_restype_return ->
-				print_endline "\n\nRETURN\n" ;
-				exit_if_test ()
-              | JsSyntax.Coq_restype_throw ->
-                 print_endline "\n\nEXCEPTION THROWN\n" ;
-                 (match JsSyntax.res_value res with
+      begin
+        match o with
+        | JsSyntax.Coq_out_ter (state, res) ->
+          begin
+			      if !printHeap then
+			        print_endline (Prheap.prstate !skipInit state);
+            match JsSyntax.res_type res with
+            | JsSyntax.Coq_restype_normal ->
+              (if (not !test) then
+      		       begin
+                 match JsSyntax.res_value res with
                  | JsSyntax.Coq_resvalue_value v ->
-                   print_endline ("\tReturned value:\t" ^ Prheap.prvalue v) ;
-                   (match v with
-                   | JsSyntax.Coq_value_prim _ -> ()
-                   | JsSyntax.Coq_value_object l ->
-                     print_newline () ;
-                     let r = {
-                       JsSyntax.ref_base = JsSyntax.Coq_ref_base_type_value v ;
-                       JsSyntax.ref_name = Translate_syntax.string_to_coq "__$ERROR__" ;
-                       JsSyntax.ref_strict = false } in
-                     match get_value_ref state r with
-                     | Some v' ->
-                       print_endline ("Fetching the `__$ERROR__' field of this returned object resulted to:\t" ^ Prheap.prvalue v')
-                     | None ->
-                       print_endline "No `__$ERROR__' field has been defined in this returned object.")
-				 | JsSyntax.Coq_resvalue_ref _ ->
-				   print_endline "With a reference."
-				 | JsSyntax.Coq_resvalue_empty ->
-				   print_endline "No result with this throw.") ;
-                 pr_test state ;
-				 exit_if_test ()
-            end
-         | JsSyntax.Coq_out_div ->
-			print_endline "\n\nDIV\n" ;
-			exit_if_test ()
-       end;
+                   print_endline "\n\nResult:\n";
+                   print_endline (Prheap.prvalue v)
+                 | JsSyntax.Coq_resvalue_ref re ->
+                   print_endline 
+                     ("\n\nResult is a reference of name " ^ (* I’ve added this relatively ugly part to get more precisness from the result. -- Martin *)
+      	                Prheap.string_of_char_list re.JsSyntax.ref_name ^
+      		              " and of value:\n\t" ^
+      	                (match get_value_ref state re with
+      	               | Some v -> Prheap.prvalue v
+      	               | None -> "Unknown!") ^ "\n")
+                 | JsSyntax.Coq_resvalue_empty ->
+                   print_endline "\n\nNo result\n"
+				         end;
+				         pr_test state)
+            | JsSyntax.Coq_restype_break ->
+				      print_endline "\n\nBREAK\n" ; exit_if_test ()
+            | JsSyntax.Coq_restype_continue -> 
+              print_endline "\n\nCONTINUE\n" ; exit_if_test ()
+			      | JsSyntax.Coq_restype_return ->
+				       print_endline "\n\nRETURN\n" ; exit_if_test ()
+            | JsSyntax.Coq_restype_throw ->
+              print_endline "\n\nEXCEPTION THROWN\n" ;
+              (match JsSyntax.res_value res with
+               | JsSyntax.Coq_resvalue_value v ->
+                 print_endline ("\tReturned value:\t" ^ Prheap.prvalue v) ;
+                 (match v with
+                  | JsSyntax.Coq_value_prim _ -> ()
+                  | JsSyntax.Coq_value_object l ->
+                    print_newline () ;
+                    let r = {
+                      JsSyntax.ref_base = JsSyntax.Coq_ref_base_type_value v ;
+                      JsSyntax.ref_name = Translate_syntax.string_to_coq "__$ERROR__" ;
+                      JsSyntax.ref_strict = false } in
+                    match get_value_ref state r with
+                    | Some v' ->
+                      print_endline ("Fetching the `__$ERROR__' field of this returned object resulted to:\t" ^ Prheap.prvalue v')
+                    | None ->
+                      print_endline "No `__$ERROR__' field has been defined in this returned object.")
+				       | JsSyntax.Coq_resvalue_ref _ ->
+				         print_endline "With a reference."
+				       | JsSyntax.Coq_resvalue_empty ->
+				         print_endline "No result with this throw.") ;
+              pr_test state ; exit_if_test ()
+          end
+        | JsSyntax.Coq_out_div ->
+			    print_endline "\n\nDIV\n" ; exit_if_test ()
+      end;
     | JsInterpreter.Coq_result_impossible ->
-		print_endline "\n\nFIXME:  this should be impossible!\n" ;
-		exit_if_test ()
+		  print_endline "\n\nFIXME:  this should be impossible!\n" ; exit_if_test ()
     | JsInterpreter.Coq_result_not_yet_implemented ->
-		print_endline "\n\nNYI:  this is not implemented yet!\n" ;
-        exit 2
-	| JsInterpreter.Coq_result_bottom s ->
-        print_endline ("\n\nBOTTOM\nCurrent state:\n" ^ Prheap.prstate !skipInit s)
+		  print_endline "\n\nNYI:  this is not implemented yet!\n" ; exit 2
+	  | JsInterpreter.Coq_result_bottom s ->
+      print_endline ("\n\nBOTTOM\nCurrent state:\n" ^ Prheap.prstate !skipInit s)
   with
   | Assert_failure (file, line, col) ->
-	print_string ("\nNot implemented code in file `" ^ file ^ "', line " ^ string_of_int line ^ " and column " ^ string_of_int col) ;
-	exit 2
+	  print_string (
+     "\nNot implemented code in file `" ^ file ^ "', line " ^ 
+     string_of_int line ^ " and column " ^ string_of_int col) ;
+	  exit 2
   | Translate_syntax.CoqSyntaxDoesNotSupport s ->
-	print_string ("\nTranslation of Javascript syntax does not support `" ^ s ^ "' yet.") ;
-	exit 2
+	  print_string
+      ("\nTranslation of Javascript syntax does not support `" ^ s ^ "' yet.") ;
+	  exit 2
   | Xml.File_not_found file ->
-	print_string ("\nParsing problem with the file `" ^ file ^ "'.") ;
-	exit_if_test ()
+	  print_string ("\nParsing problem with the file `" ^ file ^ "'.") ;
+	  exit_if_test ()
 
