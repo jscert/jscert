@@ -962,7 +962,7 @@ t262Libs["jquery.base64.js"] = "	\
 		});\
 	})(jQuery);\
 ";
-t262Libs["jqueryprogressbar.js"] = "\
+t262Libs["jqueryprogressbar.js"] = "\
 /*\
  * Copyright (c) 2007 Josh Bush (digitalbush.com)\
  * \
@@ -999,7 +999,7 @@ t262Libs["jqueryprogressbar.js"] = "\
         var max = 100;\
         if (maxVal) {\
             max = maxVal;\
-        }\
+        }\
         return this.each(\
 			function() {\
 			    var div = $(this);\
@@ -1014,7 +1014,7 @@ t262Libs["jqueryprogressbar.js"] = "\
 			}\
 		);\
 	};\
-})(jQuery);\
+})(jQuery);\
 ";
 t262Libs["math_isequal.js"] = "// Copyright 2009 the Sputnik authors.  All rights reserved.\
 // This code is governed by the BSD license found in the LICENSE file.\
