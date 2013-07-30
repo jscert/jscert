@@ -354,6 +354,11 @@ setup = lambda : 0
 teardown = lambda : 0
 test_runner = lambda filename : ['echo "Something weird is happening!"']
 
+# Does this test try to load other libraries?
+def usesInclude(filename):
+    with open(filename) as f:
+        return "$INCLUDE" in f.read()
+
 def jsRefArgBuilder(filename):
     # Normally we run a test like this:
     #./interp/run_js -jsparser interp/parser/lib/js_parser.jar -test_prelude interp/test_prelude.js -file filename
@@ -377,6 +382,13 @@ def jsRefArgBuilder(filename):
         arglist.append(filename)
         arglist.append("-file")
         arglist.append("tests/LambdaS5/lambda-post.js")
+    elif usesInclude(filename):
+        if args.verbose or args.debug:
+            print "Using include libs."
+        arglist.append("-test_prelude")
+        arglist.append("interp/libloader.js")
+        arglist.append("-file")
+        arglist.append(filename)
     else:
         arglist.append("-file")
         arglist.append(filename)
