@@ -1168,7 +1168,11 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
       if_number (to_number runs S C v) follow
 
   | prealloc_array =>
-    result_not_yet_implemented (* TODO:  Waiting for specification*)
+    Let O := object_new prealloc_array_proto "Array" in
+    Let p := object_alloc S O in
+    let '(l, S') := p in
+    if_not_throw (object_define_own_prop runs S' C l "length" (attributes_data_intro JsNumber.zero true true true) throw_false) (fun S _ =>
+      out_ter S l)
 
   | prealloc_string =>
     result_not_yet_implemented (* TODO:  Waiting for specification *)
