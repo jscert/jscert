@@ -28,3 +28,4 @@ function fnGlobalObject() {
 
 // This could be used to print ...
 function $PRINT(s){ }
+

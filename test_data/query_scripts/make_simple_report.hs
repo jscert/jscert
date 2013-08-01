@@ -52,7 +52,28 @@ progOpts = Options
                           ,"%NYI:  this is not implemented yet!%"
                           ]
                           &= help "All the things we want to check from stdout"
-           , stdErrList = ["%Fatal error: exception Parser.%"]
+           , stdErrList = ["%Fatal error: exception Parser.%",
+                           "%Warning: ref_get_value returns the undefined value on % . parseInt%",
+                           "%Warning: ref_get_value returns the undefined value on % . Math%",
+                           "%Warning: ref_get_value returns the undefined value on % . length%",
+                           "%Warning: ref_get_value returns the undefined value on % . Array%",
+                           "%Warning: ref_get_value returns the undefined value on % . hasOwnProperty%",
+                           "%Warning: ref_get_value returns the undefined value on % . call%",
+                           "%Warning: ref_get_value returns the undefined value on % . JSON%",
+                           "%Warning: ref_get_value returns the undefined value on % . parseFloat%",
+                           "%Warning: ref_get_value returns the undefined value on % . decodeURIComponent%",
+                           "%Warning: ref_get_value returns the undefined value on % . URIError%",
+                           "%Warning: ref_get_value returns the undefined value on % . encodeURIComponent%",
+                           "%Warning: ref_get_value returns the undefined value on % . decodeURI%",
+                           "%Warning: ref_get_value returns the undefined value on % . encodeURI%",
+                           "%Warning: ref_get_value returns the undefined value on % . Date%",
+                           "%Warning: ref_get_value returns the undefined value on % . RegExp%",
+                           "%Warning: ref_get_value returns the undefined value on % . apply%",
+                           "%Warning: ref_get_value returns the undefined value on % . bind%",
+                           "%Warning: ref_get_value returns the undefined value on % . indexOf%",
+                           "%Warning: ref_get_value returns the undefined value on % . match%",
+                           "%Warning: ref_get_value returns the undefined value on % . charAt%",
+                           "%Warning: ref_get_value returns the undefined value on % . keys%"]
                           &= help "All the things we want to check from stderr"
            }
 
@@ -147,6 +168,9 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                       -- Not tests that we've explicitly noted as "Ignorable"
                                       ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description LIKE \"Ignorable%\")) AND "
+                                      -- Not buggy tests
+                                      ++ "test_id NOT IN (select test_id from fail_group_memberships where group_id IN "
+                                      ++   "(SELECT id from fail_groups where reason LIKE \"%Buggy Test%\")) AND "
                                       -- Only tests from Test262
                                       ++ "test_id IN (select test_id from test_group_memberships where group_id IN "
                                       ++   "(SELECT id from test_groups where description=\"Test262 Tests\")) AND "

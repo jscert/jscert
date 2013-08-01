@@ -2,7 +2,7 @@
 
 module Main where
 
-import ResultsDB(getConnectionFromTrunk,addFilesToGroup,makeGroup)
+import ResultsDB(getConnectionFromTrunk,addFilesToGroup,makeGroup,makeFailGLatest,addFilesToFailGroup)
 import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow,Statement)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
@@ -27,6 +27,11 @@ data ManageTestGroup = CreateGroup
                        AmendDesc
                        { groupId :: Int
                        , groupDescription :: String
+                       } |
+                       CreateFailGroupForLatestBatch
+                       { groupDescription :: String
+                       , groupReason :: String
+                       , fails :: [String]
                        } deriving (Data,Typeable,Show)
 
 createDefaults :: ManageTestGroup
@@ -50,6 +55,13 @@ amendDescDefaults = AmendDesc
                     { groupId = 0 &= help "The id of the group to amend"
                     , groupDescription = "" &= help "The new description"
                     }
+
+cfgflbDefaults :: ManageTestGroup
+cfgflbDefaults = CreateFailGroupForLatestBatch
+                       { groupDescription = "" &= help "A description of this fail group"
+                       , groupReason  = "" &= help "Why do these tests fail?"
+                       , fails = [] &= args
+                       }                 
 
 stmtUpdateDesc :: String
 stmtUpdateDesc = "UPDATE test_groups SET description=? WHERE id=?"
@@ -77,9 +89,12 @@ dispatch (AppendByDesc desc filenames) con = do
   addFilesToGroup gid filenames con
 dispatch (AppendById gid filenames) con = addFilesToGroup gid filenames con
 dispatch (AmendDesc gid desc) con = updateDesc gid desc con
+dispatch (CreateFailGroupForLatestBatch desc reason filenames) con = do
+  gid <- makeFailGLatest desc reason con
+  addFilesToFailGroup gid filenames con
 
 main :: IO ()
 main = do
-  opts <- cmdArgs (modes [createDefaults,appendByDescDefaults, appendByIdDefaults,amendDescDefaults])
+  opts <- cmdArgs (modes [createDefaults,appendByDescDefaults, appendByIdDefaults,amendDescDefaults,cfgflbDefaults])
   con <- getConnectionFromTrunk
   withTransaction con $ dispatch opts
