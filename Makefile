@@ -101,7 +101,7 @@ FAST_VO=$(FAST_SRC:.v=.vo)
 #######################################################
 # MAIN TARGETS
 
-all: $(JS_VO) interpreter
+all: $(JS_VO) interpreter tags
 
 debug:
 	make -f Makefile.debug
