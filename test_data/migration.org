@@ -53,7 +53,39 @@
         (beginning-of-buffer)
         (search-forward "CREATE TABLE")
         (beginning-of-line)
-        (yank))))
+        (yank)))
+    (save-excursion
+      (beginning-of-buffer)
+      (search-forward "CREATE TABLE single_test_runs")
+      (search-forward "INSERT INTO")
+      (beginning-of-line)
+      (let ((beg (point)))
+        (end-of-line)
+        (search-forward "CREATE TABLE")
+        (beginning-of-line)
+        (narrow-to-region beg (point)))
+      (beginning-of-buffer)
+      (setq jscert/beg-point (point))
+      (end-of-line)
+      ;; This next bit seemed to diverge before getting to the widen,
+      ;; but after doing the work. Be careful.
+      (while (search-forward "INSERT INTO")
+        (beginning-of-line)
+        (backward-char)
+        (replace-regexp "
+  " "" nil jscert/beg-point (point))
+        (end-of-line)
+        (forward-char)
+        (setq jscert/beg-point (point))
+        (end-of-line))
+      (end-of-buffer)
+      (search-backward "INSERT INTO")
+      (beginning-of-line)
+      (setq jscert/beg-point (point))
+      (end-of-buffer)
+      (replace-regexp "
+  " "" nil jscert/beg-point (point))
+      (widen)))
 #+end_src
 
   Then dump it into psql:
