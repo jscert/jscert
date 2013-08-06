@@ -85,7 +85,10 @@
       (end-of-buffer)
       (replace-regexp "
   " "" nil jscert/beg-point (point))
-      (widen)))
+      (widen)
+      (beginning-of-buffer)
+      (replace-string ");');" ");")))
+  
 #+end_src
 
   Then dump it into psql:
@@ -93,3 +96,6 @@
 #+begin_src sh
       psql -f gds.dbdump -h ec2-75-101-167-151.compute-1.amazonaws.com -d ddgkhduqenb3vg -U cshutvvmqmlvxn -p 5432
 #+end_src
+
+  Note: in the end I effectively manually chopped out the
+  single-test-run entries. We can fix those later if we care.
