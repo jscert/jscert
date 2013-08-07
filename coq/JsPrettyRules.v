@@ -4128,6 +4128,53 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_own_prop_args_obj_4 : forall S C A, (* Step 6 *)
       red_spec S C (spec_args_obj_get_own_prop_4 A) (ret S (full_descriptor_some A))    
 
+  (* String Object: GetOwnProperty (15.5.5.2) *)
+
+  | red_spec_object_get_own_prop_string : forall S C l x (y:specret full_descriptor) (y1:specret full_descriptor), (* Step 1 *)
+      red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y1 ->
+      red_spec S C (spec_string_get_own_prop_1 l x y1) y ->
+      red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_string l x) y
+
+  | red_spec_object_get_own_prop_string_1_attrs : forall S0 S C l x A, (* Step 2 *)
+      red_spec S0 C (spec_string_get_own_prop_1 l x (ret S (full_descriptor_some A))) (ret S (full_descriptor_some A))
+
+  | red_spec_object_get_own_prop_string_1_undef_1 : forall S0 S C l x (y1:specret int) (y:specret full_descriptor), (* Step 3 *)
+      red_spec S C (spec_to_int32 x) y1 ->
+      red_spec S C (spec_string_get_own_prop_2 l x y1) y ->
+      red_spec S0 C (spec_string_get_own_prop_1 l x (ret S full_descriptor_undef)) y
+
+  | red_spec_object_get_own_prop_string_1_undef_2 : forall S0 S C l x k o1 (y:specret full_descriptor), (* Step 3 *)
+      red_expr S C (spec_to_string (abs k)) o1 ->
+      red_spec S C (spec_string_get_own_prop_3 l x o1) y ->
+      red_spec S0 C (spec_string_get_own_prop_2 l x (ret S k)) y
+
+  | red_spec_object_get_own_prop_string_1_undef_3_different : forall S0 S C l x x', (* Step 3 *)
+      x <> x' ->
+      red_spec S0 C (spec_string_get_own_prop_3 l x (out_ter S x')) (ret S full_descriptor_undef)
+
+  | red_spec_object_get_own_prop_string_1_undef_3_same_1 : forall S0 S C l s x (y:specret full_descriptor), (* Step 4 *)
+      object_prim_value S l s ->
+      red_spec S0 C (spec_string_get_own_prop_4 x s) y ->
+      red_spec S0 C (spec_string_get_own_prop_3 l x (out_ter S x)) y
+
+  | red_spec_object_get_own_prop_string_1_undef_3_same_2 : forall S0 S C l x s y1 (y:specret full_descriptor), (* Step 5 *)
+      red_spec S C (spec_to_int32 x) y1 ->
+      red_spec S0 C (spec_string_get_own_prop_5 s y1) y ->
+      red_spec S0 C (spec_string_get_own_prop_4 x s) y
+
+  | red_spec_object_get_own_prop_string_1_undef_3_same_3 : forall S0 S C s idx len (y:specret full_descriptor), (* Step 6 *)
+      len = String.length s ->
+      red_spec S C (spec_string_get_own_prop_6 s idx len) y ->
+      red_spec S0 C (spec_string_get_own_prop_5 s (ret S idx)) y
+
+  | red_spec_object_get_own_prop_string_1_undef_3_same_4_outofbounds : forall S C s idx len, (* Step 7 *)
+      len <= idx ->
+      red_spec S C (spec_string_get_own_prop_6 s idx len) (ret S full_descriptor_undef)
+
+  | red_spec_object_get_own_prop_string_1_undef_3_same_4_inbounds : forall S C s idx len, (* Step 8, 9 *)
+      len > idx ->
+      red_spec S C (spec_string_get_own_prop_6 s idx len) (ret S (full_descriptor_some (attributes_data_intro (string_sub s idx 1) false true false)))
+
   (** Get value on a reference (returns value) (8.7.1) *)
 
   | red_spec_ref_get_value_value : forall S C v, (* Step 1 *)

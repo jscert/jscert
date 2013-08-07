@@ -705,6 +705,13 @@ with ext_spec :=
   | spec_args_obj_get_own_prop_2 : object_loc -> prop_name -> object_loc -> full_descriptor -> (specret full_descriptor) -> ext_spec
   | spec_args_obj_get_own_prop_3 : full_descriptor -> out -> ext_spec
   | spec_args_obj_get_own_prop_4 : full_descriptor -> ext_spec
+
+  | spec_string_get_own_prop_1 : object_loc -> prop_name -> (specret full_descriptor) -> ext_spec
+  | spec_string_get_own_prop_2 : object_loc -> prop_name -> (specret int) -> ext_spec
+  | spec_string_get_own_prop_3 : object_loc -> prop_name -> out -> ext_spec
+  | spec_string_get_own_prop_4 : prop_name -> string -> ext_spec
+  | spec_string_get_own_prop_5 : string -> (specret int) -> ext_spec
+  | spec_string_get_own_prop_6 : string -> int -> int -> ext_spec
 .
 
 
@@ -1336,7 +1343,12 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_args_obj_get_own_prop_2 _ _ _ _ _ => None
   | spec_args_obj_get_own_prop_3 _ o => Some o
   | spec_args_obj_get_own_prop_4 _ => None
-
+  | spec_string_get_own_prop_1 _ _ _ => None
+  | spec_string_get_own_prop_2 _ _ y => out_of_specret y
+  | spec_string_get_own_prop_3 _ _ o => Some o
+  | spec_string_get_own_prop_4 _ _ => None
+  | spec_string_get_own_prop_5 _ y => out_of_specret y
+  | spec_string_get_own_prop_6 _ _ _ => None
   end.
 
 
