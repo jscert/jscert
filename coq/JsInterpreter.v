@@ -493,6 +493,8 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
                          end)
                      end)))
           end)
+      | builtin_get_own_prop_string => (* TODO *)
+        default S
       end).
 
 Definition run_object_get_prop runs S C l x : specres full_descriptor :=

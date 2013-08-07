@@ -340,7 +340,8 @@ Inductive builtin_get :=
 
 Inductive builtin_get_own_prop :=
   | builtin_get_own_prop_default
-  | builtin_get_own_prop_args_obj.
+  | builtin_get_own_prop_args_obj
+  | builtin_get_own_prop_string.
 
 (** Identifiers for "GetProperty" methods *)
 
