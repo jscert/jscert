@@ -3356,6 +3356,72 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
        red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 A)) (out_ter S b)
 
   (*------------------------------------------------------------*)
+  (** ** Function builtin functions *)
+  
+  (** Function.prototype() -- always return undefined  (15.3.4) *)
+
+  | red_spec_call_function_proto_invoked : forall S C vthis args,
+      red_expr S C (spec_call_prealloc prealloc_function_proto vthis args) (out_ter S undef)
+
+  (** Function: Get  (returns value) (15.3.5.4) *)
+
+  | red_spec_object_get_1_function : forall S C vthis l x o1 o, (* Step 1 *)
+      red_expr S C (spec_object_get_1 builtin_get_default vthis l x) o1 -> 
+      red_expr S C (spec_function_get_1 l x o1) o ->
+      red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o  
+
+  | red_spec_function_get_1_error : forall S0 S C l x v o, (* Step 2 *)
+      spec_function_get_error_case S x v ->      
+      red_expr S C (spec_error native_error_type) o ->
+      red_expr S0 C (spec_function_get_1 l x (out_ter S v)) o  
+
+  | red_spec_function_get_1_normal : forall S0 S C l x v o, (* Step 3 *)
+      ~ (spec_function_get_error_case S x v) ->
+      red_expr S0 C (spec_function_get_1 l x (out_ter S v)) (out_ter S v)  
+
+   (** Function: HasInstance  (returns bool)  (15.3.5.3) *)
+
+   | red_spec_object_has_instance_1_function_prim : forall S C l w, (* Step 1 *)
+       red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_prim w)) (out_ter S false)
+  
+   | red_spec_object_has_instance_1_function_object : forall o1 S C l lv o, (* Step 2 *)
+       red_expr S C (spec_object_get l "prototype") o1 ->
+       red_expr S C (spec_function_has_instance_1 lv o1) o ->
+       red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_object lv)) o
+       
+   | red_spec_function_has_instance_1_prim : forall S0 S C lv v o, (* Step 3 *)
+       type_of v <> type_object ->
+       red_expr S C (spec_error native_error_type) o ->
+       red_expr S0 C (spec_function_has_instance_1 lv (out_ter S v)) o
+
+   | red_spec_function_has_instance_1_object : forall S0 S C lv lo o, (* Step 4 *)
+       red_expr S C (spec_function_has_instance_2 lo lv) o ->
+       red_expr S0 C (spec_function_has_instance_1 lv (out_ter S (value_object lo))) o
+
+   | red_spec_function_has_instance_2 : forall S C lo lv vproto o, (* Step 4a *)
+       object_proto S lv vproto ->     
+       red_expr S C (spec_function_has_instance_3 lo vproto) o ->
+       red_expr S C (spec_function_has_instance_2 lo lv) o
+
+   | red_spec_function_has_instance_3_null : forall S C lo, (* Step 4b *)
+       red_expr S C (spec_function_has_instance_3 lo null) (out_ter S false)
+
+   | red_spec_function_has_instance_3_eq : forall S C lo lv, (* Step 4c *)
+       lv = lo ->
+       red_expr S C (spec_function_has_instance_3 lo lv) (out_ter S true)
+      
+   | red_spec_function_has_instance_3_neq : forall S C lo lv o, (* Step 4 (repeat) *)
+       lv <> lo ->     
+       red_expr S C (spec_function_has_instance_2 lo lv) o ->
+       red_expr S C (spec_function_has_instance_3 lo lv) o
+
+  (*------------------------------------------------------------*)
+  (** ** Function built using Function.prototype.bind (15.3.4.5) *)
+
+   (** LATER: HasInstance, call, construct  *)
+
+  (*------------------------------------------------------------*)
+  (** ** Array builtin functions *)
   (** Array.prototype.pop() (returns value)  (15.4.4.6) *)
   
   | red_spec_call_array_proto_pop : forall S C vthis l o o1 args, (* 1 *)
@@ -3466,74 +3532,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_array_proto_push_6 : forall S0 S C vlen r0, (* 7 *)
       red_expr S0 C (spec_call_array_proto_push_6 vlen (out_ter S r0)) (out_ter S vlen)
     
-  (*------------------------------------------------------------*)
-  (** ** Function builtin functions *)
-  
-  (** Function.prototype() -- always return undefined  (15.3.4) *)
-
-  | red_spec_call_function_proto_invoked : forall S C vthis args,
-      red_expr S C (spec_call_prealloc prealloc_function_proto vthis args) (out_ter S undef)
-
-  (** Function: Get  (returns value) (15.3.5.4) *)
-
-  | red_spec_object_get_1_function : forall S C vthis l x o1 o, (* Step 1 *)
-      red_expr S C (spec_object_get_1 builtin_get_default vthis l x) o1 -> 
-      red_expr S C (spec_function_get_1 l x o1) o ->
-      red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o  
-
-  | red_spec_function_get_1_error : forall S0 S C l x v o, (* Step 2 *)
-      spec_function_get_error_case S x v ->      
-      red_expr S C (spec_error native_error_type) o ->
-      red_expr S0 C (spec_function_get_1 l x (out_ter S v)) o  
-
-  | red_spec_function_get_1_normal : forall S0 S C l x v o, (* Step 3 *)
-      ~ (spec_function_get_error_case S x v) ->
-      red_expr S0 C (spec_function_get_1 l x (out_ter S v)) (out_ter S v)  
-
-   (** Function: HasInstance  (returns bool)  (15.3.5.3) *)
-
-   | red_spec_object_has_instance_1_function_prim : forall S C l w, (* Step 1 *)
-       red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_prim w)) (out_ter S false)
-  
-   | red_spec_object_has_instance_1_function_object : forall o1 S C l lv o, (* Step 2 *)
-       red_expr S C (spec_object_get l "prototype") o1 ->
-       red_expr S C (spec_function_has_instance_1 lv o1) o ->
-       red_expr S C (spec_object_has_instance_1 builtin_has_instance_function l (value_object lv)) o
-       
-   | red_spec_function_has_instance_1_prim : forall S0 S C lv v o, (* Step 3 *)
-       type_of v <> type_object ->
-       red_expr S C (spec_error native_error_type) o ->
-       red_expr S0 C (spec_function_has_instance_1 lv (out_ter S v)) o
-
-   | red_spec_function_has_instance_1_object : forall S0 S C lv lo o, (* Step 4 *)
-       red_expr S C (spec_function_has_instance_2 lo lv) o ->
-       red_expr S0 C (spec_function_has_instance_1 lv (out_ter S (value_object lo))) o
-
-   | red_spec_function_has_instance_2 : forall S C lo lv vproto o, (* Step 4a *)
-       object_proto S lv vproto ->     
-       red_expr S C (spec_function_has_instance_3 lo vproto) o ->
-       red_expr S C (spec_function_has_instance_2 lo lv) o
-
-   | red_spec_function_has_instance_3_null : forall S C lo, (* Step 4b *)
-       red_expr S C (spec_function_has_instance_3 lo null) (out_ter S false)
-
-   | red_spec_function_has_instance_3_eq : forall S C lo lv, (* Step 4c *)
-       lv = lo ->
-       red_expr S C (spec_function_has_instance_3 lo lv) (out_ter S true)
-      
-   | red_spec_function_has_instance_3_neq : forall S C lo lv o, (* Step 4 (repeat) *)
-       lv <> lo ->     
-       red_expr S C (spec_function_has_instance_2 lo lv) o ->
-       red_expr S C (spec_function_has_instance_3 lo lv) o
-
-  (*------------------------------------------------------------*)
-  (** ** Function built using Function.prototype.bind (15.3.4.5) *)
-
-   (** LATER: HasInstance, call, construct  *)
-
-  (*------------------------------------------------------------*)
-  (** ** Array builtin functions : LATER *)
-
   (* LATER: special implementation of get_own_property *)
 
   (*------------------------------------------------------------*)
