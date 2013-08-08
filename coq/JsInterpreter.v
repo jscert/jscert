@@ -1696,6 +1696,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
         let wr := inequality_test_primitive wa wb in
         res_out (out_ter S1 (ifb wr = prim_undef then false
           else ifb b_neg = true /\ wr = true then false
+          else ifb b_neg = true /\ wr = false then true
           else wr)))))
 
   else ifb op = binary_op_instanceof then

@@ -1104,6 +1104,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (* Note: wr may only be true or false or undef *)
       wr' = (If wr = prim_undef then false  
             else If (b_neg = true /\ wr = true) then false
+            else If (b_neg = true /\ wr = false) then true
             else wr) ->
       red_expr S0 C (expr_inequality_op_2 b_swap b_neg (ret S (value_prim w1, value_prim w2))) (out_ter S wr')
 

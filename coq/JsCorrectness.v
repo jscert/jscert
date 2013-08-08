@@ -2085,7 +2085,7 @@ Proof.
   destruct a as [w1 w2]. let_name. destruct p as [wa wb]. simpls.
   sets_eq wr: (inequality_test_primitive wa wb).
   run_inv. applys_eq* (>> red_expr_inequality_op_2 EQp EQwr) 1.
-   fequals. case_if; case_if; case_if*; case_if*.
+   fequals. case_if; case_if; case_if*; case_if*; case_if*; case_if*; case_if*; case_if*.
   (* instanceof *)
   case_if. subst.
   destruct v2.
