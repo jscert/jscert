@@ -495,8 +495,31 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
                          end)
                      end)))
           end)
-      | builtin_get_own_prop_string => (* TODO *)
-        default S
+      | builtin_get_own_prop_string =>
+        if_spec (default S) (fun S D =>
+          match D with
+          | full_descriptor_some _ =>
+            res_spec S D
+          | full_descriptor_undef =>
+            if_number (runs_type_to_integer runs S C x) (fun S n =>
+              let k := JsNumber.to_int32 n in
+              if_string (runs_type_to_string runs S C (abs k)) (fun S s =>
+                if_bool (runs_type_equal runs S C x s) (fun S b =>
+                  if negb b
+                  then res_spec S full_descriptor_undef
+                  else let prim_value :=
+                           if_some (run_object_method object_prim_value_ S l) (fun (ov : option value) =>
+                             if_some ov (fun v =>
+                               res_ter S v)) in
+                       if_string prim_value (fun S (str : string) =>
+                         let len := Z.of_nat (String.length str) in
+                         let idx := k in
+                         ifb len <= idx
+                         then res_spec S full_descriptor_undef
+                         else let resultStr := String.substring (Z.to_nat idx) 1 str in
+                              let A := attributes_data_intro resultStr true false false in
+                              res_spec S (full_descriptor_some A)))))
+          end)
       end).
 
 Definition run_object_get_prop runs S C l x : specres full_descriptor :=
