@@ -405,6 +405,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
     runs_type_equal : state -> execution_ctx -> value -> value -> result;
+    runs_type_to_integer : state -> execution_ctx -> value -> result;
     runs_type_to_string : state -> execution_ctx -> value -> result
   }.
 
@@ -2715,6 +2716,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
       runs_type_equal := fun S _ _ _ => result_bottom S;
+      runs_type_to_integer := fun S _ _ => result_bottom S;
       runs_type_to_string := fun S _ _ => result_bottom S
     |}
   | S max_step' =>
@@ -2738,9 +2740,9 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_proto_is_prototype_of :=
         wrap object_proto_is_prototype_of;
       runs_type_equal := wrap run_equal;
+      runs_type_to_integer := wrap to_integer;
       runs_type_to_string := wrap to_string
     |}
   end.
 
 End Interpreter.
-
