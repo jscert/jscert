@@ -1407,6 +1407,7 @@ Definition string_of_native_error (ne : native_error) :=
 
 Definition is_syntactic_eval e :=
   match e with
+  | expr_identifier s => decide (s = "eval")
   | expr_literal (literal_string s) => decide (s = "eval")
   | _ => false
   end.
