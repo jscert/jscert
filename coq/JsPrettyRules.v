@@ -1332,7 +1332,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_prim_new_object (prim_number n)) (out_ter S' l)
     
   | red_spec_prim_new_object_string : forall S C s S' l,
-      let O1 := object_new prealloc_string_proto "String" in 
+      let O2 := object_new prealloc_string_proto "String" in
+      let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
       let O := object_with_primitive_value O1 s in 
       (l, S') = object_alloc S O ->
       red_expr S C (spec_prim_new_object (prim_string s)) (out_ter S' l)

@@ -733,7 +733,8 @@ Definition prim_new_object S w : result :=
       let '(l, S1) := object_alloc S O in
       out_ter S1 l
   | prim_string s =>
-      Let O1 := object_new prealloc_string_proto "String" in
+      Let O2 := object_new prealloc_string_proto "String" in
+      Let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
       Let O :=  object_with_primitive_value O1 s in
       let '(l, S1) := object_alloc S O in
       out_ter S1 l
