@@ -2632,6 +2632,21 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_function_proto =>
     out_ter S undef
 
+  | prealloc_string_proto_to_string =>
+    match vthis with
+    | value_prim p =>
+      ifb type_of vthis = type_string
+      then res_ter S vthis
+      else run_error S native_error_type
+    | value_object l =>
+      if_some (run_object_method object_class_ S l) (fun s =>
+        ifb s = "String"
+        then if_some (run_object_method object_prim_value_ S l) (fun ov =>
+               if_some ov (fun v =>
+                 res_ter S v))
+        else run_error S native_error_type)
+    end
+
   | prealloc_bool =>
     let v := get_arg 0 args in
     out_ter S (convert_value_to_boolean v)
