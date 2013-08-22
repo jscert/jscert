@@ -3576,7 +3576,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       type_of vthis = type_string ->
       red_expr S C (spec_call_prealloc prealloc_string_proto_to_string vthis args) (out_ter S vthis)
 
-  | red_spec_call_string_proto_to_string_obj_string : forall S C l v args o,
+  | red_spec_call_string_proto_to_string_obj_string : forall S C l v args,
       object_class S l "String" ->
       object_prim_value S l v ->
       red_expr S C (spec_call_prealloc prealloc_string_proto_to_string (value_object l) args) (out_ter S v)

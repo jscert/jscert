@@ -3160,9 +3160,128 @@ Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
   run_call_prealloc runs S C B vthis args = o ->
   red_expr S C (spec_call_prealloc B vthis args) o.
-Admitted. (* Part of libraries, will do afterwards *)
-
-
+Proof.
+  introv IH HR. unfolds in HR.
+  destruct B.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  destruct vthis.
+  destruct p.
+    applys* red_spec_call_string_proto_to_string_bad_type.
+    case_if*.
+    case_if*.
+    case_if*.
+    applys* red_spec_call_string_proto_to_string_bad_type. 
+    applys* red_spec_call_string_proto_to_string_bad_type.
+    case_if*.
+    case_if*.
+    case_if*.
+    applys* red_spec_call_string_proto_to_string_bad_type.
+    case_if*. unfolds in HR. unfolds in HR. unfolds in HR. unfolds in HR.
+    inversion HR.
+    applys red_spec_call_string_proto_to_string_prim_string. simpl. reflexivity.
+    run.    
+    cases_if*.
+    run.
+    run.
+    apply red_spec_call_string_proto_to_string_obj_string.
+    unfold object_class.
+    unfolds in E.
+    sets_eq <- Owitness: (pick_option (object_binds S o0)).
+    destruct Owitness; simpls; tryfalse.
+    exists o.
+    splits~.
+    forwards~: @pick_option_correct EQOwitness.
+    inverts~ E.
+    unfold object_prim_value.
+    unfolds in E0.
+    sets_eq <- Owitness: (pick_option (object_binds S o0)).
+    destruct Owitness; simpls; tryfalse.
+    exists o.
+    splits~.
+    forwards~: @pick_option_correct EQOwitness.
+    inverts~ E0.
+    applys* red_spec_call_string_proto_to_string_obj_other.
+    unfold object_class.
+    unfolds in E.
+    sets_eq <- Owitness: (pick_option (object_binds S o0)).
+    destruct Owitness. 
+      simpls. inversion~ E. intro Hfalse. inversion Hfalse. destruct H as [H1 H2].
+      assert (object_binds_func: forall S l O1 O2, object_binds S l O1 -> object_binds S l O2 -> O1 = O2).
+        introv.
+        intros HO1 HO2.
+        unfolds in HO1.
+        unfolds in HO2.
+        apply Heap_binds_func with object_loc (state_object_heap S0) l.
+        apply object_loc_comparable. apply HO1. apply HO2.
+      apply pick_option_correct in EQOwitness.
+      apply object_binds_func with S o0 o1 x0 in EQOwitness.
+      rewrite EQOwitness in H0. rewrite H0 in H2. rewrite H2 in n. tryfalse.
+      assumption.
+      
+      simpls. inversion E.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip.
+  skip. 
+Admitted. (* faster *)
+ 
 Lemma run_call_correct : forall runs S C l v vs o,
   runs_type_correct runs ->
   run_call runs S C l v vs = o ->
