@@ -3568,7 +3568,29 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* LATER: special implementation of get_own_property *)
 
   (*------------------------------------------------------------*)
-  (** ** String builtin functions : LATER *)
+  (** ** String builtin functions *)
+
+  (** String.prototype.toString() (returns string)  (15.5.4.2) *)
+
+  | red_spec_call_string_proto_to_string_prim_string : forall S C vthis args,
+      type_of vthis = type_string ->
+      red_expr S C (spec_call_prealloc prealloc_string_proto_to_string vthis args) (out_ter S vthis)
+
+  | red_spec_call_string_proto_to_string_obj_string : forall S C l v args o,
+      object_class S l "String" ->
+      object_prim_value S l v ->
+      red_expr S C (spec_call_prealloc prealloc_string_proto_to_string (value_object l) args) (out_ter S v)
+
+  | red_spec_call_string_proto_to_string_obj_other : forall S C l args o,
+      ~ object_class S l "String" ->
+      red_expr S C (spec_error native_error_type) o ->
+      red_expr S C (spec_call_prealloc prealloc_string_proto_to_string (value_object l) args) o
+
+  | red_spec_call_string_proto_to_string_bad_type : forall S C vthis args o,
+      type_of vthis <> type_string ->
+      type_of vthis <> type_object ->
+      red_expr S C (spec_error native_error_type) o ->
+      red_expr S C (spec_call_prealloc prealloc_string_proto_to_string vthis args) o
 
   (* LATER: special implementation of get_own_property *)
 
