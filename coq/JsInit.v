@@ -383,9 +383,13 @@ Definition object_prealloc_string :=
 Definition object_prealloc_string_proto :=
   let P := Heap.empty in
   let P := write_native P "constructor" prealloc_string in
+  let P := write_native P "toString" prealloc_string_proto_to_string in
   (* LATER *)
   let O := object_create_builtin prealloc_object_proto "String" P in (* This is only temporary. *)
   object_with_primitive_value O "". (* This also. *)
+
+Definition string_proto_to_string_function_object :=
+  object_create_prealloc_call prealloc_string_proto_to_string 0 Heap.empty.
 
 
 (**************************************************************)
@@ -541,9 +545,14 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
   let h := Heap.write h prealloc_object_proto_value_of object_proto_value_of_function_object in
   let h := Heap.write h prealloc_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
   let h := Heap.write h prealloc_object_proto_prop_is_enumerable object_proto_prop_is_enumerable_function_object in
+
   (* Function objects of Array.prototype *)
   let h := Heap.write h prealloc_array_proto_pop array_proto_pop_function_object in
   let h := Heap.write h prealloc_array_proto_push array_proto_push_function_object in
+
+  (* Function objects of String.prototype *)
+  let h := Heap.write h prealloc_string_proto_to_string string_proto_to_string_function_object in
+
   (* Function objects of Boolean.prototype *)
   let h := Heap.write h prealloc_bool_proto_to_string bool_proto_to_string_function_object in
   let h := Heap.write h prealloc_bool_proto_value_of bool_proto_value_of_function_object in h.
