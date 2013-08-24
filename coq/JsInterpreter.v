@@ -258,7 +258,7 @@ Definition if_success_or_return W (K1 : state -> result) (K2 : state -> resvalue
     match res_type R with
     | restype_normal =>
       if_empty_label S R (fun _ => K1 S)
-    | restype_return => 
+    | restype_return =>
       if_empty_label S R (fun _ => K2 S (res_value R))
     | _ => W
     end).
@@ -424,7 +424,7 @@ Definition object_has_prop runs S C l x : result :=
 Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
 
-  Let default :=     
+  Let default :=
      if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
       match D with
       | full_descriptor_undef => res_ter S0 undef
@@ -438,10 +438,10 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
             result_not_yet_implemented (* TODO:  Waiting for the specification. *)
           end
       end) in
-  
+
   match B with
   | builtin_get_default => default
-  
+
   | builtin_get_function =>
     if_value default (fun S' v =>
        ifb spec_function_get_error_case S' x v then
@@ -644,7 +644,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                  | attributes_data_of _ =>
                    impossible_with_heap_because S "accessor is not data in [defineOwnProperty]"
                  end
-               else 
+               else
                 (* LATER: check this is true *)
                 impossible_with_heap_because S "cases are mutually exclusives in [defineOwnProperty]"
              end))
@@ -695,7 +695,7 @@ Definition run_to_descriptor runs S C v : specres descriptor :=
 
 Definition prim_new_object S w : result :=
   match w with
-  | prim_bool b => 
+  | prim_bool b =>
       Let O1 := object_new prealloc_bool_proto "Boolean" in
       Let O := object_with_primitive_value O1 b in
       let '(l, S1) := object_alloc S O in
@@ -713,7 +713,7 @@ Definition prim_new_object S w : result :=
   | _ =>
     impossible_with_heap_because S "[prim_new_object] received an null or undef."
   end.
-  
+
 Definition to_object S v : result :=
   match v with
   | prim_null => run_error S native_error_type
@@ -855,7 +855,7 @@ Definition ref_get_value runs S C rv : specres value :=
       | ref_base_type_value v =>
         ifb ref_has_primitive_base r then
           if_value (prim_value_get runs S C v (ref_name r)) (@res_spec _)
-        else 
+        else
           match v with
            | value_object l =>
              if_value (run_object_get runs S C l (ref_name r)) (@res_spec _)
@@ -972,19 +972,19 @@ Definition ref_put_value runs S C rv v : result_void :=
       match ref_base r with
       | ref_base_type_value v' =>
         ifb ref_kind_of r = ref_kind_primitive_base then
-          match v' with 
+          match v' with
           | value_prim w => prim_value_put runs S C w (ref_name r) v (ref_strict r)
           | _ => impossible_with_heap_because S "[ref_put_value] impossible case"
           end
         else
-          match v' with 
+          match v' with
           | value_object l => object_put runs S C l (ref_name r) v (ref_strict r)
           | _ => impossible_with_heap_because S "[ref_put_value] impossible case"
           end
-      | ref_base_type_env_loc L => 
+      | ref_base_type_env_loc L =>
         impossible_with_heap_because S "[ref_put_value] contradicts ref_is_property"
       end
-    else 
+    else
       match ref_base r with
       | ref_base_type_value _ =>
         impossible_with_heap_because S "[ref_put_value] impossible spec"
@@ -1229,7 +1229,7 @@ Definition run_call_default runs S C (lf : object_loc) : result :=
        match OC with
        | None => default
        | Some bd =>
-         ifb funcbody_empty bd then 
+         ifb funcbody_empty bd then
            default
          else
            if_success_or_return (runs_type_prog runs S C (funcbody_prog bd))
@@ -1242,7 +1242,7 @@ Definition creating_function_object_proto runs S C l : result :=
     Let A1 := attributes_data_intro l true false true in
     if_bool (object_define_own_prop runs S1 C lproto "constructor" A1 false) (fun S2 b =>
       Let A2 := attributes_data_intro lproto true false false in
-      object_define_own_prop runs S2 C l "prototype" A2 false)).    
+      object_define_own_prop runs S2 C l "prototype" A2 false)).
 
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
   Let O := object_new prealloc_function_proto "Function" in
@@ -1310,7 +1310,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
                   ) else ifb descriptor_is_accessor A
                     \/ attributes_writable A = false \/ attributes_enumerable A = false then
                       run_error S3 native_error_type
-                  else 
+                  else
                     follow S3
                 end)
             ) else follow S2)
@@ -1424,7 +1424,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
           Let follow2 := fun S' =>
             let vds := prog_vardecl p in
             binding_inst_var_decls runs S' C L vds bconfig str
-            in 
+            in
           match ct, funco, bdefined with
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
@@ -1432,7 +1432,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
             impossible_with_heap_because S2 "Strange `arguments' object in [execution_ctx_binding_inst]."
           | _, _, _ => follow2 S2
           end))
-      in 
+      in
     match ct, funco with
       | codetype_func, Some func =>
         if_some (run_object_method object_formal_parameters_ S func) (fun nameso =>
@@ -1455,7 +1455,7 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
         if_some (run_object_method object_scope_ S' lf) (fun lexo =>
           if_some lexo (fun lex =>
             Let p := lexical_env_alloc_decl S' lex in
-            let '(lex', S1) := p in 
+            let '(lex', S1) := p in
             Let C' := execution_ctx_intro_same lex' vthis' str in
             if_void (execution_ctx_binding_inst runs S1 C' codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
             run_call_default runs S2 C' lf)))
@@ -1529,7 +1529,7 @@ Definition from_prop_descriptor runs S C D : result :=
           Let A2 := attributes_data_intro_all_true (attributes_configurable A) in
           if_bool (object_define_own_prop runs S0' C l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' _ =>
             res_ter S' l))
-        in 
+        in
       match A with
       | attributes_data_of Ad =>
         Let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
@@ -1615,7 +1615,7 @@ Definition run_equal runs S C v1 v2 : result :=
         runs_type_equal runs S0 C v1 v2') in
     let so b : result :=
       out_ter S b in
-    ifb (ty1 = type_null /\ ty2 = type_undef) then 
+    ifb (ty1 = type_null /\ ty2 = type_undef) then
       so true
     else ifb (ty1 = type_undef /\ ty2 = type_null) then
       so true
@@ -1652,7 +1652,7 @@ Definition convert_twice_string runs S C v1 v2 :=
 
 
 
-Definition issome T (ot:option T) := 
+Definition issome T (ot:option T) :=
   match ot with
   | Some _ => true
   | _ => false
@@ -1671,7 +1671,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
   else if issome (get_puremath_op op) then
     if_some (get_puremath_op op) (fun mop =>
       if_spec (convert_twice_number runs S C v1 v2) ((fun S1 nn => let '(n1,n2) := nn in
-        res_out (out_ter S1 (mop n1 n2)))))  
+        res_out (out_ter S1 (mop n1 n2)))))
 
   else if issome (get_shift_op op) then
     if_some (get_shift_op op) (fun so =>
@@ -1684,7 +1684,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
   else if issome (get_bitwise_op op) then
     if_some (get_bitwise_op op) (fun bo =>
       if_spec (to_int32 runs S C v1) (fun S1 k1 =>
-        if_spec (to_int32 runs S1 C v2) (fun S2 k2 =>  
+        if_spec (to_int32 runs S1 C v2) (fun S2 k2 =>
           res_ter S2 (JsNumber.of_int (bo k1 k2)))))
 
   else if issome (get_inequality_op op) then
@@ -1714,13 +1714,13 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     match v2 with
     | value_object l =>
       if_string (to_string runs S C v1) (fun S2 x =>
-        object_has_prop runs S2 C l x) 
+        object_has_prop runs S2 C l x)
     | value_prim _ => run_error S native_error_type
     end
 
   else ifb op = binary_op_equal then
     runs_type_equal runs S C v1 v2
- 
+
   else ifb op = binary_op_disequal then
     if_bool (runs_type_equal runs S C v1 v2) (fun S0 b0 =>
       (res_ter S0 (negb b0)))
@@ -1993,7 +1993,7 @@ Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result 
           | restype_throw =>
             res_ter S2 (res_throw (res_value R))
           | restype_normal =>
-             if_empty_label S2 R (fun _ => 
+             if_empty_label S2 R (fun _ =>
               match res_value R with
               | resvalue_value v =>
                 res_ter S2 v
@@ -2020,7 +2020,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
           ifb ~ (is_callable S3 l) then run_error S3 native_error_type
           else
           *)
-          ifb (is_callable S3 l) then 
+          ifb (is_callable S3 l) then
             Let follow := fun vthis =>
               ifb l = prealloc_global_eval then
                 run_eval runs S3 C is_eval_direct vs
@@ -2402,9 +2402,11 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
 
   | prealloc_object_get_proto_of =>
     match get_arg 0 args with
-    | value_object l => 
-      if_some (run_object_method object_proto_ S l) (fun proto => res_ter S proto)
-    | value_prim _ => run_error S native_error_type
+    | value_object l =>
+      if_some (run_object_method object_proto_ S l) (fun proto =>
+        res_ter S proto)
+    | value_prim _ =>
+      run_error S native_error_type
     end
 
   | prealloc_object_get_own_prop_descriptor =>
@@ -2569,7 +2571,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_object_proto_is_prototype_of =>
     let v := get_arg 0 args in
     match v with
-    | value_prim w => out_ter S false
+    | value_prim _ =>
+      out_ter S false
     | value_object l =>
       if_object (to_object S vthis) (fun S1 lo =>
         runs_type_object_proto_is_prototype_of runs S1 lo l)
