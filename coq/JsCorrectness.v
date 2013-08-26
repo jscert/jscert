@@ -1801,6 +1801,7 @@ Proof.
   run_inv. applys* red_spec_to_primitive_pref_prim.
   applys* red_spec_to_primitive_pref_object.
   applys* object_default_value_correct.
+  run_pre. rewrite R1. run_post; substs~.
 Qed.
 
 Lemma to_number_correct : forall runs S C v o,
@@ -3297,4 +3298,3 @@ Proof.
 Qed.
 
 
- 

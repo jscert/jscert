@@ -1078,16 +1078,9 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
 Definition to_primitive runs S C v (prefo : option preftype) : result :=
   match v with
   | value_prim w => out_ter S w
-  | value_object l => object_default_value runs S C l prefo
-  end.
-(* NEW (to be replaced after the semantics will have been updated):
-Definition to_primitive runs S C v (prefo : option preftype) : specres prim :=
-  match v with
-  | value_prim w => res_spec S w
   | value_object l =>
-    if_prim_spec (object_default_value runs S C l prefo) res_spec
+    if_prim (object_default_value runs S C l prefo) res_ter
   end.
-*)
 
 Definition to_number runs S C v : result :=
   match v with
@@ -1189,7 +1182,8 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     build_error S (prealloc_native_error ne) v
 
   | prealloc_native_error_proto ne =>
-    result_not_yet_implemented (* TODO:  Waiting for specification *)
+    Let v := get_arg 0 args in
+    build_error S B v
 
   | _ =>
     impossible_with_heap_because S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
@@ -2617,6 +2611,17 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       | Some (prim_number n) => res_ter S n
       | _ => run_error S native_error_type
       end)
+
+  | prealloc_error =>
+    Let v := get_arg 0 args in
+    build_error S prealloc_error_proto v
+
+  | prealloc_native_error_proto ne =>
+    Let v := get_arg 0 args in
+    build_error S B v
+
+  | prealloc_throw_type_error =>
+    run_error S native_error_type
 
   | _ =>
     result_not_yet_implemented (* LATER *)
