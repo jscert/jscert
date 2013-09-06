@@ -215,7 +215,7 @@ Definition object_get_own_prop_name_function_object :=
 Definition object_create_function_object :=
   object_create_prealloc_call prealloc_object_create 1 Heap.empty.
 Definition object_define_prop_function_object :=
-  object_create_prealloc_call prealloc_object_define_prop 1 Heap.empty.
+  object_create_prealloc_call prealloc_object_define_prop 3 Heap.empty.
 Definition object_define_props_function_object :=
   object_create_prealloc_call  prealloc_object_define_props 1 Heap.empty.
 Definition object_seal_function_object :=
