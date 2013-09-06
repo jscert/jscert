@@ -382,7 +382,7 @@ def jsRefArgBuilder(filename):
         arglist.append(filename)
         arglist.append("-file")
         arglist.append("tests/LambdaS5/lambda-post.js")
-    elif filename.startswith(os.path.join(os.getcwd(), "tests/SpiderMonkey/tests/")):
+    elif filename.startswith(os.path.join(os.getcwd(), "tests/SpiderMonkey/")):
         arglist.append("-test_prelude")
         arglist.append("interp/test_prelude_SpiderMonkey.js")
         arglist.append("-test_prelude")
