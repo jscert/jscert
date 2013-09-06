@@ -2896,7 +2896,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (l, S') = object_alloc S O ->
       red_expr S C (spec_call_object_new_1 v) (out_ter S' l)
 
-  (** Object.GetPrototypeOf (returns value)  (15.2.3.2) *)
+  (** Object.getPrototypeOf (returns value)  (15.2.3.2) *)
 
   | red_spec_call_object_get_proto_of : forall S C v r vthis args o, 
       arguments_from args (v::nil) ->
