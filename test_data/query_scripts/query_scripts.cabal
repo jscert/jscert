@@ -16,20 +16,20 @@ cabal-version:       >=1.8
 
 executable add_test_cases
   main-is: add_test_cases.hs
-  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, HDBC-postgresql ==2.3.*, filepath ==1.3.*, bytestring ==0.10.*
+  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, filepath ==1.3.*, bytestring ==0.10.*
 
 executable manage_test_group
   main-is: manage_test_group.hs
-  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, HDBC-postgresql ==2.3.*, cmdargs ==0.10.* && >=0.10.4, filepath ==1.3.*
+  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, cmdargs ==0.10.* && >=0.10.4, filepath ==1.3.*
 
 executable make_group_by_content
   main-is: make_group_by_content.hs
-  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, HDBC-postgresql ==2.3.*, regex-pcre ==0.94.*, filepath ==1.3.*, bytestring ==0.10.*
+  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, regex-pcre ==0.94.*, filepath ==1.3.*, bytestring ==0.10.*
 
 executable make_simple_report
   main-is: make_simple_report.hs
-  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, HDBC-postgresql ==2.3.*, hastache ==0.5.*, cmdargs ==0.10.*, filepath ==1.3.*, transformers ==0.3.*, time ==1.4.*, old-locale ==1.0.*, bytestring ==0.10.*
+  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, hastache ==0.5.*, cmdargs ==0.10.*, filepath ==1.3.*, transformers ==0.3.*, time ==1.4.*, old-locale ==1.0.*, bytestring ==0.10.*
 
 executable update_known_passes
   main-is: update_known_passes.hs
-  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, HDBC-postgresql ==2.3.*, cmdargs ==0.10.*, filepath ==1.3.*
+  build-depends:       base ==4.6.*, directory ==1.2.*, HDBC ==2.3.*, HDBC-sqlite3 ==2.3.*, cmdargs ==0.10.*, filepath ==1.3.*

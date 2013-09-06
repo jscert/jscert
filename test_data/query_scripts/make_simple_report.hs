@@ -19,6 +19,7 @@ import Control.Monad.IO.Class
 import Data.List(intersperse)
 
 data QueryType = StmtGetTestRunByID | StmtGetBatchIDs | GetLatestBatch
+               | GetSomeBatch
                | StmtGetSTRsByBatch | StmtGetSTRsByBatchStdOut
                | StdOutLike | StdOutNotLike | StdOutNotLikeEither
                | StdOutErrNotLikeAny | StdErrLike | OnlyInteresting
@@ -36,6 +37,7 @@ data Options = Options
                , query2 :: String
                , stdOutList :: [StdOutPattern]
                , stdErrList :: [StdErrPattern]
+               , testBatch :: Maybe Int
                } deriving (Data,Typeable,Show)
 
 progOpts :: Options
@@ -75,6 +77,7 @@ progOpts = Options
                            "%Warning: ref_get_value returns the undefined value on % . charAt%",
                            "%Warning: ref_get_value returns the undefined value on % . keys%"]
                           &= help "All the things we want to check from stderr"
+           , testBatch = Nothing
            }
 
 data Batch = Batch
@@ -121,6 +124,19 @@ stmts _ _ GetLatestBatch           = "select id,"++
                                      "select max(id) from ("++
                                      "(select * from test_batch_runs where "++
                                      "implementation='JSRef')))"
+stmts _ _ GetSomeBatch             = "select id,"++
+                                     "time,"++
+                                     "implementation,"++
+                                     "impl_path,"++
+                                     "impl_version,"++
+                                     "title,"++
+                                     "notes,"++
+                                     "timestamp,"++
+                                     "system,"++
+                                     "osnodename,"++
+                                     "osrelease,"++
+                                     "osversion,"++
+                                     "hardware from test_batch_runs where id=?"
 stmts _ _ StmtGetSTRsByBatchStdOut = "SELECT * from single_test_runs where stdout LIKE ? AND batch_id=?;"
 stmts _ _ StmtGetSTRsByBatch       = "SELECT * from single_test_runs where batch_id=?"
 stmts _ _ StdOutLike               = "SELECT id,test_id,batch_id,status,stdout,stderr from single_test_runs where stdout LIKE ? AND batch_id=?;"
@@ -267,6 +283,13 @@ getLatestBatch con = do
   dat <- fmap head $ fetchAllRows stmt
   return $ dbToBatch dat
 
+getSomeBatch :: Int -> Connection -> IO Batch
+getSomeBatch bid con = do
+  stmt <- prepare con (stmts [] [] GetSomeBatch)
+  execute stmt [toSql bid]
+  dat <- fmap head $ fetchAllRows stmt
+  return $ dbToBatch dat
+
 makeQueryArgs :: QueryType -> Int -> String -> String -> [StdOutPattern] -> [StdErrPattern] -> [SqlValue]
 makeQueryArgs StdOutLike batch querystr1 _ _ _ = [toSql querystr1, toSql batch]
 makeQueryArgs StdErrLike batch querystr1 _ _ _ = [toSql querystr1, toSql batch]
@@ -300,7 +323,7 @@ main :: IO ()
 main = do
   opts <- cmdArgs progOpts
   con <- getConnectionFromQueries
-  latestBatch <- withTransaction con getLatestBatch
+  latestBatch <- withTransaction con (maybe getLatestBatch getSomeBatch (testBatch opts))
   strs <- withTransaction con $
           getTestsBySomeQuery (queryType opts) (bId latestBatch) (query opts) (query2 opts) (stdOutList opts) (stdErrList opts)
   outertemp <- outerTemplate

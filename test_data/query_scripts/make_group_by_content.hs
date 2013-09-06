@@ -27,6 +27,9 @@ isMathFile content = ("<< 0" `isInfixOf` content)
                      || (">>> 0" `isInfixOf` content)
                      || content =~ ("~\\d"::ByteString)
 
+isMathObjFile :: ByteString -> Bool
+isMathObjFile = ("Math." `isInfixOf`)
+
 isNumFile :: ByteString -> Bool
 isNumFile = ("Number." `isInfixOf`)
 
@@ -61,6 +64,7 @@ grouptypes "string" = ("String object tests", isStringFile)
 grouptypes "tonumber" = ("ToNumber conversion tests", isToNumberTest)
 grouptypes "while" = ("Tests that use while loops", isWhileTest)
 grouptypes "strict" = ("Tests that only work in strict mode",isStrictTest)
+grouptypes "math" = ("Ignorable: Tests that use Math.something", isMathObjFile)
 
 main :: IO ()
 main = do
