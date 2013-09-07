@@ -107,6 +107,8 @@ Extract Constant JsNumber.from_string =>
       18, which should be the JavaScript result for it. *)".
 Extract Constant JsNumber.to_string =>
   "(fun f -> 
+    prerr_string ""Warning: JsNumber.to_string called. This might be responsible for errors."";
+    prerr_newline();
     let string_of_number n =
       let inum = int_of_float n in
       if (float_of_int inum = n) then string_of_int inum else string_of_float n in
