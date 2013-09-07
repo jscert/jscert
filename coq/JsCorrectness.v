@@ -3214,26 +3214,27 @@ Proof.
   skip.
   skip.
   skip.
+  skip.
   destruct vthis.
   destruct p.
-    applys* red_spec_call_string_proto_to_string_bad_type.
+    applys* red_spec_call_string_proto_value_of_bad_type.
     case_if*.
     case_if*.
     case_if*.
-    applys* red_spec_call_string_proto_to_string_bad_type. 
-    applys* red_spec_call_string_proto_to_string_bad_type.
+    applys* red_spec_call_string_proto_value_of_bad_type. 
+    applys* red_spec_call_string_proto_value_of_bad_type.
     case_if*.
     case_if*.
     case_if*.
-    applys* red_spec_call_string_proto_to_string_bad_type.
+    applys* red_spec_call_string_proto_value_of_bad_type.
     case_if*. unfolds in HR. unfolds in HR. unfolds in HR. unfolds in HR.
     inversion HR.
-    applys red_spec_call_string_proto_to_string_prim_string. simpl. reflexivity.
+    applys red_spec_call_string_proto_value_of_prim_string. simpl. reflexivity.
     run.    
     cases_if*.
     run.
     run.
-    apply red_spec_call_string_proto_to_string_obj_string.
+    apply red_spec_call_string_proto_value_of_obj_string.
     unfold object_class.
     unfolds in E.
     sets_eq <- Owitness: (pick_option (object_binds S o0)).
@@ -3250,7 +3251,7 @@ Proof.
     splits~.
     forwards~: @pick_option_correct EQOwitness.
     inverts~ E0.
-    applys* red_spec_call_string_proto_to_string_obj_other.
+    applys* red_spec_call_string_proto_value_of_obj_other.
     unfold object_class.
     unfolds in E.
     sets_eq <- Owitness: (pick_option (object_binds S o0)).
@@ -3279,7 +3280,6 @@ Proof.
   skip.
   skip.
   skip.
-  skip. 
 Admitted. (* faster *)
  
 Lemma run_call_correct : forall runs S C l v vs o,
