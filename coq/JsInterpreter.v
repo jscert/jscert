@@ -427,34 +427,43 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
 
   Let default :=
-     if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
-      match D with
-      | full_descriptor_undef => res_ter S0 undef
-      | attributes_data_of Ad =>
-          res_ter S0 (attributes_data_value Ad)
-      | attributes_accessor_of Aa =>
-          match attributes_accessor_get Aa with
-          | value_object lf => runs_type_call runs S0 C lf vthis nil
-          | undef => res_ter S0 undef
-          | value_prim _ =>
-            result_not_yet_implemented (* TODO:  Waiting for the specification. *)
-          end
-      end) in
+    fun S l =>
+      if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
+        match D with
+        | full_descriptor_undef => res_ter S0 undef
+        | attributes_data_of Ad =>
+            res_ter S0 (attributes_data_value Ad)
+        | attributes_accessor_of Aa =>
+            match attributes_accessor_get Aa with
+            | value_object lf => runs_type_call runs S0 C lf vthis nil
+            | undef => res_ter S0 undef
+            | value_prim _ =>
+              result_not_yet_implemented (* TODO:  Waiting for the specification. *)
+            end
+        end) in
+  
+  Let function := 
+    fun S => 
+      if_value (default S l) (fun S' v =>
+         ifb spec_function_get_error_case S' x v then
+           run_error S' native_error_type
+         else
+           res_ter S' v
+      ) in
 
   match B with
-  | builtin_get_default => default
+  | builtin_get_default => default S l
 
-  | builtin_get_function =>
-    if_value default (fun S' v =>
-       ifb spec_function_get_error_case S' x v then
-         run_error S' native_error_type
-       else
-         res_ter S' v
-    )
+  | builtin_get_function => function S
 
   | builtin_get_args_obj =>
-    result_not_yet_implemented (* TODO:  Waiting for the specification *)
-
+    if_some (run_object_method object_parameter_map_ S l) (fun lmapo =>
+      if_some lmapo (fun lmap =>
+        if_spec (runs_type_object_get_own_prop runs S C lmap x) (fun S D =>
+          match D with
+          | full_descriptor_undef => function S
+          | _ => default S lmap
+          end)))
   end.
 
 Definition run_object_get runs S C l x : result :=
