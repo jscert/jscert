@@ -1876,11 +1876,11 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
         follows S1 A)
     | propbody_get bd =>
       if_value (create_new_function_in runs S C nil bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro undef v0 true true in
+        let A := attributes_accessor_intro v0 undef true true in
         follows S1 A)
     | propbody_set args bd =>
       if_value (create_new_function_in runs S C args bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro v0 undef true true in
+        let A := attributes_accessor_intro undef v0 true true in
         follows S1 A)
     end
   end.

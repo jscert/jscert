@@ -720,7 +720,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_2 l x (propbody_get bd) pds) o
   
   | red_expr_object_3_get : forall S S0 C A l x v pds o,  
-      A = attributes_accessor_intro undef v true true ->
+      A = attributes_accessor_intro v undef true true ->
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
 
@@ -730,7 +730,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
 
   | red_expr_object_3_set : forall S S0 C A l x v pds o,
-      A = attributes_accessor_intro v undef true true ->
+      A = attributes_accessor_intro undef v true true ->
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
   
