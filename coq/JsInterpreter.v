@@ -2632,7 +2632,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_function_proto =>
     out_ter S undef
 
-  | prealloc_string_proto_to_string =>
+  | prealloc_string_proto_to_string
+  | prealloc_string_proto_value_of =>
     match vthis with
     | value_prim p =>
       ifb type_of vthis = type_string
