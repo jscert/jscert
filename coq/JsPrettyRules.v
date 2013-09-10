@@ -2750,13 +2750,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_from_descriptor_2 l Ad (out_ter S b)) o
 
   | red_spec_from_descriptor_1_accessor : forall S0 S C Aa A' l o o1, (* step 4.a *)
-      A' = attributes_accessor_intro_all_true (attributes_accessor_get Aa) ->
+      A' = attributes_data_intro_all_true (attributes_accessor_get Aa) ->
       red_expr S C (spec_object_define_own_prop l "get" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_3 l Aa o1) o ->
       red_expr S0 C (spec_from_descriptor_1 (attributes_accessor_of Aa) (out_ter S l)) o
 
   | red_spec_from_descriptor_3_accessor : forall S0 S C Aa A' l b o o1, (* step 4.b *)
-      A' = attributes_accessor_intro_all_true (attributes_accessor_set Aa) ->
+      A' = attributes_data_intro_all_true (attributes_accessor_set Aa) ->
       red_expr S C (spec_object_define_own_prop l "set" (descriptor_of_attributes A') throw_false) o1 ->
       red_expr S C (spec_from_descriptor_4 l Aa o1) o ->
       red_expr S0 C (spec_from_descriptor_3 l Aa (out_ter S b)) o 

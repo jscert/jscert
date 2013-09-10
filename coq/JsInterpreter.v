@@ -1563,9 +1563,9 @@ Definition from_prop_descriptor runs S C D : result :=
           Let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
           if_bool (object_define_own_prop runs S2 C l "writable" (descriptor_of_attributes A2) throw_false) follow)
       | attributes_accessor_of Aa =>
-        Let A1 := attributes_accessor_intro_all_true (attributes_accessor_get Aa) in
+        Let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
         if_bool (object_define_own_prop runs S1 C l "get" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
-          Let A2 := attributes_accessor_intro_all_true (attributes_accessor_set Aa) in
+          Let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
           if_bool (object_define_own_prop runs S2 C l "set" (descriptor_of_attributes A2) throw_false) follow)
       end)
   end.
