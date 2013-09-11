@@ -606,15 +606,14 @@ Definition object_can_put runs S C l x : result :=
 
 
 Definition object_define_own_prop runs S C l x Desc throw : result :=
-  if_some (run_object_method object_define_own_prop_ S l) (fun B =>
-    match B with
-    | builtin_define_own_prop_default =>
+  Let reject := fun S throw =>
+    out_error_or_cst S throw native_error_type false in
+
+  Let default := fun S throw =>
       if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
-        Let reject := fun S =>
-          out_error_or_cst S throw native_error_type false in
         if_some (run_object_method object_extensible_ S1 l) (fun ext =>
              match D, ext with
-             | full_descriptor_undef, false => reject S1
+             | full_descriptor_undef, false => reject S1 throw
              | full_descriptor_undef, true =>
                Let A : attributes :=
                  ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
@@ -631,7 +630,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                ifb descriptor_contains A Desc then
                  res_ter S1 true
                else ifb attributes_change_enumerable_on_non_configurable A Desc then
-                 reject S1
+                 reject S1 throw
                else ifb descriptor_is_generic Desc then
                  object_define_own_prop_write S1 A
                else ifb attributes_is_data A <> descriptor_is_data Desc then
@@ -660,12 +659,12 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                    if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
                         object_define_own_prop_write S2 A')
                  else
-                   reject S1)
+                   reject S1 throw)
                else ifb (attributes_is_data A /\ descriptor_is_data Desc) then
                  match A with
                  | attributes_data_of Ad =>
                    ifb attributes_change_data_on_non_configurable Ad Desc then
-                     reject S1
+                     reject S1 throw
                    else
                      object_define_own_prop_write S1 A
                  | attributes_accessor_of _ =>
@@ -675,7 +674,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                  match A with
                  | attributes_accessor_of Aa =>
                    ifb attributes_change_accessor_on_non_configurable Aa Desc then
-                     reject S1
+                     reject S1 throw
                    else
                      object_define_own_prop_write S1 A
                  | attributes_data_of _ =>
@@ -684,9 +683,46 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                else
                 (* LATER: check this is true *)
                 impossible_with_heap_because S "cases are mutually exclusives in [defineOwnProperty]"
-             end))
-      | builtin_define_own_prop_args_obj =>
-        res_ter S true (*impossible_with_heap_because S "Waiting for specification of [builtin_define_own_prop_args_obj] in [object_define_own_prop]."*) (* TODO:  Waiting for the specification.  To be able to call a function call this has been implemented as a function doing nothing, but this is only temporary. *)
+             end)) in
+
+  if_some (run_object_method object_define_own_prop_ S l) (fun B =>
+    match B with
+    | builtin_define_own_prop_default => default S throw
+    | builtin_define_own_prop_args_obj =>
+      if_some (run_object_method object_parameter_map_ S l) (fun lmapo =>
+        if_some lmapo (fun lmap =>
+          if_spec (runs_type_object_get_own_prop runs S C lmap x) (fun S D =>
+            if_bool (default S false) (fun S b =>
+              match b with
+              | false =>
+                reject S throw
+              | true =>
+                Let follow := fun S => res_ter S true in
+                match D with
+                | full_descriptor_undef =>
+                  follow S
+                | full_descriptor_some A =>
+                  ifb descriptor_is_accessor A
+                  then if_bool (runs_type_object_delete runs S C lmap x false) (fun S _ =>
+                         follow S)
+                  else Let follow := fun S =>
+                         match descriptor_writable A with
+                         | Some false => 
+                           if_bool (runs_type_object_delete runs S C lmap x false) (fun S _ =>
+                             follow S)
+                         | _ =>
+                           follow S
+                         end in
+
+                       match descriptor_value A with
+                       | Some v =>
+                         if_void (runs_type_object_put runs S C lmap x v throw) (fun S =>
+                           follow S)
+                       | _ =>
+                         follow S
+                       end
+                end
+              end))))
     end).
 
 Definition run_to_descriptor runs S C v : specres descriptor :=
