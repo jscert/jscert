@@ -494,6 +494,9 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
                        test_id LIKE "%test262/intl402%");
 #+end_src
    0
+
+** By each interesting chapter, why did we fail/abort?
+
 ** Summing it up
 
    | Group                        | number |
@@ -528,12 +531,18 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
    | best practice |     20 |       2 |            18 |            2 |              20 |
    |       intl402 |    153 |       0 |           153 |            0 |             153 |
    |---------------+--------+---------+---------------+--------------+-----------------|
-   |         Total |  11746 |    2919 |          8827 |         2229 |           11593 |
+   |         Total |  11746 |    2919 |          8827 |         2229 |           11746 |
    |             ^ |     tt |      pt |            ft |           it |                 |
    #+TBLFM: $6=$3+$4::$ft=vsum(@2..@-1)::$it=vsum(@2..@-1)::$pt=vsum(@2..@-1)::$tt=vsum(@2..@-1)
 
+   Number of tests in Ch06-Ch14 inclusive =
+   (+ 1 715 182 128 377 1320 521 230 24) = 3498
 
+   Number of passes in Ch06-Ch14 inclusive
+   (+ 364 97 85 181 982 319 125 7) = 2160
 
+   Number of fails/aborts in Ch06-Ch14 inclusive
+   (+ 1 351 85 43 196 338 202 105 17) = 1338
 
 * S5 results
 
