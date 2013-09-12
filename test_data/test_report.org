@@ -147,7 +147,25 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
 
 * S5 results
 
-** Everything we pass
+
+
+** All interesting test262 tests we pass
+,----
+| gds@lithium:~/Documents/jscert/src/core/trunk$ time ./runtests.py --lambdaS5 --interp_path ~/Documents/data/LambdaS5/tests/s5 --interp_version some --webreport --title S5PassedInterestingTests --note "testing whether S5 can pass all the interesting tests we do" --noindex `cat test_data/passed_interesting_tests.txt` --verbose
+| 
+| There were 2169 passes, 37  fails, and 23 abandoned.
+| 
+| real	44m4.946s
+| user	40m55.780s
+| sys	2m6.324s
+`----
+
+That's (+ 37 23) == 60 interesting tests they fail and we don't.
+
+
+** Unfair S5 tests
+
+*** Everything we pass
 ,----
 | gds@lithium:~/Documents/jscert/src/core/trunk$ time ./runtests.py --lambdaS5 --interp_path ~/Documents/data/LambdaS5/bin/js --interp_version some --webreport --title S5PassedTests --note "testing whether S5 can pass all the tests we do" --noindex `cat test_data/passed_tests.txt` 
 | 
@@ -160,7 +178,7 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
 
 [[file:~/Documents/jscert/web/test_results/report-gds-LambdaS5-S5PassedTests-2013-09-12T004918Z.html][How S5 does on the set of all tests we pass.]]
 
-** All interesting test262 we pass
+*** All interesting test262 we pass
 
 ,----
 | gds@lithium:~/Documents/jscert/src/core/trunk$ time ./runtests.py --lambdaS5 --interp_path ~/Documents/data/LambdaS5/bin/js --interp_version some --webreport --title S5PassedInterestingTests --note "testing whether S5 can pass all the interesting tests we do" --noindex `cat test_data/passed_interesting_tests.txt` 
@@ -196,3 +214,4 @@ Yeah, this isn't a fair test:
 `----
 
 ...we need to define a better test runner for them. Or figure out how to use theirs.
+
