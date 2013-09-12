@@ -1,3 +1,7 @@
+All the following data is drawn from http://totherme.org/gds.db which
+contains the latest test results.
+
+
 * The filters applied by OnlyInteresting
 
 #+begin_src sql
@@ -134,6 +138,339 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
 
    16
 
+** Tests from test262 that are in each chapter
+   
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch01/%");
+#+end_src
+   0
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch02/%");
+#+end_src
+   0
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch03/%");
+#+end_src
+   0
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch04/%");
+#+end_src
+   0
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch05/%");
+#+end_src
+   0
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch06/%");
+#+end_src
+   1
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch07/%");
+#+end_src
+   715
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch08/%");
+#+end_src
+   182
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch09/%");
+#+end_src
+   128
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch10/%");
+#+end_src
+   377
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch11/%");
+#+end_src
+   1320
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch12/%");
+#+end_src
+   521
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch13/%");
+#+end_src
+   230
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch14/%");
+#+end_src
+   24
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/ch15/%");
+#+end_src
+   8075
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/bestPractice/%");
+#+end_src
+   20
+
+** Passes by chapter
+
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch06/%") AND
+         status="PASS");
+#+end_src
+   0
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch07/%") AND
+         status="PASS");
+#+end_src
+   364
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch08/%") AND
+         status="PASS");
+#+end_src
+   97
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch09/%") AND
+         status="PASS");
+#+end_src
+   85
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch10/%") AND
+         status="PASS");
+#+end_src
+   181
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch11/%") AND
+         status="PASS");
+#+end_src
+   982
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch12/%") AND
+         status="PASS");
+#+end_src
+   319
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch13/%") AND
+         status="PASS");
+#+end_src
+   125
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch14/%") AND
+         status="PASS");
+#+end_src
+   7
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch15/%") AND
+         status="PASS");
+#+end_src
+   757
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/bestPractice/%") AND
+         status="PASS");
+#+end_src
+   2
+
+** Fails/Aborts by chapter
+
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch06/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   1
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch07/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   351
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch08/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   85
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch09/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   43
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch10/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   196
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch11/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   338
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch12/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   202
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch13/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   105
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch14/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   17
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/ch15/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   7318
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/bestPractice/%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   18
+
+** Interesting tests by chapter
+
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch06/%");
+#+end_src
+   0
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch07/%");
+#+end_src
+   235
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch08/%");
+#+end_src
+   79
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch09/%");
+#+end_src
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch10/%");
+#+end_src
+   72
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch11/%");
+#+end_src
+   894
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch12/%");
+#+end_src
+   209
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch13/%");
+#+end_src
+   101
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch14/%");
+#+end_src
+   5
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/ch15/%");
+#+end_src
+   547
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/bestPractice/%");
+#+end_src
+   2
+
 ** Summing it up
 
    | Group                        | number |
@@ -144,6 +481,33 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
    | Fails because of parser bugs |     16 |
    | The rest                     |   9501 |
    #+TBLFM: @6$2=@2-@3-@5
+
+
+   By chapter
+
+   |       Chapter | #tests | #passes | #fails/aborts | #interesting |
+   |---------------+--------+---------+---------------+--------------|
+   |             1 |      0 |       0 |             0 |            0 |
+   |             2 |      0 |       0 |             0 |            0 |
+   |             3 |      0 |       0 |             0 |            0 |
+   |             4 |      0 |       0 |             0 |            0 |
+   |             5 |      0 |       0 |             0 |            0 |
+   |             6 |      1 |       0 |             1 |            0 |
+   |             7 |    715 |     364 |           351 |          235 |
+   |             8 |    182 |      97 |            85 |           79 |
+   |             9 |    128 |      85 |            43 |           85 |
+   |            10 |    377 |     181 |           196 |           72 |
+   |            11 |   1320 |     982 |           338 |          894 |
+   |            12 |    521 |     319 |           202 |          209 |
+   |            13 |    230 |     125 |           105 |          101 |
+   |            14 |     24 |       7 |            17 |            5 |
+   |            15 |   8075 |     757 |          7318 |          547 |
+   | best practice |     20 |       2 |            18 |            2 |
+   |---------------+--------+---------+---------------+--------------|
+   |         Total | 11593? |         |               |              |
+
+
+
 
 * S5 results
 
