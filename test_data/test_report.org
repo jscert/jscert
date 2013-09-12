@@ -220,7 +220,11 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
          test_id LIKE "%test262/bestPractice/%");
 #+end_src
    20
-
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * from test_group_memberships WHERE group_id=19 AND
+         test_id LIKE "%test262/intl402%");
+#+end_src
+   153
 ** Passes by chapter
 
 #+begin_src sql
@@ -311,7 +315,14 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
          status="PASS");
 #+end_src
    2
-
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/intl402%") AND
+         status="PASS");
+#+end_src
+   0
 ** Fails/Aborts by chapter
 
 #+begin_src sql
@@ -402,7 +413,14 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
          (status="FAIL" OR status="ABORT"));
 #+end_src
    18
-
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM single_test_runs WHERE batch_id=47 AND
+         test_id IN
+                 (SELECT test_id FROM test_group_memberships WHERE group_id=19 AND
+                 test_id LIKE "%test262/intl402%") AND
+         (status="FAIL" OR status="ABORT"));
+#+end_src
+   153
 ** Interesting tests by chapter
 
 #+begin_src sql
@@ -470,13 +488,18 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
                        test_id LIKE "%test262/bestPractice/%");
 #+end_src
    2
-
+#+begin_src sql
+  SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE
+                       group_id=64 AND
+                       test_id LIKE "%test262/intl402%");
+#+end_src
+   0
 ** Summing it up
 
    | Group                        | number |
    |------------------------------+--------|
    | All Test262                  |  11746 |
-   | Passes                       |   2229 |
+   | (Interesting) Passes         |   2229 |
    | Fails because of test bugs   |      1 |
    | Fails because of parser bugs |     16 |
    | The rest                     |   9501 |
@@ -485,26 +508,29 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
 
    By chapter
 
-   |       Chapter | #tests | #passes | #fails/aborts | #interesting |
-   |---------------+--------+---------+---------------+--------------|
-   |             1 |      0 |       0 |             0 |            0 |
-   |             2 |      0 |       0 |             0 |            0 |
-   |             3 |      0 |       0 |             0 |            0 |
-   |             4 |      0 |       0 |             0 |            0 |
-   |             5 |      0 |       0 |             0 |            0 |
-   |             6 |      1 |       0 |             1 |            0 |
-   |             7 |    715 |     364 |           351 |          235 |
-   |             8 |    182 |      97 |            85 |           79 |
-   |             9 |    128 |      85 |            43 |           85 |
-   |            10 |    377 |     181 |           196 |           72 |
-   |            11 |   1320 |     982 |           338 |          894 |
-   |            12 |    521 |     319 |           202 |          209 |
-   |            13 |    230 |     125 |           105 |          101 |
-   |            14 |     24 |       7 |            17 |            5 |
-   |            15 |   8075 |     757 |          7318 |          547 |
-   | best practice |     20 |       2 |            18 |            2 |
-   |---------------+--------+---------+---------------+--------------|
-   |         Total | 11593? |         |               |              |
+   |       Chapter | #tests | #passes | #fails/aborts | #interesting | pass+fail+abort |
+   |---------------+--------+---------+---------------+--------------+-----------------|
+   |             1 |      0 |       0 |             0 |            0 |               0 |
+   |             2 |      0 |       0 |             0 |            0 |               0 |
+   |             3 |      0 |       0 |             0 |            0 |               0 |
+   |             4 |      0 |       0 |             0 |            0 |               0 |
+   |             5 |      0 |       0 |             0 |            0 |               0 |
+   |             6 |      1 |       0 |             1 |            0 |               1 |
+   |             7 |    715 |     364 |           351 |          235 |             715 |
+   |             8 |    182 |      97 |            85 |           79 |             182 |
+   |             9 |    128 |      85 |            43 |           85 |             128 |
+   |            10 |    377 |     181 |           196 |           72 |             377 |
+   |            11 |   1320 |     982 |           338 |          894 |            1320 |
+   |            12 |    521 |     319 |           202 |          209 |             521 |
+   |            13 |    230 |     125 |           105 |          101 |             230 |
+   |            14 |     24 |       7 |            17 |            5 |              24 |
+   |            15 |   8075 |     757 |          7318 |          547 |            8075 |
+   | best practice |     20 |       2 |            18 |            2 |              20 |
+   |       intl402 |    153 |       0 |           153 |            0 |             153 |
+   |---------------+--------+---------+---------------+--------------+-----------------|
+   |         Total |  11746 |    2919 |          8827 |         2229 |           11593 |
+   |             ^ |     tt |      pt |            ft |           it |                 |
+   #+TBLFM: $6=$3+$4::$ft=vsum(@2..@-1)::$it=vsum(@2..@-1)::$pt=vsum(@2..@-1)::$tt=vsum(@2..@-1)
 
 
 
