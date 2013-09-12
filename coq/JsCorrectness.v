@@ -3416,4 +3416,10 @@ Proof.
   apply~ red_javascript_intro_1.
 Qed.
 
+Corollary run_javascript_correct_num : forall num p o,
+  run_javascript (runs num) p = result_out o ->
+  red_javascript p o.
+Proof.
+  introv IH. applys~ run_javascript_correct IH. apply~ runs_correct.
+Qed.
 
