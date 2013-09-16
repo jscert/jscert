@@ -82,8 +82,6 @@ let prprealloc = function
   | Coq_prealloc_throw_type_error -> "Coq_prealloc_throw_type_error"
   | Coq_prealloc_error_proto -> "Coq_prealloc_error_proto"
   | Coq_prealloc_error_proto_to_string -> "Coq_prealloc_error_proto_to_string"
-  | Coq_prealloc_array_proto_pop -> "Coq_prealloc_array_proto_pop"
-  | Coq_prealloc_array_proto_push -> "Coq_prealloc_array_proto_push"
 
 
 let prcall = function
