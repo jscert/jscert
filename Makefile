@@ -127,7 +127,7 @@ init:
 	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk tlc
 	tar -xzf flocq-2.1.0.tar.gz
 	mv flocq-2.1.0 flocq
-	# chmod +x interp/run.py -- no longer necesarry
+	# chmod +x interp/run.py -- no longer necessarry
 	bash -c "mkdir interp/src/extract" || true
 
 # alternative: pull git from svn
