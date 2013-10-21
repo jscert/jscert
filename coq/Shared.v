@@ -931,3 +931,39 @@ Proof.
     subst. exists* x ls'.
     false.
 Qed.
+
+Lemma In_filter : forall (A:Type) p (a : A) l,
+  In a (LibList.filter p l) = (In a l /\ p a).
+Proof.
+  introv. gen a. induction l; extens; iff H; simpls*.
+   rewrite filter_cons in H. cases_if.
+    inverts H as [IH IL].
+     auto*.
+     rewrite* IHl in H.
+    rewrite* IHl in H.
+   unfold filter. simpl. cases_if; destruct H as [[?|I] P]; tryfalse.
+    substs. left~.
+    right~. rewrite* IHl.
+    fold (filter p l). rewrite* IHl.
+Qed.
+
+Lemma In_nil : forall (A:Type) l,
+  (forall a:A, ~ In a l) = (l = nil).
+Proof.
+  introv. extens. iff N.
+   destruct~ l. false (N a). left~.
+   subst. apply in_nil.
+Qed.
+
+Lemma Forall_impl : forall A P (l : list A),
+  Forall P l = (forall a, In a l -> P a).
+Proof.
+  introv. induction l; extens; (iff F; [introv I|]); tryfalse.
+   apply Forall_nil.
+   inverts F as FH FL. inverts~ I. rewrite* IHl in FL.
+   apply Forall_cons.
+    apply F. left~.
+    rewrite IHl. introv I. apply F. right~.
+Qed.
+
+
