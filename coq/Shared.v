@@ -271,7 +271,7 @@ Proof.
      rewrite~ eqb_neq. rewrite~ neutral_l_or.
 Qed.
 
-Global Instance In_decidable : forall A : Set,
+Global Instance In_decidable : forall A : Type,
   Comparable A ->
   forall (x : A) l, Decidable (In x l).
 Proof.
