@@ -3377,7 +3377,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S0 C (spec_function_get_1 l x (out_ter S v)) o  
 
-  | red_spec_function_get_1_normal : forall S0 S C l x v o, (* Step 3 *)
+  | red_spec_function_get_1_normal : forall S0 S C l x v, (* Step 3 *)
       ~ (spec_function_get_error_case S x v) ->
       red_expr S0 C (spec_function_get_1 l x (out_ter S v)) (out_ter S v)  
 

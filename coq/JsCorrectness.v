@@ -1258,55 +1258,6 @@ Proof.
    applys* red_spec_object_get_prop_2_not_undef.
 Admitted. (*faster*)
 
-Definition object_get_builtin runs S C B (vthis : value) l x : result :=
-  (* Corresponds to the construction [spec_object_get_1] of the specification. *)
-
-  Let default :=
-    fun S l =>
-      if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
-        match D with
-        | full_descriptor_undef => res_ter S0 undef
-        | attributes_data_of Ad =>
-            res_ter S0 (attributes_data_value Ad)
-        | attributes_accessor_of Aa =>
-            match attributes_accessor_get Aa with
-            | value_object lf => runs_type_call runs S0 C lf vthis nil
-            | undef => res_ter S0 undef
-            | value_prim _ =>
-              result_not_yet_implemented (* TODO:  Waiting for the specification. *)
-            end
-        end) in
-  
-  Let function := 
-    fun S => 
-      if_value (default S l) (fun S' v =>
-         ifb spec_function_get_error_case S' x v then
-           run_error S' native_error_type
-         else
-           res_ter S' v
-      ) in
-
-  match B with
-  | builtin_get_default => default S l
-
-  | builtin_get_function => function S
-
-  | builtin_get_args_obj =>
-    if_some (run_object_method object_parameter_map_ S l) (fun lmapo =>
-      if_some lmapo (fun lmap =>
-        if_spec (runs_type_object_get_own_prop runs S C lmap x) (fun S D =>
-          match D with
-          | full_descriptor_undef => function S
-          | _ => default S lmap
-          end)))
-  end.
-
-Axiom
-red_spec_function_get_1_normal : forall S0 S C l x v, (* Step 3 *)
-      ~ (spec_function_get_error_case S x v) ->
-      red_expr S0 C (spec_function_get_1 l x (out_ter S v)) (out_ter S v)  
-.
-
 Lemma object_get_builtin_correct : forall runs S C B (vthis:value) l x o,
   runs_type_correct runs ->
   object_get_builtin runs S C B vthis l x = o ->
@@ -3188,58 +3139,111 @@ Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
 Proof.
   introv IH HR. unfolds in HR.
   destruct B.
+  (* prealloc_global *)
   skip.
+  (* prealloc_global_eval *)
   skip.
+  (* prealloc_global_is_finite *)
   skip.
+  (* prealloc_global_is_nan *)
   skip.
+  (* prealloc_global_parse_float *)
   skip.
+  (* prealloc_global_parse_int *)
   skip.
+  (* prealloc_object *)
   skip.
+  (* prealloc_object_get_proto_of *)
   skip.
+  (* prealloc_object_get_own_prop_descriptor *)
   skip.
+  (* prealloc_object_get_own_prop_name *)
   skip.
+  (* prealloc_object_create *)
   skip.
+  (* prealloc_object_define_prop *)
   skip.
+  (* prealloc_object_define_props *)
   skip.
+  (* prealloc_object_seal *)
   skip.
+  (* prealloc_object_freeze *)
   skip.
+  (* prealloc_object_prevent_extensions *)
   skip.
+  (* prealloc_object_is_sealed *)
   skip.
+  (* prealloc_object_is_frozen *)
   skip.
+  (* prealloc_object_is_extensible *)
   skip.
+  (* prealloc_object_keys *)
   skip.
+  (* prealloc_object_keys_call *)
   skip.
+  (* prealloc_object_proto *)
   skip.
+  (* prealloc_object_proto_to_string *)
   skip.
+  (* prealloc_object_proto_value_of *)
   skip.
+  (* prealloc_object_proto_has_own_prop *)
   skip.
+  (* prealloc_object_proto_is_prototype_of *)
   skip.
+  (* prealloc_object_proto_prop_is_enumerable *)
   skip.
+  (* prealloc_function *)
   skip.
+  (* prealloc_function_proto *)
   skip.
+  (* prealloc_function_proto_to_string *)
   skip.
+  (* prealloc_function_proto_apply *)
   skip.
+  (* prealloc_function_proto_bind *)
   skip.
+  (* prealloc_bool *)
   skip.
+  (* prealloc_bool_proto *)
   skip.
+  (* prealloc_bool_proto_to_string *)
   skip.
+  (* prealloc_bool_proto_value_of *)
   skip.
+  (* prealloc_number *)
   skip.
+  (* prealloc_number_proto *)
   skip.
+  (* prealloc_number_proto_to_string *)
   skip.
+  (* prealloc_number_proto_value_of *)
   skip.
+  (* prealloc_number_proto_to_fixed *)
   skip.
+  (* prealloc_number_proto_to_exponential *)
   skip.
+  (* prealloc_number_proto_to_precision *)
   skip.
+  (* prealloc_array *)
   skip.
+  (* prealloc_array_is_array *)
   skip.
+  (* prealloc_array_proto *)
   skip.
+  (* prealloc_array_proto_to_string *)
   skip.
+  (* prealloc_array_proto_pop *)
   skip.
+  (* prealloc_array_proto_push *)
   skip.
+  (* prealloc_string *)
   skip.
+  (* prealloc_string_proto *)
   skip.
+  (* prealloc_string_proto_to_string *)
   skip.
+  (* prealloc_string_proto_value_of *)
   destruct vthis.
   destruct p.
     applys* red_spec_call_string_proto_value_of_bad_type.
@@ -3295,15 +3299,25 @@ Proof.
       assumption.
       
       simpls. inversion E.
+  (* prealloc_string_proto_char_at *)
   skip.
+  (* prealloc_string_proto_char_code_at *)
   skip.
+  (* prealloc_math *)
   skip.
+  (* prealloc_mathop *)
   skip.
+  (* prealloc_error *)
   skip.
+  (* prealloc_error_proto *)
   skip.
+  (* prealloc_native_error *)
   skip.
+  (* prealloc_native_error_proto *)
   skip.
+  (* prealloc_error_proto_to_string *)
   skip.
+  (* prealloc_throw_type_error *)
   skip.
 Admitted. (* faster *)
  
