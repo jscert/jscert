@@ -2386,28 +2386,28 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_spec S C (spec_object_get_own_prop lmap x) y ->
       red_expr S C (spec_args_obj_define_own_prop_1 l x Desc throw lmap y) o -> 
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_args_obj l x Desc throw) o
-      
+
   | red_spec_object_define_own_prop_args_obj_1 : forall o1 S0 S C l x Desc throw lmap Dmap o, (* Step 3 *)
       red_expr S0 C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc false) o1 ->
       red_expr S0 C (spec_args_obj_define_own_prop_2 l x Desc throw lmap Dmap o1) o ->
       red_expr S C (spec_args_obj_define_own_prop_1 l x Desc throw lmap (ret S0 Dmap)) o
-      
+
   | red_spec_object_define_own_prop_args_obj_2_false : forall S C l x Desc throw lmap Dmap S' o, (* Step 4 *)
-      red_expr S' C (spec_error_or_cst throw native_error_type false) o ->
+      red_expr S' C (spec_object_define_own_prop_reject throw) o ->
       red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap Dmap (out_ter S' false)) o
-      
+
   | red_spec_object_define_own_prop_args_obj_2_true_acc : forall o1 S C l x Aa throw lmap A S' o, (* Step 5 a *)
       red_expr S' C (spec_object_delete lmap x false) o1 ->
       red_expr S' C (spec_args_obj_define_own_prop_5 o1) o ->
       red_expr S C (spec_args_obj_define_own_prop_2 l x (attributes_accessor_of Aa) throw lmap (full_descriptor_some A) (out_ter S' true)) o
-      
+
   | red_spec_object_define_own_prop_args_obj_2_true_not_acc_some : forall v o1 S C l x Desc throw lmap A S' o, (* Step 5 b i *)
       ~ (descriptor_is_accessor Desc) ->
       descriptor_value Desc = Some v ->
       red_expr S' C (spec_object_put (value_object lmap) x v throw) o1 ->
       red_expr S' C (spec_args_obj_define_own_prop_3 l x Desc throw lmap o1) o -> 
       red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap (full_descriptor_some A) (out_ter S' true)) o
-      
+
   | red_spec_object_define_own_prop_args_obj_3 : forall v o1 S C l x Desc throw lmap A S' o, (* Step 5 b i join *)
       red_expr S' C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o -> 
       red_expr S C (spec_args_obj_define_own_prop_3 l x Desc throw lmap (out_void S')) o
@@ -2427,12 +2427,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_define_own_prop_args_obj_5 : forall S C S' b o, (* Step 5 b ii join *)
       red_expr S' C (spec_args_obj_define_own_prop_6) o -> 
       red_expr S C (spec_args_obj_define_own_prop_5 (out_ter S' b)) o
-      
+
    | red_spec_object_define_own_prop_args_obj_4_not_false : forall S C l x Desc throw lmap o, (* Step 5 b ii else join *)
       descriptor_writable Desc <> Some false ->
       red_expr S C (spec_args_obj_define_own_prop_6) o -> 
       red_expr S C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o
-      
+
   | red_spec_object_define_own_prop_args_obj_2_true_undef : forall S C l x Desc throw lmap S' o, (* Step 5 else *)
       red_expr S' C (spec_args_obj_define_own_prop_6) o -> 
       red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap full_descriptor_undef (out_ter S' true)) o

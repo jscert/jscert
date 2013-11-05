@@ -403,10 +403,11 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_delete : state -> execution_ctx -> object_loc -> prop_name -> bool -> result;
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
+    runs_type_object_get : state -> execution_ctx -> object_loc -> prop_name -> result;
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
     runs_type_object_put : state -> execution_ctx -> object_loc -> prop_name -> value -> strictness_flag -> result;
     runs_type_equal : state -> execution_ctx -> value -> value -> result;
-    runs_type_to_integer : state -> execution_ctx -> value -> result;
+    runs_type_to_integer : state -> execution_ctx -> value -> result; (* There may be one, but I see no immediate reason for those two functions to be put inside [runs_type]. *)
     runs_type_to_string : state -> execution_ctx -> value -> result
   }.
 
@@ -463,7 +464,7 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
         if_spec (runs_type_object_get_own_prop runs S C lmap x) (fun S D =>
           match D with
           | full_descriptor_undef => function S
-          | _ => default S lmap
+          | _ => runs_type_object_get runs S C lmap x
           end)))
   end.
 
@@ -693,10 +694,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
         if_some lmapo (fun lmap =>
           if_spec (runs_type_object_get_own_prop runs S C lmap x) (fun S D =>
             if_bool (default S false) (fun S b =>
-              match b with
-              | false =>
-                reject S throw
-              | true =>
+              if b then
                 Let follow := fun S => res_ter S true in
                 match D with
                 | full_descriptor_undef =>
@@ -722,7 +720,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                          follow S
                        end
                 end
-              end))))
+              else reject S throw))))
     end).
 
 Definition run_to_descriptor runs S C v : specres descriptor :=
@@ -2800,6 +2798,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_delete := fun S _ _ _ _ => result_bottom S;
       runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
+      runs_type_object_get := fun S _ _ _ => result_bottom S;
       runs_type_object_proto_is_prototype_of := fun S _ _ => result_bottom S;
       runs_type_object_put := fun S _ _ _ _ _ => result_bottom S;
       runs_type_equal := fun S _ _ _ => result_bottom S;
@@ -2824,6 +2823,8 @@ Fixpoint runs max_step : runs_type :=
         wrap run_object_get_own_prop;
       runs_type_object_get_prop :=
         wrap run_object_get_prop;
+      runs_type_object_get :=
+        wrap run_object_get;
       runs_type_object_proto_is_prototype_of :=
         wrap object_proto_is_prototype_of;
       runs_type_object_put := wrap object_put;

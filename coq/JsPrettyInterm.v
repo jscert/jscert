@@ -67,7 +67,7 @@ Inductive ext_expr :=
   | expr_object_1 : object_loc -> propdefs -> ext_expr
   | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr 
   | expr_object_3 : object_loc -> string -> out -> propdefs -> ext_expr
-  | expr_object_3_val : object_loc -> string -> (specret value) -> propdefs -> ext_expr
+  | expr_object_3_val : object_loc -> string -> specret value -> propdefs -> ext_expr
   | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_4 : object_loc -> string -> attributes -> propdefs -> ext_expr
@@ -77,8 +77,8 @@ Inductive ext_expr :=
   | expr_function_2 : string -> env_loc -> out -> ext_expr
   | expr_function_3 : object_loc -> out -> ext_expr
 
-  | expr_access_1 : (specret value) -> expr -> ext_expr (* The left expression has been executed *)
-  | expr_access_2 : value -> (specret value) -> ext_expr (* The right expression is executed. *)
+  | expr_access_1 : specret value -> expr -> ext_expr (* The left expression has been executed *)
+  | expr_access_2 : value -> specret value -> ext_expr (* The right expression is executed. *)
   | expr_access_3 : value -> out -> value -> ext_expr
   | expr_access_4 : value -> out -> ext_expr
 
@@ -314,14 +314,14 @@ Inductive ext_expr :=
   | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> (specret full_descriptor) -> ext_expr
   
   
-  | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> (specret full_descriptor) -> ext_expr
+  | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> specret full_descriptor -> ext_expr
   | spec_args_obj_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> full_descriptor -> out -> ext_expr
   | spec_args_obj_define_own_prop_3 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> out -> ext_expr
   | spec_args_obj_define_own_prop_4 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> ext_expr
   | spec_args_obj_define_own_prop_5 : out -> ext_expr
   | spec_args_obj_define_own_prop_6 : ext_expr
   
-  | spec_args_obj_delete_1 : object_loc -> prop_name -> bool -> object_loc -> (specret full_descriptor) -> ext_expr
+  | spec_args_obj_delete_1 : object_loc -> prop_name -> bool -> object_loc -> specret full_descriptor -> ext_expr
   | spec_args_obj_delete_2 : object_loc -> prop_name -> bool -> object_loc -> full_descriptor -> out -> ext_expr
   | spec_args_obj_delete_3 : out -> ext_expr
   | spec_args_obj_delete_4 : bool -> ext_expr
@@ -428,7 +428,7 @@ Inductive ext_expr :=
   | spec_call_object_define_props_2 : out -> object_loc -> ext_expr
   | spec_call_object_define_props_3 : object_loc -> object_loc -> list prop_name -> list (prop_name * attributes) -> ext_expr
   | spec_call_object_define_props_4 : out -> object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> ext_expr
-  | spec_call_object_define_props_5 : object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> (specret attributes) -> ext_expr
+  | spec_call_object_define_props_5 : object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> specret attributes -> ext_expr
   | spec_call_object_define_props_6 : object_loc -> list (prop_name * attributes) -> ext_expr
   | spec_call_object_define_props_7 : out -> object_loc -> list (prop_name * attributes) -> ext_expr
 
@@ -752,8 +752,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_object_1 _ _ => None
   | expr_object_2 _ _ _ _ => None
   | expr_object_3 _ _ o _ => Some o
-  | expr_object_3_val _ _ (specret_out o) _ => Some o
-  | expr_object_3_val _ _ (specret_val _ _) _ => None
+  | expr_object_3_val _ _ y _ => out_of_specret y
   | expr_object_3_get _ _ o _ => Some o
   | expr_object_3_set _ _ o _ => Some o
   | expr_object_4 _ _ _ _ => None
@@ -763,39 +762,32 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_function_2 _ _ o => Some o
   | expr_function_3 _ o => Some o
 
-  | expr_access_1 (specret_out o) _ => Some o
-  | expr_access_1 (specret_val _ _) _ => None
-  | expr_access_2 _ (specret_out o) => Some o
-  | expr_access_2 _ (specret_val _ _) => None
+  | expr_access_1 y _ => out_of_specret y
+  | expr_access_2 _ y => out_of_specret y
   | expr_access_3 _ o _ => Some o
   | expr_access_4 _ o => Some o
 
-  | expr_new_1 (specret_out o) _ => Some o
-  | expr_new_1 (specret_val _ _) _ => None
+  | expr_new_1 y _ => out_of_specret y
   | expr_new_2 _ y => out_of_specret y  
 
   | expr_call_1 o _ _ => Some o
-  | expr_call_2 _ _ _ (specret_out o) => Some o
-  | expr_call_2 _ _ _ (specret_val _ _) => None
+  | expr_call_2 _ _ _ y => out_of_specret y
   | expr_call_3 _ _ _ y => out_of_specret y  
   | expr_call_4 _ _ _ _ => None
   | expr_call_5 _ _ _ o => Some o
 
   | spec_eval _ _ _ => None
 
-  | expr_unary_op_1 _ (specret_out o) => Some o
-  | expr_unary_op_1 _ (specret_val _ _) => None
+  | expr_unary_op_1 _ y => out_of_specret y
   | expr_unary_op_2 _ _ => None
   | expr_delete_1 o => Some o
   | expr_delete_2 _ o => Some o
   | expr_typeof_1 o => Some o
-  | expr_typeof_2 (specret_out o) => Some o
-  | expr_typeof_2 (specret_val _ _) => None
+  | expr_typeof_2 y => out_of_specret y
   | expr_prepost_1 _ o => Some o
 (*  | expr_prepost_2 _ _ o => Some o *)
 
-  | expr_prepost_2 _ _ (specret_out o) => Some o
-  | expr_prepost_2 _ _ (specret_val _ _) => None
+  | expr_prepost_2 _ _ y => out_of_specret y
 
   | expr_prepost_3 _ _ o => Some o
   | expr_prepost_4 _ o => Some o
@@ -806,10 +798,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_conditional_1' o _ _ => None
   | expr_conditional_2 y => out_of_specret y
 
-  | expr_binary_op_1 _ (specret_out o) _ => Some o
-  | expr_binary_op_1 _ (specret_val _ _) _ => None
-  | expr_binary_op_2 _ _ (specret_out o) => Some o
-  | expr_binary_op_2 _ _ (specret_val _ _) => None
+  | expr_binary_op_1 _ y _ => out_of_specret y
+  | expr_binary_op_2 _ _ y => out_of_specret y
   | expr_binary_op_3 _ _ _ => None
   | expr_binary_op_add_1 y => out_of_specret y
   | expr_binary_op_add_string_1 y => out_of_specret y
@@ -827,20 +817,15 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_equal_4 _ o => Some o
   | expr_bitwise_op_1 _ y _ => out_of_specret y
   | expr_bitwise_op_2 _ _ y => out_of_specret y
-  | expr_lazy_op_1 _ (specret_out o) _ => Some o
-  | expr_lazy_op_1 _ (specret_val _ _) _ => None
+  | expr_lazy_op_1 _ y _ => out_of_specret y
   | expr_lazy_op_2 _ _ o _ => Some o
-  | expr_lazy_op_2_1 (specret_out o) => Some o
-  | expr_lazy_op_2_1 (specret_val _ _) => None
+  | expr_lazy_op_2_1 y => out_of_specret y
 
   | expr_assign_1 o _ _ => Some o
-  | expr_assign_2 _ (specret_out o) _ _ => Some o
-  | expr_assign_2 _ (specret_val _ _) _ _ => None
-  | expr_assign_3 _ _ _ (specret_out o) => Some o
-  | expr_assign_3 _ _ _ (specret_val _ _) => None
+  | expr_assign_2 _ y _ _ => out_of_specret y
+  | expr_assign_3 _ _ _ y => out_of_specret y
   | expr_assign_3' _ o => Some o
-  | expr_assign_4 _ (specret_out o) => Some o
-  | expr_assign_4 _ (specret_val _ _) => None
+  | expr_assign_4 _ y => out_of_specret y
   | expr_assign_5 _ o => Some o
 
   | spec_to_primitive _ _ => None
@@ -998,17 +983,17 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_make_arg_getter _ _ _ => None
   | spec_make_arg_setter _ _ _ => None
   
-  | spec_args_obj_get_1 _ _ _ _ D => out_of_specret D
+  | spec_args_obj_get_1 _ _ _ _ y => out_of_specret y
   
   
-  | spec_args_obj_define_own_prop_1 _ _ _ _ _ _ => None
+  | spec_args_obj_define_own_prop_1 _ _ _ _ _ y => out_of_specret y
   | spec_args_obj_define_own_prop_2 _ _ _ _ _ _ o => Some o
   | spec_args_obj_define_own_prop_3 _ _ _ _ _ o => Some o
   | spec_args_obj_define_own_prop_4 _ _ _ _ _ => None
   | spec_args_obj_define_own_prop_5 o => Some o
   | spec_args_obj_define_own_prop_6 => None
   
-  | spec_args_obj_delete_1 _ _ _ _ _ => None
+  | spec_args_obj_delete_1 _ _ _ _ y => out_of_specret y
   | spec_args_obj_delete_2 _ _ _ _ _ o => Some o
   | spec_args_obj_delete_3 o => Some o
   | spec_args_obj_delete_4 _ => None
@@ -1102,7 +1087,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_define_props_2 o _ => Some o
   | spec_call_object_define_props_3 _ _ _ _ => None
   | spec_call_object_define_props_4 o _ _ _ _ _ => Some o
-  | spec_call_object_define_props_5 _ _ _ _ _ _ => None
+  | spec_call_object_define_props_5 _ _ _ _ _ y => out_of_specret y
   | spec_call_object_define_props_6 _ _ => None
   | spec_call_object_define_props_7 o _ _ => Some o
 
@@ -1210,8 +1195,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_var_decl_1 o _ => Some o
   | stat_var_decl_item _ => None
   | stat_var_decl_item_1 _ y _ => out_of_specret y
-  | stat_var_decl_item_2 _ _ (specret_out o) => Some o
-  | stat_var_decl_item_2 _ _ (specret_val _ _) => None
+  | stat_var_decl_item_2 _ _ y => out_of_specret y
   | stat_var_decl_item_3 _ o => Some o
 
   | stat_if_1 y _ _ => out_of_specret y
@@ -1233,11 +1217,9 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
 
   | stat_with_1 _ y => out_of_specret y
 
-  | stat_throw_1 (specret_out o) => Some o
-  | stat_throw_1 (specret_val _ _) => None
+  | stat_throw_1 y => out_of_specret y
 
-  | stat_return_1 (specret_out o) => Some o
-  | stat_return_1 (specret_val _ _) => None
+  | stat_return_1 y => out_of_specret y
 
   | stat_try_1 o _ _ => Some o
   | stat_try_2 o _ _ _ => Some o
@@ -1245,12 +1227,10 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_try_4 _ _ => None
   | stat_try_5 _ o => Some o
 
-  | stat_switch_1 (specret_out o) _ _ => Some o
-  | stat_switch_1 (specret_val _ _) _ _ => None
+  | stat_switch_1 y _ _ => out_of_specret y
   | stat_switch_2 o _ => Some o
   | stat_switch_nodefault_1 _ _ _=> None
-  | stat_switch_nodefault_2 (specret_out o) _ _ _ _  => Some o
-  | stat_switch_nodefault_2 (specret_val _ _) _ _ _ _  => None
+  | stat_switch_nodefault_2 y _ _ _ _  => out_of_specret y
   | stat_switch_nodefault_3 _ _ _ _ _ => None
   | stat_switch_nodefault_4 o _ => Some o
   | stat_switch_nodefault_5 _ _ => None
@@ -1258,14 +1238,12 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
 
   | stat_switch_default_1 _ _ _ _ _ => None
   | stat_switch_default_A_1 _ _ _ _ _ _ => None 
-  | stat_switch_default_A_2 (specret_out o) _ _ _ _ _ _ => Some o
-  | stat_switch_default_A_2 (specret_val _ _) _ _ _ _ _ _ => None
+  | stat_switch_default_A_2 y _ _ _ _ _ _ => out_of_specret y
   | stat_switch_default_A_3 _ _ _ _ _ _ _  => None
   | stat_switch_default_A_4 _ _ _ _ _ _ => None
   | stat_switch_default_A_5 _ o _ _ _ _ => Some o
   | stat_switch_default_B_1 _ _ _ _ => None
-  | stat_switch_default_B_2 (specret_out o) _ _ _ _ _ => Some o
-  | stat_switch_default_B_2 (specret_val _ _) _ _ _ _ _ => None
+  | stat_switch_default_B_2 y _ _ _ _ _ => out_of_specret y
   | stat_switch_default_B_3 _ _ _ _ _ _ => None
   | stat_switch_default_B_4 o _ _ => Some o
 
@@ -1292,16 +1270,14 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_to_uint32 _ => None
   | spec_to_uint32_1 o => Some o
   | spec_expr_get_value_conv _ _ => None
-  | spec_expr_get_value_conv_1 _ (specret_out o) => Some o
-  | spec_expr_get_value_conv_1 _ (specret_val _ _) => None
+  | spec_expr_get_value_conv_1 _ y => out_of_specret y
   | spec_expr_get_value_conv_2 o => Some o
   | spec_convert_twice _ _ => None
   | spec_convert_twice_1 o _ => Some o
   | spec_convert_twice_2 _ o => Some o
   | spec_list_expr _ => None
   | spec_list_expr_1 _ _ => None
-  | spec_list_expr_2 _ (specret_out o) _ => Some o
-  | spec_list_expr_2 _ (specret_val _ _) _ => None
+  | spec_list_expr_2 _ y _ => out_of_specret y
   | spec_to_descriptor _ => None
   | spec_to_descriptor_1a _ _ => None
   | spec_to_descriptor_1b o _ _ => Some o

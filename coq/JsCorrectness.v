@@ -102,12 +102,24 @@ Record runs_type_correct runs :=
     runs_type_correct_object_get_prop : forall S C l x sp,
        runs_type_object_get_prop runs S C l x = result_some sp ->
        red_spec S C (spec_object_get_prop l x) sp;
+    runs_type_correct_object_get : forall S C l x o,
+       runs_type_object_get runs S C l x = o ->
+       red_expr S C (spec_object_get l x) o;
     runs_type_correct_object_proto_is_prototype_of : forall S C lthis l o,
        runs_type_object_proto_is_prototype_of runs S lthis l = o ->
        red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o;
+    runs_type_correct_object_put : forall S C l x v str o,
+       runs_type_object_put runs S C l x v str = o ->
+       red_expr S C (spec_object_put l x v str) o;
     runs_type_correct_equal : forall S C v1 v2 o,
        runs_type_equal runs S C v1 v2 = o ->
-       red_expr S C (spec_equal v1 v2) o
+       red_expr S C (spec_equal v1 v2) o;
+    runs_type_correct_to_integer : forall S C v o,
+       runs_type_to_integer runs S C v = o ->
+       red_expr S C (spec_to_integer v) o;
+    runs_type_correct_to_string : forall S C v o,
+       runs_type_to_string runs S C v = o ->
+       red_expr S C (spec_to_string v) o
   }.
 
 
@@ -734,11 +746,17 @@ Ltac run_select_proj H :=
   | runs_type_prog => constr:(runs_type_correct_prog)
   | runs_type_call => constr:(runs_type_correct_call) 
   | runs_type_function_has_instance => constr:(runs_type_correct_function_has_instance) 
-  | runs_type_stat_while => constr:(runs_type_correct_stat_while) 
+  | runs_type_stat_while => constr:(runs_type_correct_stat_while)
+  | runs_type_stat_do_while => constr:(runs_type_correct_stat_do_while)
+  | runs_type_object_delete => constr:(runs_type_correct_object_delete)
   | runs_type_object_get_own_prop => constr:(runs_type_correct_object_get_own_prop)
   | runs_type_object_get_prop => constr:(runs_type_correct_object_get_prop)
+  | runs_type_object_get => constr:(runs_type_correct_object_get)
   | runs_type_object_proto_is_prototype_of => constr:(runs_type_correct_object_proto_is_prototype_of) 
+  | runs_type_object_put => constr:(runs_type_correct_object_put)
   | runs_type_equal => constr:(runs_type_correct_equal) 
+  | runs_type_to_integer => constr:(runs_type_correct_to_integer)
+  | runs_type_to_string => constr:(runs_type_correct_to_string)
   | ?x => run_select_proj_extra_error HT
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
@@ -1290,14 +1308,12 @@ Proof.
       clear EQMfunction. destruct B; tryfalse.
       applys~ Mdefault_correct.
       applys~ Mfunction_correct.
-  (* arguments object *)
+  (* argument object *)
   run_simpl. forwards* obpm: run_object_method_correct.
   run_simpl. substs. run* red_spec_object_get_args_obj.
   destruct a. (* LTAC ARTHUR:  This [a] wasn't properly named. *)
    apply* red_spec_object_get_args_obj_1_undef.
-   apply~ red_spec_object_get_args_obj_1_attrs.
-    applys* red_spec_object_get.
-    skip. (* TODO:  This is *not* correct. *)
+   run_hyp. apply~ red_spec_object_get_args_obj_1_attrs.
 Admitted. (* faster *)
 
 
@@ -1336,8 +1352,6 @@ Proof.
     apply~ red_spec_object_can_put_2_data.
     apply~ red_spec_object_can_put_2_accessor. rewrite decide_def. repeat cases_if~.
 Qed.
-
-
 
 
 Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
@@ -1397,11 +1411,24 @@ Proof.
   run.
   applys* red_spec_object_define_own_prop.
   applys* run_object_method_correct. clear E.
-  destruct x0.
+  destruct x0. (* LTAC ARTHUR:  This [x0] wasn't properly named. *)
     (* default *)
     applys* Def.
     (* arguments object *)
-    skip. (* LATER: Arguments object: postponed *)
+    run_simpl. forwards~ obpm: run_object_method_correct (rm E).
+    run_simpl. subst. run* red_spec_object_define_own_prop_args_obj.
+    run* red_spec_object_define_own_prop_args_obj_1. cases_if; substs.
+     let_name. asserts Follow: (forall S,
+         follow S = result_some (specret_out o) ->
+         red_expr S C spec_args_obj_define_own_prop_6 o).
+       introv RES. rewrite EQfollow in RES. inverts RES.
+       apply* red_spec_object_define_own_prop_args_obj_6.
+     clear EQfollow. destruct a. (* LTAC ARTHUR: this [a] has been defined by tactics. *)
+      apply~ red_spec_object_define_own_prop_args_obj_2_true_undef.
+      cases_if.
+       skip. (* TODO *)
+       skip. (* TODO *)
+     apply~ red_spec_object_define_own_prop_args_obj_2_false.
 Admitted. (* faster *)
 
 Lemma prim_new_object_correct : forall S C w o,
@@ -3446,8 +3473,12 @@ Proof.
      introv. apply~ object_delete_correct.
      introv. apply~ run_object_get_own_prop_correct.
      introv. apply~ run_object_get_prop_correct.
+     introv. apply~ run_object_get_correct.
      introv. apply~ object_proto_is_prototype_of_correct.
+     introv. apply~ object_put_correct.
      introv. apply~ run_equal_correct.
+     introv. apply~ to_integer_correct.
+     introv. apply~ to_string_correct.
 Qed.
 
 Theorem run_javascript_correct : forall runs p o,
