@@ -1277,22 +1277,27 @@ Proof.
        destruct p; tryfalse. run_inv.
         applys* red_spec_object_get_3_accessor_undef.
        applys* red_spec_object_get_3_accessor_object. run_hyp*.
-  clear EQMdefault. (* destruct B; tryfalse. *)
-  auto*.
+  clear EQMdefault.
   let_name as Mfunction.
   asserts Mfunction_correct: (forall S o,
     Mfunction S = res_out o ->
     red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o).
     clear HR o. subst. introv HR.
-  run* red_spec_object_get_1_function. clear R1.
-  case_if.
-    applys* red_spec_function_get_1_error.
-    run_inv. applys* red_spec_function_get_1_normal.
-  clear EQMfunction. destruct B; tryfalse.
-  applys~ Mdefault_correct.
-  applys~ Mfunction_correct.
-  (* TODO: deal with arguments object *)
-  skip.
+    run* red_spec_object_get_1_function. clear R1.
+    case_if.
+     applys* red_spec_function_get_1_error.
+     run_inv. applys* red_spec_function_get_1_normal.
+      clear EQMfunction. destruct B; tryfalse.
+      applys~ Mdefault_correct.
+      applys~ Mfunction_correct.
+  (* arguments object *)
+  run_simpl. forwards* obpm: run_object_method_correct.
+  run_simpl. substs. run* red_spec_object_get_args_obj.
+  destruct a. (* LTAC ARTHUR:  This [a] wasn't properly named. *)
+   apply* red_spec_object_get_args_obj_1_undef.
+   apply~ red_spec_object_get_args_obj_1_attrs.
+    applys* red_spec_object_get.
+    skip. (* TODO:  This is *not* correct. *)
 Admitted. (* faster *)
 
 

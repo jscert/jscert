@@ -2235,9 +2235,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_function_decls_6 : forall o1 L S0 S C args fds str bconfig o, (* Step 5 loop *)
       red_expr S C (spec_binding_inst_function_decls args L fds str bconfig) o ->
       red_expr S0 C (spec_binding_inst_function_decls_6 args L fds str bconfig (out_void S)) o
-      
+
   (* Auxiliary reductions for binding instantiation:
-     Declaring Arguments Object (7) *)
+     Declaring Arguments Object (Step 7) *)
 
   | red_spec_binding_inst_arg_obj : forall str o1 L S C ct lf code xs args o, (* Step 7a *)
       str = prog_intro_strictness code ->
@@ -2272,7 +2272,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_has_binding L vd) o1 ->
       red_expr S C (spec_binding_inst_var_decls_1 L vd vds bconfig str o1) o ->
       red_expr S C (spec_binding_inst_var_decls L (vd::vds) bconfig str) o 
-      (* LATER: I've change this rule as the previous version was weird, but please check it. -- Martin. *)
 
   | red_spec_binding_inst_var_decls_1_true : forall L S0 S C vd vds bconfig str o, (* Step 8c *)
       red_expr S C (spec_binding_inst_var_decls L vds bconfig str) o ->
@@ -2349,7 +2348,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   
   (* An auxiliary reduction for the MakeArgGetter abstract operation *)
   | red_spec_make_arg_getter : forall xbd bd S C l x X o,
-     xbd = "return " ++ x ++ ";" /\
+     xbd = "return " ++ x ++ ";" ->
      (* Not sure about the strictness. Using 'true' because of strictness equal to true when creating function object. *)
      bd = funcbody_intro (prog_intro true ((element_stat (stat_return (Some (expr_identifier x))))::nil)) xbd ->
      red_expr S C (spec_creating_function_object nil bd X true) o ->
@@ -2357,27 +2356,27 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      
   (* An auxiliary reduction for the MakeArgSetter abstract operation *)
   | red_spec_make_arg_setter : forall xparam xbd bd S C l x X o,
-     xparam = x ++ "_arg" /\
-     xbd = x ++ " = " ++ xparam ++ ";" /\
+     xparam = x ++ "_arg" ->
+     xbd = x ++ " = " ++ xparam ++ ";" ->
      (* Not sure about the strictness. Using 'true' because of strictness equal to true when creating function object. *)
      bd = funcbody_intro (prog_intro true ((element_stat (expr_assign (expr_identifier x) None (expr_identifier xparam)))::nil)) xbd ->
      red_expr S C (spec_creating_function_object (xparam::nil) bd X true) o ->
      red_expr S C (spec_make_arg_setter l x X) o
-     
-  (* Arguments Object: Get  (returns value) (10.6) *) 
+
+  (* Arguments Object: Get (returns value) (10.6) *) 
   | red_spec_object_get_args_obj : forall lmap S C vthis l x o (y:specret full_descriptor), (* Steps 1 - 2 *)
      object_parameter_map S l (Some lmap) ->
      red_spec S C (spec_object_get_own_prop lmap x) y ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap y) o -> 
      red_expr S C (spec_object_get_1 builtin_get_args_obj vthis l x) o
-     
+
   | red_spec_object_get_args_obj_1_undef : forall o1 S0 S C vthis l x lmap o, (* Step 3 *)
      (* Steps 3 a - c are identical to the steps of 15.3.5.4. *)
-     red_expr S C (spec_object_get_1 builtin_get_function vthis l x) o ->
+     red_expr S0 C (spec_object_get_1 builtin_get_function vthis l x) o ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap (ret S0 full_descriptor_undef)) o
-     
+
   | red_spec_object_get_args_obj_1_attrs : forall S0 S C vthis l x lmap A o, (* Step 4 *)
-     red_expr S C (spec_object_get (value_object lmap) x) o ->
+     red_expr S0 C (spec_object_get (value_object lmap) x) o ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap (ret S0 (full_descriptor_some A))) o
 
   (* Arguments Object: DefineOwnProperty (returns bool) (10.6) *)
@@ -2389,8 +2388,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_args_obj l x Desc throw) o
       
   | red_spec_object_define_own_prop_args_obj_1 : forall o1 S0 S C l x Desc throw lmap Dmap o, (* Step 3 *)
-      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc false) o1 ->
-      red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap Dmap o1) o ->
+      red_expr S0 C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc false) o1 ->
+      red_expr S0 C (spec_args_obj_define_own_prop_2 l x Desc throw lmap Dmap o1) o ->
       red_expr S C (spec_args_obj_define_own_prop_1 l x Desc throw lmap (ret S0 Dmap)) o
       
   | red_spec_object_define_own_prop_args_obj_2_false : forall S C l x Desc throw lmap Dmap S' o, (* Step 4 *)
@@ -2437,7 +2436,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_define_own_prop_args_obj_2_true_undef : forall S C l x Desc throw lmap S' o, (* Step 5 else *)
       red_expr S' C (spec_args_obj_define_own_prop_6) o -> 
       red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap full_descriptor_undef (out_ter S' true)) o
-      
+
   | red_spec_object_define_own_prop_args_obj_6 : forall S C, (* Step 6 *)
     red_expr S C (spec_args_obj_define_own_prop_6) (out_ter S true)
     
@@ -2450,10 +2449,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_delete_1 builtin_delete_args_obj l x throw) o  
       
   | red_spec_object_delete_args_obj_1 : forall o1 S0 S C l x throw lmap D o, (* Step 3 *)
-      red_expr S C (spec_object_delete_1 builtin_delete_default l x throw) o1 ->
-      red_expr S C (spec_args_obj_delete_2 l x throw lmap D o1) o ->
+      red_expr S0 C (spec_object_delete_1 builtin_delete_default l x throw) o1 ->
+      red_expr S0 C (spec_args_obj_delete_2 l x throw lmap D o1) o ->
       red_expr S C (spec_args_obj_delete_1 l x throw lmap (ret S0 D)) o
-      
+
   | red_spec_object_delete_args_obj_2_if : forall o1 S C l x throw lmap A S' o, (* Step 4 a *)
       red_expr S' C (spec_object_delete lmap x false) o1 ->
       red_expr S' C (spec_args_obj_delete_3 o1) o ->
@@ -2506,7 +2505,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       str = true \/ In x xsmap ->
       red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) X str lmap xsmap) o ->
       red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
-      
+
   | red_spec_arguments_object_map_3_cont_cont : forall x S C l xs args X str lmap xsmap S' b o,  (* Step 11 c i, ii continue *) 
       length args - 1 < length xs ->  
       (* Default value is not used because of the contraint above *)   
@@ -2541,10 +2540,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       O' = object_for_args_object O lmap builtin_get_args_obj builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj builtin_delete_args_obj ->
       S' = object_write S l O' ->    
       red_expr S C (spec_arguments_object_map_8 l lmap xsmap) (out_void S') 
-   
+
   | red_spec_arguments_object_map_8_nil : forall S C l lmap,  (* Step 12 empty *) 
       red_expr S C (spec_arguments_object_map_8 l lmap nil) (out_void S) 
-      
+
   (* Arguments Object: main reduction rules (10.6) *)
   
   | red_spec_create_arguments_object : forall O l S' A o1 S C lf xs args X str o, (* Steps 2 - 4, 6, 7 *)
@@ -2574,12 +2573,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_object_define_own_prop l "caller" A false) o1 -> 
       red_expr S' C (spec_create_arguments_object_3 l vthrower A o1) o ->
       red_expr S C (spec_create_arguments_object_2 lf true l (out_void S')) o
-      
+
    | red_spec_create_arguments_object_3 : forall o1 S C l vthrower A S' b o, (* Step 14 c *)
       red_expr S' C (spec_object_define_own_prop l "callee" A false) o1 ->
       red_expr S' C (spec_create_arguments_object_4 l o1) o ->
       red_expr S C (spec_create_arguments_object_3 l vthrower A (out_ter S' b)) o
-      
+
    | red_spec_create_arguments_object_4 : forall S C l S' b l, (* Step 15 *)
       red_expr S C (spec_create_arguments_object_4 l (out_ter S' b)) (out_ter S' l)
 

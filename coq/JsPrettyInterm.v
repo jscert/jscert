@@ -998,7 +998,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_make_arg_getter _ _ _ => None
   | spec_make_arg_setter _ _ _ => None
   
-  | spec_args_obj_get_1 _ _ _ _ _ => None
+  | spec_args_obj_get_1 _ _ _ _ D => out_of_specret D
   
   
   | spec_args_obj_define_own_prop_1 _ _ _ _ _ _ => None
