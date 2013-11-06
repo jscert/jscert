@@ -2239,17 +2239,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Auxiliary reductions for binding instantiation:
      Declaring Arguments Object (Step 7) *)
 
-  | red_spec_binding_inst_arg_obj : forall str o1 L S C ct lf code xs args o, (* Step 7a *)
+  | red_spec_binding_inst_arg_obj : forall str o1 L S C lf code xs args o, (* Step 7a *)
       str = prog_intro_strictness code ->
       (* We actually need the variable environment with its pointer to parent variable environment for arguments object since it creates function objects. 
          But we forget the parents at the very first step of Declaration Binding Instantiation. We do not change execution context in Declaration Binding
-         Instatiation. So it is save to take the variable environment from execution context here. For the right way to do, should it be saved at the first 
+         Instaniation. So it is save to take the variable environment from execution context here. For the right way to do, should it be saved at the first 
          step and then propagated until this point? *)
       red_expr S C (spec_create_arguments_object lf xs args (execution_ctx_variable_env C) str) o1 ->
       red_expr S C (spec_binding_inst_arg_obj_1 code L str o1) o ->
       red_expr S C (spec_binding_inst_arg_obj lf code xs args L) o
  
-  | red_spec_binding_inst_arg_obj_1_strict : forall o1 L S0 S C ct code largs o, (* Step 7b i *)
+  | red_spec_binding_inst_arg_obj_1_strict : forall o1 L S0 S C code largs o, (* Step 7b i *)
       red_expr S C (spec_env_record_create_immutable_binding L "arguments") o1 -> 
       red_expr S C (spec_binding_inst_arg_obj_2 code L largs o1) o ->
       red_expr S0 C (spec_binding_inst_arg_obj_1 code L true (out_ter S largs)) o
@@ -2258,7 +2258,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_initialize_immutable_binding L "arguments" (value_object largs)) o -> 
       red_expr S0 C (spec_binding_inst_arg_obj_2 code L largs (out_void S)) o
       
-  | red_spec_binding_inst_arg_obj_1_not_strict : forall o1 L S0 S C ct code largs o, (* Step 7c *)
+  | red_spec_binding_inst_arg_obj_1_not_strict : forall o1 L S0 S C code largs o, (* Step 7c *)
       red_expr S C (spec_env_record_create_set_mutable_binding L "arguments" None largs false) o -> 
       red_expr S0 C (spec_binding_inst_arg_obj_1 code L false (out_ter S largs)) o
 
@@ -2458,30 +2458,30 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_object_delete lmap x false) o1 ->
       red_expr S' C (spec_args_obj_delete_3 o1) o ->
       red_expr S C (spec_args_obj_delete_2 l x throw lmap (full_descriptor_some A) (out_ter S' true)) o
-      
+
   | red_spec_object_delete_args_obj_3 : forall S C S' b o, (* Step 4 join *)
       red_expr S' C (spec_args_obj_delete_4 true) o ->
       red_expr S C (spec_args_obj_delete_3 (out_ter S' b)) o 
-      
+
   | red_spec_object_delete_args_obj_2_else : forall S C l x throw lmap D S' b o, (* Step 4 else *)
       b = false \/ D = full_descriptor_undef ->
       red_expr S' C (spec_args_obj_delete_4 b) o ->
       red_expr S C (spec_args_obj_delete_2 l x throw lmap D (out_ter S' b)) o
-      
+
   | red_spec_object_delete_args_obj_4 : forall S C b, (* Step 5 *)
       red_expr S C (spec_args_obj_delete_4 b) (out_ter S b)     
-  
+
   (* An auxiliary reduction 'spec_arguments_object_map' for steps 8-12 of Arguments Object (10.6) *)
-  
+
   | red_spec_arguments_object_map : forall o1 S C l xs args X str o, (* Step 8 *)
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
       red_expr S C (spec_arguments_object_map_1 l xs args X str o1) o ->
       red_expr S C (spec_arguments_object_map l xs args X str) o
-      
-  | red_spec_arguments_object_map_1 : forall S' o1 S C l xs args X str lmap o, (* Step 9 *)
+
+  | red_spec_arguments_object_map_1 : forall S' S C l xs args X str lmap o, (* Step 9 *)
       red_expr S' C (spec_arguments_object_map_2 l xs args X str lmap nil) o ->
       red_expr S C (spec_arguments_object_map_1 l xs args X str (out_ter S' lmap)) o
-      
+
   | red_spec_arguments_object_map_2_nil : forall S C l xs X str lmap xsmap o, (* Step 11 *)  
       red_expr S C (spec_arguments_object_map_8 l lmap xsmap) o ->
       red_expr S C (spec_arguments_object_map_2 l xs nil X str lmap xsmap) o
@@ -2546,7 +2546,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_arguments_object_map_8 l lmap nil) (out_void S) 
 
   (* Arguments Object: main reduction rules (10.6) *)
-  
+
   | red_spec_create_arguments_object : forall O l S' A o1 S C lf xs args X str o, (* Steps 2 - 4, 6, 7 *)
       (* The spec does not say anything about [[Extensible]] property that all objects must have.
          Since new properties are defined for this object, "true" is used for [[Extensible]]. *)
@@ -2557,7 +2557,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_create_arguments_object_1 lf xs args X str l o1) o ->
       red_expr S C (spec_create_arguments_object lf xs args X str) o   
 
-  | red_spec_create_arguments_object_1 : forall O l A o1 S C lf xs args X str l S' b o, (* Steps 8 - 12 *)
+  | red_spec_create_arguments_object_1 : forall o1 S C lf xs args X str l S' b o, (* Steps 8 - 12 *)
       red_expr S' C (spec_arguments_object_map l xs args X str) o1 ->
       red_expr S' C (spec_create_arguments_object_2 lf str l o1) o ->
       red_expr S C (spec_create_arguments_object_1 lf xs args X str l (out_ter S' b)) o 

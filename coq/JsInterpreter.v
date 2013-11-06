@@ -1403,7 +1403,7 @@ Definition make_arg_setter runs S C x X : result :=
                 (expr_assign (expr_identifier x) None (expr_identifier xparam)))::nil)) xbd in
   creating_function_object runs S C (xparam::nil) bd X true.
 
-Fixpoint arguments_object_map_loop runs S C l xs len args L X str lmap xsmap : result_void :=
+Fixpoint arguments_object_map_loop runs S C l xs len args X str lmap xsmap : result_void :=
   (* [len] should always be [length args]. *)
   match len with
   | O => (* args = nil *)
@@ -1417,7 +1417,7 @@ Fixpoint arguments_object_map_loop runs S C l xs len args L X str lmap xsmap : r
         res_void (object_write S l O')))
   | S len' => (* args <> nil *)
     Let arguments_object_map_loop' := fun S xsmap =>
-      arguments_object_map_loop runs S C l xs len' (removelast args) L X str lmap xsmap in
+      arguments_object_map_loop runs S C l xs len' (removelast args) X str lmap xsmap in
     Let A := attributes_data_intro_all_true (last args undef) in
     if_bool (object_define_own_prop runs S C l (convert_prim_to_string len') A false) (fun S1 b =>
       ifb len' >= length xs then
@@ -1435,17 +1435,17 @@ Fixpoint arguments_object_map_loop runs S C l xs len args L X str lmap xsmap : r
       )
   end.
 
-Definition arguments_object_map runs S C l xs args L X str : result_void :=
+Definition arguments_object_map runs S C l xs args X str : result_void :=
   if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S' lmap =>
-    arguments_object_map_loop runs S' C l xs (length args) args L X str lmap nil).
+    arguments_object_map_loop runs S' C l xs (length args) args X str lmap nil).
 
-Definition create_arguments_object runs S C lf xs args L X str : result :=
-  let O := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
-  let p := object_alloc S O in
+Definition create_arguments_object runs S C lf xs args X str : result :=
+  Let O := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
+  Let p := object_alloc S O in
   let '(l, S') := p in (* LATER: Let pair *)
   Let A := attributes_data_intro (JsNumber.of_int (length args)) true false true in
   if_bool (object_define_own_prop runs S' C l "length" A false) (fun S1 b =>
-    if_void (arguments_object_map runs S1 C l xs args L X str) (fun S2 =>
+    if_void (arguments_object_map runs S1 C l xs args X str) (fun S2 =>
       if str then (
         Let vthrower := value_object prealloc_throw_type_error in
         Let A := attributes_accessor_intro vthrower vthrower false false in
@@ -1460,7 +1460,7 @@ Definition create_arguments_object runs S C lf xs args L X str : result :=
 Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
   let arguments := "arguments" in
   Let str := prog_intro_strictness p in
-    if_object (create_arguments_object runs S C lf xs args L
+    if_object (create_arguments_object runs S C lf xs args
                    (execution_ctx_variable_env C) str) (fun S1 largs =>
       if str then
         if_void (env_record_create_immutable_binding S1 L arguments) (fun S2 =>

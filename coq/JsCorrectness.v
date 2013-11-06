@@ -2328,10 +2328,103 @@ Proof.
     applys* red_spec_binding_inst_formal_params_2. 
 Admitted. (* faster *)
 
+Lemma arguments_object_map_loop_correct : forall runs S C l xs len args X str lmap xsmap o,
+  runs_type_correct runs ->
+  len = length args ->
+  arguments_object_map_loop runs S C l xs len args X str lmap xsmap = o ->
+  red_expr S C (spec_arguments_object_map_2 l xs args X str lmap xsmap) o.
+Proof.
+  introv IH EQlen HR. gen o args S xsmap. induction len; introv EQlen HR;
+    destruct args as [|v args]; tryfalse.
+   simpls. apply~ red_spec_arguments_object_map_2_nil. cases_if.
+     substs. inverts HR. apply~ red_spec_arguments_object_map_8_nil.
+     run. let_name. inverts HR. forwards~ B: @pick_option_correct E.
+     applys~ red_spec_arguments_object_map_8_cons B. substs*.
+   rewrite length_cons in EQlen. simpl in HR.
+    let_name. let_name. asserts Loop: (forall S xsmap o,
+        arguments_object_map_loop' S xsmap = o ->
+        red_expr S C (spec_arguments_object_map_2 l xs (removelast (v :: args)) X str lmap xsmap) o).
+      clear HR. introv RES. subst arguments_object_map_loop'. apply* IHlen.
+      rewrite length_removelast; [|discriminate].
+      rewrite length_cons. simpl. rewrite* LibNat.minus_zero.
+    clear EQarguments_object_map_loop'.
+    run~ red_spec_arguments_object_map_2_cons using object_define_own_prop_correct.
+      discriminate.
+      clear HR. rewrite length_cons. subst A. simpls.
+       inverts EQlen. substs. rewrite* LibNat.minus_zero.
+    clear R1 EQA. cases_if.
+     apply~ red_spec_arguments_object_map_3_skip.
+      simpl in EQlen. inverts EQlen. rewrite length_cons.
+      simpl. rewrite* LibNat.minus_zero.
+     let_name. asserts caseCont: ((length (v :: args) - 1)%I < length xs). (* TODO:  Clean all that... *)
+       clear HR. rewrite length_cons. simpl.
+       asserts ARITHMLEM: (forall n : nat, (Datatypes.S n : int) = n + 1).
+        introv. repeat unfolds. rewrite my_Z_of_nat_def. simpl.
+        induction* n0. (* Please, help me! :(  This shall really be trivial... *)
+        simpl. rewrite* Pos.add_1_r.
+       rewrite ARITHMLEM. rewrite Z.sub_1_r. rewrite Z.add_1_r. rewrite <- Zpred_succ.
+       simpl in EQlen. inverts EQlen. math.
+      asserts H: (forall n p : nat, n > 0%nat -> (n - 1)%I < p -> (n - 1)%nat < p). math.
+      forwards caseCont': (rm H) (rm caseCont).
+        rewrite length_cons. math.
+      cases_if.
+       apply~ red_spec_arguments_object_map_3_cont_skip.
+        inverts o0; [left~|right~].
+        rewrite length_cons. simpl. rewrite LibNat.minus_zero.
+        simpl in EQlen. inverts EQlen. substs*.
+       apply~ red_spec_arguments_object_map_3_cont_cont.
+        rew_logic in n0. destruct n0 as [? NI]. splits.
+         destruct~ str; false.
+         rewrite length_cons. simpl. rewrite LibNat.minus_zero.
+         simpl in EQlen. inverts EQlen. substs*.
+        (* run red_spec_arguments_object_map_4 using make_arg_getter_correct. *)
+        skip. (* TODO *)
+Qed.
+
+Lemma arguments_object_map_correct : forall runs S C l xs args X str o,
+  runs_type_correct runs ->
+  arguments_object_map runs S C l xs args X str = o ->
+  red_expr S C (spec_arguments_object_map l xs args X str) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_arguments_object_map using run_construct_prealloc_correct.
+  apply~ red_spec_arguments_object_map_1.
+  apply* arguments_object_map_loop_correct.
+Qed.
+
+Lemma create_arguments_object_correct : forall runs S C lf xs args X str o,
+  runs_type_correct runs ->
+  create_arguments_object runs S C lf xs args X str = o ->
+  red_expr S C (spec_create_arguments_object lf xs args X str) o.
+Proof.
+  introv IH HR. unfolds in HR. let_name. let_name. destruct p as [l S'].
+  let_name. run* red_spec_create_arguments_object; try solve [ substs* ].
+  clear EQA EQO EQp A. run red_spec_create_arguments_object_1
+    using arguments_object_map_correct. cases_if.
+   let_name. let_name.
+    run* red_spec_create_arguments_object_2_strict; try solve [ substs* ].
+    clear EQA. run red_spec_create_arguments_object_3.
+    apply~ red_spec_create_arguments_object_4.
+   let_name.
+    run* red_spec_create_arguments_object_2_non_strict; try solve [ substs* ].
+    clear EQA. apply~ red_spec_create_arguments_object_4.
+Qed.
+
 Lemma binding_inst_arg_obj_correct : forall runs S C lf p xs args L o,
+  runs_type_correct runs ->
   binding_inst_arg_obj runs S C lf p xs args L = o ->
   red_expr S C (spec_binding_inst_arg_obj lf p xs args L) o.
-Admitted. (* Argument object: not done for the moment *)
+Proof.
+  introv IH HR. unfolds in HR. let_name.
+  run~ red_spec_binding_inst_arg_obj using create_arguments_object_correct.
+  cases_if.
+   run red_spec_binding_inst_arg_obj_1_strict
+     using env_record_create_immutable_binding_correct.
+    apply~ red_spec_binding_inst_arg_obj_2.
+    apply~ env_record_initialize_immutable_binding_correct.
+   apply~ red_spec_binding_inst_arg_obj_1_not_strict.
+    applys~ env_record_create_set_mutable_binding_correct HR.
+Qed.
 
 
 Lemma execution_ctx_binding_inst_correct : forall runs S C ct funco (p:prog) args o,
@@ -2730,8 +2823,7 @@ Proof.
      applys~ red_spec_env_record_delete_binding_1_decl_indom E; case_if*.
     rewrite <- Heap.not_indom_equiv_read_option in E. run_inv.
      applys~ red_spec_env_record_delete_binding_1_decl_not_indom E.
-   applys~ red_spec_env_record_delete_binding_1_object.
-    applys~ object_delete_correct HR.
+   run. apply~ red_spec_env_record_delete_binding_1_object.
 Qed.
 
 
@@ -2805,7 +2897,7 @@ Proof.
      let_simpl. let_name. lets: prepost_op_correct (rm E).
      run* red_expr_prepost_3. subst. applys* red_expr_prepost_4.
     destruct u; try solve [ false n; constructors ].
-    (* delete *) Focus 1.
+    (* delete *)
     run red_expr_delete. destruct rv; run_inv.
       applys* red_expr_delete_1_not_ref. intro; false_invert. 
       applys* red_expr_delete_1_not_ref. intro; false_invert. 
@@ -2813,9 +2905,8 @@ Proof.
         applys* red_expr_delete_1_ref_unresolvable.
         cases (ref_base r).
           run* red_expr_delete_1_ref_property using to_object_correct.
-            applys* ref_is_property_from_not_unresolvable_value.
-            applys* red_expr_delete_2.
-             applys* object_delete_correct.
+            apply* ref_is_property_from_not_unresolvable_value.
+            apply~ red_expr_delete_2. runs~.
           rename e0 into L. applys* red_expr_delete_1_ref_env_record.
            applys* env_record_delete_binding_correct.
        unfolds ref_is_unresolvable, ref_kind_of. 

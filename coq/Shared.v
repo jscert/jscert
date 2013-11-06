@@ -966,4 +966,13 @@ Proof.
     rewrite IHl. introv I. apply F. right~.
 Qed.
 
+Lemma length_removelast : forall A (l : list A),
+  l <> nil ->
+  LibList.length (removelast l) = (LibList.length l - 1)%nat.
+Proof.
+  introv. destruct~ l. introv _. gen a. induction~ l. introv.
+  unfold removelast. fold (removelast (a :: l)).
+  do 2 rewrite length_cons. rewrite IHl. simpl.
+  rewrite* LibNat.minus_zero.
+Qed.
 
