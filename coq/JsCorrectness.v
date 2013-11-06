@@ -1094,11 +1094,17 @@ Tactic Notation "run_simpl" :=
 Tactic Notation "run" constr(Red) :=
   run_step Red.
 
+Tactic Notation "run" "~" constr(Red) :=
+  run Red; auto~.
+
 Tactic Notation "run" "*" constr(Red) :=
   run Red; auto*.
 
 Tactic Notation "run" constr(Red) "using" constr(Lem) :=
   run_step_using Red Lem.
+
+Tactic Notation "run" "~" constr(Red) "using" constr(Lem) :=
+  run Red using Lem; auto~.
 
 Tactic Notation "run" "*" constr(Red) "using" constr(Lem) :=
   run Red using Lem; auto*.
@@ -1107,17 +1113,26 @@ Tactic Notation "run" "*" constr(Red) "using" constr(Lem) :=
 Tactic Notation "runs" constr(Red) :=
   run Red; subst.
 
+Tactic Notation "runs" "~" constr(Red) :=
+  run Red; subst; auto~.
+
 Tactic Notation "runs" "*" constr(Red) :=
   run Red; subst; auto*.
 
 Tactic Notation "run" :=
   run_simpl.
 
+Tactic Notation "run" "~" :=
+  run; auto~.
+
 Tactic Notation "run" "*" :=
   run; auto*.
 
 Tactic Notation "runs" :=
   run; subst.
+
+Tactic Notation "runs" "~" :=
+  runs; auto~.
 
 Tactic Notation "runs" "*" :=
   runs; auto*.
@@ -1309,8 +1324,8 @@ Proof.
       applys~ Mdefault_correct.
       applys~ Mfunction_correct.
   (* argument object *)
-  run_simpl. forwards* obpm: run_object_method_correct.
-  run_simpl. substs. run* red_spec_object_get_args_obj.
+  run. forwards* obpm: run_object_method_correct.
+  run. substs. run~ red_spec_object_get_args_obj.
   destruct a. (* LTAC ARTHUR:  This [a] wasn't properly named. *)
    apply* red_spec_object_get_args_obj_1_undef.
    run_hyp. apply~ red_spec_object_get_args_obj_1_attrs.
@@ -1415,19 +1430,30 @@ Proof.
     (* default *)
     applys* Def.
     (* arguments object *)
-    run_simpl. forwards~ obpm: run_object_method_correct (rm E).
-    run_simpl. subst. run* red_spec_object_define_own_prop_args_obj.
-    run* red_spec_object_define_own_prop_args_obj_1. cases_if; substs.
-     let_name. asserts Follow: (forall S,
+    run. forwards~ obpm: run_object_method_correct (rm E).
+    run. subst. run~ red_spec_object_define_own_prop_args_obj.
+    run~ red_spec_object_define_own_prop_args_obj_1. cases_if; substs.
+     let_name. asserts Follow: (forall S o,
          follow S = result_some (specret_out o) ->
          red_expr S C spec_args_obj_define_own_prop_6 o).
        introv RES. rewrite EQfollow in RES. inverts RES.
        apply* red_spec_object_define_own_prop_args_obj_6.
-     clear EQfollow. destruct a. (* LTAC ARTHUR: this [a] has been defined by tactics. *)
+     clear EQfollow. destruct a as [|A]. (* LTAC ARTHUR: this [a] has been defined by tactics. *)
       apply~ red_spec_object_define_own_prop_args_obj_2_true_undef.
       cases_if.
-       skip. (* TODO *)
-       skip. (* TODO *)
+       run~ red_spec_object_define_own_prop_args_obj_2_true_acc.
+        apply* red_spec_object_define_own_prop_args_obj_5.
+       let_name as next. asserts Next: (forall S o,
+           next S = result_some (specret_out o) ->
+           red_expr S C (spec_args_obj_define_own_prop_4 l x Desc str x1) o).
+         introv RES. rewrite EQnext in RES. cases_if.
+          run~ red_spec_object_define_own_prop_args_obj_4_false.
+           apply~ red_spec_object_define_own_prop_args_obj_5.
+          apply~ red_spec_object_define_own_prop_args_obj_4_not_false.
+        clear EQnext. sets_eq <- dvDesc: (descriptor_value Desc). destruct dvDesc.
+         run~ red_spec_object_define_own_prop_args_obj_2_true_not_acc_some.
+          apply~ red_spec_object_define_own_prop_args_obj_3.
+         apply~ red_spec_object_define_own_prop_args_obj_2_true_not_acc_none.
      apply~ red_spec_object_define_own_prop_args_obj_2_false.
 Admitted. (* faster *)
 
@@ -1756,8 +1782,8 @@ Lemma env_record_initialize_immutable_binding_correct : forall S C L x v o,
   red_expr S C (spec_env_record_initialize_immutable_binding L x v) o.
 Proof.
   introv HR. unfolds in HR.
-  run_simpl. forwards B: @pick_option_correct (rm E). destruct x0; tryfalse.
-  run_simpl. forwards B': @pick_option_correct (rm E). cases_if. let_simpl. run_inv. substs.
+  run. forwards B: @pick_option_correct (rm E). destruct x0; tryfalse.
+  run. forwards B': @pick_option_correct (rm E). cases_if. let_simpl. run_inv. substs.
   applys~ red_spec_env_record_initialize_immutable_binding B B'.
 Qed.
 
@@ -2633,7 +2659,22 @@ Proof.
   (* default *)
   subst*.
   (* argument object *)
-  skip. (* LATER:  Argument object: proof postponed *)
+  run~ red_spec_object_get_own_prop_args_obj. destruct a as [|A]. (* LTAC ARTHUR: this [a] has been defined by tactics. *)
+   inverts HR. applys~ red_spec_object_get_own_prop_args_obj_1_undef.
+   run. forwards~ obpm: run_object_method_correct (rm E).
+   run. subst. run~ red_spec_object_get_own_prop_args_obj_1_attrs.
+   let_name. asserts Follow: (forall S A y,
+       follow S A = result_some y ->
+       red_spec S C (spec_args_obj_get_own_prop_4 A) y).
+     introv RES. rewrite EQfollow in RES. inverts RES.
+     apply~ red_spec_object_get_own_prop_args_obj_4.
+   clear EQfollow. destruct a. (* LTAC ARTHUR: idem. *)
+    apply* red_spec_object_get_own_prop_args_obj_2_undef.
+    run~ red_spec_object_get_own_prop_args_obj_2_attrs using run_object_get_correct.
+    destruct A as [Ad|]; tryfalse.
+    apply~ red_spec_object_get_own_prop_args_obj_3.
+  (* string *)
+  skip. (* LATER:  String object: proof postponed *)
 Admitted. (*faster*)
 
 Lemma object_delete_default_correct : forall runs S C l x str o,
@@ -2655,12 +2696,24 @@ Lemma object_delete_correct : forall runs S C l x str o,
   object_delete runs S C l x str = o ->
   red_expr S C (spec_object_delete l x str) o.
 Proof.
-  introv IH HR. unfolds in HR. run. rename x0 into B. 
+  introv IH HR. unfolds in HR. run. rename x0 into B. (* LTAC ARTHUR *)
   applys* red_spec_object_delete.
    applys* run_object_method_correct. clear E.
   destruct B.
-   applys~ object_delete_default_correct HR.
-   skip. (* LATER:  argument object *)
+  (* default *)
+  applys~ object_delete_default_correct HR.
+  (* argument object *)
+  run. forwards* obpm: run_object_method_correct.
+  run. substs. run~ red_spec_object_delete_args_obj.
+  run red_spec_object_delete_args_obj_1 using object_delete_default_correct.
+  cases_if. destruct a. (* LTAC ARTHUR *)
+   apply~ red_spec_object_delete_args_obj_2_else.
+    inverts HR. apply~ red_spec_object_delete_args_obj_4.
+   run red_spec_object_delete_args_obj_2_if.
+    apply~ red_spec_object_delete_args_obj_3.
+    apply~ red_spec_object_delete_args_obj_4.
+   apply~ red_spec_object_delete_args_obj_2_else.
+    inverts HR. apply~ red_spec_object_delete_args_obj_4.
 Qed.
 
 
@@ -2680,7 +2733,6 @@ Proof.
    applys~ red_spec_env_record_delete_binding_1_object.
     applys~ object_delete_correct HR.
 Qed.
-
 
 
 Lemma identifier_resolution_correct : forall runs S C x y,

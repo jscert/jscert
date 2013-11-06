@@ -700,19 +700,17 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                 | full_descriptor_undef =>
                   follow S
                 | full_descriptor_some A =>
-                  ifb descriptor_is_accessor A
+                  ifb descriptor_is_accessor Desc
                   then if_bool (runs_type_object_delete runs S C lmap x false) (fun S _ =>
                          follow S)
                   else Let follow := fun S =>
-                         match descriptor_writable A with
-                         | Some false => 
+                         ifb descriptor_writable Desc = Some false then
                            if_bool (runs_type_object_delete runs S C lmap x false) (fun S _ =>
                              follow S)
-                         | _ =>
-                           follow S
-                         end in
+                         else follow S
+                         in
 
-                       match descriptor_value A with
+                       match descriptor_value Desc with
                        | Some v =>
                          if_void (runs_type_object_put runs S C lmap x v throw) (fun S =>
                            follow S)
@@ -852,7 +850,8 @@ Definition object_delete_default runs S C l x str : result :=
 Definition object_delete runs S C l x str : result :=
   if_some (run_object_method object_delete_ S l) (fun B =>
     match B with
-    | builtin_delete_default => object_delete_default runs S C l x str
+    | builtin_delete_default =>
+      object_delete_default runs S C l x str
     | builtin_delete_args_obj =>
       if_some (run_object_method object_parameter_map_ S l) (fun Mo =>
         if_some Mo (fun M =>
@@ -860,7 +859,8 @@ Definition object_delete runs S C l x str : result :=
            if_bool (object_delete_default runs S1 C l x str) (fun S2 b =>
              match b, D with
              | true, full_descriptor_some _ =>
-               runs_type_object_delete runs S2 C M x false
+               if_bool (runs_type_object_delete runs S2 C M x false) (fun S3 b' =>
+                 res_ter S3 b)
              | _, _ => res_ter S2 b
              end))))
     end).
@@ -879,7 +879,7 @@ Definition env_record_delete_binding runs S C L x : result :=
         out_ter S false
       end
     | env_record_object l pt =>
-      object_delete runs S C l x throw_false
+      runs_type_object_delete runs S C l x throw_false
     end).
 
 Definition env_record_implicit_this_value S L : option value :=
@@ -1848,7 +1848,7 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
             match ref_base r with
             | ref_base_type_value v =>
               if_object (to_object S1 v) (fun S2 l =>
-                object_delete runs S2 C l (ref_name r) (ref_strict r))
+                runs_type_object_delete runs S2 C l (ref_name r) (ref_strict r))
             | ref_base_type_env_loc L =>
               env_record_delete_binding runs S1 C L (ref_name r)
             end
