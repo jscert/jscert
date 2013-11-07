@@ -191,6 +191,18 @@ Proof.
     rewrite length_cons in I. nat_math.
 Qed.
 
+Lemma get_arg_correct_0 : forall args,
+  arguments_from args (get_arg 0 args :: nil).
+Proof. introv. destruct args; do 2 constructors. Qed.
+
+Lemma get_arg_correct_1 : forall args,
+  arguments_from args (get_arg 0 args :: get_arg 1 args :: nil).
+Proof. introv. destruct args as [|? [|? ?]]; do 3 constructors. Qed.
+
+Lemma get_arg_correct_2 : forall args,
+  arguments_from args (get_arg 0 args :: get_arg 1 args :: get_arg 2 args :: nil).
+Proof. introv. destruct args as [|? [|? [|? ?]]]; do 4 constructors. Qed.
+
 Lemma and_impl_left : forall P1 P2 P3 : Prop,
   (P1 -> P2) ->
   P1 /\ P3 ->
@@ -3388,7 +3400,13 @@ Proof.
   (* prealloc_object_proto_value_of *)
   skip.
   (* prealloc_object_proto_has_own_prop *)
-  skip.
+  run red_spec_call_object_proto_has_own_prop.
+    apply~ get_arg_correct_0.
+  run red_spec_call_object_proto_has_own_prop_1 using to_object_correct.
+  run red_spec_call_object_proto_has_own_prop_2.
+  destruct a. (* LTAC ARTHUR *)
+   inverts HR. apply~ red_spec_call_object_proto_has_own_prop_3_undef.
+   inverts HR. apply~ red_spec_call_object_proto_has_own_prop_3_not_undef.
   (* prealloc_object_proto_is_prototype_of *)
   skip.
   (* prealloc_object_proto_prop_is_enumerable *)

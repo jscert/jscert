@@ -3287,75 +3287,99 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
  
   (** Object.prototype.valueOf() (returns value)  (15.2.4.4) *)
  
-  | red_spec_call_object_proto_value_of : forall S C vthis args o,   
+  | red_spec_call_object_proto_value_of : forall S C vthis args o,
       red_expr S C (spec_to_object vthis) o ->
       red_expr S C (spec_call_prealloc prealloc_object_proto_value_of vthis args) o 
 
+  (** Object.prototype.hasOwnProperty() (returns bool)  (15.2.4.5) *)
+
+  | red_spec_call_object_proto_has_own_prop : forall S C v vthis args o o1, (* Step 1 *)
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_to_string v) o1 ->
+      red_expr S C (spec_call_object_proto_has_own_prop_1 o1 vthis) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_proto_has_own_prop vthis args) o 
+
+  | red_spec_call_object_proto_has_own_prop_1 : forall S S' C vthis s o o1, (* Step 2 *)
+      red_expr S' C (spec_to_object vthis) o1 ->
+      red_expr S' C (spec_call_object_proto_has_own_prop_2 o1 s) o ->
+      red_expr S C (spec_call_object_proto_has_own_prop_1 (out_ter S' s) vthis) o
+
+  | red_spec_call_object_proto_has_own_prop_2 : forall S S' C l s o y, (* Step 3 *)
+      red_spec S' C (spec_object_get_own_prop l s) y ->
+      red_expr S' C (spec_call_object_proto_has_own_prop_3 y) o ->
+      red_expr S C (spec_call_object_proto_has_own_prop_2 (out_ter S' l) s) o
+
+  | red_spec_call_object_proto_has_own_prop_3_undef : forall S S' C, (* Step 4 *)
+      red_expr S C (spec_call_object_proto_has_own_prop_3 (ret S' full_descriptor_undef)) (out_ter S' false)
+
+  | red_spec_call_object_proto_has_own_prop_3_not_undef : forall S S' C A, (* Step 5 *)
+      red_expr S C (spec_call_object_proto_has_own_prop_3 (ret (T := full_descriptor) S' A)) (out_ter S' true)
+
    (** Object.prototype.isPrototypeOf() (returns bool)  (15.2.4.6) *)
 
-   | red_spec_call_object_proto_is_prototype_of_not_object : forall S C vthis args v o, (* Step 0 *)
-      arguments_from args (v::nil)  ->
+  | red_spec_call_object_proto_is_prototype_of_not_object : forall S C vthis args v o, (* Step 0 *)
+      arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_1 v vthis) o ->
       red_expr S C (spec_call_prealloc prealloc_object_proto_is_prototype_of vthis args) o
 
-   | red_spec_call_object_proto_is_prototype_of_1_not_object : forall S C v vthis, (* Step 1 *)
+  | red_spec_call_object_proto_is_prototype_of_1_not_object : forall S C v vthis, (* Step 1 *)
       type_of v <> type_object ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_1 v vthis) (out_ter S false)
 
-   | red_spec_call_object_proto_is_prototype_of_1_object : forall S C l vthis o1 o, (* Step 2 *)
+  | red_spec_call_object_proto_is_prototype_of_1_object : forall S C l vthis o1 o, (* Step 2 *)
       red_expr S C (spec_to_object vthis) o1 ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_2 o1 l) o ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_1 l vthis) o
 
-   | red_spec_call_object_proto_is_prototype_of_2 : forall S0 S C l lthis o,
+  | red_spec_call_object_proto_is_prototype_of_2 : forall S0 S C l lthis o,
       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o ->
       red_expr S0 C (spec_call_object_proto_is_prototype_of_2_2 (out_ter S lthis) l) o
 
-   | red_spec_call_object_proto_is_prototype_of_3 : forall S C l lthis vproto o, (* Step 3.a *)
+  | red_spec_call_object_proto_is_prototype_of_3 : forall S C l lthis vproto o, (* Step 3.a *)
       object_proto S l vproto -> 
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis vproto) o ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o
 
-   | red_spec_call_object_proto_is_prototype_of_4_null : forall S C lthis o, (* Step 3.b *)
+  | red_spec_call_object_proto_is_prototype_of_4_null : forall S C lthis o, (* Step 3.b *)
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis null) (out_ter S false)
 
-   | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C lthis o, (* Step 3.c *)
+  | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C lthis o, (* Step 3.c *)
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lthis) (out_ter S true)
   
-   | red_spec_call_object_proto_is_prototype_of_4_not_equal : forall S C l lthis lproto o, (* Look back to step 3 *)
+  | red_spec_call_object_proto_is_prototype_of_4_not_equal : forall S C l lthis lproto o, (* Look back to step 3 *)
       (* Note: we implicitly enforce the fact that a proto can only be a location or null *)
       lproto <> lthis -> 
       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis lproto) o ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lproto) o
 
-   (** Object.prototype.propertyIsEnumerable(V) (returns bool)  (15.2.4.7) *)
+  (** Object.prototype.propertyIsEnumerable(V) (returns bool)  (15.2.4.7) *)
 
-   | red_spec_call_object_proto_prop_is_enumerable : forall S C v o vthis args,  
-       arguments_from args (v::nil)  ->
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_1 v vthis) o ->
-       red_expr S C (spec_call_prealloc prealloc_object_proto_prop_is_enumerable vthis args) o
+  | red_spec_call_object_proto_prop_is_enumerable : forall S C v o vthis args,  
+      arguments_from args (v::nil)  ->
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_1 v vthis) o ->
+      red_expr S C (spec_call_prealloc prealloc_object_proto_prop_is_enumerable vthis args) o
 
-   | red_spec_call_object_proto_prop_is_enumerable_1 : forall S C v vthis o o1, 
-       red_expr S C (spec_to_string v) o1 ->
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_2 vthis o1) o -> 
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_1 v vthis) o
+  | red_spec_call_object_proto_prop_is_enumerable_1 : forall S C v vthis o o1, 
+      red_expr S C (spec_to_string v) o1 ->
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_2 vthis o1) o -> 
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_1 v vthis) o
 
-   | red_spec_call_object_proto_prop_is_enumerable_2 : forall S S' C vthis s o o1, 
-       red_expr S C (spec_to_object vthis) o1 ->
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_3 o1 s) o ->
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_2 vthis (out_ter S' s)) o
-       
-   | red_spec_call_object_proto_prop_is_enumerable_3 : forall S S' C l x o (y:specret full_descriptor),  
-       red_spec S C (spec_object_get_own_prop l x) y ->
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_4 y) o ->
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_3 (out_ter S' l) x) o
+  | red_spec_call_object_proto_prop_is_enumerable_2 : forall S S' C vthis s o o1, 
+      red_expr S' C (spec_to_object vthis) o1 ->
+      red_expr S' C (spec_call_object_proto_prop_is_enumerable_3 o1 s) o ->
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_2 vthis (out_ter S' s)) o
+      
+  | red_spec_call_object_proto_prop_is_enumerable_3 : forall S S' C l x o (y:specret full_descriptor),  
+      red_spec S' C (spec_object_get_own_prop l x) y ->
+      red_expr S' C (spec_call_object_proto_prop_is_enumerable_4 y) o ->
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_3 (out_ter S' l) x) o
 
-   | red_spec_call_object_proto_prop_is_enumerable_4_undef : forall S0 S C, 
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 full_descriptor_undef)) (out_ter S false)
+  | red_spec_call_object_proto_prop_is_enumerable_4_undef : forall S0 S C, 
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 full_descriptor_undef)) (out_ter S0 false)
 
-   | red_spec_call_object_proto_prop_is_enumerable_4_not_undef : forall S0 S C A b, 
-       b = attributes_enumerable A ->
-       red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 A)) (out_ter S b)
+  | red_spec_call_object_proto_prop_is_enumerable_4_not_undef : forall S0 S C A b, 
+      b = attributes_enumerable A ->
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 A)) (out_ter S0 b)
 
   (*------------------------------------------------------------*)
   (** ** Function builtin functions *)

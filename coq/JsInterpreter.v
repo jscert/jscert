@@ -2673,6 +2673,17 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
             res_ter S3 (attributes_enumerable A)
           end)))
 
+  | prealloc_object_proto_has_own_prop =>
+    let v := get_arg 0 args in
+    if_string (to_string runs S C v) (fun S1 x =>
+      if_object (to_object S1 vthis) (fun S2 l =>
+        if_spec (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
+          match D with
+          | full_descriptor_undef =>
+            res_ter S3 false
+          | _ => res_ter S3 true
+          end)))
+
   | prealloc_function_proto =>
     out_ter S undef
 

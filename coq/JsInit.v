@@ -241,9 +241,9 @@ Definition object_prealloc_object_proto :=
   let P := Heap.empty in
   let P := write_native P "constructor" prealloc_object in
   let P := write_native P "toString" prealloc_object_proto_to_string in 
-  (* LATER: let P := write_native P "to_locale_string" prealloc_object_proto_to_locale_string in*)
+  (* LATER: let P := write_native P "toLocaleString" prealloc_object_proto_to_locale_string in*)
   let P := write_native P "valueOf" prealloc_object_proto_value_of in 
-  (* LATER: let P := write_native P "has_own_property" prealloc_object_proto_has_own_property in*)
+  let P := write_native P "hasOwnProperty" prealloc_object_proto_has_own_prop in
   let P := write_native P "isPrototypeOf" prealloc_object_proto_is_prototype_of in 
   let P := write_native P "propertyIsEnumerable" prealloc_object_proto_prop_is_enumerable in
   object_create_builtin null "Object" P.
@@ -257,7 +257,10 @@ Definition object_proto_to_string_function_object :=
   
 Definition object_proto_value_of_function_object :=
   object_create_prealloc_call prealloc_object_proto_value_of 0 Heap.empty.
-  
+
+Definition object_proto_has_own_prop_function_object :=
+  object_create_prealloc_call prealloc_object_proto_has_own_prop 0 Heap.empty.
+
 Definition object_proto_is_prototype_of_function_object :=
   object_create_prealloc_call prealloc_object_proto_is_prototype_of 1 Heap.empty.
 
@@ -547,6 +550,7 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
   (* Function objects of Object.prototype *)
   let h := Heap.write h prealloc_object_proto_to_string object_proto_to_string_function_object in
   let h := Heap.write h prealloc_object_proto_value_of object_proto_value_of_function_object in
+  let h := Heap.write h prealloc_object_proto_has_own_prop object_proto_has_own_prop_function_object in
   let h := Heap.write h prealloc_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
   let h := Heap.write h prealloc_object_proto_prop_is_enumerable object_proto_prop_is_enumerable_function_object in
 

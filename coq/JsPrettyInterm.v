@@ -458,7 +458,7 @@ Inductive ext_expr :=
 
   | spec_call_object_define_prop_1: value -> value -> value -> ext_expr
   | spec_call_object_define_prop_2: object_loc -> out -> value -> ext_expr
-  | spec_call_object_define_prop_3: object_loc -> string -> (specret descriptor) -> ext_expr
+  | spec_call_object_define_prop_3: object_loc -> string -> specret descriptor -> ext_expr
   | spec_call_object_define_prop_4: object_loc -> out -> ext_expr
 
   | spec_call_object_get_own_prop_descriptor_1: value -> value -> ext_expr
@@ -467,6 +467,11 @@ Inductive ext_expr :=
 
   | spec_call_object_proto_to_string_1 : value -> ext_expr
   | spec_call_object_proto_to_string_2 : out -> ext_expr
+
+  | spec_call_object_proto_has_own_prop_1 : out -> value -> ext_expr
+  | spec_call_object_proto_has_own_prop_2 : out -> prop_name -> ext_expr
+  | spec_call_object_proto_has_own_prop_3 : specret full_descriptor -> ext_expr
+
   | spec_call_object_proto_is_prototype_of_2_1 : value -> value -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_2 : out -> object_loc -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_3 : object_loc -> object_loc -> ext_expr
@@ -1129,6 +1134,11 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_call_object_proto_to_string_1 _ => None
   | spec_call_object_proto_to_string_2 o => Some o
+
+  | spec_call_object_proto_has_own_prop_1 o _ => Some o
+  | spec_call_object_proto_has_own_prop_2 o _ => Some o
+  | spec_call_object_proto_has_own_prop_3 y => out_of_specret y
+
   | spec_call_object_proto_is_prototype_of_2_1 _ _ => None
   | spec_call_object_proto_is_prototype_of_2_2 o _ => Some o
   | spec_call_object_proto_is_prototype_of_2_3 _ _ => None
