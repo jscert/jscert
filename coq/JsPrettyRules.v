@@ -2345,23 +2345,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (*------------------------------------------------------------*)
   (** 10.6 Arguments Object (returns location to an arguments object) *) 
-  
+
   (* An auxiliary reduction for the MakeArgGetter abstract operation *)
-  | red_spec_make_arg_getter : forall xbd bd S C l x X o,
+  | red_spec_make_arg_getter : forall xbd bd S C x X o,
      xbd = "return " ++ x ++ ";" ->
      (* Not sure about the strictness. Using 'true' because of strictness equal to true when creating function object. *)
      bd = funcbody_intro (prog_intro true ((element_stat (stat_return (Some (expr_identifier x))))::nil)) xbd ->
      red_expr S C (spec_creating_function_object nil bd X true) o ->
-     red_expr S C (spec_make_arg_getter l x X) o
-     
+     red_expr S C (spec_make_arg_getter x X) o
+
   (* An auxiliary reduction for the MakeArgSetter abstract operation *)
-  | red_spec_make_arg_setter : forall xparam xbd bd S C l x X o,
+  | red_spec_make_arg_setter : forall xparam xbd bd S C x X o,
      xparam = x ++ "_arg" ->
      xbd = x ++ " = " ++ xparam ++ ";" ->
      (* Not sure about the strictness. Using 'true' because of strictness equal to true when creating function object. *)
      bd = funcbody_intro (prog_intro true ((element_stat (expr_assign (expr_identifier x) None (expr_identifier xparam)))::nil)) xbd ->
      red_expr S C (spec_creating_function_object (xparam::nil) bd X true) o ->
-     red_expr S C (spec_make_arg_setter l x X) o
+     red_expr S C (spec_make_arg_setter x X) o
 
   (* Arguments Object: Get (returns value) (10.6) *) 
   | red_spec_object_get_args_obj : forall lmap S C vthis l x o (y:specret full_descriptor), (* Steps 1 - 2 *)
@@ -2516,12 +2516,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
 
   | red_spec_arguments_object_map_4 : forall o1 S C l xs args X str lmap xsmap x o,  (* Step 11 c ii 1 - 2 *) 
-      red_expr S C (spec_make_arg_getter l x X) o1 ->
+      red_expr S C (spec_make_arg_getter x X) o1 ->
       red_expr S C (spec_arguments_object_map_5 l xs args X str lmap (x::xsmap) x o1) o ->
       red_expr S C (spec_arguments_object_map_4 l xs args X str lmap xsmap x) o
       
   | red_spec_arguments_object_map_5 : forall o1 S C l xs args X str lmap xsmap x S' lgetter o,  (* Step 11 c ii 3 *) 
-      red_expr S' C (spec_make_arg_setter l x X) o1 ->
+      red_expr S' C (spec_make_arg_setter x X) o1 ->
       red_expr S' C (spec_arguments_object_map_6 l xs args X str lmap xsmap lgetter o1) o ->
       red_expr S C (spec_arguments_object_map_5 l xs args X str lmap xsmap x (out_ter S' lgetter)) o
       

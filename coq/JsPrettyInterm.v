@@ -308,8 +308,8 @@ Inductive ext_expr :=
   | spec_binding_inst_7 : prog -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_8 : prog -> bool -> env_loc -> ext_expr
   
-  | spec_make_arg_getter : object_loc -> string -> lexical_env -> ext_expr
-  | spec_make_arg_setter : object_loc -> string -> lexical_env -> ext_expr
+  | spec_make_arg_getter : string -> lexical_env -> ext_expr
+  | spec_make_arg_setter : string -> lexical_env -> ext_expr
   
   | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> (specret full_descriptor) -> ext_expr
   
@@ -980,8 +980,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_binding_inst_7 _ _ _ o => Some o
   | spec_binding_inst_8 _ _ _ => None
   
-  | spec_make_arg_getter _ _ _ => None
-  | spec_make_arg_setter _ _ _ => None
+  | spec_make_arg_getter _ _ => None
+  | spec_make_arg_setter _ _ => None
   
   | spec_args_obj_get_1 _ _ _ _ y => out_of_specret y
   

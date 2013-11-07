@@ -2328,6 +2328,25 @@ Proof.
     applys* red_spec_binding_inst_formal_params_2. 
 Admitted. (* faster *)
 
+
+Lemma make_arg_getter_correct : forall runs S C x X o,
+  runs_type_correct runs ->
+  make_arg_getter runs S C x X = o ->
+  red_expr S C (spec_make_arg_getter x X) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  apply~ red_spec_make_arg_getter. applys~ creating_function_object_correct HR.
+Qed.
+
+Lemma make_arg_setter_correct : forall runs S C x X o,
+  runs_type_correct runs ->
+  make_arg_setter runs S C x X = o ->
+  red_expr S C (spec_make_arg_setter x X) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  apply~ red_spec_make_arg_setter. applys~ creating_function_object_correct HR.
+Qed.
+
 Lemma arguments_object_map_loop_correct : forall runs S C l xs len args X str lmap xsmap o,
   runs_type_correct runs ->
   len = length args ->
@@ -2356,7 +2375,7 @@ Proof.
      apply~ red_spec_arguments_object_map_3_skip.
       simpl in EQlen. inverts EQlen. rewrite length_cons.
       simpl. rewrite* LibNat.minus_zero.
-     let_name. asserts caseCont: ((length (v :: args) - 1)%I < length xs). (* TODO:  Clean all that... *)
+     let_name. asserts caseCont: ((length (v :: args) - 1)%I < length xs). (* TODO:  Clean all those arithmeticalities... *)
        clear HR. rewrite length_cons. simpl.
        asserts ARITHMLEM: (forall n : nat, (Datatypes.S n : int) = n + 1).
         introv. repeat unfolds. rewrite my_Z_of_nat_def. simpl.
@@ -2377,9 +2396,15 @@ Proof.
          destruct~ str; false.
          rewrite length_cons. simpl. rewrite LibNat.minus_zero.
          simpl in EQlen. inverts EQlen. substs*.
-        (* run red_spec_arguments_object_map_4 using make_arg_getter_correct. *)
-        skip. (* TODO *)
-Qed.
+        rewrite EQx in HR. rewrite length_cons. simpl. rewrite LibNat.minus_zero.
+        simpl in EQlen. inverts EQlen.
+        run red_spec_arguments_object_map_4 using make_arg_getter_correct.
+        run red_spec_arguments_object_map_5 using make_arg_setter_correct.
+        let_name. run~ red_spec_arguments_object_map_6.
+          rewrite EQA' in R1. simpl in R1.
+          rewrite length_cons. simpl. rewrite* LibNat.minus_zero.
+        apply~ red_spec_arguments_object_map_7.
+Admitted. (* faster *)
 
 Lemma arguments_object_map_correct : forall runs S C l xs args X str o,
   runs_type_correct runs ->
