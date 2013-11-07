@@ -472,67 +472,6 @@ Definition run_object_get runs S C l x : result :=
   if_some (run_object_method object_get_ S l) (fun B =>
     object_get_builtin runs S C B l l x).
 
-Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
-  if_some (run_object_method object_get_own_prop_ S l) (fun B =>
-    Let default := fun S' =>
-      if_some (run_object_method object_properties_ S' l) (fun P =>
-        res_spec S' (
-          if_some_or_default (convert_option_attributes (Heap.read_option P x))
-            (full_descriptor_undef) id)) in
-    match B with
-      | builtin_get_own_prop_default =>
-        default S
-      | builtin_get_own_prop_args_obj =>
-        if_spec (default S) (fun S1 D =>
-          match D with
-          | full_descriptor_undef =>
-            res_spec S1 full_descriptor_undef
-          | full_descriptor_some A =>
-            if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
-              if_some lmapo (fun lmap =>
-                if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
-                  Let follow := fun S' A =>
-                    res_spec S' (full_descriptor_some A) in
-                  match D with
-                     | full_descriptor_undef =>
-                       follow S2 A
-                     | full_descriptor_some Amap =>
-                       if_value (run_object_get runs S2 C lmap x) (fun S3 v =>
-                         match A with
-                         | attributes_data_of Ad =>
-                           follow S3 (attributes_data_with_value Ad v)
-                         | attributes_accessor_of Aa =>
-                           impossible_with_heap_because S3 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens."
-                         end)
-                     end)))
-          end)
-      | builtin_get_own_prop_string =>
-        if_spec (default S) (fun S D =>
-          match D with
-          | full_descriptor_some _ =>
-            res_spec S D
-          | full_descriptor_undef =>
-            if_number (runs_type_to_integer runs S C x) (fun S n =>
-              let k := JsNumber.to_int32 n in
-              if_string (runs_type_to_string runs S C (abs k)) (fun S s =>
-                if_bool (runs_type_equal runs S C x s) (fun S b =>
-                  if negb b
-                  then res_spec S full_descriptor_undef
-                  else let prim_value :=
-                           if_some (run_object_method object_prim_value_ S l) (fun (ov : option value) =>
-                             if_some ov (fun v =>
-                               res_ter S v)) in
-                       if_string prim_value (fun S (str : string) =>
-                         let len := Z.of_nat (String.length str) in
-                         let idx := k in
-                         ifb len <= idx
-                         then res_spec S full_descriptor_undef
-                         else let resultStr := String.substring (Z.to_nat idx) 1 str in
-                              let A := attributes_data_intro resultStr true false false in
-                              res_spec S (full_descriptor_some A)))))
-          end)
-      end).
-
 Definition run_object_get_prop runs S C l x : specres full_descriptor :=
   if_some (run_object_method object_get_prop_ S l) (fun B =>
     match B with
@@ -791,6 +730,11 @@ Definition to_object S v : result :=
   | value_prim w => prim_new_object S w
   | value_object l => out_ter S l
   end.
+
+Definition run_object_prim_value S l : result :=
+  if_some (run_object_method object_prim_value_ S l) (fun (ov : option value) =>
+    if_some ov (fun v =>
+      res_ter S v)).
 
 Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
@@ -1541,6 +1485,62 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
         end)).
 
 (**************************************************************)
+
+Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
+  if_some (run_object_method object_get_own_prop_ S l) (fun B =>
+    Let default := fun S' =>
+      if_some (run_object_method object_properties_ S' l) (fun P =>
+        res_spec S' (
+          if_some_or_default (convert_option_attributes (Heap.read_option P x))
+            (full_descriptor_undef) id)) in
+    match B with
+      | builtin_get_own_prop_default =>
+        default S
+      | builtin_get_own_prop_args_obj =>
+        if_spec (default S) (fun S1 D =>
+          match D with
+          | full_descriptor_undef =>
+            res_spec S1 full_descriptor_undef
+          | full_descriptor_some A =>
+            if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
+              if_some lmapo (fun lmap =>
+                if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
+                  Let follow := fun S' A =>
+                    res_spec S' (full_descriptor_some A) in
+                  match D with
+                     | full_descriptor_undef =>
+                       follow S2 A
+                     | full_descriptor_some Amap =>
+                       if_value (run_object_get runs S2 C lmap x) (fun S3 v =>
+                         match A with
+                         | attributes_data_of Ad =>
+                           follow S3 (attributes_data_with_value Ad v)
+                         | attributes_accessor_of Aa =>
+                           impossible_with_heap_because S3 "[run_object_get_own_prop]:  received an accessor property descriptor in a point where the specification suppose it never happens."
+                         end)
+                     end)))
+          end)
+      | builtin_get_own_prop_string =>
+        if_spec (default S) (fun S D =>
+          match D with
+          | full_descriptor_some _ =>
+            res_spec S D
+          | full_descriptor_undef =>
+            if_spec (to_int32 runs S C x) (fun S k =>
+              if_string (runs_type_to_string runs S C (abs k)) (fun S s =>
+                ifb x <> s
+                then res_spec S full_descriptor_undef
+                else if_string (run_object_prim_value S l) (fun S (str : string) =>
+                       if_spec (to_int32 runs S C x) (fun S k => (* This may seem absurd, but the EcmaScript specification does ask to compute this two times. *)
+                         Let len := Z.of_nat (String.length str) in
+                         let idx := k in
+                         ifb len <= idx
+                         then res_spec S full_descriptor_undef
+                         else let resultStr := string_sub str idx 1 in
+                              let A := attributes_data_intro resultStr false true false in
+                              res_spec S (full_descriptor_some A)))))
+          end)
+      end).
 
 Definition run_function_has_instance runs S lv vo : result :=
   (* Corresponds to the [spec_function_has_instance_1] of the specification.] *)
@@ -2697,9 +2697,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     | value_object l =>
       if_some (run_object_method object_class_ S l) (fun s =>
         ifb s = "String"
-        then if_some (run_object_method object_prim_value_ S l) (fun ov =>
-               if_some ov (fun v =>
-                 res_ter S v))
+        then run_object_prim_value S l
         else run_error S native_error_type)
     end
 

@@ -668,7 +668,7 @@ Qed.
 
 
 (************************************************************)
-(* ** Correctness tactics *)
+(* ** Correctness Tactics *)
 
 (** [prove_not_intercept] proves a goal of
     the form "~ abort_intercepted_* _" *)
@@ -1164,13 +1164,11 @@ Tactic Notation "runs" "*" :=
 (************************************************************)
 (* ** Correctness Lemmas *)
 
-
 Lemma type_of_prim_not_object : forall w,
   type_of w <> type_object.
 Proof. destruct w; simpl; try congruence. Qed.
 
 Hint Resolve type_of_prim_not_object.
-
 
 
 Lemma is_lazy_op_correct : forall op,
@@ -1272,6 +1270,10 @@ Ltac run_select_proj_extra_error HT ::=
   | run_error => constr:(run_error_correct)
   | run_object_method => constr:(run_object_method_correct)
   end.
+
+
+(**************************************************************)
+(** ** Object Get *)
 
 Lemma object_has_prop_correct : forall runs S C l x o,
   runs_type_correct runs ->
@@ -1502,6 +1504,14 @@ Proof.
     run_inv. applys* red_spec_to_object_object.
 Qed.
 
+Lemma run_object_prim_value_correct : forall S l o,
+  run_object_prim_value S l = o ->
+  exists (v : value), o = out_ter S v /\
+  object_prim_value S l v.
+Proof.
+  introv HR. unfolds in HR. do 2 runs. eexists. splits*.
+  forwards~: run_object_method_correct E.
+Qed.
 
 Lemma prim_value_get_correct : forall runs S C v x o,
   runs_type_correct runs ->
@@ -1602,7 +1612,6 @@ Proof.
 Qed.
 
 
-
 Lemma ref_kind_env_record_inv : forall r,
   ref_kind_of r = ref_kind_env_record ->
   exists L, ref_base r = ref_base_type_env_loc L.
@@ -1622,7 +1631,6 @@ Proof.
   destruct E; destruct (ref_base r); tryfalse;
     destruct v; tryfalse; try solve [exists___*].
 Qed.
-
 
 
 Lemma ref_get_value_correct : forall runs S C rv y,
@@ -1836,6 +1844,7 @@ Proof.
   applys* red_spec_object_default_value_4. 
 Admitted. (* faster *)
 
+
 (** Conversions *)
 
 Lemma to_primitive_correct : forall runs S C v o prefo,
@@ -1901,7 +1910,6 @@ Proof.
   run red_spec_to_uint32 using to_number_correct.
   applys* red_spec_to_uint32_1.
 Qed.
-
 
 
 (************************************************************)
@@ -2056,6 +2064,62 @@ Proof.
   introv HR. destruct op; simpls; inverts* HR.
 Admitted. (*faster*)
 
+
+(**************************************************************)
+
+Lemma run_object_get_own_prop_correct : forall runs S C l x y,
+  runs_type_correct runs -> 
+  run_object_get_own_prop runs S C l x = result_some y ->
+  red_spec S C (spec_object_get_own_prop l x) y.
+Proof.
+  introv IH HR. unfolds in HR. run.
+  applys* red_spec_object_get_own_prop.  
+    applys* run_object_method_correct. clear E.
+  let_name as M. asserts M_correct: (forall S y,
+    M S = result_some y ->
+    red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y).
+    clears HR S. subst. introv HR. run.
+     applys* red_spec_object_get_own_prop_1_default.
+       applys* run_object_method_correct. clear E.
+     destruct (Heap.read_option x1 x).
+       applys* red_spec_object_get_own_prop_2_some_data.
+       applys* red_spec_object_get_own_prop_2_none. 
+    clear EQM.
+  destruct x0.
+  (* default *)
+  subst*.
+  (* argument object *)
+  run~ red_spec_object_get_own_prop_args_obj. destruct a as [|A]. (* LTAC ARTHUR: this [a] has been defined by tactics. *)
+   inverts HR. applys~ red_spec_object_get_own_prop_args_obj_1_undef.
+   run. forwards~ obpm: run_object_method_correct (rm E).
+   run. subst. run~ red_spec_object_get_own_prop_args_obj_1_attrs.
+   let_name. asserts Follow: (forall S A y,
+       follow S A = result_some y ->
+       red_spec S C (spec_args_obj_get_own_prop_4 A) y).
+     introv RES. rewrite EQfollow in RES. inverts RES.
+     apply~ red_spec_object_get_own_prop_args_obj_4.
+   clear EQfollow. destruct a. (* LTAC ARTHUR: idem. *)
+    apply* red_spec_object_get_own_prop_args_obj_2_undef.
+    run~ red_spec_object_get_own_prop_args_obj_2_attrs using run_object_get_correct.
+    destruct A as [Ad|]; tryfalse.
+    apply~ red_spec_object_get_own_prop_args_obj_3.
+  (* string *)
+  run~ red_spec_object_get_own_prop_string. destruct a as [|A]. (* LTAC ARTHUR: this [a] has been defined by tactics. *)
+   run red_spec_object_get_own_prop_string_1_undef using to_int32_correct.
+    run red_spec_object_get_own_prop_string_2.
+    cases_if.
+     inverts HR. apply~ red_spec_object_get_own_prop_string_3_different.
+     subst x. run_pre. forwards* (v&EQo&Opv): run_object_prim_value_correct. run_post.
+       inverts Ab as Ab'; false. inverts H0. false Ab'. reflexivity.
+     inverts EQo. applys~ red_spec_object_get_own_prop_string_3_same Opv.
+     run~ red_spec_object_get_own_prop_string_4.
+     let_name. apply~ red_spec_object_get_own_prop_string_5. cases_if.
+      inverts HR. apply~ red_spec_object_get_own_prop_string_6_outofbounds. math.
+      inverts HR. apply~ red_spec_object_get_own_prop_string_6_inbounds. math.
+   inverts HR. apply~ red_spec_object_get_own_prop_string_1_attrs.
+Admitted. (*faster*)
+
+
 Lemma run_function_has_instance_correct : forall runs S C (lo lv : object_loc) o,
   runs_type_correct runs ->
   run_function_has_instance runs S lo lv = o ->
@@ -2071,6 +2135,7 @@ Proof.
     apply~ red_spec_function_has_instance_3_neq.
      applys~ runs_type_correct_function_has_instance HR.
 Qed.
+
 
 Lemma run_object_has_instance_correct : forall runs B S C l v o,
   runs_type_correct runs ->
@@ -2170,8 +2235,6 @@ Proof.
 Admitted. (*faster*)
 
 
-
-
 (**************************************************************)
 (* Auxiliary results for [spec_expr_get_value_conv] *)
 
@@ -2206,8 +2269,6 @@ Proof.
 Admitted. (* faster *)
 
 
-
-
 Lemma creating_function_object_proto_correct : forall runs S C l o,
   runs_type_correct runs ->
   creating_function_object_proto runs S C l = o ->
@@ -2238,7 +2299,6 @@ Proof.
      run* red_spec_creating_function_object_3.
      applys* red_spec_creating_function_object_4.
 Admitted. (* faster*)
-
 
 
 Lemma env_record_has_binding_correct : forall runs S C L x o,
@@ -2599,8 +2659,6 @@ Proof.
 Admitted. (* faster *)
 
 
-
-
 Lemma env_record_implicit_this_value_correct : forall S C L v,
   env_record_implicit_this_value S L = Some v ->
   red_expr S C (spec_env_record_implicit_this_value L) (out_ter S v).
@@ -2656,11 +2714,8 @@ Ltac run_select_proj_extra_construct HT ::=
   end.
 
 
-
-
 (**************************************************************)
 (** ** Property descriptors *)
-
 
 Lemma from_prop_descriptor_correct : forall runs S0 S C D o,
   runs_type_correct runs ->
@@ -2689,9 +2744,8 @@ Proof.
 Admitted. (*faster*)
 
 
-
 (**************************************************************)
-(** ** Main theorem *)
+(** ** Object Initialisation *)
 
 Lemma create_new_function_in_correct : forall runs S C args bd o,
   runs_type_correct runs ->
@@ -2726,8 +2780,6 @@ Proof.
      applys* red_expr_object_3_set. 
 Qed.
 
-
-
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
   runs_type_correct runs ->
   lexical_env_get_identifier_ref runs S C lexs x str = result_some y ->
@@ -2754,6 +2806,9 @@ Ltac run_select_proj_extra_get_value HT ::=
   end.
 
 
+(**************************************************************)
+(** ** Main theorem *)
+
 Hint Extern 1 (regular_unary_op _) =>
     intros ?; false_invert.
 
@@ -2765,47 +2820,6 @@ Proof.
   introv HR. destruct u; simpls; inverts* HR.
 Qed.
 
-
-(* LATER: move to the right place *)
-Lemma run_object_get_own_prop_correct : forall runs S C l x y,
-  runs_type_correct runs -> 
-  run_object_get_own_prop runs S C l x = result_some y ->
-  red_spec S C (spec_object_get_own_prop l x) y.
-Proof.
-  introv IH HR. unfolds in HR. run.
-  applys* red_spec_object_get_own_prop.  
-    applys* run_object_method_correct. clear E.
-  let_name as M. asserts M_correct: (forall S y,
-    M S = result_some y ->
-    red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y).
-    clears HR S. subst. introv HR. run.
-     applys* red_spec_object_get_own_prop_1_default.
-       applys* run_object_method_correct. clear E.
-     destruct (Heap.read_option x1 x).
-       applys* red_spec_object_get_own_prop_2_some_data.
-       applys* red_spec_object_get_own_prop_2_none. 
-    clear EQM.
-  destruct x0.
-  (* default *)
-  subst*.
-  (* argument object *)
-  run~ red_spec_object_get_own_prop_args_obj. destruct a as [|A]. (* LTAC ARTHUR: this [a] has been defined by tactics. *)
-   inverts HR. applys~ red_spec_object_get_own_prop_args_obj_1_undef.
-   run. forwards~ obpm: run_object_method_correct (rm E).
-   run. subst. run~ red_spec_object_get_own_prop_args_obj_1_attrs.
-   let_name. asserts Follow: (forall S A y,
-       follow S A = result_some y ->
-       red_spec S C (spec_args_obj_get_own_prop_4 A) y).
-     introv RES. rewrite EQfollow in RES. inverts RES.
-     apply~ red_spec_object_get_own_prop_args_obj_4.
-   clear EQfollow. destruct a. (* LTAC ARTHUR: idem. *)
-    apply* red_spec_object_get_own_prop_args_obj_2_undef.
-    run~ red_spec_object_get_own_prop_args_obj_2_attrs using run_object_get_correct.
-    destruct A as [Ad|]; tryfalse.
-    apply~ red_spec_object_get_own_prop_args_obj_3.
-  (* string *)
-  skip. (* LATER:  String object: proof postponed *)
-Admitted. (*faster*)
 
 Lemma object_delete_default_correct : forall runs S C l x str o,
   runs_type_correct runs ->
@@ -3303,7 +3317,7 @@ Proof.
   forwards*: run_elements_correct (rev l). rew_list* in H.
 Admitted. (*faster*)
 
-  (* LATER: generalize statement to handle continuations *)
+(* LATER: generalize statement to handle continuations *)
 Lemma entering_func_code_correct : forall runs S C lf vthis args o,
   runs_type_correct runs ->
   entering_func_code runs S C lf vthis args = result_some (specret_out o) ->
@@ -3352,53 +3366,53 @@ Proof.
   introv IH HR. unfolds in HR.
   destruct B.
   (* prealloc_global *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_global_eval *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_global_is_finite *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_global_is_nan *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_global_parse_float *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_global_parse_int *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_get_proto_of *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_get_own_prop_descriptor *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_get_own_prop_name *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_create *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_define_prop *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_define_props *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_seal *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_freeze *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_prevent_extensions *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_is_sealed *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_is_frozen *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_is_extensible *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_keys *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_keys_call *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_proto_to_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_proto_value_of *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_proto_has_own_prop *)
   run red_spec_call_object_proto_has_own_prop.
     apply~ get_arg_correct_0.
@@ -3408,62 +3422,62 @@ Proof.
    inverts HR. apply~ red_spec_call_object_proto_has_own_prop_3_undef.
    inverts HR. apply~ red_spec_call_object_proto_has_own_prop_3_not_undef.
   (* prealloc_object_proto_is_prototype_of *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_object_proto_prop_is_enumerable *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_function *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_function_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_function_proto_to_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_function_proto_apply *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_function_proto_bind *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_bool *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_bool_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_bool_proto_to_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_bool_proto_value_of *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_number *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_number_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_number_proto_to_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_number_proto_value_of *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_number_proto_to_fixed *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_number_proto_to_exponential *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_number_proto_to_precision *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_array *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_array_is_array *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_array_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_array_proto_to_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_array_proto_pop *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_array_proto_push *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_string_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_string_proto_to_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_string_proto_value_of *)
   destruct vthis.
-  destruct p.
+  destruct p. (* TODO:  clean *)
     applys* red_spec_call_string_proto_value_of_bad_type.
     case_if*.
     case_if*.
@@ -3479,9 +3493,8 @@ Proof.
     applys red_spec_call_string_proto_value_of_prim_string. simpl. reflexivity.
     run.    
     cases_if*.
-    run.
-    run.
-    apply red_spec_call_string_proto_value_of_obj_string.
+    forwards (v&EQo&opv): run_object_prim_value_correct HR. subst o.
+    applys red_spec_call_string_proto_value_of_obj_string opv.
     unfold object_class.
     unfolds in E.
     sets_eq <- Owitness: (pick_option (object_binds S o0)).
@@ -3490,20 +3503,15 @@ Proof.
     splits~.
     forwards~: @pick_option_correct EQOwitness.
     inverts~ E.
-    unfold object_prim_value.
-    unfolds in E0.
     sets_eq <- Owitness: (pick_option (object_binds S o0)).
     destruct Owitness; simpls; tryfalse.
-    exists o.
-    splits~.
     forwards~: @pick_option_correct EQOwitness.
-    inverts~ E0.
     applys* red_spec_call_string_proto_value_of_obj_other.
     unfold object_class.
     unfolds in E.
     sets_eq <- Owitness: (pick_option (object_binds S o0)).
     destruct Owitness. 
-      simpls. inversion~ E. intro Hfalse. inversion Hfalse. destruct H as [H1 H2].
+      simpls. inversion~ E. intro Hfalse. inversion Hfalse. destruct H0 as [H2 H3].
       assert (object_binds_func: forall S l O1 O2, object_binds S l O1 -> object_binds S l O2 -> O1 = O2).
         introv.
         intros HO1 HO2.
@@ -3511,32 +3519,36 @@ Proof.
         unfolds in HO2.
         apply Heap_binds_func with object_loc (state_object_heap S0) l.
         apply object_loc_comparable. apply HO1. apply HO2.
-      apply pick_option_correct in EQOwitness.
-      apply object_binds_func with S o0 o1 x0 in EQOwitness.
-      rewrite EQOwitness in H0. rewrite H0 in H2. rewrite H2 in n. tryfalse.
+      apply pick_option_correct in EQOwitness0.
+      apply object_binds_func with S o0 o2 x0 in EQOwitness0.
+      rewrite EQOwitness0 in H1. rewrite H1 in H3. rewrite H3 in n. tryfalse.
       assumption.
-      
       simpls. inversion E.
+    apply~ red_spec_call_string_proto_value_of_obj_other.
+     introv (O&B&EQ). lets Ex: (ex_intro _ O B).
+      apply pick_option_defined in Ex. destruct Ex as [O' PO'].
+      rewrite EQOwitness in PO'. false.
+     apply* run_error_correct.
   (* prealloc_string_proto_char_at *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_string_proto_char_code_at *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_math *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_mathop *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_error *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_error_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_native_error *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_native_error_proto *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_error_proto_to_string *)
-  skip.
+  skip. (* LATER *)
   (* prealloc_throw_type_error *)
-  skip.
+  skip. (* LATER *)
 Admitted. (* faster *)
  
 Lemma run_call_correct : forall runs S C l v vs o,
@@ -3606,7 +3618,17 @@ Lemma object_proto_is_prototype_of_correct : forall runs S C lthis l o,
   runs_type_correct runs ->
   object_proto_is_prototype_of runs S lthis l = o ->
   red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o.
-Admitted. (* Part of libraries: postponed for now *)
+Proof.
+  introv IH HR. unfolds in HR.
+  run. forwards* Omp: run_object_method_correct.
+  applys~ red_spec_call_object_proto_is_prototype_of_3 Omp.
+  destruct x as [p|]. (* LTAC ARTHUR *)
+   destruct p; inverts HR.
+    apply~ red_spec_call_object_proto_is_prototype_of_4_null.
+   cases_if; substs; inverts HR.
+    apply~ red_spec_call_object_proto_is_prototype_of_4_equal.
+    run_hyp. apply* red_spec_call_object_proto_is_prototype_of_4_not_equal.
+Qed.
 
 
 Lemma run_equal_correct : forall runs S C v1 v2 o,

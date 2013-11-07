@@ -3340,12 +3340,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis vproto) o ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis l) o
 
-  | red_spec_call_object_proto_is_prototype_of_4_null : forall S C lthis o, (* Step 3.b *)
+  | red_spec_call_object_proto_is_prototype_of_4_null : forall S C lthis, (* Step 3.b *)
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis null) (out_ter S false)
 
-  | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C lthis o, (* Step 3.c *)
+  | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C lthis, (* Step 3.c *)
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lthis) (out_ter S true)
-  
+
   | red_spec_call_object_proto_is_prototype_of_4_not_equal : forall S C l lthis lproto o, (* Look back to step 3 *)
       (* Note: we implicitly enforce the fact that a proto can only be a location or null *)
       lproto <> lthis -> 
@@ -4191,40 +4191,40 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_own_prop_string_1_attrs : forall S0 S C l x A, (* Step 2 *)
       red_spec S0 C (spec_string_get_own_prop_1 l x (ret S (full_descriptor_some A))) (ret S (full_descriptor_some A))
 
-  | red_spec_object_get_own_prop_string_1_undef_1 : forall S0 S C l x (y1:specret int) (y:specret full_descriptor), (* Step 3 *)
+  | red_spec_object_get_own_prop_string_1_undef : forall S0 S C l x (y1:specret int) (y:specret full_descriptor), (* Step 3 *)
       red_spec S C (spec_to_int32 x) y1 ->
       red_spec S C (spec_string_get_own_prop_2 l x y1) y ->
       red_spec S0 C (spec_string_get_own_prop_1 l x (ret S full_descriptor_undef)) y
 
-  | red_spec_object_get_own_prop_string_1_undef_2 : forall S0 S C l x k o1 (y:specret full_descriptor), (* Step 3 *)
+  | red_spec_object_get_own_prop_string_2 : forall S0 S C l x k o1 (y:specret full_descriptor), (* Step 3 *)
       red_expr S C (spec_to_string (abs k)) o1 ->
       red_spec S C (spec_string_get_own_prop_3 l x o1) y ->
       red_spec S0 C (spec_string_get_own_prop_2 l x (ret S k)) y
 
-  | red_spec_object_get_own_prop_string_1_undef_3_different : forall S0 S C l x x', (* Step 3 *)
+  | red_spec_object_get_own_prop_string_3_different : forall S0 S C l x x', (* Step 3 *)
       x <> x' ->
       red_spec S0 C (spec_string_get_own_prop_3 l x (out_ter S x')) (ret S full_descriptor_undef)
 
-  | red_spec_object_get_own_prop_string_1_undef_3_same_1 : forall S0 S C l s x (y:specret full_descriptor), (* Step 4 *)
-      object_prim_value S l s ->
-      red_spec S0 C (spec_string_get_own_prop_4 x s) y ->
+  | red_spec_object_get_own_prop_string_3_same : forall S0 S C l s x (y:specret full_descriptor), (* Step 4 *)
+      object_prim_value S l s -> (* Can this return something else than a string?  Is that always defined? *)
+      red_spec S C (spec_string_get_own_prop_4 x s) y ->
       red_spec S0 C (spec_string_get_own_prop_3 l x (out_ter S x)) y
 
-  | red_spec_object_get_own_prop_string_1_undef_3_same_2 : forall S0 S C l x s y1 (y:specret full_descriptor), (* Step 5 *)
+  | red_spec_object_get_own_prop_string_4 : forall S C l x s y1 (y:specret full_descriptor), (* Step 5 *)
       red_spec S C (spec_to_int32 x) y1 ->
-      red_spec S0 C (spec_string_get_own_prop_5 s y1) y ->
-      red_spec S0 C (spec_string_get_own_prop_4 x s) y
+      red_spec S C (spec_string_get_own_prop_5 s y1) y ->
+      red_spec S C (spec_string_get_own_prop_4 x s) y
 
-  | red_spec_object_get_own_prop_string_1_undef_3_same_3 : forall S0 S C s idx len (y:specret full_descriptor), (* Step 6 *)
+  | red_spec_object_get_own_prop_string_5 : forall S0 S C s idx len (y:specret full_descriptor), (* Step 6 *)
       len = String.length s ->
       red_spec S C (spec_string_get_own_prop_6 s idx len) y ->
       red_spec S0 C (spec_string_get_own_prop_5 s (ret S idx)) y
 
-  | red_spec_object_get_own_prop_string_1_undef_3_same_4_outofbounds : forall S C s idx len, (* Step 7 *)
+  | red_spec_object_get_own_prop_string_6_outofbounds : forall S C s idx len, (* Step 7 *)
       len <= idx ->
       red_spec S C (spec_string_get_own_prop_6 s idx len) (ret S full_descriptor_undef)
 
-  | red_spec_object_get_own_prop_string_1_undef_3_same_4_inbounds : forall S C s idx len, (* Step 8, 9 *)
+  | red_spec_object_get_own_prop_string_6_inbounds : forall S C s idx len, (* Step 8, 9 *)
       len > idx ->
       red_spec S C (spec_string_get_own_prop_6 s idx len) (ret S (full_descriptor_some (attributes_data_intro (string_sub s idx 1) false true false)))
 
