@@ -884,6 +884,12 @@ SELECT count(*) FROM (SELECT * FROM test_group_memberships WHERE group_id IN (SE
    Num Interesting passes in ch06-14 inc.
    (+ 0 235 79 85 72 894 209 101 5) = 1680
 
+   Number of tests in Ch08-Ch14 inclusive =
+   (+ 182 128 377 1320 521 230 24) = 2782
+
+   Number of passes in Ch08-Ch14 inclusive =
+   (+ 97 85 181 982 319 125 7) = 1796
+
    | Chapter | #tests | #passes | #fails/aborts | #interesting | pass+fail+abort |
    |       ! |    tst |     pss |           fls |          int |             tot |
    |---------+--------+---------+---------------+--------------+-----------------|
