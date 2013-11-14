@@ -686,7 +686,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Array initializer : LATER (11.1.4) *)
 
   (** Object initializer (11.1.5) *)
-  
+
   | red_expr_object : forall S C pds o1 o,
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
       red_expr S C (expr_object_0 o1 pds) o ->
@@ -826,7 +826,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_call_4_prop : forall v S C o r l is_eval_direct vs, (* Step 6a *)
       ref_is_property r -> 
       ref_is_value r v ->
-      red_expr S C (expr_call_5  l is_eval_direct vs (out_ter S v)) o ->
+      red_expr S C (expr_call_5 l is_eval_direct vs (out_ter S v)) o ->
       red_expr S C (expr_call_4 (resvalue_ref r) l is_eval_direct vs) o
       
   | red_expr_call_4_env : forall L o1 S C o r l is_eval_direct vs, (* Step 6b *)
@@ -2589,23 +2589,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Auxiliary reduction for creating function object: (13.2)
       steps for creating the prototype object (Steps 16-18) *)
-    
+
   | red_spec_creating_function_object_proto : forall S C l o1 o, (* Step 16 *)
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
       red_expr S C (spec_creating_function_object_proto_1 l o1) o ->
       red_expr S C (spec_creating_function_object_proto l) o
-    
+
   | red_spec_creating_function_object_proto_1 : forall S0 S C l lproto o1 o, (* Step 17 *)
-      let A := attributes_data_intro (value_object l) true false true in 
+      let A := attributes_data_intro (value_object l) true false true in
       red_expr S C (spec_object_define_own_prop lproto "constructor" A false) o1 ->
       red_expr S C (spec_creating_function_object_proto_2 l lproto o1) o ->
       red_expr S0 C (spec_creating_function_object_proto_1 l (out_ter S lproto)) o
-      
+
    | red_spec_creating_function_object_proto_2 : forall S0 S C l lproto b o1 o, (* Step 18 *)
-      let A := attributes_data_intro (value_object lproto) true false false in 
+      let A := attributes_data_intro (value_object lproto) true false false in
       red_expr S C (spec_object_define_own_prop l "prototype" A false) o ->
       red_expr S0 C (spec_creating_function_object_proto_2 l lproto (out_ter S b)) o
-      
+
   (** Creating function object (returns object) (13.2) *)
 
   | red_spec_creating_function_object : forall S C S' O O1 O2 O3 A l names bd X str o1 o, (* Steps 1-15 *)

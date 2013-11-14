@@ -1531,7 +1531,7 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
                 ifb x <> s
                 then res_spec S full_descriptor_undef
                 else if_string (run_object_prim_value S l) (fun S (str : string) =>
-                       if_spec (to_int32 runs S C x) (fun S k => (* This may seem absurd, but the EcmaScript specification does ask to compute this two times. *)
+                       if_spec (to_int32 runs S C x) (fun S k => (* This actually cannot change the heap of return a different result than the first time... but this is closer to eyeball closesness than not computing it twice. *)
                          Let len := Z.of_nat (String.length str) in
                          let idx := k in
                          ifb len <= idx

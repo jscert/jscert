@@ -66,7 +66,7 @@ Inductive ext_expr :=
   | expr_object_0 : out -> propdefs -> ext_expr
   | expr_object_1 : object_loc -> propdefs -> ext_expr
   | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr 
-  | expr_object_3 : object_loc -> string -> out -> propdefs -> ext_expr
+  | expr_object_3 : object_loc -> string -> out -> propdefs -> ext_expr (* TODO:  Unused form (should it be removed?). *)
   | expr_object_3_val : object_loc -> string -> specret value -> propdefs -> ext_expr
   | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
