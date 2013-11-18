@@ -13,7 +13,7 @@ Definition number : Type :=
 (**************************************************************)
 (** ** Conversions on numbers *)
 
-(* TODO: implement definitions *)
+(* LATER: implement definitions *)
 Parameter from_string : string -> number.
 Parameter to_string : number -> string.
 
@@ -21,7 +21,7 @@ Parameter to_string : number -> string.
 (**************************************************************)
 (** ** Particular values of numbers *)
 
-(* TODO: find definitions in Flocq *)
+(* LATER: find definitions in Flocq *)
 Parameter nan : number.
 Parameter zero : number.
 Parameter neg_zero : number.
@@ -35,7 +35,7 @@ Parameter min_value : number.
 (**************************************************************)
 (** ** Unary operations on numbers *)
 
-(* TODO: find definitions in Flocq *)
+(* LATER: find definitions in Flocq *)
 
 Parameter neg : number -> number.
 Parameter floor : number -> number.
@@ -69,7 +69,7 @@ Proof. Admitted.
 (**************************************************************)
 (** ** Conversions with Int32 *)
 
-Parameter of_int : int -> number. (* TODO: this is quite complex. Should we make it precise? *)
+Parameter of_int : int -> number. (* LATER: this is quite complex. Should we make it precise? *)
 
 Parameter to_int32 : number -> int. (* Remark: extracted code could, for efficiency reasons, use Ocaml Int32 *) 
 
@@ -77,7 +77,7 @@ Parameter to_uint32 : number -> int.
 
 Parameter to_int16 : number -> int. (* currently not used *)
 
-(* TODO: deal with extraction *)
+(* LATER: Check that the OCaml extraction is correct. *)
 
 
 (**************************************************************)

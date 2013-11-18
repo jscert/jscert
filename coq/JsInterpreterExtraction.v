@@ -138,7 +138,7 @@ Extract Constant JsNumber.to_int32 =>
       if smod < 0. then smod +. i32 else smod
     in
     (if int32bit >= i31 then int32bit -. i32 else int32bit)
-  | _ -> 0.". (* TODO do in Coq? Spec is 9.5, p. 47.*)
+  | _ -> 0.". (* LATER:  do in Coq.  Spec is 9.5, p. 47.*)
 Extract Constant JsNumber.to_uint32 =>
 "fun n ->
   match classify_float n with
@@ -150,7 +150,7 @@ Extract Constant JsNumber.to_uint32 =>
       if smod < 0. then smod +. i32 else smod
     in
     int32bit
-  | _ -> 0.". (* TODO do in Coq? Spec is 9.6, p47.*)
+  | _ -> 0.". (* LAER:  do in Coq.  Spec is 9.6, p47.*)
 Extract Constant JsNumber.modulo_32 => "(fun x -> let r = mod_float x 32. in if x < 0. then r +. 32. else r)".
 Extract Constant JsNumber.int32_bitwise_not => "fun x -> Int32.to_float (Int32.lognot (Int32.of_float x))".
 Extract Constant JsNumber.int32_bitwise_and => "fun x y -> Int32.to_float (Int32.logand (Int32.of_float x) (Int32.of_float y))".
@@ -202,7 +202,7 @@ Extract Constant parse_pickable => "(fun s ->
     let str = String.concat """" (List.map (String.make 1) s) in
     let parserExp = Parser_main.exp_from_string str in
     try
-      Some (JsSyntaxInfos.add_infos_prog strictness_false (* TODO:  This should be called afterwards, and this be taken into account in the semantics. *)
+      Some (JsSyntaxInfos.add_infos_prog strictness_false (* LATER:  This should depend on the parsed program... *)
         (Translate_syntax.exp_to_prog parserExp))
     with
     (* | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *) *)

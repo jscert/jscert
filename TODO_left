@@ -1,0 +1,20 @@
+There follows a list of all `TODO's left in the Coq development.
+
+      - JsCorrectness.v:
+      	Missings _post and _out lemmata for [if_not_throw] and [if_normal_continue_or_break].  That's strange that we don't need them:  are they still useful in the interpreter code?  Maybe they are just used in the unproven part.
+
+      - JsInit.v:
+      	The [[ThrowTypeError]] object should be checked.
+
+      - JsPreliminary.v:
+        (not yet rewied)
+
+      - JsPrettyInterm.v:
+        (not yet rewied)
+
+      - JsPrettyRules.v:
+        (not yet rewied)
+
+      - JsSyntaxAux.v:
+        (not yet rewied)
+

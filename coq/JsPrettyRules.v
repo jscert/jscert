@@ -191,7 +191,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_expr S C (spec_put_value r v) o1 ->
       red_stat S C (stat_var_decl_item_3 x o1) o ->
       red_stat S0 C (stat_var_decl_item_2 x r (ret S v)) o
-  
+
   | red_stat_var_decl_item_3 : forall S S0 C x,
       red_stat S0 C (stat_var_decl_item_3 x (out_void S)) (out_ter S x)
 

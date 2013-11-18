@@ -189,11 +189,8 @@ Definition if_result_some (A B : Type) (W : resultof A) (K : A -> resultof B) : 
 Definition if_out_some T W (K : out -> resultof T) : resultof T :=
   if_result_some W (fun sp => K (out_from_retn sp)).
 
-(* TODO: badly named *)
-Definition res_res T W : specres T :=
+Definition throw_result T W : specres T := (* Returns a [res_out], formatted into a [specres T]. *)
   if_out_some W (fun o => res_out o).
-
-Implicit Arguments res_res [[T]].
 
 Definition if_ter T W (K : state -> res -> specres T) : specres T :=
   if_out_some W (fun o =>
@@ -340,7 +337,7 @@ Definition if_spec (A B : Type) (W : specres A) (K : state -> A -> specres B) : 
     end).
 
 End InterpreterEliminations.
-Implicit Arguments res_res [[T]].
+Implicit Arguments throw_result [[T]].
 
 Section LexicalEnvironments.
 
@@ -352,7 +349,7 @@ Definition build_error S vproto vmsg : result :=
   let O := object_new vproto "Error" in
   let '(l, S') := object_alloc S O in
   ifb vmsg = undef then out_ter S' l
-  else result_not_yet_implemented (* TODO:  Need [to_string] (this function shall be put in [runs_type].) *).
+  else result_not_yet_implemented (* LATER:  Need [to_string] (this function shall be put in [runs_type].) *).
 
 Definition run_error T S ne : specres T :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
@@ -432,15 +429,18 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
     fun S l =>
       if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
         match D with
-        | full_descriptor_undef => res_ter S0 undef
+        | full_descriptor_undef =>
+          res_ter S0 undef
         | attributes_data_of Ad =>
-            res_ter S0 (attributes_data_value Ad)
+          res_ter S0 (attributes_data_value Ad)
         | attributes_accessor_of Aa =>
             match attributes_accessor_get Aa with
-            | value_object lf => runs_type_call runs S0 C lf vthis nil
-            | undef => res_ter S0 undef
+            | value_object lf =>
+              runs_type_call runs S0 C lf vthis nil
+            | undef =>
+              res_ter S0 undef
             | value_prim _ =>
-              result_not_yet_implemented (* TODO:  Waiting for the specification. *)
+              result_impossible (* At least, the ECMAScript specification says so. *)
             end
         end) in
   
@@ -886,7 +886,7 @@ Definition ref_get_value runs S C rv : specres value :=
     | ref_kind_null =>
       impossible_with_heap_because S "[ref_get_value] received a reference whose base is [null]."
     | ref_kind_undef =>
-      res_res (run_error S native_error_ref)
+      throw_result (run_error S native_error_ref)
     | ref_kind_primitive_base | ref_kind_object =>
       for_base_or_object tt
     | ref_kind_env_record =>
@@ -1159,7 +1159,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     call_object_new S v
 
   | prealloc_function =>
-    result_not_yet_implemented (* TODO:  Waiting for specification *)
+    result_not_yet_implemented (* LATER:  Waiting for specification *)
 
   | prealloc_bool =>
     Let v := get_arg 0 args in
@@ -1191,7 +1191,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
       out_ter S l)
 
   | prealloc_string =>
-    result_not_yet_implemented (* TODO:  Waiting for specification *)
+    result_not_yet_implemented (* LATER:  Waiting for specification *)
 
   | prealloc_error =>
     Let v := get_arg 0 args in
@@ -1205,8 +1205,8 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     Let v := get_arg 0 args in
     build_error S B v
 
-  | _ =>
-    impossible_with_heap_because S "Missing case in [run_construct_prealloc]." (* TODO:  Are there other cases missing? *)
+  | _ => (* NOTE:  Are there other cases missing? *)
+    impossible_with_heap_because S "Missing case in [run_construct_prealloc]."
 
   end.
 
@@ -1580,7 +1580,7 @@ Definition run_object_has_instance runs B S C l v : result :=
     end
 
   | builtin_has_instance_after_bind =>
-    result_not_yet_implemented (* TODO:  Waiting for the specification *)
+    result_not_yet_implemented (* LATER:  Waiting for the specification *)
 
   end.
 
@@ -1929,7 +1929,6 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
     end
   end.
 
-(* TODO: new definition to be checked *)
 Definition run_var_decl_item runs S C x eo : result :=
   match eo with
     | None => out_ter S x
@@ -2456,8 +2455,8 @@ Definition run_prog runs S C p : result :=
 
 (**************************************************************)
 
-(* TODO *)
 Fixpoint push runs S C l args ilen: result :=
+  (* Corresponds to the construction [spec_call_array_proto_push_3] of the specification. *)
   Let vlen := JsNumber.of_int ilen
   in match args with
   | nil =>
@@ -2741,20 +2740,15 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     if_object (to_object S vthis) (fun S l =>
       if_value (run_object_get runs S C l "length") (fun S vlen =>
         if_spec (to_uint32 runs S C vlen) (fun S ilen =>
-          (* TODO: decide (ilen = 0) doesn't work atm.
-             Make this code more elegant once it does. *)
-          match decide (ilen < 0), decide (0 < ilen) with
-          | false, false =>
+          ifb decide (ilen = 0) then
             if_not_throw (object_put runs S C l "length" JsNumber.zero throw_true) (fun S _ =>
               out_ter S undef)
-          | false, true =>
+          else
             if_string (to_string runs S C (JsNumber.of_int (ilen - 1))) (fun S sindx =>
               if_value (run_object_get runs S C l sindx) (fun S velem =>
                 if_not_throw (object_delete_default runs S C l sindx throw_true) (fun S _ =>
                   if_not_throw (object_put runs S C l "length" sindx throw_true) (fun S _ =>
-                    out_ter S velem))))
-          | _, _ => result_impossible
-          end)))
+                    out_ter S velem)))))))
 
   | prealloc_array_proto_push =>
     if_object (to_object S vthis) (fun S l =>
@@ -2844,3 +2838,4 @@ Fixpoint runs max_step : runs_type :=
   end.
 
 End Interpreter.
+

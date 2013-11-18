@@ -1,5 +1,6 @@
 (* File from the CompCert compiler to implement bitwise operations. *)
-(* TODO:  Use it in the semantics. *)
+(* It is now mostly used in the Coq extraction.
+ * LATER:  Should it be used directly in the semantics? *)
 
 (* *********************************************************************)
 (*                                                                     *)

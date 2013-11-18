@@ -4,17 +4,6 @@ Require Import LibFix LibList.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
 Require Import JsInterpreter JsPrettyInterm JsPrettyRules.
 
-(**************************************************************)
-(* TODO:  Move to Shared. *)
-
-Lemma decide_def : forall {P:Prop} `{Decidable P},
-  (decide P) = (If P then true else false).
-Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
-
-Lemma decide_cases : forall (P:Prop) `{Decidable P},
-  (P /\ decide P = true) \/ (~ P /\ decide P = false).
-Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
-
 Ltac tryfalse_nothing :=
   try match goal with x: nothing |- _ => destruct x end;
   tryfalse.
@@ -1018,7 +1007,7 @@ Ltac run_get_current_out tt :=
   | |- red_stat _ _ _ ?o => o
   | |- red_prog _ _ _ ?o => o
   | |- red_spec _ _ _ ?o => o
-  (* TODO:  Complete *)
+  | |- red_javascript _ ?o => o
   end.
 
 Ltac run_check_current_out o :=
@@ -1027,7 +1016,7 @@ Ltac run_check_current_out o :=
   | |- red_stat _ _ _ o => idtac
   | |- red_prog _ _ _ o => idtac
   | |- red_spec _ _ _ o => idtac
-  (* TODO:  Complete *)
+  | |- red_javascript _ o => idtac
   end.
 
 (** [run_step Red] combines [run_pre], [run_apply Red] and calls
@@ -1599,12 +1588,12 @@ Proof.
 Qed.
 
 
-Lemma res_res_run_error_correct : forall runs S C ne T (y:specret T),
+Lemma throw_result_run_error_correct : forall runs S C ne T (y:specret T),
   runs_type_correct runs ->
-  res_res (run_error S ne) = result_some y ->
+  throw_result (run_error S ne) = result_some y ->
   red_spec S C (spec_error_spec ne) y.
 Proof.
-  introv IH HR. unfolds res_res. 
+  introv IH HR. unfolds throw_result. 
   lets ([|y1]&E&K): if_result_some_out (rm HR); tryfalse_nothing. run_inv.
   lets (E2&Ab): run_error_correct' (rm E).
   applys* red_spec_error_spec.
@@ -1659,7 +1648,7 @@ Proof.
   sets_eq k: (ref_kind_of r). destruct k; tryfalse.
   (* case undef *)
   applys* red_spec_ref_get_value_ref_a. unfolds*.
-   applys* res_res_run_error_correct.
+   applys* throw_result_run_error_correct.
   (* case prim *)
   applys* M_correct.
   (* case object *)
@@ -2447,11 +2436,11 @@ Proof.
      apply~ red_spec_arguments_object_map_3_skip.
       simpl in EQlen. inverts EQlen. rewrite length_cons.
       simpl. rewrite* LibNat.minus_zero.
-     let_name. asserts caseCont: ((length (v :: args) - 1)%I < length xs). (* TODO:  Clean all those arithmeticalities... *)
+     let_name. asserts caseCont: ((length (v :: args) - 1)%I < length xs). (* NOTE:  All those arithmeticalities could be highly improved. *)
        clear HR. rewrite length_cons. simpl.
        asserts ARITHMLEM: (forall n : nat, (Datatypes.S n : int) = n + 1).
         introv. repeat unfolds. rewrite my_Z_of_nat_def. simpl.
-        induction* n0. (* Please, help me! :(  This shall really be trivial... *)
+        induction* n0.
         simpl. rewrite* Pos.add_1_r.
        rewrite ARITHMLEM. rewrite Z.sub_1_r. rewrite Z.add_1_r. rewrite <- Zpred_succ.
        simpl in EQlen. inverts EQlen. math.
@@ -3306,7 +3295,7 @@ Proof.
   run_inv. apply red_stat_debugger.
   (* switch *)
   applys~ run_stat_switch_correct R.
-Admitted. (* TODO: verify *)
+Admitted. (*faster*)
 
 Lemma run_prog_correct : forall runs S C p o,
   runs_type_correct runs ->
@@ -3477,7 +3466,7 @@ Proof.
   skip. (* LATER *)
   (* prealloc_string_proto_value_of *)
   destruct vthis.
-  destruct p. (* TODO:  clean *)
+  destruct p. (* NOTE:  This could be improved. *)
     applys* red_spec_call_string_proto_value_of_bad_type.
     case_if*.
     case_if*.

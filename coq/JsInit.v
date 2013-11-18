@@ -347,7 +347,7 @@ Definition number_proto_value_of_function_object :=
 Definition object_prealloc_array :=
   let P := Heap.empty in
   let P := write_constant P "prototype" prealloc_array_proto in
-  let P := write_constant P "length" 1 in (* TODO: is this constant? *)
+  let P := write_constant P "length" 1 in (* LATER:  Implement the full specification given in the paragraph starting Section 15.4 instead of his dummy object. *)
   (* LATER *)
   object_create_prealloc_constructor prealloc_array 1 P.
 

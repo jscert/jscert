@@ -976,3 +976,43 @@ Proof.
   rewrite* LibNat.minus_zero.
 Qed.
 
+
+(**************************************************************)
+(** ** LATER: move to LibReflect *)
+
+Lemma decide_def : forall {P:Prop} `{Decidable P},
+  (decide P) = (If P then true else false).
+Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
+
+Lemma decide_cases : forall (P:Prop) `{Decidable P},
+  (P /\ decide P = true) \/ (~ P /\ decide P = false).
+Proof. intros. rewrite decide_spec. rewrite isTrue_def. case_if*. Qed.
+
+
+(**************************************************************)
+(** ** LATER: move somewhere *)
+
+Definition comparison_compare c1 c2 :=
+  match c1, c2 with
+  | Eq, Eq => true
+  | Datatypes.Lt, Datatypes.Lt => true
+  | Datatypes.Gt, Datatypes.Gt => true
+  | _, _ => false
+  end.
+
+Global Instance comparison_comparable : Comparable comparison.
+  applys comparable_beq comparison_compare. intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff H; inverts~ H;
+   tryfalse; auto; try congruence.
+Qed.
+
+(**************************************************************)
+(** ** LATER: move to LibInt *)
+
+Global Instance int_comparable : Comparable int.
+Proof.
+  applys comparable_beq (fun i j => decide (i ?= j = Eq)). intros x y.
+  simpl; rew_refl; iff H; rewrite Z.compare_eq_iff in * |- *; inverts~ H.
+Qed.
+
+
