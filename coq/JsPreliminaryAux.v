@@ -235,7 +235,13 @@ Proof. typeclass. Qed.
 
 Global Instance prepost_unary_op_dec : forall op,
   Decidable (prepost_unary_op op).
-Proof. introv. destruct op; typeclass. Qed.
+Proof.
+  introv. destruct op;
+    solve [ applys decidable_make true; fold_bool; fold_prop;
+            do 2 eexists; constructors ]
+    || solve [ applys decidable_make false; fold_bool; fold_prop;
+               introv (f&b&H); inverts H ].
+Qed.
 
 Global Instance attributes_is_data_dec : forall A,
   Decidable (attributes_is_data A).
@@ -334,7 +340,7 @@ Proof.
     tests : (spec_function_get_error_case S x o).
 
     rewrite~ isTrue_true. lets (c&O&fb&E&H): (rm C).
-    unfold object_code in H. 
+    unfold object_method in H. 
     destruct H as [[O0 [H1 H2]] H3].
     forwards Ex: ex_intro H1. forwards (O1&H4): @pick_option_defined Ex.
     inversion E. 
@@ -346,7 +352,7 @@ Proof.
     rewrite~ isTrue_false. unfold spec_function_get_error_case in C. 
     rew_logic in C.
     destruct C as [C1 | C2]. contradiction.
-    unfold object_code in C2.
+    unfold object_method in C2.
     sets_eq <- Ob PS: (pick_option (object_binds S o)).
     destruct~ Ob as [o'|]. forwards B: @pick_option_correct PS. simpl.
     sets_eq <- Oc CD: (object_code_ o'). destruct~ Oc.
@@ -388,7 +394,7 @@ Proof.
       forwards: @pick_option_correct H. applys Heap_binds_func Bo H0. typeclass.
      substs. rewrite~ E.
     rewrite~ isTrue_false. unfold is_callable in C. rew_logic in C. simpls.
-     unfold object_call in C. sets_eq <- Ob PS: (pick_option (object_binds S o)).
+     sets_eq <- Ob PS: (pick_option (object_binds S o)).
      destruct~ Ob as [o'|]. forwards B: @pick_option_correct PS. simpl.
      sets_eq <- Oc CD: (object_call_ o'). destruct~ Oc. false (C c). exists* o'.
 Qed.

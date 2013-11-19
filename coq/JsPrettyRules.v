@@ -787,11 +787,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_new_2 v y1) o ->
       red_expr S0 C (expr_new_1 (ret S v) e2s) o
 
-  | red_expr_new_2_type_error : forall S S0 C o v vs, (* Steps 4-5 *)
-      (type_of v <> type_object) \/ (exists l, v = value_object l /\ object_construct S l None) ->
+  | red_expr_new_2_type_error_not_object : forall S S0 C o v vs, (* Step 4 *)
+      type_of v <> type_object ->
       red_expr S C (spec_error native_error_type) o ->
       red_expr S0 C (expr_new_2 v (ret S vs)) o
-      
+
+  | red_expr_new_2_type_error_no_construct : forall S S0 C o l vs, (* Step 5 *)
+      object_method object_construct_ S l None ->
+      red_expr S C (spec_error native_error_type) o ->
+      red_expr S0 C (expr_new_2 (value_object l) (ret S vs)) o
+
   | red_expr_new_2_construct : forall S S0 C l vs o, (* Step 6 *)
       red_expr S C (spec_construct l vs) o ->
       red_expr S0 C (expr_new_2 (value_object l) (ret S vs)) o
@@ -1116,7 +1121,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_binary_op_3 binary_op_instanceof v1 v2) o
 
   | red_expr_binary_op_instanceof_non_instance : forall S C v1 l o,
-      object_has_instance S l None ->
+      object_method object_has_instance_ S l None ->
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (expr_binary_op_3 binary_op_instanceof v1 (value_object l)) o
 
@@ -2086,7 +2091,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Entering function code  (10.4.3) *)
 
   | red_spec_entering_func_code : forall S C lf vthis args bd str K o, 
-      object_code S lf (Some bd) ->
+      object_method object_code_ S lf (Some bd) ->
       str = funcbody_is_strict bd ->
       red_expr S C (spec_entering_func_code_1 lf args bd vthis str K) o ->
       red_expr S C (spec_entering_func_code lf vthis args K) o
@@ -2115,7 +2120,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_entering_func_code_1 lf args bd lthis strictness_false K) o
 
   | red_spec_entering_func_code_3 : forall lex' S' C' o1 S C lf args str bd vthis lex  K o, (* Steps 5 through 9 *)
-      object_scope S lf (Some lex) ->
+      object_method object_scope_ S lf (Some lex) ->
       (lex', S') = lexical_env_alloc_decl S lex ->
       C' = execution_ctx_intro_same lex' vthis str ->
       red_expr S' C' (spec_binding_inst codetype_func (Some lf) (funcbody_prog bd) args) o1 -> 
@@ -2294,7 +2299,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst ct olf code args) o
 
   | red_spec_binding_inst_1_function : forall o1 xs S C lf code args L o, (* Step 4a *)
-      object_formal_parameters S lf (Some xs) ->
+      object_method object_formal_parameters_ S lf (Some xs) ->
       red_expr S C (spec_binding_inst_formal_params args L xs (prog_intro_strictness code)) o1 ->
       red_expr S C (spec_binding_inst_2 codetype_func lf code xs args L o1) o -> 
       red_expr S C (spec_binding_inst_1 codetype_func (Some lf) code args L) o
@@ -2365,7 +2370,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Arguments Object: Get (returns value) (10.6) *) 
   | red_spec_object_get_args_obj : forall lmap S C vthis l x o (y:specret full_descriptor), (* Steps 1 - 2 *)
-     object_parameter_map S l (Some lmap) ->
+     object_method object_parameter_map_ S l (Some lmap) ->
      red_spec S C (spec_object_get_own_prop lmap x) y ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap y) o -> 
      red_expr S C (spec_object_get_1 builtin_get_args_obj vthis l x) o
@@ -2382,7 +2387,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (* Arguments Object: DefineOwnProperty (returns bool) (10.6) *)
 
   | red_spec_object_define_own_prop_args_obj : forall lmap S C l x Desc throw o (y:specret full_descriptor), (* Steps 1 - 2 *)
-      object_parameter_map S l (Some lmap) ->
+      object_method object_parameter_map_ S l (Some lmap) ->
       red_spec S C (spec_object_get_own_prop lmap x) y ->
       red_expr S C (spec_args_obj_define_own_prop_1 l x Desc throw lmap y) o -> 
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_args_obj l x Desc throw) o
@@ -2444,7 +2449,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Arguments Object: Delete (10.6) *)
 
   | red_spec_object_delete_args_obj : forall lmap S C l x throw o (y:specret full_descriptor), (* Steps 1 - 2 *)
-      object_parameter_map S l (Some lmap) ->
+      object_method object_parameter_map_ S l (Some lmap) ->
       red_spec S C (spec_object_get_own_prop lmap x) y ->
       red_expr S C (spec_args_obj_delete_1 l x throw lmap y) o ->
       red_expr S C (spec_object_delete_1 builtin_delete_args_obj l x throw) o  
@@ -2647,8 +2652,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_creating_function_object_4 : forall S0 S C l b, (* Step 20 *)
       red_expr S0 C (spec_creating_function_object_4 l (out_ter S b)) (out_ter S l)
 
-    (* TODO: check that prealloc_throw_type_error is the right thing to use above *)
-
   (** Function calls for regular functions  (13.2.1) 
       -- See also [abort_intercepted_expr] for step 5. *) 
 
@@ -2661,7 +2664,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_default l this args) o
 
   | red_spec_call_default_1 : forall S C l bdo o, (* Step 2, get code *)
-      object_code S l bdo ->
+      object_method object_code_ S l bdo ->
       red_expr S C (spec_call_default_2 bdo) o ->
       red_expr S C (spec_call_default_1 l) o
 
@@ -2708,11 +2711,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_construct_default_2 l' (out_ter S v)) (out_ter S v')
       (* Note: exceptions get propagated automatically *)
 
-  (* TODO: 13.2.3 : throwtypeerror function object *)
+  (* LATER: 13.2.3 : throwtypeerror function object *)
 
 
  (*------------------------------------------------------------*)
-     
+
 (* TODO: what is this?
       let A := attributes_data_intro (JsNumber.of_int (length names)) false false false in 
       red_expr S' C (spec_object_define_own_prop l "length" A false) o1 ->
@@ -4136,9 +4139,8 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_object_get_own_prop_1 B l x) y ->
       red_spec S C (spec_object_get_own_prop l x) y
 
-  | red_spec_object_get_own_prop_1_default : forall S C l x P Ao (y:specret full_descriptor), (* Beginning of steps 1 and 3 *)
-      object_properties S l P -> (* TODO: combine this line and the next one using an auxiliary def *)
-      Ao = Heap.read_option P x ->
+  | red_spec_object_get_own_prop_1_default : forall S C l x Ao (y:specret full_descriptor), (* Beginning of steps 1 and 3 *)
+      object_property S l x Ao ->
       red_spec S C (spec_object_get_own_prop_2 l x Ao) y ->
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y  
 
@@ -4159,7 +4161,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S0 C (spec_args_obj_get_own_prop_1 l x (ret S full_descriptor_undef)) (ret S full_descriptor_undef) 
 
   | red_spec_object_get_own_prop_args_obj_1_attrs : forall lmap S0 S C l x A (y:specret full_descriptor) (y1:specret full_descriptor), (* Steps 3 - 4 *)
-      object_parameter_map S l (Some lmap) ->
+      object_method object_parameter_map_ S l (Some lmap) ->
       red_spec S C (spec_object_get_own_prop lmap x) y1 ->
       red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A y1) y -> 
       red_spec S0 C (spec_args_obj_get_own_prop_1 l x (ret S (full_descriptor_some A))) y 

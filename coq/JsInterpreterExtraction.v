@@ -168,7 +168,7 @@ Extract Constant JsNumber.uint32_right_shift =>
 
 Extract Constant int_of_char => "(fun c -> float_of_int (int_of_char c))".
 
-Extract Constant prealloc_comparable => "(=)".
+Extract Constant prealloc_compare => "(=)".
 Extract Constant ascii_compare => "(=)".
 Extract Constant le_int_decidable => "(<=)".
 Extract Constant ge_nat_decidable => "(>=)".

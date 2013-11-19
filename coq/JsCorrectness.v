@@ -2068,11 +2068,13 @@ Proof.
     M S = result_some y ->
     red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y).
     clears HR S. subst. introv HR. run.
-     applys* red_spec_object_get_own_prop_1_default.
-       applys* run_object_method_correct. clear E.
-     destruct (Heap.read_option x1 x).
-       applys* red_spec_object_get_own_prop_2_some_data.
-       applys* red_spec_object_get_own_prop_2_none. 
+     sets_eq <- Ao: (Heap.read_option x1 x).
+     applys~ red_spec_object_get_own_prop_1_default. eexists. splits.
+      applys run_object_method_correct E.
+      rewrite~ EQAo.
+     clear E. destruct Ao.
+      applys* red_spec_object_get_own_prop_2_some_data.
+      applys* red_spec_object_get_own_prop_2_none. 
     clear EQM.
   destruct x0.
   (* default *)
@@ -2921,13 +2923,13 @@ Proof.
   unfolds in R. run red_expr_new.
   run red_expr_new_1.
   destruct a; tryfalse.
-    applys* red_expr_new_2_type_error. 
+    applys* red_expr_new_2_type_error_not_object.
     run. lets M: run_object_method_correct (rm E).
     destruct x; tryfalse.
       applys red_expr_new_2_construct. 
        applys* red_spec_constructor.
        applys* run_construct_correct.
-      applys* red_expr_new_2_type_error. 
+      applys* red_expr_new_2_type_error_no_construct.
   (* call *)
   applys* run_expr_call_correct.
   (* unary operators *)
@@ -2936,7 +2938,7 @@ Proof.
      run red_expr_prepost_2. run. destruct x as [F ispre].
      let_simpl. let_name. lets: prepost_op_correct (rm E).
      run* red_expr_prepost_3. subst. applys* red_expr_prepost_4.
-    destruct u; try solve [ false n; constructors ].
+    destruct u; try solve [ false n; unfolds; do 2 eexists; constructors ].
     (* delete *)
     run red_expr_delete. destruct rv; run_inv.
       applys* red_expr_delete_1_not_ref. intro; false_invert. 
@@ -3012,8 +3014,7 @@ Proof.
         applys* red_expr_assign_3'.
     run red_expr_assign_1_simple.
     forwards (v&?&?): follow_correct (rm R). run_inv. auto*.
-
-Admitted. (* NOW verify *)
+Admitted. (*faster*)
 
 
 (* Hints for automatically applying "run_hyp" in obvious cases *) 
@@ -3692,6 +3693,7 @@ Corollary run_javascript_correct_num : forall num p o,
   run_javascript (runs num) p = result_out o ->
   red_javascript p o.
 Proof.
-  introv IH. applys~ run_javascript_correct IH. apply~ runs_correct.
+  introv IH. applys~ run_javascript_correct IH.
+  apply~ runs_correct.
 Qed.
 

@@ -66,7 +66,6 @@ Inductive ext_expr :=
   | expr_object_0 : out -> propdefs -> ext_expr
   | expr_object_1 : object_loc -> propdefs -> ext_expr
   | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr 
-  | expr_object_3 : object_loc -> string -> out -> propdefs -> ext_expr (* TODO:  Unused form (should it be removed?). *)
   | expr_object_3_val : object_loc -> string -> specret value -> propdefs -> ext_expr
   | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
@@ -403,7 +402,7 @@ Inductive ext_expr :=
   | spec_construct : object_loc -> list value -> ext_expr
   | spec_construct_1 : construct -> object_loc -> list value -> ext_expr
 
-  | spec_construct_prealloc : prealloc -> list value -> ext_expr (* todo??*)
+  | spec_construct_prealloc : prealloc -> list value -> ext_expr
 
   | spec_construct_default : object_loc -> list value -> ext_expr
   | spec_construct_default_1 : object_loc -> list value -> out -> ext_expr
@@ -756,7 +755,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_object_0 o _ => Some o
   | expr_object_1 _ _ => None
   | expr_object_2 _ _ _ _ => None
-  | expr_object_3 _ _ o _ => Some o
   | expr_object_3_val _ _ y _ => out_of_specret y
   | expr_object_3_get _ _ o _ => Some o
   | expr_object_3_set _ _ o _ => Some o
@@ -1475,3 +1473,5 @@ Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop 
 (** ** Auxiliary definitions for the semantics of for-in. *)
 
 (* LATER *)
+
+

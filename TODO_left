@@ -7,14 +7,21 @@ There follows a list of all `TODO's left in the Coq development.
       	The [[ThrowTypeError]] object should be checked.
 
       - JsPreliminary.v:
-        (not yet rewied)
+        Should the definitions about `prepost' operators be in JsPreliminary or in JsPrettyInterm?
 
       - JsPrettyInterm.v:
-        (not yet rewied)
+        I don't understand the comment ``is it just a leftover form the renaming?''.
+        They are also a lot of things that need checking in this file.
 
       - JsPrettyRules.v:
-        (not yet rewied)
+        The following rules need checking:
+            red_stat_switch_nodefault_6_abrupt
+            red_stat_switch_default_A_5
+            red_stat_switch_default_A_5_abrupt
+            red_stat_switch_default_8_normal
+            red_stat_switch_default_8_abrupt
+            red_spec_build_error_2
+        The two unused arguments of [stat_switch_default_5] are suspicious:  can't we remove them?
+        There is a frightening special commented rule for [spec_creating_function_object_proto] in the middle of the code:  can we remove it safely?
 
-      - JsSyntaxAux.v:
-        (not yet rewied)
 

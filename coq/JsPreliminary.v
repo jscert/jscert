@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 Require Export JsSyntax JsSyntaxAux.
 Open Scope string_scope.
+Open Scope list_scope.
 
 (**************************************************************)
 (** ** Implicit Types *)
@@ -130,7 +131,7 @@ Definition type_of v :=
 
     Which is equivalent to:
 *)
-(* TODO: problem of the several representations of NaN *)
+(* LATER: problem of the several representations of NaN *)
 
 Definition same_value v1 v2 := (v1 = v2).
 
@@ -341,89 +342,33 @@ Definition object_extensible S l b :=
 Definition object_prim_value S l v :=
   exists O, object_binds S l O /\ object_prim_value_ O = Some v.
 
-(** [object_get S l B] asserts that the
-    [[get]] method for the object stored at address [l] 
+(** [object_method Proj S l B] asserts that the
+    [[Proj]] method of the object stored at address [l]
     is described by specification function with identifier [B]. *)
-(* TODO: remove this def and use the general case below *)
-
-Definition object_get S l B :=
-  exists O, object_binds S l O /\ object_get_ O = B.  
-
-(** Generalization of the above -- TODO:
-    Note that a number of the fct below are deprecated... *)
 
 Definition object_method (X:Type) Proj S l (B:X) :=
   exists O, object_binds S l O /\ Proj O = B.
 
-(** [object_call S l fco] asserts that the "primitive value"
-    field of the object stored at address [l] in [S] contains
-    an option [fco] which may contain function code. *)
+(** [object_properties S l x Ao] asserts that [Ao] is the content
+    (eventually null of the property field [x] of the object stored at
+    address [l] in [S]. *)
 
-Definition object_call S l fco :=
-  exists O, object_binds S l O /\ object_call_ O = fco.
-  
-(** [object_construct S l fco] asserts that the "construct"
-    field of the object stored at address [l] in [S] contains
-    an option [fco] which may contain code. *)
-
-Definition object_construct S l fco :=
-  exists O, object_binds S l O /\ object_construct_ O = fco.
-
-(** [object_has_instance S l Bo] asserts that the
-    [[has instance]] method for the object stored at address [l] 
-    is described by specification function with identifier [Bo]. *)
-
-Definition object_has_instance S l Bo :=
-  exists O, object_binds S l O /\ object_has_instance_ O = Bo.
-  
-(** [object_scope S l scope] asserts that the [[Scope]]
-    field of the object stored at address [l] in [S] contains
-    an option [scope] which may contain lexical environment. *)
-
-Definition object_scope S l scope :=
-  exists O, object_binds S l O /\ object_scope_ O = scope.
-
-(** [object_formal_parameters S l fp] asserts that the [[FormalParameters]]
-    field of the object stored at address [l] in [S] contains
-    an option [fp] which may contain function formal parameters. *)
-
-Definition object_formal_parameters S l fp :=
-  exists O, object_binds S l O /\ object_formal_parameters_ O = fp.
-  
-(** [object_code S l bd] asserts that the [[Code]]
-    field of the object stored at address [l] in [S] contains
-    an option [bd] which may contain function funcbody. *)
-
-Definition object_code S l bd :=
-  exists O, object_binds S l O /\ object_code_ O = bd.
-  
-(** [object_parameter_map S l lmap] asserts that the [[ParameterMap]]
-    field of the object stored at address [l] in [S] contains
-    an option [lmap] which may contain a location to a parameter map object. *)
-
-Definition object_parameter_map S l lmap :=
-  exists O, object_binds S l O /\ object_parameter_map_ O = lmap.
-
-(** [object_properties S l P] asserts that [P]
-    is the content of the properties field of the object
-    stored at address [l] in [S]. *)
-
-Definition object_properties S l P :=
-  exists O, object_binds S l O /\ object_properties_ O = P.
+Definition object_property S l x Ao :=
+  exists P, object_method object_properties_ S l P /\ Ao = Heap.read_option P x.
 
 (** [object_properties_keys_as_list S l xs] asserts that [xs]
     is the list of property names associated to the object
     stored at address [l] in [S] (the list can be in any order). *)
 
 Definition object_properties_keys_as_list S l xs :=
-  exists P, object_properties S l P /\ heap_keys_as_list P xs.
+  exists P, object_method object_properties_ S l P /\ heap_keys_as_list P xs.
 
 (** [object_properties_enumerable_keys_as_list S l xs] asserts that [xs]
     is the list of enumerable property names associated to the object
     stored at address [l] in [S] (the list can be in any order). *)
 
 Definition object_properties_enumerable_keys_as_list S l xs :=
-  exists P xs', object_properties S l P /\ 
+  exists P xs', object_method object_properties_ S l P /\ 
                 heap_keys_as_list P xs' /\
                 LibList.Filters 
                   (fun (k:prop_name) => 
@@ -458,11 +403,10 @@ Definition object_heap_map_properties S l F S' :=
   exists O, object_binds S l O
          /\ S' = object_write S l (object_map_properties O F).
 
-(** [object_heap_set_extensible_false S l S'] asserts that the state
+(** [object_heap_set_extensible b S l S'] asserts that the state
     [S] contains an object at location [l], and that [S']
     describes the heap after the object at location [l] has
-    been updated by settin its [extensible] internal property to false *)
-(* TODO: we need something more general? (i.e. giving a boolean as an arg?*)
+    been updated by setting its [extensible] internal property to [b]. *)
 
 Definition object_heap_set_extensible b S l S' :=
   exists O, object_binds S l O
@@ -555,7 +499,6 @@ Definition attributes_writable A : bool :=
   | attributes_data_of Ad => attributes_data_writable Ad
   | attributes_accessor_of Aa => false
   end.
-(* TODO: check:  Even if it's used in the semantics, is that wanted? -- Martin *)
 
 
 (**************************************************************)
@@ -742,7 +685,9 @@ Definition attributes_change_accessor_on_non_configurable Aa Desc : Prop := (* 8
 
 Definition spec_function_get_error_case S x v : Prop := 
   x = "caller" /\ exists l bd, 
-    v = value_object l /\ object_code S l (Some bd) /\ funcbody_is_strict bd = true.
+    v = value_object l /\
+    object_method object_code_ S l (Some bd) /\
+    funcbody_is_strict bd = true.
 
 
 (**************************************************************)
@@ -870,7 +815,7 @@ Definition env_record_write S L E :=
     to the environment record [E]. *)
 
 Definition env_record_alloc S E :=
-   (* TODO: implem will change; it should use env_record_write. *)
+   (* LATER: implem will change; it should use env_record_write. *)
    match S with state_intro cells bindings (L:::alloc) ev_list =>
      let bindings' := Heap.write bindings L E in
      (L, state_intro cells bindings' alloc ev_list)
@@ -929,7 +874,7 @@ Definition decl_env_record_write Ed x mu v : decl_env_record :=
 Definition decl_env_record_rem Ed x : decl_env_record :=
   Heap.rem (Ed:decl_env_record) x.
 
-(** TODO: Change the following definition to a relation. *)
+(** LATER: Change the following definition to a relation. *)
 
 Definition env_record_write_decl_env S L x mu v :=
   match Heap.read (state_env_record_heap S) L with
@@ -1018,6 +963,78 @@ Definition execution_ctx_initial str :=
      execution_ctx_this_binding := prealloc_global;
      execution_ctx_strict := str |}.
 
+
+(**************************************************************)
+(** Retrieve function and variable declarations from code *)
+
+Definition element_funcdecl (el : element) : list funcdecl :=
+  match el with
+  | element_stat _ => nil
+  | element_func_decl name args bd =>
+      funcdecl_intro name args bd :: nil
+  end.
+
+Definition prog_funcdecl (p : prog) : list funcdecl :=
+  LibList.concat (LibList.map element_funcdecl (prog_elements p)).
+
+(* We follow the spec according to Sections 10.5 and 10.1.
+   10.5 tells us to fetch every variable declaration in the code.
+   10.1 tells us not to step inside function bodies. *)
+
+Fixpoint stat_vardecl (t : stat) : list string :=
+  match t with
+  | stat_expr _ => nil
+  | stat_label _ s => stat_vardecl s
+  | stat_block ts => LibList.concat (List.map stat_vardecl ts) (* Note: use List instead of LibList for fixpoint to be accepted *)
+  | stat_var_decl nes => LibList.map fst nes
+  | stat_if e s1 s2o => (stat_vardecl s1) ++
+                        (LibOption.unsome_default 
+                           nil
+                           (LibOption.map stat_vardecl s2o))
+  | stat_do_while _ s _ => stat_vardecl s
+  | stat_while _ _ s => stat_vardecl s
+  | stat_with _ s => stat_vardecl s
+  | stat_throw _ => nil
+  | stat_return _ => nil
+  | stat_break _ => nil
+  | stat_continue _ => nil
+  | stat_try s sco sfo => (stat_vardecl s) ++
+                          (LibOption.unsome_default 
+                             nil
+                             (LibOption.map 
+                                (fun sc => stat_vardecl (snd sc)) sco)) ++
+                          (LibOption.unsome_default 
+                             nil
+                             (LibOption.map stat_vardecl sfo))
+  | stat_for_in _ _ _ s => stat_vardecl s
+  | stat_for_in_var _ _ _ _ s => stat_vardecl s
+  | stat_debugger => nil
+  | stat_switch _ _ sb => switchbody_vardecl sb
+  end
+
+with switchbody_vardecl (sb : switchbody) : list string :=
+  match sb with
+  | switchbody_nodefault scl => LibList.concat (List.map switchclause_vardecl scl)
+  | switchbody_withdefault scl1 sl scl2 =>
+    (LibList.concat (List.map switchclause_vardecl scl1)) ++
+    (LibList.concat (List.map stat_vardecl sl)) ++
+    (LibList.concat (List.map switchclause_vardecl scl2))
+  end
+
+with switchclause_vardecl (sc : switchclause) : list string :=
+  match sc with
+  | switchclause_intro _ sl => LibList.concat (List.map stat_vardecl sl)
+  end.
+
+
+Definition element_vardecl (el : element) : list string :=
+  match el with
+  | element_stat t => stat_vardecl t
+  | element_func_decl name args bd => nil
+  end.
+
+Definition prog_vardecl (p : prog) : list string :=
+  LibList.concat (LibList.map element_vardecl (prog_elements p)).
 
 (**************************************************************)
 (** Grammar of preferred types for use by the defaultValue
@@ -1206,7 +1223,7 @@ Definition inequality_test_primitive w1 w2 : prim :=
 (**************************************************************)
 (** ** Factorization of rules for unary operators *)
 
-(* TODO: move a bunch of these defs into js_pretty_inter *)
+(* TODO: move a bunch of these defs into JsPrettyInterm *)
 
 (** Operations increment and decrement *)
 
@@ -1229,18 +1246,8 @@ Inductive prepost_op : unary_op -> (number -> number) -> bool -> Prop :=
 
 (** Characterization of unary "prepost" operators. *)
 
-(* TODO: change def below into 
-   prepost_unary_op op := exists f b, prepost_op op f b. 
-   and even remove this definition if it is not used *)
-
 Definition prepost_unary_op op :=
-  match op with
-  | unary_op_post_incr
-  | unary_op_post_decr
-  | unary_op_pre_incr
-  | unary_op_pre_decr => True
-  | _ => False
-  end.
+  exists f b, prepost_op op f b. 
 
 (** Characterization of unary operators that start by
     evaluating and calling get_value on their argument. *)
@@ -1251,6 +1258,7 @@ Definition regular_unary_op op :=
   | unary_op_delete => False
   | _ => ~ prepost_unary_op op
   end.
+
 
 (**************************************************************)
 (** ** Factorization of rules for binary operators *)
@@ -1323,7 +1331,8 @@ Definition regular_binary_op op :=
 Definition callable S v Bo :=
   match v with
   | value_prim w => (Bo = None)
-  | value_object l => object_call S l Bo
+  | value_object l =>
+    object_method object_call_ S l Bo
   end.
 
 (** [is_callable S v] asserts that the object [v] is a location
@@ -1414,7 +1423,7 @@ Definition is_syntactic_eval e :=
 
 (** Axiomatized parsing relation for eval *)
 
-(* TODO: There are actually two passes of parsing.  One that performs
+(* LATER: There are actually two passes of parsing.  One that performs
     the parsing, and the other that adds the additionnal informations,
     such as [add_infos_prog].  The second part depends of the current
     strictness flag.  Those function shouldn't thus perform this second
