@@ -4132,7 +4132,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       ~ descriptor_inconsistent Desc ->
       red_spec S C (spec_to_descriptor_7 l Desc) (ret S Desc)
 
-  (** GetOwnProperty (8.12.1) *)
+  (** GetOwnProperty (8.12.1) returns a [full_descriptor] *)
 
   | red_spec_object_get_own_prop : forall S C l x B (y:specret full_descriptor),
       object_method object_get_own_prop_ S l B ->
@@ -4183,7 +4183,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_own_prop_args_obj_4 : forall S C A, (* Step 6 *)
       red_spec S C (spec_args_obj_get_own_prop_4 A) (ret S (full_descriptor_some A))    
 
-  (* String Object: GetOwnProperty (15.5.5.2) *)
+  (* String Object: GetOwnProperty (15.5.5.2) returns a [full_descriptor] *)
 
   | red_spec_object_get_own_prop_string : forall S C l x (y:specret full_descriptor) (y1:specret full_descriptor), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y1 ->
@@ -4277,7 +4277,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   (*------------------------------------------------------------*)
   (** ** Operations on lexical environments *)
 
-  (** Get identifier reference (10.2.2.1) *)
+  (** Get identifier reference (10.2.2.1) returns [value] *)
 
   | red_spec_lexical_env_get_identifier_ref_nil : forall S C x str r,
       r = ref_create_value undef x str ->
@@ -4319,7 +4319,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_object_get_prop_1 B l x) y ->
       red_spec S C (spec_object_get_prop l x) y  
 
-  (** GetProperty (8.12.2) *)
+  (** GetProperty (8.12.2) returns a [full_descriptor] *)
 
   | red_spec_object_get_prop_1_default : forall S C l x y1 (y:specret full_descriptor), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop l x) y1 ->
