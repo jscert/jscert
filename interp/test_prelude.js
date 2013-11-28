@@ -1,4 +1,6 @@
 // Martin's original error function, which sets the secret state. Updated to keep more than one error message.
+// We use a try for the first time we set __$ERROR__: as it is not set
+// initially, trying to access it will result in an exception.
 function $ERROR (str) {
     try {
         __$ERROR__ = __$ERROR__ + " | " + str
