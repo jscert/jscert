@@ -9,7 +9,7 @@ Require JsNumber.
 Notation "'number'" := (JsNumber.number).
 
 
-(* LATER: There seems to be problems with modules and I've temporarily added
+(* LATER (ARTHUR): There seems to be problems with modules and I've temporarily added
   this lemma to avoid those troubles, but there surely is a better
   solution for it. -- Martin. *)
 Lemma Heap_binds_func : forall (K V : Type) `{Comparable K}
@@ -145,7 +145,7 @@ with funcbody :=
 
 (** Grammar of statements *)
 
-with stat :=
+with stat := (* LATER: An explanation of these additionnal [label_set] would be welcomed. *)
   | stat_expr : expr -> stat
   | stat_label : string -> stat -> stat
   | stat_block : list stat -> stat
@@ -159,6 +159,8 @@ with stat :=
   | stat_break : label -> stat
   | stat_continue : label ->  stat
   | stat_try : stat -> option (string * stat) -> option stat -> stat (* Note: try s1 [catch (x) s2] [finally s3] *)
+  | stat_for : label_set -> expr -> expr -> expr -> stat -> stat (* Note: for (e1; e2; e3) stat *)
+  | stat_for_var : label_set -> list (string * option expr) -> expr -> expr -> stat -> stat (* Note: for (var ...; e2; e3) stat *)
   | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
   | stat_debugger : stat

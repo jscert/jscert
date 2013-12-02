@@ -2412,6 +2412,12 @@ Definition run_stat runs S C t : result :=
   | stat_continue so =>
     out_ter S (res_continue so)
 
+  | stat_for ls e1 e2 e3 s =>
+    result_not_yet_implemented (* LATER *)
+
+  | stat_for_var ls xeo1s e2 e3 s =>
+    result_not_yet_implemented (* LATER *)
+
   | stat_for_in ls e1 e2 s =>
     result_not_yet_implemented (* LATER *)
 

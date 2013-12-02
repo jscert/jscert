@@ -3219,7 +3219,8 @@ Lemma run_stat_correct : forall runs S C t o,
 Proof.
   introv RC R. unfolds in R. 
   destruct t as [ | | ls | ls | e t1 t2o | labs t e | labs e t | e t 
-     | e | eo | labo | labo | t co fo | | | eo | ]. 
+     | e | eo | labo | labo | t co fo | labs e1 e2 e3 t
+     | labs xeo1s e2 e3 t | labs e1 e2 e3 t | labs str eo e t | eo | ]. 
   (* Expression *)
   run red_stat_expr. apply red_stat_expr_1. 
   (* Label *)
@@ -3288,6 +3289,10 @@ Proof.
         applys~ red_stat_try_3_catch_result finally_correct.
       applys~ red_stat_try_1_throw_no_catch. applys~ finally_correct.
       rewrite <- R. fequal. destruct R0; simpls; substs~.
+  (* For *)
+  skip. (* TODO *)
+  (* For-var *)
+  skip. (* TODO *)
   (* For-in *)
   skip. (* LATER *)
   (* For-in-var *)

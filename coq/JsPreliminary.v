@@ -1006,8 +1006,10 @@ Fixpoint stat_vardecl (t : stat) : list string :=
                           (LibOption.unsome_default 
                              nil
                              (LibOption.map stat_vardecl sfo))
+  | stat_for _ _ _ _ s => stat_vardecl s
+  | stat_for_var _ nes _ _ s => LibList.map fst nes ++ stat_vardecl s
   | stat_for_in _ _ _ s => stat_vardecl s
-  | stat_for_in_var _ _ _ _ s => stat_vardecl s
+  | stat_for_in_var _ str _ _ s => str :: stat_vardecl s
   | stat_debugger => nil
   | stat_switch _ _ sb => switchbody_vardecl sb
   end

@@ -343,7 +343,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   *)
 
-  (** For statement: LATER (12.6.3) *)
+  (** For statement (12.6.3) *)
 
   (** For-in statement: LATER (12.6.4) *)
 
