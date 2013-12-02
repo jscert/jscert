@@ -75,7 +75,7 @@ let rec exp_to_exp exp : JsSyntax.expr =
       | String _ 
       | Null 
       | Bool _ -> JsSyntax.Coq_expr_literal (exp_to_literal exp)
-      
+
       | RegExp _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | This -> JsSyntax.Coq_expr_this
       | Var v -> JsSyntax.Coq_expr_identifier (string_to_coq v)
@@ -188,8 +188,16 @@ and exp_to_stat exp : JsSyntax.stat =
       | Try (e, Some (s, ce), Some fe) -> JsSyntax.Coq_stat_try (f e, Some (string_to_coq s, f ce), Some (f fe))  
       | If (e1, e2, Some e3) -> JsSyntax.Coq_stat_if (exp_to_exp e1, f e2, Some (f e3))
       | If (e1, e2, None) -> JsSyntax.Coq_stat_if (exp_to_exp e1, f e2, None)
-      | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp)) (* TODO:  We could actually do something there now *)
-      | For (e1, e2, e3, e4) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      | For (e1, e2, e3, e4) ->
+          (match e1.exp_stx with
+          | VarDec vs ->
+                JsSyntax.Coq_stat_for_var ([], (map (fun (v, e) ->
+                    string_to_coq v, match e with None -> None
+                        | Some e -> Some (exp_to_exp e)) vs),
+                    exp_to_exp e2, exp_to_exp e3, f e4)
+          | _ ->
+                  JsSyntax.Coq_stat_for ([], exp_to_exp e1, exp_to_exp e2, exp_to_exp e3, f e4))
       | Switch (e1, e2s) -> 
         let (firstpart, defaultcase, secondpart) = List.fold_left (fun (fi, de, se) el -> (
           if de = None then

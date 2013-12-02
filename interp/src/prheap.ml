@@ -367,6 +367,8 @@ let dump_stat_step = function
   | Coq_stat_break _ -> "Stat_break"
   | Coq_stat_continue _ -> "Stat_continue"
   | Coq_stat_try _ -> "Stat_try"
+  | Coq_stat_for _ -> "Stat_for"
+  | Coq_stat_for_var _ -> "Stat_for_var"
   | Coq_stat_for_in _ -> "Stat_for_in"
   | Coq_stat_for_in_var _ -> "Stat_for_in_var"
   | Coq_stat_debugger -> "Stat_debugger"
