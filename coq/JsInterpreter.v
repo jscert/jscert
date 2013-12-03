@@ -397,6 +397,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_function_has_instance : state -> object_loc -> value -> result;
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_do_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
+    runs_type_stat_for_loop : state -> execution_ctx -> label_set -> resvalue -> option expr -> option expr -> stat -> result;
     runs_type_object_delete : state -> execution_ctx -> object_loc -> prop_name -> bool -> result;
     runs_type_object_get_own_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
     runs_type_object_get_prop : state -> execution_ctx -> object_loc -> prop_name -> specres full_descriptor;
@@ -2319,6 +2320,49 @@ Definition run_stat_return runs S C eo : result :=
       res_ter S1 (res_return v1))
   end.
 
+Definition run_stat_for_loop runs S C labs rv eo2 eo3 t : result :=
+  (* Corresponds to the extended term [stat_for_2] in the rules. *)
+  Let follows := fun S =>
+    if_ter (runs_type_stat runs S C t) (fun S R =>
+      Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+      Let loop := fun S => runs_type_stat_for_loop runs S C labs rv' eo2 eo3 t in
+      ifb res_type R = restype_break /\ res_label_in R labs then
+        res_ter S rv'
+      else (
+        ifb res_type R = restype_normal
+          \/ (res_type R = restype_continue /\ res_label_in R labs)
+        then
+          match eo3 with
+          | None => loop S
+          | Some e3 =>
+              if_spec (run_expr_get_value runs S C e3) (fun S v3 =>
+                loop S)
+          end
+        else res_ter S R
+      ))
+  in match eo2 with
+  | None => follows S
+  | Some e2 =>
+    if_spec (run_expr_get_value runs S C e2) (fun S v2 =>
+      Let b := convert_value_to_boolean v2 in
+      if b then follows S
+      else res_ter S rv)
+  end.
+
+Definition run_stat_for runs S C labs eo1 eo2 eo3 t : result :=
+  let follows S :=
+    runs_type_stat_for_loop runs S C labs resvalue_empty eo2 eo3 t
+  in match eo1 with
+  | None => follows S
+  | Some e1 =>
+    if_spec (run_expr_get_value runs S C e1) (fun S v1 =>
+      follows S)
+  end.
+
+Definition run_stat_for_var runs S C labs ds eo2 eo3 t : result :=
+  if_ter (runs_type_stat runs S C (stat_var_decl ds)) (fun S R =>
+    runs_type_stat_for_loop runs S C labs resvalue_empty eo2 eo3 t).
+
 
 (**************************************************************)
 (** ** Definition of the interpreter *)
@@ -2412,11 +2456,11 @@ Definition run_stat runs S C t : result :=
   | stat_continue so =>
     out_ter S (res_continue so)
 
-  | stat_for ls e1 e2 e3 s =>
-    result_not_yet_implemented (* LATER *)
+  | stat_for ls eo1 eo2 eo3 s =>
+    run_stat_for runs S C ls eo1 eo2 eo3 s
 
-  | stat_for_var ls xeo1s e2 e3 s =>
-    result_not_yet_implemented (* LATER *)
+  | stat_for_var ls ds eo2 eo3 s =>
+    run_stat_for_var runs S C ls ds eo2 eo3 s
 
   | stat_for_in ls e1 e2 s =>
     result_not_yet_implemented (* LATER *)
@@ -2804,6 +2848,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_function_has_instance := fun S _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_stat_do_while := fun S _ _ _ _ _ => result_bottom S;
+      runs_type_stat_for_loop := fun S _ _ _ _ _ _ => result_bottom S;
       runs_type_object_delete := fun S _ _ _ _ => result_bottom S;
       runs_type_object_get_own_prop := fun S _ _ _ => result_bottom S;
       runs_type_object_get_prop := fun S _ _ _ => result_bottom S;
@@ -2827,6 +2872,7 @@ Fixpoint runs max_step : runs_type :=
         wrap run_function_has_instance;
       runs_type_stat_while := wrap run_stat_while;
       runs_type_stat_do_while := wrap run_stat_do_while;
+      runs_type_stat_for_loop := wrap run_stat_for_loop;
       runs_type_object_delete := wrap object_delete;
       runs_type_object_get_own_prop :=
         wrap run_object_get_own_prop;

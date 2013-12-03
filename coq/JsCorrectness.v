@@ -82,6 +82,9 @@ Record runs_type_correct runs :=
     runs_type_correct_stat_do_while : forall S C rv ls e t o,
        runs_type_stat_do_while runs S C rv ls e t = o ->
        red_stat S C (stat_do_while_1 ls t e rv) o;
+    runs_type_correct_stat_for_loop : forall S C labs rv eo2 eo3 t o,
+       runs_type_stat_for_loop runs S C labs rv eo2 eo3 t = o ->
+       red_stat S C (stat_for_2 labs rv eo2 eo3 t) o;
     runs_type_correct_object_delete : forall S C l x str o,
        runs_type_object_delete runs S C l x str = o ->
        red_expr S C (spec_object_delete l x str) o;
@@ -749,6 +752,7 @@ Ltac run_select_proj H :=
   | runs_type_function_has_instance => constr:(runs_type_correct_function_has_instance) 
   | runs_type_stat_while => constr:(runs_type_correct_stat_while)
   | runs_type_stat_do_while => constr:(runs_type_correct_stat_do_while)
+  | runs_type_stat_for_loop => constr:(runs_type_correct_stat_for_loop)
   | runs_type_object_delete => constr:(runs_type_correct_object_delete)
   | runs_type_object_get_own_prop => constr:(runs_type_correct_object_get_own_prop)
   | runs_type_object_get_prop => constr:(runs_type_correct_object_get_prop)
@@ -3212,6 +3216,27 @@ Proof.
     apply~ follow_correct. rewrite~ <- E.
 Qed.
 
+Lemma run_stat_for_correct : forall runs S C labs eo1 eo2 eo3 t o,
+  runs_type_correct runs ->
+  run_stat_for runs S C labs eo1 eo2 eo3 t = o ->
+  red_stat S C (stat_for labs eo1 eo2 eo3 t) o.
+Proof.
+  introv IH R. unfolds in R. destruct eo1.
+   run red_stat_for_some. run_hyp.
+    apply~ red_stat_for_1.
+   run_hyp R. apply~ red_stat_for_none.
+Qed.
+
+Lemma run_stat_for_var_correct : forall runs S C labs ds eo2 eo3 t o,
+  runs_type_correct runs ->
+  run_stat_for_var runs S C labs ds eo2 eo3 t = o ->
+  red_stat S C (stat_for_var labs ds eo2 eo3 t) o.
+Proof.
+  introv IH R. unfolds in R.
+  run red_stat_for_var. run_hyp. apply~ red_stat_for_var_1.
+Qed.
+
+
 Lemma run_stat_correct : forall runs S C t o,
   runs_type_correct runs ->
   run_stat runs S C t = o ->
@@ -3290,9 +3315,9 @@ Proof.
       applys~ red_stat_try_1_throw_no_catch. applys~ finally_correct.
       rewrite <- R. fequal. destruct R0; simpls; substs~.
   (* For *)
-  skip. (* TODO *)
+  apply* run_stat_for_correct.
   (* For-var *)
-  skip. (* TODO *)
+  apply* run_stat_for_var_correct.
   (* For-in *)
   skip. (* LATER *)
   (* For-in-var *)
@@ -3609,6 +3634,35 @@ Proof.
      apply~ red_stat_do_while_5_normal.
 Qed.
 
+Lemma run_stat_for_loop_correct : forall runs S C labs rv eo2 eo3 t o,
+  runs_type_correct runs ->
+  run_stat_for_loop runs S C labs rv eo2 eo3 t = o ->
+  red_stat S C (stat_for_2 labs rv eo2 eo3 t) o.
+Proof.
+  introv IH R. unfolds in R. let_name.
+  asserts follows_correct: (forall S o, follows S = res_out o ->
+    red_stat S C (stat_for_4 labs rv eo2 eo3 t) o).
+    clear R. introv R. rewrite EQfollows in R. clear EQfollows.
+    run red_stat_for_4. do 2 let_name. applys~ red_stat_for_5 rv'.
+     repeat cases_if*.
+    clear EQrv'. cases_if.
+     run_inv. apply~ red_stat_for_6_break.
+     apply~ red_stat_for_6_not_break. rew_logic~ in *. cases_if.
+      apply red_stat_for_7_continue. rew_logic~ in *. destruct eo3.
+       run red_stat_for_8_some. subst loop. run_hyp.
+        apply~ red_stat_for_9.
+       subst loop. run_hyp. apply~ red_stat_for_8_none.
+      run_inv. apply~ red_stat_for_7_abort. rew_logic* in *.
+  clear EQfollows. destruct eo2.
+   run_pre. lets (y1&R2&K): if_spec_post_to_bool (rm R1) (rm R).
+    applys~ red_stat_for_2_some (rm R2). run_post_if_spec_ter_post_bool K.
+    cases_if; run_inv.
+     apply~ red_stat_for_3_not_false. discriminate.
+     apply~ red_stat_for_3_false.
+   apply~ red_stat_for_2_none.
+Qed.
+
+
 Lemma object_proto_is_prototype_of_correct : forall runs S C lthis l o,
   runs_type_correct runs ->
   object_proto_is_prototype_of runs S lthis l = o ->
@@ -3673,6 +3727,7 @@ Proof.
      introv. apply~ run_function_has_instance_correct.
      introv. apply~ run_stat_while_correct.
      introv. apply~ run_stat_do_while_correct.
+     introv. apply~ run_stat_for_loop_correct.
      introv. apply~ object_delete_correct.
      introv. apply~ run_object_get_own_prop_correct.
      introv. apply~ run_object_get_prop_correct.

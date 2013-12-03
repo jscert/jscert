@@ -569,7 +569,7 @@ with ext_stat :=
 
   | stat_for_1 : label_set -> specret value -> option expr -> option expr -> stat -> ext_stat
   | stat_for_2 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
-  | stat_for_3 : label_set -> resvalue -> expr -> specret bool -> option expr -> stat -> ext_stat
+  | stat_for_3 : label_set -> resvalue -> expr -> specret value -> option expr -> stat -> ext_stat
   | stat_for_4 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
   | stat_for_5 : label_set -> resvalue -> option expr -> out -> option expr -> stat -> ext_stat
   | stat_for_6 : label_set -> resvalue -> option expr -> option expr -> stat -> res -> ext_stat
