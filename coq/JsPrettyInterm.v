@@ -577,6 +577,8 @@ with ext_stat :=
   | stat_for_8 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
   | stat_for_9 : label_set -> resvalue -> option expr -> expr -> specret value -> stat -> ext_stat
 
+  | stat_for_var_1 : out -> label_set -> option expr -> option expr -> stat -> ext_stat
+
 
 (* LATER: define prop_names for [set prop_name] *)
 (* LATER
@@ -1239,6 +1241,7 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_for_7 _ _ _ _ _ _ => None
   | stat_for_8 _ _ _ _ _ => None
   | stat_for_9 _ _ _ _ y _ => out_of_specret y
+  | stat_for_var_1 o _ _ _ _ => Some o
 
   | stat_with_1 _ y => out_of_specret y
 

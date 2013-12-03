@@ -416,6 +416,15 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_for_2 labs rv eo2 (Some e3) t) o ->
       red_stat S0 C (stat_for_9 labs rv eo2 e3 (vret S v) t) o
 
+  | red_stat_for_var : forall S C labs ds eo2 eo3 t o o1, (* Step 1 *)
+      red_stat S C (stat_var_decl ds) o1 ->
+      red_stat S C (stat_for_var_1 o1 labs eo2 eo3 t) o ->
+      red_stat S C (stat_for_var labs ds eo2 eo3 t) o
+
+  | red_stat_for_var_1 : forall S0 S C R labs eo2 eo3 t o, (* Step 2 *)
+      red_stat S C (stat_for_2 labs resvalue_empty eo2 eo3 t) o -> (* The rest of the specification is just a copy pasting of the other kind of [for]. *)
+      red_stat S0 C (stat_for_var_1 (out_ter S R) labs eo2 eo3 t) o
+
 
   (** For-in statement: LATER (12.6.4) *)
 
