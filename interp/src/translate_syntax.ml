@@ -195,9 +195,9 @@ and exp_to_stat exp : JsSyntax.stat =
                 JsSyntax.Coq_stat_for_var ([], (map (fun (v, e) ->
                     string_to_coq v, match e with None -> None
                         | Some e -> Some (exp_to_exp e)) vs),
-                    exp_to_exp e2, exp_to_exp e3, f e4)
+                    Some (exp_to_exp e2), Some (exp_to_exp e3), f e4)
           | _ ->
-                  JsSyntax.Coq_stat_for ([], exp_to_exp e1, exp_to_exp e2, exp_to_exp e3, f e4))
+                  JsSyntax.Coq_stat_for ([], Some (exp_to_exp e1), Some (exp_to_exp e2), Some (exp_to_exp e3), f e4))
       | Switch (e1, e2s) -> 
         let (firstpart, defaultcase, secondpart) = List.fold_left (fun (fi, de, se) el -> (
           if de = None then

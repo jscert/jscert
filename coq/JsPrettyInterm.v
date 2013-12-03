@@ -559,17 +559,24 @@ with ext_stat :=
   | stat_while_6 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
 
 
-
-  | stat_do_while_1 : label_set -> stat ->  expr -> resvalue -> ext_stat
-  | stat_do_while_2 : label_set -> stat ->  expr -> resvalue -> out -> ext_stat
-
+  | stat_do_while_1 : label_set -> stat -> expr -> resvalue -> ext_stat
+  | stat_do_while_2 : label_set -> stat -> expr -> resvalue -> out -> ext_stat
   | stat_do_while_3 : label_set -> stat -> expr -> resvalue -> res -> ext_stat
   | stat_do_while_4 : label_set -> stat -> expr -> resvalue -> res -> ext_stat
   | stat_do_while_5 : label_set -> stat -> expr -> resvalue -> res -> ext_stat
+  | stat_do_while_6 : label_set -> stat -> expr -> resvalue -> ext_stat
+  | stat_do_while_7 : label_set -> stat -> expr -> resvalue -> specret value -> ext_stat
 
+  | stat_for_1 : label_set -> specret value -> option expr -> option expr -> stat -> ext_stat
+  | stat_for_2 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
+  | stat_for_3 : label_set -> resvalue -> expr -> specret bool -> option expr -> stat -> ext_stat
+  | stat_for_4 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
+  | stat_for_5 : label_set -> resvalue -> option expr -> out -> option expr -> stat -> ext_stat
+  | stat_for_6 : label_set -> resvalue -> option expr -> option expr -> stat -> res -> ext_stat
+  | stat_for_7 : label_set -> resvalue -> option expr -> option expr -> stat -> res -> ext_stat
+  | stat_for_8 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
+  | stat_for_9 : label_set -> resvalue -> option expr -> expr -> specret value -> stat -> ext_stat
 
-  | stat_do_while_6 : label_set -> stat ->  expr -> resvalue -> ext_stat
-  | stat_do_while_7 : label_set -> stat ->  expr -> resvalue -> specret value -> ext_stat
 
 (* LATER: define prop_names for [set prop_name] *)
 (* LATER
@@ -1223,6 +1230,16 @@ Definition out_of_ext_stat (p : ext_stat) : option out :=
   | stat_do_while_6 _ _ _ _ => None
   | stat_do_while_7 _ _ _ _ y => out_of_specret y
 
+  | stat_for_1 _ y _ _ _ => out_of_specret y
+  | stat_for_2 _ _ _ _ _ => None
+  | stat_for_3 _ _ _ y _ _ => out_of_specret y
+  | stat_for_4 _ _ _ _ _ => None
+  | stat_for_5 _ _ _ o _ _ => Some o
+  | stat_for_6 _ _ _ _ _ _ => None
+  | stat_for_7 _ _ _ _ _ _ => None
+  | stat_for_8 _ _ _ _ _ => None
+  | stat_for_9 _ _ _ _ y _ => out_of_specret y
+
   | stat_with_1 _ y => out_of_specret y
 
   | stat_throw_1 y => out_of_specret y
@@ -1397,6 +1414,10 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       ~ res_is_normal R ->
       res_type R <> restype_throw ->
       abort_intercepted_stat (stat_switch_default_A_5 rv (out_ter S R) vi scs ts1 scs2)
+   | abort_intercepted_stat_for_6 : forall S0 S C labs rv R eo2 eo3 t, (* TODO:  Reread, it seems that I didn't followed the exact style expected for these two rules. *)
+      abort_intercepted_stat (stat_for_6 labs rv eo2 eo3 t R)
+   | abort_intercepted_stat_for_7 : forall S0 S C labs rv R eo2 eo3 t,
+      abort_intercepted_stat (stat_for_7 labs rv eo2 eo3 t R)
 .
 
 Inductive abort_intercepted_expr : ext_expr -> Prop :=

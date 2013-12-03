@@ -345,6 +345,78 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** For statement (12.6.3) *)
 
+  | red_stat_for_none : forall S C labs eo2 eo3 t o, (* Steps 1 and 2 *)
+      red_stat S C (stat_for_2 labs resvalue_empty eo2 eo3 t) o ->
+      red_stat S C (stat_for labs None eo2 eo3 t) o
+
+  | red_stat_for_some : forall S C labs e1 eo2 eo3 t o y1, (* Steps 1a and 1b *)
+      red_spec S C (spec_expr_get_value e1) y1 ->
+      red_stat S C (stat_for_1 labs y1 eo2 eo3 t) o ->
+      red_stat S C (stat_for labs (Some e1) eo2 eo3 t) o
+
+  | red_stat_for_1 : forall S0 S C labs v eo2 eo3 t o, (* Steps 1b and 2 *)
+      red_stat S C (stat_for_2 labs resvalue_empty eo2 eo3 t) o ->
+      red_stat S0 C (stat_for_1 labs (ret S v) eo2 eo3 t) o
+
+  | red_stat_for_2_none : forall S C labs rv eo3 t o, (* Step 3a *)
+      red_stat S C (stat_for_4 labs rv None eo3 t) o ->
+      red_stat S C (stat_for_2 labs rv None eo3 t) o
+
+  | red_stat_for_2_some : forall S C labs rv e2 eo3 t o y1, (* Step 3a *)
+      red_spec S C (spec_expr_get_value_conv spec_to_boolean e2) y1 ->
+      red_stat S C (stat_for_3 labs rv e2 y1 eo3 t) o ->
+      red_stat S C (stat_for_2 labs rv (Some e2) eo3 t) o
+
+  | red_stat_for_3_false : forall S0 S C labs rv e2 eo3 t, (* Step 3b *)
+      red_stat S0 C (stat_for_3 labs rv e2 (specret_val S false) eo3 t) (out_ter S rv)
+
+  | red_stat_for_3_not_false : forall S0 S C labs rv e2 eo3 t o, (* Step 3b *)
+      red_stat S C (stat_for_4 labs rv (Some e2) eo3 t) o ->
+      red_stat S0 C (stat_for_3 labs rv e2 (specret_val S true) eo3 t) o
+
+  | red_stat_for_4 : forall S C labs rv eo2 eo3 t o o1, (* Step 3b *)
+      red_stat S C t o1 ->
+      red_stat S C (stat_for_5 labs rv eo2 o1 eo3 t) o ->
+      red_stat S C (stat_for_4 labs rv eo2 eo3 t) o
+
+  | red_stat_for_5 : forall S0 S C labs rv rv' R eo2 eo3 t o, (* Step 3c *)
+      rv' = (If res_value R <> resvalue_empty then res_value R else rv) ->
+      red_stat S C (stat_for_6 labs rv' eo2 eo3 t R) o ->
+      red_stat S0 C (stat_for_5 labs rv eo2 (out_ter S R) eo3 t) o
+
+  | red_stat_for_6_break : forall S0 S C labs rv R eo2 eo3 t, (* Step 3d *)
+      res_type R = restype_break /\ res_label_in R labs ->
+      red_stat S0 C (stat_for_6 labs rv eo2 eo3 t R) (out_ter S rv)
+
+  | red_stat_for_6_not_break : forall S0 S C labs rv R eo2 eo3 t o, (* Step 3d *)
+      res_type R <> restype_break \/ ~ res_label_in R labs ->
+      red_stat S0 C (stat_for_7 labs rv eo2 eo3 t R) o ->
+      red_stat S0 C (stat_for_6 labs rv eo2 eo3 t R) o
+
+  | red_stat_for_7_abort : forall S C labs rv R eo2 eo3 t, (* Step 3e and 3ei *)
+      res_type R <> restype_normal ->
+      res_type R <> restype_continue \/ ~ res_label_in R labs ->
+      red_stat S C (stat_for_7 labs rv eo2 eo3 t R) (out_ter S R)
+
+  | red_stat_for_7_continue : forall S C labs rv R eo2 eo3 t o, (* Step 3e and 3ei *)
+      res_type R = restype_normal \/ (res_type R = restype_continue /\ res_label_in R labs) ->
+      red_stat S C (stat_for_8 labs rv eo2 eo3 t) o ->
+      red_stat S C (stat_for_7 labs rv eo2 eo3 t R) o
+
+  | red_stat_for_8_none : forall S C labs rv R eo2 t o, (* Step 3f *)
+      red_stat S C (stat_for_2 labs rv eo2 None t) o ->
+      red_stat S C (stat_for_8 labs rv eo2 None t) o
+
+  | red_stat_for_8_some : forall S C labs rv R eo2 e3 t o y1, (* Step 3fi and 3fii *)
+      red_spec S C (spec_expr_get_value e3) y1 ->
+      red_stat S C (stat_for_9 labs rv eo2 e3 y1 t) o ->
+      red_stat S C (stat_for_8 labs rv eo2 (Some e3) t) o
+
+  | red_stat_for_9 : forall S0 S C labs rv v R eo2 e3 t o o1, (* Step 3fii *)
+      red_stat S C (stat_for_2 labs rv eo2 (Some e3) t) o ->
+      red_stat S0 C (stat_for_9 labs rv eo2 e3 (vret S v) t) o
+
+
   (** For-in statement: LATER (12.6.4) *)
 
   (** Continue statement (12.7) *)
