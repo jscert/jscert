@@ -107,7 +107,7 @@ Extract Constant JsNumber.from_string =>
       18, which should be the JavaScript result for it. *)".
 Extract Constant JsNumber.to_string =>
   "(fun f -> 
-    prerr_string (""Warning: JsNumber.to_string called. This might be responsible for errors.  Argument value: "" ^ string_of_float f ^ ""."");
+    prerr_string (""Warning:  JsNumber.to_string called.  This might be responsible for errors.  Argument value:  "" ^ string_of_float f ^ ""."");
     prerr_newline();
     let string_of_number n =
       let inum = int_of_float n in
@@ -168,7 +168,7 @@ Extract Constant JsNumber.uint32_right_shift =>
 
 Extract Constant int_of_char => "(fun c -> float_of_int (int_of_char c))".
 
-Extract Constant prealloc_compare => "(=)".
+Extract Constant prealloc_comparable => "(=)".
 Extract Constant ascii_compare => "(=)".
 Extract Constant le_int_decidable => "(<=)".
 Extract Constant ge_nat_decidable => "(>=)".
@@ -206,7 +206,9 @@ Extract Constant parse_pickable => "(fun s ->
         (Translate_syntax.exp_to_prog parserExp))
     with
     (* | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *) *)
-    | Parser.InvalidArgument _ -> None
+    | Parser.InvalidArgument _ ->
+      prerr_string (""Warning:  Parser error on eval.  Input string:  \"""" ^ str ^ ""\""\n"");
+      None
   )".
 
 
@@ -215,7 +217,7 @@ Extract Constant impossible_because => "(fun s ->
   print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
   Coq_result_impossible)".
 Extract Constant impossible_with_heap_because => "(fun s message ->
-  print_endline (""Stuck!\nState: "" ^ Prheap.prstate true s
+  print_endline (""Stuck!\nState:  "" ^ Prheap.prstate true s
     ^ ""\nMessage:\t"" ^ Prheap.string_of_char_list message) ;
   Coq_result_impossible)".
 
