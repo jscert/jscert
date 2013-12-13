@@ -75,7 +75,7 @@ JS_VO=$(JS_SRC:.v=.vo)
 
 ifneq ($(FAST),)
 	FAST_SRC=\
-		coq/Shared.v \
+#		coq/Shared.v \
 		coq/JsNumber.v \
 		coq/JsSyntax.v \
 		coq/JsSyntaxAux.v \
