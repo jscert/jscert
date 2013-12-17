@@ -215,7 +215,7 @@ let probject_properties_aux skip_init old str p =
 	String.concat "" (List.fold_left
 		(fun acc (x, a) ->
 			if skip_init
-			  && morph_option false (fun old0 ->
+			  && option_case false (fun old0 ->
 				List.mem (x, a) old0) old
 			then acc
 			else Printf.sprintf "\t %s %s = %s;\n"
@@ -243,13 +243,13 @@ let prheap =
           let old =
               try Some (List.assoc key list_heap_init)
               with Not_found -> None in
-  	      prfieldmap (morph_option None (fun obj ->
+  	      prfieldmap (option_case None (fun obj ->
   	      		Some (heap_to_list (object_properties_ obj))) old)
   	      	skip_init key v ^
           String.concat "" (
               let pr s p g =
                 if p (g v) = "" || (skip_init
-                  && morph_option false (fun obj ->
+                  && option_case false (fun obj ->
                     g v = g obj) old)
                 then ""
                 else
@@ -257,15 +257,15 @@ let prheap =
                       (prloc key) s (p (g v)) in [
                   pr "proto" prvalue object_proto_ ;
                   pr "class" string_of_char_list object_class_ ;
-                  pr "this" (morph_option "" prvalue) (fun obj -> obj.object_bound_this_) ;
-                  pr "call" (morph_option "" prcall) object_call_ ;
-                  pr "construct" (morph_option "" prconstruct) object_construct_ ;
-                  pr "has_instance" (morph_option "" prhas_instance) object_has_instance_ ;
-                  pr "prim_value" (morph_option "" prvalue) object_prim_value_ ;
+                  pr "this" (option_case "" prvalue) (fun obj -> obj.object_bound_this_) ;
+                  pr "call" (option_case "" prcall) object_call_ ;
+                  pr "construct" (option_case "" prconstruct) object_construct_ ;
+                  pr "has_instance" (option_case "" prhas_instance) object_has_instance_ ;
+                  pr "prim_value" (option_case "" prvalue) object_prim_value_ ;
                   pr "extensible" prbool object_extensible_ ;
                   pr "get" prget object_get_ ;
                   pr "delete" prdelete (fun obj -> obj.object_delete_) ;
-                  pr "scope" (morph_option "" prlexical_env) object_scope_ ;
+                  pr "scope" (option_case "" prlexical_env) object_scope_ ;
               ]) in
         if str = "" then Printf.sprintf "\t %s, an object;\n" (prloc key)
         else str) (heap_to_list heap)

@@ -4,6 +4,6 @@ let run_object_method proj s l =\n
       \| None -> prerr_endline (Printf.sprintf \"Warning: in run_object_method the location \%s is unfetchable.\" (Prheap.prloc l))\n
       \| _ -> ()\n
     end;\n
-    option_map proj opt\n
+    LibOption.map proj opt\n
 \n
 (\*\* val run_object_heap_set_extensible :

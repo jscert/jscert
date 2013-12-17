@@ -47,6 +47,7 @@ Proof.
   applys ascii_compare_beq.
 Qed.
 
+
 (**************************************************************)
 (** ** String-related functions *)
 
@@ -74,7 +75,7 @@ Proof. introv. apply prove_Inhab. introv. auto*. Qed.
 
 
 (**************************************************************)
-(** ** POUR ARTHUR *)
+(** ** FOR ARTHUR *)
 
 (* Directly extract towards (<) in OCaml *)
 
@@ -105,7 +106,7 @@ Admitted.
 (**************************************************************)
 (** ** MARTIN: where do we use this? 
 ==> not used? *)
-
+(*
   Class FunctionalPred A (P:A->Prop) := functionalpred_make {
       functional_pred : forall x y, P x -> P y -> x = y }.
 
@@ -125,13 +126,12 @@ Admitted.
     FunctionalPred (binds h k).
   Proof. introv C I. applys functionalpred_make. apply binds_func. Qed.
   (* End of this little test. *)
-
+*)
 
 
 
 (**************************************************************)
-(** ** Generalization of Pickable to function that return options 
-==> not used?  *)
+(** ** Generalization of Pickable to function that return options *)
 
   (* MARTIN: see whether it is possible to use Pickable directly *)
 
@@ -168,7 +168,6 @@ Admitted.
      apply read_option_binds. 
      introv [a Ba]. forwards R: @binds_read_option Ba. exists~ a.
   Qed.
-
 
 
 (**************************************************************)

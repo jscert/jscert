@@ -173,6 +173,11 @@ Extract Constant ascii_compare => "(=)".
 Extract Constant lt_int_decidable => "(<)".
 Extract Constant le_int_decidable => "(<=)".
 Extract Constant ge_nat_decidable => "(>=)".
+Extract Constant binary_op_comparable => "(=)".
+
+(* TODO ARTHUR:  Those two TLC lemmae does not extract to something computable... whereas they should! *)
+Extract Constant bool_decidable => "(fun b -> b)".
+Extract Constant prop_eq_decidable => "(=)".
 
 Extract Constant env_loc_global_env_record => "0".
 

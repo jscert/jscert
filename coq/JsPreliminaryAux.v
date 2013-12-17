@@ -266,7 +266,6 @@ Proof.
    forwards: @Heap_binds_func B C. typeclass. substs~.
 Qed.
 
-
 Global Instance descriptor_contains_dec : forall Desc1 Desc2,
   Decidable (descriptor_contains Desc1 Desc2).
 Proof.
@@ -408,5 +407,4 @@ Proof.
     (LibOption.map object_properties_ (pick_option (object_binds S l)))).
   skip. skip. (* Needs properties about [heap_keys_as_list]. *)
 Qed.
-
 
