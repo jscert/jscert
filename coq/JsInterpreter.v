@@ -4,8 +4,6 @@ Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux
 Require Import LibFix LibList.
 
 
-
-
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)
 
@@ -176,7 +174,7 @@ Definition if_some (A B : Type) (op : option A) (K : A -> resultof B) : resultof
   end.
 
 Definition if_some_or_default (A B : Type) (o : option B) (d : A) (K : B -> A) : A :=
-  morph_option d K o.
+  option_case d K o.
 
 Definition if_result_some (A B : Type) (W : resultof A) (K : A -> resultof B) : resultof B :=
   match W with
@@ -1774,7 +1772,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     match v2 with
     | value_object l =>
       if_some (run_object_method object_has_instance_ S l) (fun B =>
-        morph_option (fun _ => run_error S native_error_type : result)
+        option_case (fun _ => run_error S native_error_type : result)
         (fun has_instance_id _ =>
           run_object_has_instance runs has_instance_id S C l v1)
         B tt)

@@ -175,11 +175,11 @@ Lemma get_arg_correct : forall args vs,
 Proof.
   introv A. induction~ A.
    introv I. false I. lets (I'&_): (rm I). inverts~ I'.
-   introv I. destruct* num. simpl. rewrite <- IHA.
+   introv I. destruct* num. rewrite nth_succ. rewrite <- IHA.
     unfolds. repeat rewrite~ nth_def_nil.
     rewrite length_cons in I. nat_math.
-   introv I. destruct* num. simpl. rewrite <- IHA.
-    unfolds. repeat rewrite~ nth_def_cons.
+   introv I. destruct* num. rewrite nth_succ. rewrite <- IHA.
+    unfolds. rewrite~ nth_def_succ.
     rewrite length_cons in I. nat_math.
 Qed.
 
@@ -1179,7 +1179,7 @@ Lemma run_object_method_correct : forall Z (Proj : _ -> Z) S l (z : Z),
   run_object_method Proj S l = Some z ->
   object_method Proj S l z.
 Proof.
-  introv B. unfolds. forwards (O&Bi&E): option_map_some_back B.
+  introv B. unfolds. forwards (O&Bi&E): LibOption.map_on_inv B.
   forwards: @pick_option_correct Bi. exists* O.
 Qed.
 
@@ -1187,7 +1187,7 @@ Lemma run_object_heap_set_extensible_correct : forall b S l S',
   run_object_heap_set_extensible b S l = Some S' ->
   object_heap_set_extensible b S l S'.
 Proof.
-  introv R. unfolds in R. forwards (O&H&E): option_map_some_back (rm R).
+  introv R. unfolds in R. forwards (O&H&E): LibOption.map_on_inv (rm R).
   forwards: @pick_option_correct (rm H). exists O. splits~.
 Qed.
 

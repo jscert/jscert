@@ -226,8 +226,6 @@ Inductive ext_expr :=
   | spec_env_record_get_binding_value : env_loc -> prop_name -> bool -> ext_expr
   | spec_env_record_get_binding_value_1 : env_loc -> prop_name -> bool -> env_record -> ext_expr
   | spec_env_record_get_binding_value_2 : prop_name -> bool -> object_loc -> out -> ext_expr
-  (* TODO: is it just a leftover form the renaming? *)
-  | spec_env_record_set_binding_value : env_loc -> prop_name -> value -> bool -> ext_expr
 
   | spec_env_record_create_immutable_binding : env_loc -> prop_name -> ext_expr
   | spec_env_record_initialize_immutable_binding : env_loc -> prop_name -> value -> ext_expr
@@ -920,7 +918,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_env_record_get_binding_value _ _ _ => None
   | spec_env_record_get_binding_value_1 _ _ _ _ => None
   | spec_env_record_get_binding_value_2 _ _ _ o => Some o
-  | spec_env_record_set_binding_value _ _ _ _ => None
 
   | spec_env_record_create_immutable_binding _ _ => None
   | spec_env_record_initialize_immutable_binding _ _ _ => None

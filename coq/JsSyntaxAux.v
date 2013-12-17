@@ -332,7 +332,7 @@ Proof.
   destruct y; simpls; rew_refl; iff~; tryfalse.
   destruct y; simpls; rew_refl; iff~; tryfalse.
 *)
-Admitted. (*otherwise proof too slow*)
+Admitted. (*faster*)
 
 
 (**************************************************************)
@@ -734,8 +734,8 @@ Proof.
   applys (comparable_beq binary_op_compare). (* intros x y.
   destruct x; destruct y; simpl; rew_refl; iff;
    tryfalse; auto; try congruence. *)
-skip. (*otherwise proof too slow*)
-Qed.
+Admitted. (*faster*)
+
 
 (**************************************************************)
 (** ** Type [expr] *)

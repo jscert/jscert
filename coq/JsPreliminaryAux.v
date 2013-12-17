@@ -177,8 +177,8 @@ Global Instance ref_kind_comparable : Comparable ref_kind.
 Proof.
   apply make_comparable. introv.
   destruct x; destruct y;
-    ((rewrite~ prop_eq_True_back; apply true_dec) ||
-      (rewrite~ prop_eq_False_back; [apply false_dec | discriminate])).
+    ((rewrite~ prop_eq_True_back; apply true_decidable) ||
+      (rewrite~ prop_eq_False_back; [apply false_decidable | discriminate])).
 Qed.
 
 
@@ -218,14 +218,14 @@ Qed.
 Global Instance descriptor_is_data_dec : forall Desc,
   Decidable (descriptor_is_data Desc).
 Proof.
-  introv. apply neg_decidable.
+  introv. apply not_decidable.
   apply and_decidable; typeclass.
 Qed.
 
 Global Instance descriptor_is_accessor_dec : forall Desc,
   Decidable (descriptor_is_accessor Desc).
 Proof.
-  introv. apply neg_decidable.
+  introv. apply not_decidable.
   apply and_decidable; typeclass.
 Qed.
 
@@ -258,19 +258,11 @@ Global Instance object_heap_map_properties_pickable_option : forall S l F,
 Proof.
   introv. unfold object_heap_map_properties.
   applys pickable_option_make (run_object_heap_map_properties S l F).
-   introv E. forwards (O&P&E'): option_map_some_back (rm E).
+   introv E. forwards (O&P&E'): map_on_inv (rm E).
     exists O. splits~. apply~ @pick_option_correct.
   introv [S' [O [B E]]]. exists S'. unfolds.
    forwards Ex: ex_intro B. forwards~ (?&P): @pick_option_defined Ex.
-... (* todo: fix *)
-   Lemma option_map_some_forw : forall (A B : Type) (f : A -> B) ao (a : A) (b : B),
-  ao = Some a ->
-  f a = b ->
-  LibOption.map f ao = Some b.
-Proof. introv E1 E2. substs. fequals. Qed.
-
-
-   applys option_map_some_forw P. forwards C: @pick_option_correct P.
+   rewrite P. simpl. fequals. forwards C: @pick_option_correct P.
    forwards: @Heap_binds_func B C. typeclass. substs~.
 Qed.
 
@@ -327,8 +319,8 @@ Definition run_function_get_error_case S x v : bool :=
   | value_prim w => false
   | value_object l => 
     andb (ifb (x = "caller") then true else false)
-    (morph_option false (fun O => 
-       morph_option false (fun bd => 
+    (option_case false (fun O => 
+       option_case false (fun bd => 
           funcbody_is_strict bd) (object_code_ O)) (pick_option (object_binds S l)))
     
   end.
@@ -384,14 +376,14 @@ Definition run_callable S v : option (option call) :=
   match v with
   | value_prim w => Some None
   | value_object l =>
-    morph_option None (fun O => Some (object_call_ O)) (pick_option (object_binds S l))
+    option_case None (fun O => Some (object_call_ O)) (pick_option (object_binds S l))
   end.
 
 Global Instance is_callable_dec : forall S v,
   Decidable (is_callable S v).
 Proof.
   introv. applys decidable_make
-    (morph_option false (morph_option false (fun _ => true)) (run_callable S v)).
+    (option_case false (option_case false (fun _ => true)) (run_callable S v)).
   destruct v; simpl.
    fold_bool. rewrite is_False with (P := is_callable _ _). rewrite* isTrue_false.
     intro A. do 2 inverts A as A.

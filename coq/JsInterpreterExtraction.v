@@ -170,9 +170,9 @@ Extract Constant int_of_char => "(fun c -> float_of_int (int_of_char c))".
 
 Extract Constant prealloc_comparable => "(=)".
 Extract Constant ascii_compare => "(=)".
+Extract Constant lt_int_decidable => "(<)".
 Extract Constant le_int_decidable => "(<=)".
 Extract Constant ge_nat_decidable => "(>=)".
-Extract Constant int_lt_dec => "(<)".
 
 Extract Constant env_loc_global_env_record => "0".
 

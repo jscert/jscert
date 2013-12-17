@@ -1,17 +1,12 @@
-There follows a list of all `TODO's left in the Coq development.
 
       - JsCorrectness.v:
       	Missings _post and _out lemmata for [if_not_throw] and [if_normal_continue_or_break].  That's strange that we don't need them:  are they still useful in the interpreter code?  Maybe they are just used in the unproven part.
-
-      - JsInit.v:
-      	The [[ThrowTypeError]] object should be checked.
+=> leave a comment
 
       - JsPreliminary.v:
         Should the definitions about `prepost' operators be in JsPreliminary or in JsPrettyInterm?
+=> try to move them
 
-      - JsPrettyInterm.v:
-        I don't understand the comment ``is it just a leftover form the renaming?''.
-        They are also a lot of things that need checking in this file.
 
       - JsPrettyRules.v:
         The following rules need checking:
@@ -22,6 +17,7 @@ There follows a list of all `TODO's left in the Coq development.
             red_stat_switch_default_8_abrupt
             red_spec_build_error_2
         The two unused arguments of [stat_switch_default_5] are suspicious:  can't we remove them?
+
         There is a frightening special commented rule for [spec_creating_function_object_proto] in the middle of the code:  can we remove it safely?
 
-
+=> todo récup sur mon portable
