@@ -152,7 +152,7 @@ Section InterpreterEliminations.
 (**************************************************************)
 (** Generic constructions *)
 
-Definition get_arg := get_nth undef.
+Definition get_arg := nth_def undef.
 
 Definition destr_list (A B : Type) (l : list A) (d : B) f :=
   match l with
@@ -316,7 +316,7 @@ Definition if_prim T W (K : state -> prim -> specres T) : specres T :=
     end).
 
 Definition convert_option_attributes : option attributes -> option full_descriptor :=
-  option_map (fun A => A : full_descriptor).
+  LibOption.map (fun A => A : full_descriptor).
 
 Definition if_abort (T:Type) o (K : unit -> resultof T) : resultof T :=
   match o with
@@ -375,10 +375,10 @@ Definition out_error_or_cst S str ne v : result :=
 (** Operations on objects *)
 
 Definition run_object_method Z (Proj : object -> Z) S l : option Z :=
-  option_map Proj (pick_option (object_binds S l)).
+  LibOption.map Proj (pick_option (object_binds S l)).
 
 Definition run_object_heap_set_extensible b S l : option state :=
-  option_map (fun O =>
+  LibOption.map (fun O =>
     object_write S l (object_set_extensible O b))
     (pick_option (object_binds S l)).
 

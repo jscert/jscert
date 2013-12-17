@@ -176,10 +176,10 @@ Proof.
   introv A. induction~ A.
    introv I. false I. lets (I'&_): (rm I). inverts~ I'.
    introv I. destruct* num. simpl. rewrite <- IHA.
-    unfolds. repeat rewrite~ get_nth_nil.
+    unfolds. repeat rewrite~ nth_def_nil.
     rewrite length_cons in I. nat_math.
    introv I. destruct* num. simpl. rewrite <- IHA.
-    unfolds. repeat rewrite~ get_nth_cons.
+    unfolds. repeat rewrite~ nth_def_cons.
     rewrite length_cons in I. nat_math.
 Qed.
 

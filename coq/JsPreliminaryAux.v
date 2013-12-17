@@ -249,7 +249,7 @@ Proof. intro A. destruct A; typeclass. Qed.
 
 
 Definition run_object_heap_map_properties S l F : option state :=
-  option_map
+  LibOption.map
     (fun O => object_write S l (object_map_properties O F))
     (pick_option (object_binds S l)).
 
@@ -262,6 +262,14 @@ Proof.
     exists O. splits~. apply~ @pick_option_correct.
   introv [S' [O [B E]]]. exists S'. unfolds.
    forwards Ex: ex_intro B. forwards~ (?&P): @pick_option_defined Ex.
+... (* todo: fix *)
+   Lemma option_map_some_forw : forall (A B : Type) (f : A -> B) ao (a : A) (b : B),
+  ao = Some a ->
+  f a = b ->
+  LibOption.map f ao = Some b.
+Proof. introv E1 E2. substs. fequals. Qed.
+
+
    applys option_map_some_forw P. forwards C: @pick_option_correct P.
    forwards: @Heap_binds_func B C. typeclass. substs~.
 Qed.
@@ -403,9 +411,9 @@ Global Instance object_properties_keys_as_list_pickable_option : forall S l,
   Pickable_option (object_properties_keys_as_list S l).
 Proof.
   introv. applys pickable_option_make
-    (option_map (fun props =>
+    (LibOption.map (fun props =>
       LibList.map fst (Heap.to_list props))
-    (option_map object_properties_ (pick_option (object_binds S l)))).
+    (LibOption.map object_properties_ (pick_option (object_binds S l)))).
   skip. skip. (* Needs properties about [heap_keys_as_list]. *)
 Qed.
 
