@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Export LibTactics LibCore LibString LibFset LibSet.
 Generalizable Variables A B.
-Require Export LibProd.
+Require Export LibProd LibListZ.
 
 
 (**************************************************************)
@@ -98,6 +98,45 @@ Qed.
 
 Global Instance ge_nat_decidable : forall n1 n2 : nat, Decidable (n1 >= n2).
 Admitted.
+
+
+(**************************************************************)
+(* To be added to LibInt or LibNat *)
+
+Lemma nat_int_le : forall (x y:nat),
+  x <= y -> ((x:int) <= (y:int)).
+Proof. math. Qed.
+
+Lemma nat_int_ge : forall (x y:nat),
+  x >= y -> ((x:int) >= (y:int)).
+Proof. math. Qed.
+
+
+(**************************************************************)
+(* To be added to LibListZ *)
+
+Lemma ZNth_to_Nth : forall A (n : nat) x (l : list A),
+  LibListZ.ZNth n l x -> LibList.Nth n l x.
+Proof. introv (H&_). rewrite~ abs_pos_nat in H. Qed.
+
+Lemma Nth_to_ZNth : forall A (n : nat) x (l : list A),
+  LibList.Nth n l x -> LibListZ.ZNth n l x.
+Proof. introv H. splits*. rewrite~ abs_pos_nat. math. Qed.
+
+
+(**************************************************************)
+(* To be added to LibList *)
+
+Lemma length_Nth_lt : forall A n (l : list A),
+  n < LibList.length l -> exists x, Nth n l x.
+Proof.
+  induction n; introv Comp; destruct l as [|a l'];
+    rew_list in Comp; try solve [math].
+   eexists. apply Nth_here.
+   simpls. rewrite lt_SS in Comp.
+    forwards (x&Hx): IHn Comp. exists x.
+    apply* Nth_next.
+Qed.
 
 
 (**************************************************************)
@@ -246,3 +285,4 @@ Proof. destruct h. eapply indom_decidable. Qed.
 End HeapAxioms.
 
 End HeapGen.
+

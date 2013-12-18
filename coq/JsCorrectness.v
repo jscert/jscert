@@ -2410,70 +2410,52 @@ Proof.
   apply~ red_spec_make_arg_setter. applys~ creating_function_object_correct HR.
 Qed.
 
-Lemma arguments_object_map_loop_correct : forall runs S C l xs len args X str lmap xsmap o,
+Lemma arguments_object_map_loop_correct : forall runs S C l xs len args args' X str lmap xsmap o,
   runs_type_correct runs ->
   len = length args ->
   arguments_object_map_loop runs S C l xs len args X str lmap xsmap = o ->
-  red_expr S C (spec_arguments_object_map_2 l xs args X str lmap xsmap) o.
+  red_expr S C (spec_arguments_object_map_2 l xs (args ++ args') X str lmap xsmap (len - 1)) o.
 Proof.
-  skip.
-(* TODO MARTIN:  Update the rules for it.
-  introv IH EQlen HR. gen o args S xsmap. induction len; introv EQlen HR;
-    destruct args as [|v args]; tryfalse.
-   simpls. apply~ red_spec_arguments_object_map_2_nil. cases_if.
+  introv IH EQlen HR. gen o args args' S xsmap. induction len; introv EQlen HR.
+   simpls. apply~ red_spec_arguments_object_map_2_negative. math. cases_if.
      substs. inverts HR. apply~ red_spec_arguments_object_map_8_nil.
      run. let_name. inverts HR. forwards~ B: @pick_option_correct E.
      applys~ red_spec_arguments_object_map_8_cons B. substs*.
-   rewrite length_cons in EQlen. unfolds in HR.
+   unfolds in HR. fold arguments_object_map_loop in HR.
     let_name. destruct tdl as (rmlargs&largs).
-    forwards EQargs: take_drop_last_spec EQtdl; [discriminate|].
-    forwards EQlargs: take_drop_last_length EQtdl; [discriminate|].
+    forwards EQargs: take_drop_last_spec EQtdl; [destruct args; tryfalse; discriminate|].
+    forwards EQlargs: take_drop_last_length EQtdl; [destruct args; tryfalse; discriminate|].
     clear EQtdl. simpl in HR.
     let_name. let_name. asserts Loop: (forall S xsmap o,
         arguments_object_map_loop' S xsmap = o ->
-        red_expr S C (spec_arguments_object_map_2 l xs (removelast (v :: args)) X str lmap xsmap) o).
-      clear HR. introv RES. subst arguments_object_map_loop'. apply* IHlen.
-      rewrite length_removelast; [|discriminate].
-      rewrite length_cons. simpl. rewrite* LibNat.minus_zero.
+        red_expr S C (spec_arguments_object_map_2 l xs (rmlargs ++ largs :: args') X str lmap xsmap (len - 1)) o).
+      clear HR. introv RES. subst arguments_object_map_loop'. apply* IHlen. math.
     clear EQarguments_object_map_loop'.
-    run~ red_spec_arguments_object_map_2_cons using object_define_own_prop_correct.
-      discriminate.
-      clear HR. rewrite length_cons. subst A. simpls.
-       inverts EQlen. substs. rewrite* LibNat.minus_zero.
+    asserts_rewrite (Datatypes.S len - 1 = len). math.
+    run~ red_spec_arguments_object_map_2_positive using object_define_own_prop_correct.
+      clear HR. subst args. rew_app. applys~ ZNth_app_r ZNth_here. math.
+      subst A. auto*.
     clear R1 EQA. cases_if.
      apply~ red_spec_arguments_object_map_3_next.
-      simpl in EQlen. inverts EQlen. rewrite length_cons.
-      simpl. rewrite* LibNat.minus_zero.
-     let_name. asserts caseCont: ((length (v :: args) - 1)%I < length xs). (* NOTE:  All those arithmeticalities could be highly improved. *)
-       clear HR. rewrite length_cons. simpl.
-       asserts ARITHMLEM: (forall n : nat, (Datatypes.S n : int) = n + 1).
-        introv. repeat unfolds. rewrite my_Z_of_nat_def. simpl.
-        induction* n0.
-        simpl. rewrite* Pos.add_1_r.
-       rewrite ARITHMLEM. rewrite Z.sub_1_r. rewrite Z.add_1_r. rewrite <- Zpred_succ.
-       simpl in EQlen. inverts EQlen. math.
-      asserts H: (forall n p : nat, n > 0%nat -> (n - 1)%I < p -> (n - 1)%nat < p). math.
-      forwards caseCont': (rm H) (rm caseCont).
-        rewrite length_cons. math.
+       apply~ nat_int_ge.
+      rewrite EQargs. rew_app. apply~ Loop.
+     let_name. asserts ZN: (ZNth len xs x).
+        apply Nth_to_ZNth. forwards (x'&N): length_Nth_lt len xs. math.
+        forwards EQx': Nth_to_nth N. subst x'. rewrite~ <- EQx in N.
       cases_if.
-       apply~ red_spec_arguments_object_map_3_cont_next.
-        inverts o0; [left~|right~].
-        rewrite length_cons. simpl. rewrite LibNat.minus_zero.
-        simpl in EQlen. inverts EQlen. substs*.
-       apply~ red_spec_arguments_object_map_3_cont_cont.
+       applys~ red_spec_arguments_object_map_3_cont_next ZN.
+        rewrite EQargs. rew_app. apply~ Loop.
+       applys~ red_spec_arguments_object_map_3_cont_cont ZN.
         rew_logic in n0. destruct n0 as [? NI]. splits.
          destruct~ str; false.
-         rewrite length_cons. simpl. rewrite LibNat.minus_zero.
-         simpl in EQlen. inverts EQlen. substs*.
-        rewrite EQx in HR. rewrite length_cons. simpl. rewrite LibNat.minus_zero.
-        simpl in EQlen. inverts EQlen.
+         auto*.
         run red_spec_arguments_object_map_4 using make_arg_getter_correct.
         run red_spec_arguments_object_map_5 using make_arg_setter_correct.
         let_name. run~ red_spec_arguments_object_map_6.
           rewrite EQA' in R1. simpl in R1.
-          rewrite length_cons. simpl. rewrite* LibNat.minus_zero.
+          simpl. auto*.
         apply~ red_spec_arguments_object_map_7.
-*)
+        rewrite EQargs. rew_app. apply~ Loop.
 Admitted. (* faster *)
 
 Lemma arguments_object_map_correct : forall runs S C l xs args X str o,
@@ -2484,7 +2466,8 @@ Proof.
   introv IH HR. unfolds in HR.
   run red_spec_arguments_object_map using run_construct_prealloc_correct.
   apply~ red_spec_arguments_object_map_1.
-  apply* arguments_object_map_loop_correct.
+  rewrite <- (app_nil_r args).
+  apply* arguments_object_map_loop_correct; rew_app~.
 Qed.
 
 Lemma create_arguments_object_correct : forall runs S C lf xs args X str o,

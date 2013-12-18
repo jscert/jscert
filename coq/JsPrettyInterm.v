@@ -325,12 +325,12 @@ Inductive ext_expr :=
   
   | spec_arguments_object_map : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> ext_expr
   | spec_arguments_object_map_1 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> out -> ext_expr
-  | spec_arguments_object_map_2 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> ext_expr
-  | spec_arguments_object_map_3 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> out -> ext_expr
-  | spec_arguments_object_map_4 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> string -> ext_expr
-  | spec_arguments_object_map_5 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> string -> out-> ext_expr
-  | spec_arguments_object_map_6 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> object_loc -> out-> ext_expr
-  | spec_arguments_object_map_7 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> out-> ext_expr  
+  | spec_arguments_object_map_2 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> ext_expr
+  | spec_arguments_object_map_3 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> out -> ext_expr
+  | spec_arguments_object_map_4 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> string -> ext_expr
+  | spec_arguments_object_map_5 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> string -> out -> ext_expr
+  | spec_arguments_object_map_6 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> object_loc -> out -> ext_expr
+  | spec_arguments_object_map_7 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> out -> ext_expr
   | spec_arguments_object_map_8 : object_loc -> object_loc -> list string -> ext_expr
 
   | spec_create_arguments_object : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> ext_expr
@@ -1009,12 +1009,12 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   
   | spec_arguments_object_map _ _ _ _ _ => None
   | spec_arguments_object_map_1 _ _ _ _ _ o => Some o
-  | spec_arguments_object_map_2 _ _ _ _ _ _ _ => None
-  | spec_arguments_object_map_3 _ _ _ _ _ _ _ o => Some o
-  | spec_arguments_object_map_4 _ _ _ _ _ _ _ _ => None
-  | spec_arguments_object_map_5 _ _ _ _ _ _ _ _ o => Some o
-  | spec_arguments_object_map_6 _ _ _ _ _ _ _ _ o => Some o
-  | spec_arguments_object_map_7 _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_2 _ _ _ _ _ _ _ _ => None
+  | spec_arguments_object_map_3 _ _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_4 _ _ _ _ _ _ _ _ _ => None
+  | spec_arguments_object_map_5 _ _ _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_6 _ _ _ _ _ _ _ _ _ o => Some o
+  | spec_arguments_object_map_7 _ _ _ _ _ _ _ _ o => Some o
   | spec_arguments_object_map_8 _ _ _  => None
 
 

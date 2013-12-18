@@ -1367,7 +1367,7 @@ Fixpoint arguments_object_map_loop runs S C l xs len args X str lmap xsmap {stru
       ifb len' >= length xs then
         arguments_object_map_loop' S1 xsmap
       else (
-        Let x := List.nth len' xs "" in
+        Let x := LibList.nth len' xs in
         ifb str = true \/ Mem x xsmap then
           arguments_object_map_loop' S1 xsmap
         else
