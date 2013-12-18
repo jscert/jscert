@@ -484,7 +484,9 @@ Definition object_new vproto sclass :=
 
 (** True is its argument is a data *)
 
-(* LATER:  In practice, this function is used as [attributes_is_data A = true] using an implicit [isTrue]:  wouldn't it be better if it were a boolean instead of a proposition?  *)
+(* LATER: In practice, this function is used as [attributes_is_data A = true]
+  yielding an implicit [isTrue]: wouldn't it be better if it were a boolean
+  instead of a proposition? *)
 
 Definition attributes_is_data A : Prop := 
   match A with

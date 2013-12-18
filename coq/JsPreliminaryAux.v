@@ -405,6 +405,18 @@ Proof.
     (LibOption.map (fun props =>
       LibList.map fst (Heap.to_list props))
     (LibOption.map object_properties_ (pick_option (object_binds S l)))).
-  skip. skip. (* Needs properties about [heap_keys_as_list]. *)
+   introv EQ. forwards (P&EQP&EQM): map_inv (rm EQ).
+    forwards (o&EQo&EQB): map_inv (rm EQP).
+    forwards OB: @pick_option_correct (rm EQo).
+    exists P. splits.
+     exists* o.
+     subst a. apply~ permut_refl.
+   introv (xs&P&(O&OB&PO)&HLP).
+    forwards (O'&EQO'): @pick_option_defined (ex_intro _ O OB). rewrite EQO'.
+    asserts_rewrite (O' = O) in *.
+      forwards OB': @pick_option_correct EQO'.
+      forwards~: Heap_binds_func OB OB'. typeclass.
+    simpl. rewrite PO.
+    eexists; auto*.
 Qed.
 

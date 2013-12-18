@@ -100,40 +100,12 @@ Global Instance ge_nat_decidable : forall n1 n2 : nat, Decidable (n1 >= n2).
 Admitted.
 
 
-
-
-
-(**************************************************************)
-(** ** MARTIN: where do we use this? 
-==> not used? *)
-(*
-  Class FunctionalPred A (P:A->Prop) := functionalpred_make {
-      functional_pred : forall x y, P x -> P y -> x = y }.
-
-  Global Instance apply_if_exists_pickable :
-    forall (A B : Type) (P : A -> Prop) (f : A -> B),
-    Pickable P -> FunctionalPred P ->
-    Pickable (fun v => exists x, P x /\ f x = v).
-  Proof.
-    introv [p Hp] [F]. applys pickable_make (f p).
-    intros (a & x & (Hx & Ha)). exists x. splits~.
-    forwards*: F Hx Hp. substs~.
-  Qed.
-
-  Require Import LibHeap.
-  Global Instance binds_functionnal : forall (H K : Type) (h : heap H K) k,
-    Comparable H -> Inhab K ->
-    FunctionalPred (binds h k).
-  Proof. introv C I. applys functionalpred_make. apply binds_func. Qed.
-  (* End of this little test. *)
-*)
-
-
-
 (**************************************************************)
 (** ** Generalization of Pickable to function that return options *)
 
-  (* MARTIN: see whether it is possible to use Pickable directly *)
+  (* MARTIN: see whether it is possible to use Pickable directly. *)
+  (* I though it would be easier actually, but I still don't find a
+    useful definition of it.  I'm letting it as it is for now. -- Martin. *)
 
   (** Pickable for option types *)
 
@@ -172,76 +144,10 @@ Admitted.
 
 (**************************************************************)
 
-(* MARTIN: modifier l'interpreteur
-  pour utiliser une fonction qui fasse 
-  last et removelast en meme temps:
-  cf.   LibList.take_drop_last.
-  
-  Ensuite, supprimer le lemme ci-dessous *)
-
-Lemma length_removelast : forall A (l : list A),
-  l <> nil ->
-  LibList.length (removelast l) = (LibList.length l - 1)%nat.
-Proof.
-  introv. destruct~ l. introv _. gen a. induction~ l. introv.
-  unfold removelast. fold (removelast (a :: l)).
-  do 2 rewrite length_cons. rewrite IHl. simpl.
-  rewrite* LibNat.minus_zero.
-Qed.
-
-
-(* MARTIN:
-  by the way, please rename rule red_spec_arguments_object_map_3_cont_skip
-  so that it does not contain the word "skip" (use "next" or something else).
+(*
+  In JSNumber, fix the following instance by finding the correct binding in Flocq:
+    Global Instance number_comparable : Comparable number.
 *)
-
-(* MARTIN:
-   resoudre les skips de Global Instance object_properties_keys_as_list_pickable_option
-   dans JsCorrectness
-
-  Dans run_call_prealloc_correct,
-  remplacer les "skip" par "discriminate": je crois que ca suffit pour 
-   resoudre le but, puisqu'on a un result_out egal a un result_unimplemented
-   dans le contexte.;
-  
-  Dans JSNumber, reparer:  Global Instance number_comparable : Comparable number.
-
-*)
-(**************************************************************)
-(** ** MARTIN: TODO remplacer "In" par "Mem",; 
-   J'ai ajoute Mem_decidable dans LibList.v.
-   On peut donc supprimer les defs ci dessous *)
-
-Fixpoint mem_decide (A : Type) `{Comparable A} (x : A) (l : list A) :=
-  match l with
-  | nil => false
-  | y::l' => ifb x = y then true else mem_decide x l'
-  end.
-
-Lemma mem_decide_eq_mem : forall A (H : Comparable A) (x : A) l,
-  mem_decide x l = LibList.mem x l.
-Proof.
-  induction l.
-   auto.
-   simpl. case_if.
-     rewrite~ eqb_eq.
-     rewrite~ eqb_neq. rewrite~ neutral_l_or.
-Qed.
-
-Global Instance In_decidable : forall A : Type,
-  Comparable A ->
-  forall (x : A) l, Decidable (In x l).
-Proof.
-  introv CA. intros.
-  applys decidable_make (mem_decide x l).
-  rewrite mem_decide_eq_mem.
-  induction l.
-    simpl. rew_refl~.
-    tests: (a = x); simpl; rew_refl.
-      rewrite eqb_self. simpl. reflexivity.
-      do 2 rewrite~ eqb_neq. rewrite~ IHl.
-Qed.
-
 
 
 (***********************************************************)

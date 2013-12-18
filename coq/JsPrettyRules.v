@@ -2565,7 +2565,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_arguments_object_map_1 l xs args X str o1) o ->
       red_expr S C (spec_arguments_object_map l xs args X str) o
 
-  | red_spec_arguments_object_map_1 : forall S' S C l xs args X str lmap o, (* Step 9 *)
+  | red_spec_arguments_object_map_1 : forall S' S C l xs args X str lmap o, (* Step 9 and 10 *)
       red_expr S' C (spec_arguments_object_map_2 l xs args X str lmap nil) o ->
       red_expr S C (spec_arguments_object_map_1 l xs args X str (out_ter S' lmap)) o
 
@@ -2575,22 +2575,23 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_arguments_object_map_2_cons : forall A o1 S C l xs args X str lmap xsmap o, (* Step 11 a-b *)     
       args <> nil ->
+      (* Technically, the specification access arguments directly by index rather than by last element of a decresing list:  should we be closer t the specification at this particular point? *)
       (* 'last' requires a default value in the empty list case *)
       A = attributes_data_intro_all_true (last args undef) ->
       red_expr S C (spec_object_define_own_prop l (convert_prim_to_string (length args - 1)) A false) o1 ->
       red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap o1) o ->
       red_expr S C (spec_arguments_object_map_2 l xs args X str lmap xsmap) o
 
-  | red_spec_arguments_object_map_3_skip : forall S C l xs args X str lmap xsmap S' b o,  (* Step 11 c skip *)
+  | red_spec_arguments_object_map_3_next : forall S C l xs args X str lmap xsmap S' b o,  (* Step 11 c next *)
       length args - 1 >= length xs ->     
       red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) X str lmap xsmap) o ->
       red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
 
-  | red_spec_arguments_object_map_3_cont_skip : forall x S C l xs args X str lmap xsmap S' b o,   (* Step 11 c i, ii skip *)      
+  | red_spec_arguments_object_map_3_cont_next : forall x S C l xs args X str lmap xsmap S' b o,   (* Step 11 c i, ii next *)      
       length args - 1 < length xs ->  
       (* Default value is not used because of the contraint above *)   
       x = List.nth (length args - 1) xs "" ->
-      str = true \/ In x xsmap ->
+      str = true \/ Mem x xsmap ->
       red_expr S' C (spec_arguments_object_map_2 l xs (removelast args) X str lmap xsmap) o ->
       red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
 
@@ -2598,7 +2599,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       length args - 1 < length xs ->  
       (* Default value is not used because of the contraint above *)   
       x = List.nth (length args - 1) xs "" ->
-      str = false /\ ~ (In x xsmap) ->
+      str = false /\ ~ (Mem x xsmap) ->
       red_expr S' C (spec_arguments_object_map_4 l xs args X str lmap xsmap x) o ->
       red_expr S C (spec_arguments_object_map_3 l xs args X str lmap xsmap (out_ter S' b)) o
 

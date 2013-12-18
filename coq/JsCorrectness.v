@@ -162,10 +162,6 @@ Lemma res_overwrite_value_if_empty_resvalue : forall rv1 rv2, exists rv3,
   res_normal rv3 = res_overwrite_value_if_empty rv1 rv2 /\ (rv3 = rv1 \/ rv3 = rv2).
 Proof. introv. unfolds res_overwrite_value_if_empty. cases_if*. Qed.
 
-Lemma or_idempotent : forall A : Prop, A \/ A -> A.
-(* This probably already exists, but I didn't found it. *)
-Proof. introv [?|?]; auto. Qed.
-
 
 Lemma get_arg_correct : forall args vs,
   arguments_from args vs ->
@@ -2420,13 +2416,19 @@ Lemma arguments_object_map_loop_correct : forall runs S C l xs len args X str lm
   arguments_object_map_loop runs S C l xs len args X str lmap xsmap = o ->
   red_expr S C (spec_arguments_object_map_2 l xs args X str lmap xsmap) o.
 Proof.
+  skip.
+(* TODO MARTIN:  Update the rules for it.
   introv IH EQlen HR. gen o args S xsmap. induction len; introv EQlen HR;
     destruct args as [|v args]; tryfalse.
    simpls. apply~ red_spec_arguments_object_map_2_nil. cases_if.
      substs. inverts HR. apply~ red_spec_arguments_object_map_8_nil.
      run. let_name. inverts HR. forwards~ B: @pick_option_correct E.
      applys~ red_spec_arguments_object_map_8_cons B. substs*.
-   rewrite length_cons in EQlen. simpl in HR.
+   rewrite length_cons in EQlen. unfolds in HR.
+    let_name. destruct tdl as (rmlargs&largs).
+    forwards EQargs: take_drop_last_spec EQtdl; [discriminate|].
+    forwards EQlargs: take_drop_last_length EQtdl; [discriminate|].
+    clear EQtdl. simpl in HR.
     let_name. let_name. asserts Loop: (forall S xsmap o,
         arguments_object_map_loop' S xsmap = o ->
         red_expr S C (spec_arguments_object_map_2 l xs (removelast (v :: args)) X str lmap xsmap) o).
@@ -2439,7 +2441,7 @@ Proof.
       clear HR. rewrite length_cons. subst A. simpls.
        inverts EQlen. substs. rewrite* LibNat.minus_zero.
     clear R1 EQA. cases_if.
-     apply~ red_spec_arguments_object_map_3_skip.
+     apply~ red_spec_arguments_object_map_3_next.
       simpl in EQlen. inverts EQlen. rewrite length_cons.
       simpl. rewrite* LibNat.minus_zero.
      let_name. asserts caseCont: ((length (v :: args) - 1)%I < length xs). (* NOTE:  All those arithmeticalities could be highly improved. *)
@@ -2454,7 +2456,7 @@ Proof.
       forwards caseCont': (rm H) (rm caseCont).
         rewrite length_cons. math.
       cases_if.
-       apply~ red_spec_arguments_object_map_3_cont_skip.
+       apply~ red_spec_arguments_object_map_3_cont_next.
         inverts o0; [left~|right~].
         rewrite length_cons. simpl. rewrite LibNat.minus_zero.
         simpl in EQlen. inverts EQlen. substs*.
@@ -2471,6 +2473,7 @@ Proof.
           rewrite EQA' in R1. simpl in R1.
           rewrite length_cons. simpl. rewrite* LibNat.minus_zero.
         apply~ red_spec_arguments_object_map_7.
+*)
 Admitted. (* faster *)
 
 Lemma arguments_object_map_correct : forall runs S C l xs args X str o,
@@ -3319,9 +3322,9 @@ Proof.
   (* For-var *)
   apply* run_stat_for_var_correct.
   (* For-in *)
-  skip. (* LATER *)
+  discriminate.
   (* For-in-var *)
-  skip. (* LATER *)
+  discriminate.
   (* Debugger *)
   run_inv. apply red_stat_debugger.
   (* switch *)
@@ -3386,31 +3389,31 @@ Proof.
   introv IH HR. unfolds in HR.
   destruct B.
   (* prealloc_global *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_global_eval *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_global_is_finite *)
   skip. (* LATER *)
   (* prealloc_global_is_nan *)
   skip. (* LATER *)
   (* prealloc_global_parse_float *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_global_parse_int *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_get_proto_of *)
   skip. (* LATER *)
   (* prealloc_object_get_own_prop_descriptor *)
   skip. (* LATER *)
   (* prealloc_object_get_own_prop_name *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_create *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_define_prop *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_define_props *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_seal *)
   skip. (* LATER *)
   (* prealloc_object_freeze *)
@@ -3424,15 +3427,16 @@ Proof.
   (* prealloc_object_is_extensible *)
   skip. (* LATER *)
   (* prealloc_object_keys *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_keys_call *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_proto *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_object_proto_to_string *)
   skip. (* LATER *)
   (* prealloc_object_proto_value_of *)
-  skip. (* LATER *)
+  apply~ red_spec_call_object_proto_value_of.
+  apply~ to_object_correct.
   (* prealloc_object_proto_has_own_prop *)
   run red_spec_call_object_proto_has_own_prop.
     apply~ get_arg_correct_0.
@@ -3446,45 +3450,51 @@ Proof.
   (* prealloc_object_proto_prop_is_enumerable *)
   skip. (* LATER *)
   (* prealloc_function *)
-  skip. (* LATER *)
+  discriminate. (* LATER *)
   (* prealloc_function_proto *)
-  skip. (* LATER *)
+  inverts HR. apply red_spec_call_function_proto_invoked.
   (* prealloc_function_proto_to_string *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_function_proto_apply *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_function_proto_bind *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_bool *)
-  skip. (* LATER *)
+  inverts HR. apply~ red_spec_call_bool.
+    apply~ get_arg_correct_0.
+  apply~ red_spec_to_boolean.
   (* prealloc_bool_proto *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_bool_proto_to_string *)
   skip. (* LATER *)
   (* prealloc_bool_proto_value_of *)
   skip. (* LATER *)
   (* prealloc_number *)
-  skip. (* LATER *)
+  cases_if.
+   substs. inverts HR. apply~ red_spec_call_number_nil.
+   inverts HR. apply~ red_spec_call_number_not_nil.
+     apply~ get_arg_correct_0.
+    apply* to_number_correct.
   (* prealloc_number_proto *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_number_proto_to_string *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_number_proto_value_of *)
   skip. (* LATER *)
   (* prealloc_number_proto_to_fixed *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_number_proto_to_exponential *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_number_proto_to_precision *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_array *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_array_is_array *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_array_proto *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_array_proto_to_string *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_array_proto_pop *)
   skip. (* LATER *)
   (* prealloc_array_proto_push *)
@@ -3550,25 +3560,29 @@ Proof.
       rewrite EQOwitness in PO'. false.
      apply* run_error_correct.
   (* prealloc_string_proto_char_at *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_string_proto_char_code_at *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_math *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_mathop *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_error *)
+  let_name. apply~ red_spec_call_error.
+   apply~ get_arg_correct_0.
+  (* apply~ builtin_error_correct. *)
   skip. (* LATER *)
   (* prealloc_error_proto *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_native_error *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_native_error_proto *)
   skip. (* LATER *)
   (* prealloc_error_proto_to_string *)
-  skip. (* LATER *)
+  discriminate.
   (* prealloc_throw_type_error *)
-  skip. (* LATER *)
+  apply~ red_spec_call_throw_type_error.
+  apply* run_error_correct.
 Admitted. (* faster *)
  
 Lemma run_call_correct : forall runs S C l v vs o,

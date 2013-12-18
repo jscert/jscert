@@ -1346,7 +1346,7 @@ Definition make_arg_setter runs S C x X : result :=
                 (expr_assign (expr_identifier x) None (expr_identifier xparam)))::nil)) xbd in
   creating_function_object runs S C (xparam::nil) bd X true.
 
-Fixpoint arguments_object_map_loop runs S C l xs len args X str lmap xsmap : result_void :=
+Fixpoint arguments_object_map_loop runs S C l xs len args X str lmap xsmap {struct len} : result_void :=
   (* [len] should always be [length args]. *)
   match len with
   | O => (* args = nil *)
@@ -1359,15 +1359,16 @@ Fixpoint arguments_object_map_loop runs S C l xs len args X str lmap xsmap : res
                     builtin_delete_args_obj in
         res_void (object_write S l O')))
   | S len' => (* args <> nil *)
+    Let tdl := LibList.take_drop_last args in let (rmlargs, largs) := tdl in
     Let arguments_object_map_loop' := fun S xsmap =>
-      arguments_object_map_loop runs S C l xs len' (removelast args) X str lmap xsmap in
-    Let A := attributes_data_intro_all_true (last args undef) in
+      arguments_object_map_loop runs S C l xs len' rmlargs X str lmap xsmap in
+    Let A := attributes_data_intro_all_true largs in
     if_bool (object_define_own_prop runs S C l (convert_prim_to_string len') A false) (fun S1 b =>
       ifb len' >= length xs then
         arguments_object_map_loop' S1 xsmap
       else (
         Let x := List.nth len' xs "" in
-        ifb str = true \/ In x xsmap then
+        ifb str = true \/ Mem x xsmap then
           arguments_object_map_loop' S1 xsmap
         else
           if_object (make_arg_getter runs S1 C x X) (fun S2 lgetter =>

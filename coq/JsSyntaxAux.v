@@ -872,7 +872,7 @@ Definition label_set_add lab labs := lab :: labs.
 
 Definition label_set_add_empty labs := label_set_add label_empty labs.
 
-Definition label_set_mem lab labs := decide (In lab labs).
+Definition label_set_mem lab labs := decide (Mem lab labs).
 
 
 (**************************************************************)
