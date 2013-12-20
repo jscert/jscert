@@ -77,11 +77,11 @@ with add_infos_stat str labs t :=
     | stat_continue lopt => stat_continue lopt
     | stat_try t catch to =>
       stat_try (f t) (opt (fun c => let '(cs, t) := c in (cs, f t)) catch) (fo to) 
-    | stat_for _ e1 e2 e3 t =>
-      stat_for (label_set_add_empty labs) (feo e1) (feo e2) (feo e3) (f t)
-    | stat_for_var _ vars e2 e3 t =>
+    | stat_for _ eo1 eo2 eo3 t =>
+      stat_for (label_set_add_empty labs) (feo eo1) (feo eo2) (feo eo3) (f t)
+    | stat_for_var _ vars eo2 eo3 t =>
       stat_for_var (label_set_add_empty labs) (List.map (fun var =>
-        let '(s, eo) := var in (s, feo eo)) vars) (feo e2) (feo e3) (f t)
+        let '(s, eo) := var in (s, feo eo)) vars) (feo eo2) (feo eo3) (f t)
     | stat_for_in _ e1 e2 t =>
       stat_for_in (label_set_add_empty labs) (fe e1) (fe e2) (f t)
     | stat_for_in_var _ str eo e t =>
