@@ -2441,7 +2441,7 @@ Proof.
       rewrite EQargs. rew_app. apply~ Loop.
      let_name. asserts ZN: (ZNth len xs x).
         apply Nth_to_ZNth. forwards (x'&N): length_Nth_lt len xs. math.
-        forwards EQx': Nth_to_nth N. subst x'. rewrite~ <- EQx in N.
+        forwards EQx': Nth_to_nth_def "" N. subst x'. rewrite~ <- EQx in N.
       cases_if.
        applys~ red_spec_arguments_object_map_3_cont_next ZN.
         rewrite EQargs. rew_app. apply~ Loop.

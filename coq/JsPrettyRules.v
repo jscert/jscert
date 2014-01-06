@@ -1822,7 +1822,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** DefineOwnProperty (8.12.9) *)
 
-  | red_spec_object_define_own_prop_1_default : forall S C l x Desc throw o (y:specret full_descriptor),(* Step 1 *)
+  | red_spec_object_define_own_prop_1_default : forall S C l x Desc throw o (y:specret full_descriptor), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_object_define_own_prop_2 l x Desc throw y) o ->
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc throw) o 
