@@ -20,4 +20,10 @@
 
         There is a frightening special commented rule for [spec_creating_function_object_proto] in the middle of the code:  can we remove it safely?
 
-=> todo r�cup sur mon portable
+=> todo ARTHUR:  récup sur mon portable
+
+
+   → Jsnumber:
+
+  In JSNumber, fix the following instance by finding the correct binding in Flocq:
+    Global Instance number_comparable : Comparable number.
