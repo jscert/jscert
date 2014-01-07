@@ -24,10 +24,7 @@ dbPathFromQueries = do
   return $ takeDirectory dir </> username<.>"db"
 
 dbPathFromTrunk :: IO FilePath
-dbPathFromTrunk = do
-  username <- getEnv "USER"
-  return $ "test_data"</>username<.>"db"
-
+dbPathFromTrunk = return $ "test_data" </> "test_results" <.> "db"
 
 getConnectionFromQueries :: IO Connection
 getConnectionFromQueries = connectSqlite3 =<< dbPathFromQueries

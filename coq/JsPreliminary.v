@@ -148,7 +148,7 @@ Definition state_with_new_event S new_event :=
 
 
 (**************************************************************)
-(** ** Conversion used in the semantics of DefinedOwnProperty *)
+(** ** Conversion used in the semantics of DefineOwnProperty *)
 
 (** Default data property attributes *)
 

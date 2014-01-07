@@ -75,29 +75,44 @@ Proof. introv. apply prove_Inhab. introv. auto*. Qed.
 
 
 (**************************************************************)
-(** ** FOR ARTHUR *)
+(** ** Extraction for comparison operators on integers *)
 
-(* Directly extract towards (<) in OCaml *)
+Definition comparison_compare c1 c2 :=
+  match c1, c2 with
+  | Datatypes.Eq, Datatypes.Eq => true
+  | Datatypes.Lt, Datatypes.Lt => true
+  | Datatypes.Gt, Datatypes.Gt => true
+  | _, _ => false
+  end.
 
-Global Instance lt_int_decidable : forall i1 i2 : int, Decidable (i1 < i2).
-Admitted.
-
-(* Directly extract towards (<=) in OCaml *)
-
-Global Instance le_int_decidable : forall i1 i2 : int, Decidable (i1 <= i2).
-Admitted.
-(*
+Global Instance comparison_comparable : Comparable comparison.
 Proof.
-  applys comparable_beq (fun i j => decide (i ?= j = Eq)). intros x y.
-  simpl; rew_refl; iff H; rewrite Z.compare_eq_iff in * |- *; inverts~ H.
+  applys (comparable_beq comparison_compare). intros x y.
+  destruct x; destruct y; simpl; rew_refl; iff H; tryfalse; try congruence; auto.
 Qed.
 
-*)
+(* Directly extracted towards (<) in OCaml *)
 
-(* Directly extract towards (>=) in OCaml *)
+Global Instance lt_int_decidable : forall i1 i2 : int, Decidable (i1 < i2).
+Proof.
+  intros. applys decidable_make (decide (i1 ?= i2 = Datatypes.Lt)).
+  rewrite lt_zarith. unfold Z.lt. rew_refl. reflexivity.
+Qed.
+
+(* Directly extracted towards (<=) in OCaml *)
+
+Global Instance le_int_decidable : forall i1 i2 : int, Decidable (i1 <= i2).
+Proof.
+  intros. applys decidable_make (decide (i1 ?= i2 <> Datatypes.Gt)).
+  rewrite le_zarith. unfold Z.le, Z.lt. rew_refl. fequals.
+Qed.
+
+(* Directly extracted towards (>=) in OCaml *)
 
 Global Instance ge_nat_decidable : forall n1 n2 : nat, Decidable (n1 >= n2).
-Admitted.
+Proof.
+  intros. applys sumbool_decidable. applys Compare_dec.ge_dec.
+Qed.
 
 
 (**************************************************************)
@@ -142,59 +157,43 @@ Qed.
 (**************************************************************)
 (** ** Generalization of Pickable to function that return options *)
 
-  (* MARTIN: see whether it is possible to use Pickable directly. *)
-  (* I though it would be easier actually, but I still don't find a
-    useful definition of it.  I'm letting it as it is for now. -- Martin. *)
+(* Note: easier to use Pickable_option than Pickable directly. *)
 
-  (** Pickable for option types *)
+Class Pickable_option (A : Type) (P : A -> Prop) := pickable_option_make {
+  pick_option : option A;
+  pick_option_correct : forall a, pick_option = Some a -> P a;
+  pick_option_defined : (exists a, P a) -> (exists a, pick_option = Some a) }.
 
-  Class Pickable_option (A : Type) (P : A -> Prop) := pickable_option_make {
-    pick_option : option A;
-    pick_option_correct : forall a, pick_option = Some a -> P a;
-    pick_option_defined : (exists a, P a) -> (exists a, pick_option = Some a) }.
+Implicit Arguments pick_option [A [Pickable_option]].
+Extraction Inline pick_option.
 
-  Implicit Arguments pick_option [A [Pickable_option]].
-  Extraction Inline pick_option.
+Global Instance Pickable_option_Pickable : 
+  forall (A : Type) (P : A -> Prop), Inhab A -> (* later: use `{Inhab A} *)
+  Pickable_option P -> Pickable P.
+Proof.
+  introv I [[pi|] C D].
+   applys pickable_make pi. introv _. apply~ C.
+   applys pickable_make arbitrary. introv E. forwards (a&N): D E. inverts N.
+Qed.
 
-  Global Instance Pickable_option_Pickable : 
-    forall (A : Type) (P : A -> Prop), Inhab A -> (* todo: use `{Inhab A} *)
-    Pickable_option P -> Pickable P.
-  Proof.
-    (* todo: clean up proof *)
-    introv I [[pi|] C D].
-     applys pickable_make pi. introv _. apply~ C.
-     applys pickable_make arbitrary. introv E. forwards (a&N): D E. inverts N.
-  Qed.
+(** Application to LibHeap operation *)
+Require Import LibHeap.
 
-  (** Application to LibHeap operation *)
-
-  Require Import LibHeap.
-
-  Global Instance binds_pickable_option : forall K V : Type,
-    `{Comparable K} -> `{Inhab V} ->
-    forall (h : heap K V) (v : K),
-    Pickable_option (binds h v).
-  Proof.
-    introv CK IV; introv. applys pickable_option_make (read_option h v).
-     apply read_option_binds. 
-     introv [a Ba]. forwards R: @binds_read_option Ba. exists~ a.
-  Qed.
-
-
-(**************************************************************)
-
-(*
-  In JSNumber, fix the following instance by finding the correct binding in Flocq:
-    Global Instance number_comparable : Comparable number.
-*)
+Global Instance binds_pickable_option : forall K V : Type,
+  `{Comparable K} -> `{Inhab V} ->
+  forall (h : heap K V) (v : K),
+  Pickable_option (binds h v).
+Proof.
+  introv CK IV; introv. applys pickable_option_make (read_option h v).
+   apply read_option_binds. 
+   introv [a Ba]. forwards R: @binds_read_option Ba. exists~ a.
+Qed.
 
 
 (***********************************************************)
 (***********************************************************)
 (***********************************************************)
 (** * Heap with a counter for allocating fresh locations *)
-
-(* TODO: remove this if not needed. *)
 
 Require Import LibHeap.
 Module HeapGen (Export Heap : HeapSpec) : HeapSpec.

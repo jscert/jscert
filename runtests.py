@@ -18,7 +18,7 @@ import re
 
 # Our command-line interface
 argp = argparse.ArgumentParser(
-    description="Run some Test262-style tests with some JS implementation")
+    description="Run some Test262-style tests with some JS implementation: by default, with JSRef.")
 
 argp.add_argument("filenames", metavar="filename", nargs="*",
                   help="The test file we want to run. If you don't specify, we'll recursively find all .js files under the current directory.")
@@ -64,7 +64,7 @@ argp.add_argument("--dbsave",action="store_true",
     help="Save the results of this testrun to the database")
 
 argp.add_argument("--dbpath",action="store",metavar="path",
-    default="test_data/"+getpass.getuser()+".db",
+    default="test_data/test_results.db",
     help="Path to the database to save results in. The default should usually be fine. Please don't mess with this unless you know what you're doing.")
 
 argp.add_argument("--verbose",action="store_true",

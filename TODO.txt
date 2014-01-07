@@ -1,4 +1,13 @@
 
+========== JSNumber ===============
+
+  In JSNumber, fix the following instance by finding the correct binding in Flocq:
+    Global Instance number_comparable : Comparable number.
+
+
+==========  ===============
+
+
 Definition ref_put_value runs S C rv v : result_void :=
   match rv with
   | resvalue_value v => run_error S native_error_ref
