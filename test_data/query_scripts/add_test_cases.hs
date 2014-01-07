@@ -29,9 +29,6 @@ addCases files negs = do
 
 main :: IO ()
 main = do
-  error "Hm"
   files <- getArgs
-  putStrLn "I have these files:"
-  mapM putStrLn files
   negs <- mapM isNegative files
   void $ addCases files negs
