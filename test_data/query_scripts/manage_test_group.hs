@@ -2,7 +2,7 @@
 
 module Main where
 
-import ResultsDB(getConnectionFromTrunk,addFilesToGroup,makeGroup,makeFailGLatest,addFilesToFailGroup)
+import ResultsDB(getConnectionFromTrunk,addFilesToGroup,makeGroup,makeFailGroup,addFilesToFailGroup)
 import Database.HDBC(toSql,fromSql,withTransaction,prepare,execute,fetchRow,Statement)
 import Database.HDBC.Sqlite3(Connection)
 import System.Console.CmdArgs
@@ -28,7 +28,7 @@ data ManageTestGroup = CreateGroup
                        { groupId :: Int
                        , groupDescription :: String
                        } |
-                       CreateFailGroupForLatestBatch
+                       CreateFailGroup
                        { groupDescription :: String
                        , groupReason :: String
                        , fails :: [String]
@@ -57,11 +57,11 @@ amendDescDefaults = AmendDesc
                     }
 
 cfgflbDefaults :: ManageTestGroup
-cfgflbDefaults = CreateFailGroupForLatestBatch
+cfgflbDefaults = CreateFailGroup
                        { groupDescription = "" &= help "A description of this fail group"
                        , groupReason  = "" &= help "Why do these tests fail?"
                        , fails = [] &= args
-                       }                 
+                       }
 
 stmtUpdateDesc :: String
 stmtUpdateDesc = "UPDATE test_groups SET description=? WHERE id=?"
@@ -89,8 +89,8 @@ dispatch (AppendByDesc desc filenames) con = do
   addFilesToGroup gid filenames con
 dispatch (AppendById gid filenames) con = addFilesToGroup gid filenames con
 dispatch (AmendDesc gid desc) con = updateDesc gid desc con
-dispatch (CreateFailGroupForLatestBatch desc reason filenames) con = do
-  gid <- makeFailGLatest desc reason con
+dispatch (CreateFailGroup desc reason filenames) con = do
+  gid <- makeFailGroup desc reason con
   addFilesToFailGroup gid filenames con
 
 main :: IO ()

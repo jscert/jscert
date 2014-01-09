@@ -21,7 +21,7 @@ dbPathFromQueries :: IO FilePath
 dbPathFromQueries = do
   dir <- getCurrentDirectory
   username <- getEnv "USER"
-  return $ takeDirectory dir </> username<.>"db"
+  return $ takeDirectory dir </> "test_results"<.>"db"
 
 dbPathFromTrunk :: IO FilePath
 dbPathFromTrunk = return $ "test_data" </> "test_results" <.> "db"
@@ -36,7 +36,7 @@ stmtMakeGroup :: String
 stmtMakeGroup = "INSERT INTO test_groups (description) VALUES (?)"
 
 stmtMakeFailGroup :: String
-stmtMakeFailGroup = "INSERT INTO fail_groups (batch_id,description,reason) VALUES (?,?,?)"
+stmtMakeFailGroup = "INSERT INTO fail_groups (description,reason) VALUES (?,?)"
 
 stmtAddFileToGroup :: String
 stmtAddFileToGroup = "INSERT INTO test_group_memberships (group_id,test_id) VALUES (?,?)"
@@ -52,7 +52,7 @@ stmtGetLatestTestBatch = "SELECT id from test_batch_runs ORDER BY id DESC"
 
 stmtGetLatestFailGroup :: String
 stmtGetLatestFailGroup = "SELECT id from fail_groups ORDER BY id DESC"
-                         
+
 
 -- Returns the ID of the group we created
 makeGroup :: String -> Connection -> IO Int
@@ -64,13 +64,10 @@ makeGroup desc con = do
       fmap (fromSql.head.fromJust) $ fetchRow getstmt
 
 -- Returns the ID of the group we created
-makeFailGLatest :: String -> String -> Connection -> IO Int
-makeFailGLatest desc reason con = do
-  getLatestBatch <- prepare con stmtGetLatestTestBatch
-  execute getLatestBatch []
-  (latestBatch :: Int) <- fmap (fromSql.head.fromJust) $ fetchRow getLatestBatch 
+makeFailGroup :: String -> String -> Connection -> IO Int
+makeFailGroup desc reason con = do
   mkFailGroup <- prepare con stmtMakeFailGroup
-  execute mkFailGroup [toSql latestBatch, toSql desc, toSql reason]
+  execute mkFailGroup [toSql desc, toSql reason]
   getLatestFailG <- prepare con stmtGetLatestFailGroup
   execute getLatestFailG []
   fmap (fromSql.head.fromJust) $ fetchRow getLatestFailG

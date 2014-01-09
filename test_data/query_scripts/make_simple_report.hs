@@ -75,7 +75,10 @@ progOpts = Options
                            "%Warning: ref_get_value returns the undefined value on % . indexOf%",
                            "%Warning: ref_get_value returns the undefined value on % . match%",
                            "%Warning: ref_get_value returns the undefined value on % . charAt%",
-                           "%Warning: ref_get_value returns the undefined value on % . keys%"]
+                           "%Warning: ref_get_value returns the undefined value on % . keys%",
+                           "%Warning: ref_get_value returns the undefined value on % undefined%",
+                           "%Warning:  JsNumber.to_string called. This might be responsible for errors%",
+                           "%Warning:% ref_get_value returns the undefined value on Coq_resvalue_ref: ref%"]
                           &= help "All the things we want to check from stderr"
            , testBatch = Nothing
            }
@@ -184,9 +187,8 @@ stmts outs errs OnlyInteresting = "SELECT id,test_id,batch_id,status, stdout,std
                                       -- -- Not tests that both fail, and use Number.tostring
                                       -- ++ "( NOT ((status=\"" ++ strFAIL++"\" OR status=\"" ++ strABORT ++"\") AND stderr LIKE \"%JsNumber.to_string called.%\" ))"
                                       -- ++   " AND "
-                                      -- -- Not tests that we've explicitly noted as "Ignorable"
-                                      -- ++ "test_id NOT IN (select test_id from test_group_memberships where group_id IN "
-                                      -- ++   "(SELECT id from test_groups where description LIKE \"Ignorable%\")) AND "
+                                      -- -- Not tests that we've explicitly noted as being in an expected fail group.
+                                      ++ "(test_id NOT IN (select test_id from fail_group_memberships)) AND "
                                       -- -- Not buggy tests
                                       -- ++ "test_id NOT IN (select test_id from fail_group_memberships where group_id IN "
                                       -- ++   "(SELECT id from fail_groups where reason LIKE \"%Buggy Test%\")) AND "

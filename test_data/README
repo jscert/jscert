@@ -84,7 +84,6 @@ CREATE TABLE fail_group_memberships (
   );
 CREATE TABLE fail_groups (
   id integer primary key autoincrement
-  , batch_id integer references test_batch_runs(id)
   , description text
   , reason text
   );
