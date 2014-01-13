@@ -48,7 +48,7 @@ with add_infos_funcbody str fb :=
      | funcbody_intro p s => funcbody_intro (add_infos_prog str p) s
    end
 
-(** Propagate through statments *)
+(** Propagate through statements *)
 
 with add_infos_stat str labs t :=
   let opt {A} (f : A -> A) (smth : option A) :=

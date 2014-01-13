@@ -228,7 +228,7 @@ and exp_to_elem exp : JsSyntax.element =
     match exp.exp_stx with
       | NamedFun (s, name, args, body) -> JsSyntax.Coq_element_func_decl (tos name, map tos args, exp_to_funcbody body s)
       | _ -> JsSyntax.Coq_element_stat (exp_to_stat exp)
-  
+
 and exp_to_funcbody exp strict : JsSyntax.funcbody =
   let body =
 	match exp_to_prog exp with

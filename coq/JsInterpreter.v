@@ -1444,7 +1444,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
           | codetype_func, Some func, false =>
             if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
           | codetype_func, _, false =>
-            impossible_with_heap_because S2 "Strange `arguments' object in [execution_ctx_binding_inst]."
+            impossible_with_heap_because S2 "Weird `arguments' object in [execution_ctx_binding_inst]."
           | _, _, _ => follow2 S2
           end))
       in
@@ -1455,10 +1455,10 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
             if_void (binding_inst_formal_params runs S C L args names str) (fun S' =>
               follow S' names)))
       | codetype_func, _ =>
-        impossible_with_heap_because S "Not coherent functionnal code type in [execution_ctx_binding_inst]."
+        impossible_with_heap_because S "Non coherent functionnal code type in [execution_ctx_binding_inst]."
       | _, None => follow S nil
       | _, _ =>
-        impossible_with_heap_because S "Not coherent non-functionnal code type in [execution_ctx_binding_inst]."
+        impossible_with_heap_because S "Non coherent non-functionnal code type in [execution_ctx_binding_inst]."
     end
   end.
 

@@ -1,0 +1,13 @@
+
+This file describes the mechanism I’ve trying to understand to transform strings like "use strict" in the beginning of functions to strict-mode functions.
+As this is not the first time there has been a bug, I think it can be useful. -- Martin.
+
+    → Closure detects string blocks "use strict" in a raw form and produce an XML:
+      <EXPR_VOID pos="??">
+        <STRING pos="??" value="use strict"/>
+      </EXPR_VOID>
+    → An XML parser then translates this into a Parser_syntax.exp (see interp/parser/src/parser_syntax.mli), which does not make the strictness information appear.
+    → But the strictness is added by the function “add_strictness” of the same file.
+    → The functions of Translate_syntax (see interp/src/translate_syntax.mli) then translate this syntax tree to the syntax of Coq.
+    → Then in JsSyntaxInfos.v, the functions add_infos_* propagates this strictness information through the AST, so that any function code under a strictness directive will be tagged as strict (technichally, I think this was already done in the OCaml files…).
+
