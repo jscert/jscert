@@ -129,7 +129,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
 
   (** Abort rule for statements *)
 
-  | red_stat_abort : forall S C extt o,
+  | red_stat_abort : forall S C extt o, (* called red_stat_exception in POPL14 *)
       out_of_ext_stat extt = Some o ->
       abort o ->
       ~ abort_intercepted_stat extt ->
@@ -284,58 +284,69 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
   (** While statement (12.6.2)
       -- See also the definition of [abort_intercepted_stat]. *)
 
+  (* Step 1: red_while_1 in POPL14 *)
   | red_stat_while : forall S C labs e1 t2 o,
       red_stat S C (stat_while_1 labs e1 t2 resvalue_empty) o ->
       red_stat S C (stat_while labs e1 t2) o
 
+  (* Steps 2a and 2b: red_while_2a_2b in POPL14 *)
   | red_stat_while_1 : forall S C labs e1 t2 rv y1 o,
       red_spec S C (spec_expr_get_value_conv spec_to_boolean e1) y1 ->
       red_stat S C (stat_while_2 labs e1 t2 rv y1) o ->
       red_stat S C (stat_while_1 labs e1 t2 rv) o
 
+  (* Step 2b False: red_while_2b'_false in POPL14 *)
   | red_stat_while_2_false : forall S0 S C labs e1 t2 rv,
       red_stat S0 C (stat_while_2 labs e1 t2 rv (vret S false)) (out_ter S rv)
 
+  (* Step 2b True and 2c: red_while_2b'_true_2c in POPL14 *)
   | red_stat_while_2_true : forall S0 S C labs e1 t2 rv o1 o,
       red_stat S C t2 o1 ->
       red_stat S C (stat_while_3 labs e1 t2 rv o1) o ->
       red_stat S0 C (stat_while_2 labs e1 t2 rv (vret S true)) o
 
+  (* Step 2d: red_while_2d in POPL14 *)
   | red_stat_while_3 : forall rv S0 S C labs e1 t2 rv' R o,
       rv' = (If res_value R <> resvalue_empty then res_value R else rv) ->
       red_stat S C (stat_while_4 labs e1 t2 rv' R) o ->
       red_stat S0 C (stat_while_3 labs e1 t2 rv (out_ter S R)) o
 
+  (* Step 2e False: red_while_2e_false in POPL14 *)
   | red_stat_while_4_continue : forall S C labs e1 t2 rv R o,
       res_type R = restype_continue /\ res_label_in R labs ->
       red_stat S C (stat_while_1 labs e1 t2 rv) o ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) o
 
+  (* Step 2e True: red_while_2e_true in POPL14 *)
   | red_stat_while_4_not_continue : forall S C labs e1 t2 rv R o,
       ~ (res_type R = restype_continue /\ res_label_in R labs) ->
       red_stat S C (stat_while_5 labs e1 t2 rv R) o ->
       red_stat S C (stat_while_4 labs e1 t2 rv R) o
 
+  (* Step 2e i True: red_while_2e_i_true in POPL14 *)
   | red_stat_while_5_break : forall S C labs e1 t2 rv R,
       res_type R = restype_break /\ res_label_in R labs ->
       red_stat S C (stat_while_5 labs e1 t2 rv R) (out_ter S rv)
 
+  (* Step 2e i False: red_while_2e_i_false in POPL14 *)
   | red_stat_while_5_not_break : forall S C labs e1 t2 rv R o,
       ~ (res_type R = restype_break /\ res_label_in R labs) ->
       red_stat S C (stat_while_6 labs e1 t2 rv R) o ->
       red_stat S C (stat_while_5 labs e1 t2 rv R) o
 
+  (* Step 2e ii True: red_while_2e_ii_true in POPL14 *)
   | red_stat_while_6_abort : forall S C labs e1 t2 rv R,
       res_type R <> restype_normal ->
       red_stat S C (stat_while_6 labs e1 t2 rv R) (out_ter S R)
 
+  (* Step 2e ii False: red_while_2e_ii_false in POPL14 *)
   | red_stat_while_6_normal : forall S C labs e1 t2 rv R o,
       res_type R = restype_normal ->
       red_stat S C (stat_while_1 labs e1 t2 rv) o ->
       red_stat S C (stat_while_6 labs e1 t2 rv R) o
 
 
-  (* Implicitly captured by the generic abort rule:
+  (* Implicitly captured by the generic abort rule red_stat_abort:
 
   | red_stat_while_3_abort : forall rv S0 S C labs e1 t2 rv' R,
       res_type R <> restype_normal ->
