@@ -1,0 +1,83 @@
+body {
+    background: white;
+    white-space: nowrap;
+}
+
+.title {
+    font-size: xx-large;
+    font-weight: bold;
+}
+
+.section {
+    font-size: larger;
+    font-weight: bold;
+}
+
+.footer {
+    font-size: smaller;
+    text-align: center;
+}
+
+.codeSep {
+    border: none 0;
+    border-top: 1px solid gray;
+    height: 1px;
+}
+
+.indexSep {
+    border: none 0;
+    border-top: 1px solid gray;
+    height: 1px;
+    width: 75%;
+}
+
+.lineNone { white-space: nowrap; background: white; font-family: monospace; }
+.lineAllVisited { white-space: nowrap; background: #30FF6A; font-family: monospace; }
+.lineAllUnvisited { white-space: nowrap; background: #FF4423; font-family: monospace; }
+.lineMixed { white-space: nowrap; background: #E4FF5B; font-family: monospace; }
+
+table.simple {
+    border-width: 1px;
+    border-spacing: 0px;
+    border-top-style: solid;
+    border-bottom-style: solid;
+    border-color: black;
+    font-size: smaller;
+}
+
+table.simple th {
+    border-width: 1px;
+    border-spacing: 0px;
+    border-bottom-style: solid;
+    border-color: black;
+    text-align: center;
+    font-weight: bold;
+}
+
+table.simple td {
+    border-width: 1px;
+    border-spacing: 0px;
+    border-style: none;
+}
+
+table.gauge {
+    border-width: 0px;
+    border-spacing: 0px;
+    padding: 0px;
+    border-style: none;
+    border-collapse: collapse;
+    font-size: smaller;
+}
+
+table.gauge td {
+    border-width: 0px;
+    border-spacing: 0px;
+    padding: 0px;
+    border-style: none;
+    border-collapse: collapse;
+}
+
+.gaugeOK { background: green; }
+.gaugeKO { background: red; }
+.gaugeNO { background: gray; }
+
