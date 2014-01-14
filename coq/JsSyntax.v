@@ -609,9 +609,9 @@ Record object := object_intro {
    object_target_function_ : option object_loc;
    object_bound_this_ : option value;
    object_bound_args_ : option (list value);
-   object_parameter_map_ : option object_loc
+   object_parameter_map_ : option object_loc }.
+
    (* LATER: match for regular expression matching *)
-   }.
 
 (**************************************************************)
 (* A type of "events" that can be used to pin down the semantics of

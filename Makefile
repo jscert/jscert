@@ -30,6 +30,7 @@ NODEJS=/usr/bin/nodejs
 # Edit settings.sh to modify the default paths mentioned above
 -include settings.sh
 
+
 #######################################################
 
 TLC_SRC=$(wildcard $(TLC)/*.v)
