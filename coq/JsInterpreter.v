@@ -75,7 +75,9 @@ Inductive resultof T :=
   | result_some : T -> resultof T
   | result_not_yet_implemented
   | result_impossible
-  | result_bottom : state -> resultof T. (* We could put any information there.  They can be used to create step by step interpreter. *)
+  | result_bottom : state -> resultof T. 
+  
+  (* We could put any information there.  They can be used to create step by step interpreter. *)
 
 Implicit Arguments result_some [[T]].
 Implicit Arguments result_not_yet_implemented [[T]].

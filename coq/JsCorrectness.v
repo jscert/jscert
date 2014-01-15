@@ -3629,7 +3629,7 @@ Proof.
     apply~ red_stat_do_while_4_not_break. cases_if; run_inv.
      apply~ red_stat_do_while_5_abort.
      apply~ red_stat_do_while_5_normal.
-Qed.
+Admitted. (*faster*)
 
 Lemma run_stat_for_loop_correct : forall runs S C labs rv eo2 eo3 t o,
   runs_type_correct runs ->
@@ -3657,7 +3657,7 @@ Proof.
      apply~ red_stat_for_3_not_false. discriminate.
      apply~ red_stat_for_3_false.
    apply~ red_stat_for_2_none.
-Qed.
+Admitted. (*faster*)
 
 
 Lemma object_proto_is_prototype_of_correct : forall runs S C lthis l o,
@@ -3674,7 +3674,7 @@ Proof.
    cases_if; substs; inverts HR.
     apply~ red_spec_call_object_proto_is_prototype_of_4_equal.
     run_hyp. apply* red_spec_call_object_proto_is_prototype_of_4_not_equal.
-Qed.
+Admitted. (*faster*)
 
 
 Lemma run_equal_correct : forall runs S C v1 v2 o,
