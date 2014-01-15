@@ -5,5 +5,3 @@ for file in `./test262tests`; do
   export BISECT_FILE=bisect_$prefix
   ./runtests.py --interp_path interp/run_jsbisect $file
 done
-
-
