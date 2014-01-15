@@ -57,8 +57,6 @@ Inductive ext_expr :=
 
   | expr_basic : expr -> ext_expr
 
-
-
   (** Extended expressions associated with primitive expressions *)
 
   | expr_identifier_1 : specret ref -> ext_expr
@@ -1404,17 +1402,17 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       abort_intercepted_stat (stat_switch_2 (out_ter S R) labs)
   | abort_intercepted_stat_switch_nodefault_6 : forall S rv R scs,
       ~ res_is_normal R ->
-      res_type R <> restype_throw -> (* TODO:  Check *)
+      res_type R <> restype_throw -> 
       abort_intercepted_stat (stat_switch_nodefault_6 rv (out_ter S R) scs)
   | abort_intercepted_stat_switch_default_8 : forall S rv R scs,
       ~ res_is_normal R ->
-      res_type R <> restype_throw -> (* TODO:  Check *)
+      res_type R <> restype_throw ->
       abort_intercepted_stat (stat_switch_default_8 rv (out_ter S R) scs)
-  | abort_intercepted_stat_switch_default_A_5 : forall S rv R vi scs ts1 scs2, (* TODO:  Reread *)
+  | abort_intercepted_stat_switch_default_A_5 : forall S rv R vi scs ts1 scs2,
       ~ res_is_normal R ->
       res_type R <> restype_throw ->
       abort_intercepted_stat (stat_switch_default_A_5 rv (out_ter S R) vi scs ts1 scs2)
-   | abort_intercepted_stat_for_6 : forall S0 S C labs rv R eo2 eo3 t, (* TODO:  Reread, it seems that I didn't followed the exact style expected for these two rules. *)
+   | abort_intercepted_stat_for_6 : forall S0 S C labs rv R eo2 eo3 t,
       abort_intercepted_stat (stat_for_6 labs rv eo2 eo3 t R)
    | abort_intercepted_stat_for_7 : forall S0 S C labs rv R eo2 eo3 t,
       abort_intercepted_stat (stat_for_7 labs rv eo2 eo3 t R)
@@ -1475,10 +1473,10 @@ Inductive search_proto_chain : state -> object_loc -> prop_name -> option object
                                      object_proto S l prim_null ->
                                      search_proto_chain S l x None
   | search_proto_chain_inductive : forall S l x v l' res,
-                                     (not (object_has_property S l x) ->
+                                     not (object_has_property S l x) ->
                                      object_proto S l (value_object l') ->
                                      search_proto_chain S l' x res ->
-                                     search_proto_chain S l x res).
+                                     search_proto_chain S l x res.
 
 
 (** [make_delete_event S l x ev] constructs a delete_event "ev" which
