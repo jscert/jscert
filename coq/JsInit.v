@@ -138,28 +138,29 @@ Definition object_prealloc_global_properties :=
   let P := write_constant P "Infinity" JsNumber.infinity in
   let P := write_constant P "undefined" undef in
   let P := write_native P "eval" prealloc_global_eval in
-  (* LATER: let P := write_native P "parse_int" prealloc_parse_int in *)
-  (* LATER: let P := write_native P "parse_float" prealloc_parse_float in *)
   let P := write_native P "isNaN" prealloc_global_is_nan in
   let P := write_native P "isFinite" prealloc_global_is_finite in
-  (* LATER: 15.1.3 URI Handling Function Properties *)
   let P := write_native P "Object" prealloc_object in
   let P := write_native P "Function" prealloc_function in
   let P := write_native P "Array" prealloc_array in
   let P := write_native P "String" prealloc_string in
   let P := write_native P "Boolean" prealloc_bool in
   let P := write_native P "Number" prealloc_number in
-  (* LATER: let P := write_native P "Math" prealloc_math in *)
-  (* LATER: let P := write_native P "Date" prealloc_date in *)
-  (* LATER: let P := write_native P "RegExp" prealloc_regexp in *)
   let P := write_native P "Error" prealloc_error in
   let P := write_native P "EvalError" native_error_eval in
   let P := write_native P "RangeError" native_error_range in
   let P := write_native P "ReferenceError" native_error_ref in
   let P := write_native P "SyntaxError" native_error_syntax in
   let P := write_native P "TypeError" native_error_type in
-  (* LATER: let P := write_native P "URI_error" prealloc_uri_error in *)
   P.
+
+  (* LATER: let P := write_native P "parse_int" prealloc_parse_int in *)
+  (* LATER: let P := write_native P "parse_float" prealloc_parse_float in *)
+  (* LATER: 15.1.3 URI Handling Function Properties *)
+  (* LATER: let P := write_native P "Math" prealloc_math in *)
+  (* LATER: let P := write_native P "Date" prealloc_date in *)
+  (* LATER: let P := write_native P "RegExp" prealloc_regexp in *)
+  (* LATER: let P := write_native P "URI_error" prealloc_uri_error in *)
 
 
 (** Definition of the global object *)
@@ -588,9 +589,6 @@ Definition object_heap_initial :=
   let h := Heap.write h prealloc_function_proto object_prealloc_function_proto in
   let h := Heap.write h prealloc_array object_prealloc_array in
   let h := Heap.write h prealloc_array_proto object_prealloc_array_proto in
-  (* LATER : update and uncomment once definitions have been completed
-  let h := Heap.write h prealloc_eval_proto object_prealloc_eval_proto in
-  *)
   let h := Heap.write h prealloc_string object_prealloc_string in
   let h := Heap.write h prealloc_string_proto object_prealloc_string_proto in
   let h := Heap.write h prealloc_error_proto object_prealloc_error_proto in
@@ -607,6 +605,9 @@ Definition object_heap_initial :=
   let h := Heap.write h native_error_type (object_prealloc_native_error native_error_type) in
   object_heap_initial_function_objects h.
 
+  (* LATER : update and uncomment once definitions have been completed
+  let h := Heap.write h prealloc_eval_proto object_prealloc_eval_proto in
+  *)
 
 (**************************************************************)
 (** Initial environment record heap *)

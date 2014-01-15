@@ -431,8 +431,8 @@ Definition object_binds_property S l x A :=
     and binds it to the attributes [A]; The operation returns
     the updated state. *)
 
-Definition object_set_property S l x A :=
-  object_heap_map_properties S l (fun P => Heap.write P x A).
+Definition object_set_property S l x A S' :=
+  object_heap_map_properties S l (fun P => Heap.write P x A) S'.
 
 (** [search_proto_chain S l x res] Asserts that the result of
 searching the prototype chain of l in S for a field named x will be
@@ -982,12 +982,13 @@ Definition prog_funcdecl (p : prog) : list funcdecl :=
 (* We follow the spec according to Sections 10.5 and 10.1.
    10.5 tells us to fetch every variable declaration in the code.
    10.1 tells us not to step inside function bodies. *)
+(* Note: using List instead of LibList for fixpoint to be accepted *)
 
 Fixpoint stat_vardecl (t : stat) : list string :=
   match t with
   | stat_expr _ => nil
   | stat_label _ s => stat_vardecl s
-  | stat_block ts => LibList.concat (List.map stat_vardecl ts) (* Note: use List instead of LibList for fixpoint to be accepted *)
+  | stat_block ts => LibList.concat (List.map stat_vardecl ts) 
   | stat_var_decl nes => LibList.map fst nes
   | stat_if e s1 s2o => (stat_vardecl s1) ++
                         (LibOption.unsome_default 
