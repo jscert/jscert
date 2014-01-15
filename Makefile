@@ -110,7 +110,7 @@ debug:
 report:
 	bisect-report -html report bisect*.out
 	firefox report/index.html || open report/index.html
-	rm bisect*
+	rm bisect*.out
 
 tlc: $(TLC_VO)
 
