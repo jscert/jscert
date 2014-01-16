@@ -1,3 +1,9 @@
+/**
+ * Testing 10.6 (delete-5)
+ * Call delete on a non-existant property of the arguments object.
+ * Covers 946
+ */
+
 function testcase() {
   function foo(a)
   {

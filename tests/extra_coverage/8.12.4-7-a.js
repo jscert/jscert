@@ -1,13 +1,13 @@
 /**
- * Testing 8.12.4-8-a
- * Data property on a prototype written to with extensions prevented.
+ * Testing 8.12.4-7-a
+ * Accessor property on a prototype with undefined [[Set]] written to.
+ * Covers 654
  */
 
 function testcase() {  
     function foo() {};
-    foo.prototype.bar = 0;
+    foo.prototype = {get bar() {return 0;}};
     var o = new foo();
-    Object.preventExtensions(o);
     o.bar = 1;
     return o.hasOwnProperty("bar") == false && o.bar == 0; 
 }

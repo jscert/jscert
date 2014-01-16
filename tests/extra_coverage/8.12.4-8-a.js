@@ -1,12 +1,12 @@
 /**
- * Testing 8.12.4-7-a
- * Accessor property on a prototype with undefined [[Set]] written to with extensions prevented.
- * TODO: ask about factorising
+ * Testing 8.12.4-8-a
+ * Data property on a prototype written to with extensions prevented.
+ * Covers 652
  */
 
 function testcase() {  
     function foo() {};
-    foo.prototype = {get bar() {return 0;}};
+    foo.prototype.bar = 0;
     var o = new foo();
     Object.preventExtensions(o);
     o.bar = 1;
