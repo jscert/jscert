@@ -1,6 +1,7 @@
 /**
  * Testing 8.12.4-7-a
  * Accessor property on a prototype with undefined [[Set]] written to.
+ * Covers 654
  */
 
 function testcase() {  

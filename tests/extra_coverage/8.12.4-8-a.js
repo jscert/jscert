@@ -1,6 +1,7 @@
 /**
  * Testing 8.12.4-8-a
  * Data property on a prototype written to with extensions prevented.
+ * Covers 652
  */
 
 function testcase() {  
