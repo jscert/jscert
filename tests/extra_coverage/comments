@@ -1,0 +1,105 @@
+36 37 43 44 can be ignored as impossible cases
+
+77 self explanatory
+
+94 the empty list case corresponds to a function with no lexical environment (no scopes) - this should be impossible, might be possible if Function.prototype.bind were implemented
+
+127 128 cases should not occur
+
+145 corresponds to execution divergence - not important
+
+187 ? should be impossible to have a throw type in if_not_throw
+
+312 corresponds to execution divergence - not important
+
+362 generated definition redefined manually without use
+
+367 should not occur as part of normal execution
+
+376 generated definition redefined manually without use
+
+382 should not occur as part of normal execution
+
+435 - 518 definitions never used
+
+551 impossible case
+
+557 - needs further investigation
+
+652 654 - No executing test262 tests cover. Interpreter friendly tests exist in extra_coverage.
+
+678 depends on reject s1 throw0 lines
+
+699 712 735 742 760 801 unlikely to be coverable without Object.defineProperty.
+
+714 there is no way to cover this line without Object.defineProperty
+
+784 786 these lines seem difficult to cover without Object.defineProperty
+
+790 793 No executing test262 tests cover. Interpreter friendly tests exist in extra_coverage. Unsatisfactory test without Object.defineProperty.
+
+800 there is no way to cover this line without Object.defineProperty
+
+801 cannot be covered unless a reject s1 throw0 line can be covered i.e. likely needs Object.defineProperty.
+
+883 ? needs further investigation
+
+946 953 No executing test262 tests cover. Interpreter friendly tests exist in extra_coverage.
+
+967 971 977 991 (1013) Environment record coverage that needs further investigation
+
+1092 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage.
+
+1121 Type errors involving unexpected primitives, needs further investigation.
+
+1161 1162 1191 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage.
+
+1310 ? likely an impossible case unless run_callable can return None, needs futher investigation
+
+1345 1346 generated definition redefined before use
+
+1468 NYI
+
+1474 1475 preallocated object nativeError - never used?
+
+1539 ? this may be an impossible case, needs further investigation
+
+1674 - 1696 No executing test262 tests cover. Interpreter friendly tests exist in extra_coverage.
+
+1923 1924 needs further investigation
+
+1982 1984 This is almost certainly impossible to cover without Function.prototype.call.
+
+2046 No executing test262 tests cover due to String("foo") syntax not supported. An interpreter friendly test exists in extra_coverage.
+
+2059 This is likely something to do with "String Object" syntax "new String("foo")" not being supported. Still, I would have suspected calling foo.length or foo.prototype would have covered this (where foo is a String).
+
+2065 2099 unexpected primitive needs futher investigation
+
+2103 NYI
+
+2453 impossible case
+
+2912 2926 2935 switch needs further investigation
+
+2988 shouldn't be possible to be jumping to a label not in the label set
+
+3100 3107 3120 for loop needs further investigation
+
+3182 ? debug case?
+
+3184 NYI
+
+3381 Would be covered by ch15/15.2/15.2.3/15.2.3.12/15.2.3.12-2-c-1.js if Object.defineProperty were implemented.
+
+3396 Would be covered by ch15/15.2/15.2.3/15.2.3.12/15.2.3.12-3-28.js if Object.defineProperty were implemented.
+
+3410 - 3420 Almost certainly impossible to cover without Function.prototype.call.
+
+3448 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage. This one appears to be a straight-up deficiency in test262.
+
+3537 3543 Very hard to cover without String objects.
+
+3586 - 3603 bottom results should never occur in normal execution
+
+
