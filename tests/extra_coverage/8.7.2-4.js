@@ -1,6 +1,6 @@
 /**
  * Testing 8.7.2-4
- * Attempt to assign to a property of a primative.
+ * Attempt to assign to a property of a primitive.
  * Covers 1092 1191
  */
 
