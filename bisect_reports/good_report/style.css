@@ -32,7 +32,8 @@ body {
 }
 
 .lineNone { white-space: nowrap; background: white; font-family: monospace; }
-.lineAllVisited { white-space: nowrap; background: #30FF6A; font-family: monospace; }
+/*.lineAllVisited { white-space: nowrap; background: #30FF6A; font-family: monospace; }*/
+.lineAllVisited { white-space: nowrap; background: white; font-family: monospace; }
 .lineAllUnvisited { white-space: nowrap; background: #FF4423; font-family: monospace; }
 .lineMixed { white-space: nowrap; background: #E4FF5B; font-family: monospace; }
 
