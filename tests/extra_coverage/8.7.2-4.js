@@ -7,6 +7,6 @@
 function testcase() {  
   var foo = 1;
   foo.bar = 1;
-  return true;
+  return foo.bar == undefined;
 }
 runTestCase(testcase);
