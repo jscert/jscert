@@ -28,17 +28,17 @@
 
 652 654 - No executing test262 tests cover. Interpreter friendly tests exist in extra_coverage.
 
-678 depends on reject s1 throw0 lines
+678 cannot be covered unless a reject s1 throw0 line can be covered i.e. likely needs Object.defineProperty.
 
-699 712 735 742 760 801 unlikely to be coverable without Object.defineProperty.
+699 712 735 742 760 801 unlikely to be coverable without Object.defineProperty as other routes to this internal method generally catch these conditions beforehand
 
-714 there is no way to cover this line without Object.defineProperty
+714 there is no way to cover this line without Object.defineProperty as it requires a generic descriptor
 
-784 786 these lines seem difficult to cover without Object.defineProperty
+784 786 these lines seem difficult to cover without Object.defineProperty, as it's difficult to make the arguments object have an accessor property otherwise
 
 790 793 No executing test262 tests cover. Interpreter friendly tests exist in extra_coverage. Unsatisfactory test without Object.defineProperty.
 
-800 there is no way to cover this line without Object.defineProperty
+800 there is no way to cover this line without Object.defineProperty since it's basically the generic descriptor case
 
 801 cannot be covered unless a reject s1 throw0 line can be covered i.e. likely needs Object.defineProperty.
 
@@ -50,7 +50,7 @@
 
 1092 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage.
 
-1121 Type errors involving unexpected primitives, needs further investigation.
+1121 Type error involving unexpected primitive, needs further investigation.
 
 1161 1162 1191 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage.
 
@@ -60,7 +60,7 @@
 
 1468 NYI
 
-1474 1475 preallocated object nativeError - never used?
+1474 1475 ? preallocated object nativeError - never used?
 
 1539 ? this may be an impossible case, needs further investigation
 
@@ -68,7 +68,7 @@
 
 1923 1924 needs further investigation
 
-1982 1984 This is almost certainly impossible to cover without Function.prototype.call.
+1982 1984 This is almost certainly impossible to cover without Function.prototype.call/bind.
 
 2046 No executing test262 tests cover due to String("foo") syntax not supported. An interpreter friendly test exists in extra_coverage.
 
@@ -94,7 +94,7 @@
 
 3396 Would be covered by ch15/15.2/15.2.3/15.2.3.12/15.2.3.12-3-28.js if Object.defineProperty were implemented.
 
-3410 - 3420 Almost certainly impossible to cover without Function.prototype.call.
+3410 - 3420 Almost certainly impossible to cover without Function.prototype.call/bind.
 
 3448 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage. This one appears to be a straight-up deficiency in test262.
 
