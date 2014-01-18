@@ -6,7 +6,6 @@
 
 function testcase() {  
   var foo = {};
-  var bar = foo.isPrototypeOf(true);
   return !foo.isPrototypeOf(true);
 }
 runTestCase(testcase);
