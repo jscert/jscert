@@ -144,8 +144,9 @@ with funcbody :=
   | funcbody_intro : prog -> string -> funcbody
 
 (** Grammar of statements *)
+(* LATER: An explanation of these additionnal [label_set] would be welcomed. *)
 
-with stat := (* LATER: An explanation of these additionnal [label_set] would be welcomed. *)
+with stat := 
   | stat_expr : expr -> stat
   | stat_label : string -> stat -> stat
   | stat_block : list stat -> stat
