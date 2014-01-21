@@ -13,13 +13,9 @@
     dependencies [[http://jscert.org/jscertvm.ova][here]]. That VM is in [[http://en.wikipedia.org/wiki/Open_Virtualization_Format][Open Virtualization Format]], and
     should work with your favourite VM package.
 
-*** TODO Add a github link below.
-    :LOGBOOK:
-    - State "TODO"       from ""           [2013-12-10 Tue 16:12]
-    :END:
 *** The developer option
 
-    You can get the latest source from [[http://github.com/][here]].
+    You can get the latest source from [[https://github.com/jscert/jscert][here]].
 
     JSCert depends on:
     - Coq
@@ -32,14 +28,6 @@
     - Haskell
     - SqlLite
 
-**** TODO Update these instructions with the right src directory.
-      :LOGBOOK:
-      - State "TODO"       from ""           [2013-12-10 Tue 17:00]
-      :END:
-**** TODO Can we fix it so we don't have to run make twice? Please?
-     :LOGBOOK:
-     - State "TODO"       from ""           [2013-12-10 Tue 17:06]
-     :END:
 **** Basic Install
       First, get java. On Ubuntu, this looks something like this:
 
@@ -152,11 +140,12 @@ cabal install cabal-dev
 
 ** How to read JSCert
 
-   Arthur
+*** TODO Link to Arthur's docs on the main website.
+    :LOGBOOK:
+    - State "TODO"       from ""           [2014-01-21 Tue 17:45]
+    :END:
 
 *** Why are some things marked "Admitted" ?
-
-    Arthur and Alan
 
     JSCert is a large project, and can take some time to build.
     Fortunately, there are some simple tricks we regularly use to make
@@ -177,11 +166,6 @@ cabal install cabal-dev
     which are as they are to speed up our regular working build
     process.
 
-**** DONE Alan: What follows is my first draft. Check it over?  --gds
-     :LOGBOOK:
-     - State "DONE"       from "TODO"       [2014-01-15 Wed 15:49]
-     - State "TODO"       from ""           [2014-01-06 Mon 12:49]
-     :END:
 **** Can I trust the parser?
 
      We do not attempt to specify a JavaScript parser as a part of the
