@@ -145,6 +145,7 @@ with funcbody :=
 
 (** Grammar of statements *)
 (* LATER: An explanation of these additionnal [label_set] would be welcomed. *)
+(* TODO: start_for_in: Is that really an expression at the place of [e1]? -- Martin *)
 
 with stat := 
   | stat_expr : expr -> stat
@@ -162,7 +163,7 @@ with stat :=
   | stat_try : stat -> option (string * stat) -> option stat -> stat (* Note: try s1 [catch (x) s2] [finally s3] *)
   | stat_for : label_set -> option expr -> option expr -> option expr -> stat -> stat (* Note: for (e1; e2; e3) stat *)
   | stat_for_var : label_set -> list (string * option expr) -> option expr -> option expr -> stat -> stat (* Note: for (var ...; e2; e3) stat *)
-  | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *) (* Is that really an expression at the place of [e1]? -- Martin *)
+  | stat_for_in : label_set -> expr -> expr -> stat -> stat (* Note: for (e1 in e2) stat *)
   | stat_for_in_var : label_set -> string -> option expr -> expr -> stat -> stat (*  Note: for (var x [= e1] in e2) stat *)
   | stat_debugger : stat
   | stat_switch : label_set -> expr -> switchbody -> stat

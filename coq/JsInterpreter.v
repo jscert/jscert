@@ -389,6 +389,8 @@ Definition run_object_heap_set_extensible b S l : option state :=
    a pointer to the main functions.  Those types are just the ones of
    those main functions. *)
 
+(* TODO: runs_type_to_integer, runs_type_to_string: There may be one, but I see no immediate reason for those two functions to be put inside [runs_type]. *)
+
 Record runs_type : Type := runs_type_intro {
     runs_type_expr : state -> execution_ctx -> expr -> result;
     runs_type_stat : state -> execution_ctx -> stat -> result;
@@ -405,7 +407,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_proto_is_prototype_of : state -> object_loc -> object_loc -> result;
     runs_type_object_put : state -> execution_ctx -> object_loc -> prop_name -> value -> strictness_flag -> result;
     runs_type_equal : state -> execution_ctx -> value -> value -> result;
-    runs_type_to_integer : state -> execution_ctx -> value -> result; (* There may be one, but I see no immediate reason for those two functions to be put inside [runs_type]. *)
+    runs_type_to_integer : state -> execution_ctx -> value -> result;
     runs_type_to_string : state -> execution_ctx -> value -> result
   }.
 
