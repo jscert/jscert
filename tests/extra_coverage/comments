@@ -96,7 +96,7 @@
 
 3410 - 3420 Almost certainly impossible to cover without Function.prototype.call/bind.
 
-3448 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage. This one appears to be a straight-up deficiency in test262.
+3448 No executing test262 tests cover. An interpreter friendly test exists in extra_coverage. This one appears to be a deficiency in test262.
 
 3537 3543 Very hard to cover without String objects.
 
