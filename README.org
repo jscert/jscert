@@ -96,7 +96,7 @@ make
 **** Testing Install
 
       In order to be able to run tests (for example the Test262 tests)
-      using JSRef, you will also need python. Ubuntu usres can do:
+      using JSRef, you will also need python. Ubuntu users can do:
 
 #+begin_src sh
 sudo apt-get install python
