@@ -137,13 +137,9 @@ cabal install cabal-dev
 #+end_src
 
 
-
 ** How to read JSCert
 
-*** TODO Link to Arthur's docs on the main website.
-    :LOGBOOK:
-    - State "TODO"       from ""           [2014-01-21 Tue 17:45]
-    :END:
+Our development is described in details [[http://jscert.org/dvpt.html][on this page]].
 
 *** Why are some things marked "Admitted" ?
 
