@@ -145,7 +145,6 @@ with funcbody :=
 
 (** Grammar of statements *)
 (* LATER: An explanation of these additionnal [label_set] would be welcomed. *)
-(* TODO: start_for_in: Is that really an expression at the place of [e1]? -- Martin *)
 
 with stat := 
   | stat_expr : expr -> stat
