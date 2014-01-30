@@ -1,0 +1,3 @@
+[submodule "interp/parser"]
+	path = interp/parser
+	url = https://github.com/resource-reasoning/JS_Parser.git

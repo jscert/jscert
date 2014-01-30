@@ -17,3 +17,4 @@ TAGS
 *.xml
 report
 
+/interp/run_jsbisect
