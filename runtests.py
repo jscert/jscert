@@ -44,11 +44,11 @@ argp.add_argument("--webreport",action="store_true",
     help="Produce a web-page of your results in the default web directory. Requires pystache.")
 
 argp.add_argument("--templatedir",action="store",metavar="path",
-    default=os.path.join(os.pardir,os.pardir,os.pardir,"web","test_results"),
+    default=os.path.join("test_reports"),
     help="Where to find our web-templates when producing reports")
 
 argp.add_argument("--reportdir",action="store",metavar="path",
-    default=os.path.join(os.pardir,os.pardir,os.pardir,"web","test_results"),
+    default=os.path.join("test_reports"),
     help="Where to put our test reports")
 
 argp.add_argument("--title",action="store",metavar="string", default="",

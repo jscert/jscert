@@ -1,0 +1,115 @@
+          <h1>Results of {{implementation}} tests {{testtitle}}</h1>
+          <p>{{testnote}}</p>
+          <p>
+              Fancy JavaScript navigation has been disabled, because
+              it crashed browsers when dealing with large data files.
+              You'll have to make do with these hyperlinks instead.
+              <ol>
+                  <li><a href="#htime">When the test was run</a></li>
+                  <li><a href="#hsysinfo">The machine we ran it on</a></li>
+                  <li><a href="#hsummary">Summary of the tests</a></li>
+                  <li><a href="#hdetails">Test details</a>
+                  <ol>
+                      <li><a href="#aborts">The aborted tests</a></li>
+                      <li><a href="#fails">The failed tests</a></li>
+                      <li><a href="#passes">The passed tests</a></li>
+                  </ol>
+                  </li>
+                  <li><a href="#hlfails">Plain text list of failed tests</a></li>
+                  <li><a href="#hlaborts">Plain text list of aborted tests</a></li>
+              </ol>
+          </p>
+          <h2 id="htime">run on {{time}} UTC by {{user}}</h2>
+          <div id="time">
+              <p>(note that many of us work in different time zones, but all times in test reports are UTC)</p>
+          </div>
+
+          <h2 id="hsysinfo">System Information</h2>
+          <div id="sysinfo">
+              <p>
+                  <dl>
+                      <dt>OS:</dt><dd>{{system}}</dd>
+                      <dt>Machine Name:</dt><dd>{{osnodename}}</dd>
+                      <dt>OS Release:</dt><dd>{{osrelease}}</dd>
+                      <dt>OS Version:</dt><dd>{{osversion}}</dd>
+                      <dt>Hardware:</dt><dd>{{hardware}}</dd>
+                  </dl>
+              </p>
+          </div>
+
+          <h2 id="hsummary">Test Summary</h2>
+          <div id="summary">
+              <p>There were {{numpasses}} passes, {{numfails}} fails and {{numaborts}} aborts.</p>
+          </div>
+          <h2 id="hdetails">Test Details</h2>
+          <div id="details">
+              <dl>
+                  <dt>The aborts were:</dt>
+                  <dd>
+                      <dl id="aborts">
+                          {{#aborts}}
+                          <dt>{{testname}}</dt>
+                          <dd>
+                              <dl>
+                                  <dt>File path:</dt>
+                                  <dd>{{filename}}</dd>
+                                  <dt>StdOut:</dt>
+                                  <dd><pre>{{stdout}}</pre></dd>
+                                  <dt>StdErr:</dt>
+                                  <dd><pre>{{stderr}}</pre></dd>
+                              </dl>
+                          </dd>
+                          {{/aborts}}
+                      </dl>
+                  </dd>
+
+                  <dt>The failures were:</dt>
+                  <dd>
+                      <dl>
+                          {{#failures}}
+                          <dt>{{testname}}</dt>
+                          <dd>
+                              <dl>
+                                  <dt>File path:</dt>
+                                  <dd>{{filename}}</dd>
+                                  <dt>StdOut:</dt>
+                                  <dd><pre>{{stdout}}</pre></dd>
+                                  <dt>StdErr:</dt>
+                                  <dd><pre>{{stderr}}</pre></dd>
+                              </dl>
+                          </dd>
+                          {{/failures}}
+                      </dl>
+                  </dd>
+                  <dt>The passes were:</dt>
+                  <dd>
+                      <dl>
+                          {{#passes}}
+                          <dt>{{testname}}</dt>
+                          <dd>
+                              <dl>
+                                  <dt>File path:</dt>
+                                  <dd>{{filename}}</dd>
+                                  <dt>StdOut:</dt>
+                                  <dd><pre>{{stdout}}</pre></dd>
+                                  <dt>StdErr:</dt>
+                                  <dd><pre>{{stderr}}</pre></dd>
+                              </dl>
+                          </dd>
+                          {{/passes}}
+                      </dl>
+                  </dd>
+              </dl>
+          </div>
+          <h2 id="hlfails">Failed Test List</h2>
+          <div id="lfails">
+              {{#failures}}
+              {{testname}}<br />
+              {{/failures}}
+          </div>
+          <h2 id="hlaborts">Aborted Test List</h2>
+          <div id="laborts">
+              {{#aborts}}
+              {{testname}}<br />
+              {{/aborts}}
+          </div>          

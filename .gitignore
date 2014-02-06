@@ -18,3 +18,5 @@ TAGS
 report
 
 /interp/run_jsbisect
+/test_data/query_scripts/cabal-dev/*
+/test_data/query_scripts/dist/*

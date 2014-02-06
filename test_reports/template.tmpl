@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>JSCert</title>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.1/jquery.min.js"></script>
+    <script type="text/javascript">
+      function startingState() {
+          $("dt").next().hide();
+          $("h2").next().hide();
+          $("#summary").show();
+      }
+      function showAll() {
+          $("dt").next().show();
+          $("h2").next().show();
+      }
+      function hideAll() {
+          $("dt").next().hide();
+          $("h2").next().hide();
+      }
+      function toggleAllKids() {
+          check = $(this).prop("checked")
+          $(this).parent().next().toggle(check)
+          $(this).parent().next().find("input").prop("checked",check)
+          $(this).parent().next().find("input").change()
+      }
+      $(document).ready(function()
+      {
+      $("#maintainer").append("gds");
+      $("#maintainer").append(unescape("%"+(20*2)));
+      $("#maintainer").append("doc");
+      $("#maintainer").append(unescape("%"+(5-3)+"E"));
+      $("#maintainer").append("ic");
+      $("#maintainer").append(unescape("%"+(6-4)+"E"));
+      $("#maintainer").append("ac");
+      $("#maintainer").append(unescape("%"+(7-5)+"E"));
+      $("#maintainer").append("uk");
+      });
+    </script>
+    <style type="text/css" media="all">
+      @import "../jscert.css";
+    </style>
+  </head>
+  <body>
+    <div id="titlebar">
+      <h1 id="title">JSCert Test Data</h1>
+      <ul id="menu">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="index.html">All Tests</a></li>
+      </ul>
+    </div>
+    <div id="maincontainer">
+      <div id="rhs">
+        <img src="../pics/RHSCupSmall.jpg" />
+        <div id="maintainer">webmaster: </div>
+      </div>
+      <div id="main">
+          {{body}}
+      </div>
+    </div>
+  </body>
+</html>

@@ -219,7 +219,8 @@ Our development is described in details [[http://jscert.org/dvpt.html][on this p
 
     The command above will run all the tests in the Test262 suite, and
     print a pass/fail result for each test. If you would like to
-    collate those results into a pretty HTML page, you can do the following:
+    collate those results into a pretty HTML page in
+    =./test_reports/=, you can do the following:
 
 #+begin_src sh
 ./runtests.py --webreport `./test262tests`
@@ -265,8 +266,9 @@ cd ..
 
     The query binaries are created in the directory
     =test_data/query_scripts/cabal-dev/bin/=. The most useful of these
-    is =make_simple_report= which can be used to produce a report of
-    all the test runs that meet our criteria of being "interesting".
+    is =make_simple_report= which can be used to produce a report (in
+    =./test_reports/=) of all the test runs that meet our criteria of
+    being "interesting".
 
 #+begin_src sh
 cabal-dev/bin/make_simple_report --querytype=OnlyInteresting --reportname=Interesting 

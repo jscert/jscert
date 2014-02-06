@@ -232,7 +232,7 @@ dbToSTR res = SingleTestRun
 reportDir :: IO FilePath
 reportDir = do
   dir <- getCurrentDirectory
-  return $ runNTimes 5 takeDirectory dir </> "web" </> "test_results"
+  return $ takeDirectory dir </> "test_reports"
   where runNTimes n f x = iterate f x !! n
 
 outerTemplate :: IO FilePath
