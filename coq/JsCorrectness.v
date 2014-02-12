@@ -1921,7 +1921,7 @@ Ltac run_post_if_spec_ter_post_bool H := (* todo: integrate into run_post *)
 Lemma if_spec_post_to_bool : forall (K:state->bool->result) S C e o y1,
   red_spec S C (spec_expr_get_value e) y1 ->
   if_spec_post
-   (fun S v => Let b := convert_value_to_boolean v in K S b) (specret_out o) y1 ->
+   (fun S v => 'let b := convert_value_to_boolean v in K S b) (specret_out o) y1 ->
   exists y2,
      red_spec S C (spec_expr_get_value_conv spec_to_boolean e) y2
   /\ if_spec_ter_post_bool K o y2.

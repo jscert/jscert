@@ -75,8 +75,8 @@ Inductive resultof T :=
   | result_some : T -> resultof T
   | result_not_yet_implemented
   | result_impossible
-  | result_bottom : state -> resultof T. 
-  
+  | result_bottom : state -> resultof T.
+
   (* We could put any information there.  They can be used to create step by step interpreter. *)
 
 Implicit Arguments result_some [[T]].
@@ -428,7 +428,7 @@ Definition object_has_prop runs S C l x : result :=
 Definition object_get_builtin runs S C B (vthis : value) l x : result :=
   (* Corresponds to the construction [spec_object_get_1] of the specification. *)
 
-  Let default :=
+  'let default :=
     fun S l =>
       if_spec (runs_type_object_get_prop runs S C l x) (fun S0 D =>
         match D with
@@ -446,9 +446,9 @@ Definition object_get_builtin runs S C B (vthis : value) l x : result :=
               result_impossible (* At least, the ECMAScript specification says so. *)
             end
         end) in
-  
-  Let function := 
-    fun S => 
+
+  'let function :=
+    fun S =>
       if_value (default S l) (fun S' v =>
          ifb spec_function_get_error_case S' x v then
            run_error S' native_error_type
@@ -549,23 +549,23 @@ Definition object_can_put runs S C l x : result :=
 
 
 Definition object_define_own_prop runs S C l x Desc throw : result :=
-  Let reject := fun S throw =>
+  'let reject := fun S throw =>
     out_error_or_cst S throw native_error_type false in
 
-  Let default := fun S throw =>
+  'let default := fun S throw =>
       if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         if_some (run_object_method object_extensible_ S1 l) (fun ext =>
              match D, ext with
              | full_descriptor_undef, false => reject S1 throw
              | full_descriptor_undef, true =>
-               Let A : attributes :=
+               'let A : attributes :=
                  ifb descriptor_is_generic Desc \/ descriptor_is_data Desc
                  then (attributes_data_of_descriptor Desc : attributes)
                  else attributes_accessor_of_descriptor Desc in
                if_some (pick_option (object_set_property S1 l x A)) (fun S2 =>
                  res_ter S2 true)
              | full_descriptor_some A, bext =>
-               Let object_define_own_prop_write := fun S1 A =>
+               'let object_define_own_prop_write := fun S1 A =>
                  let A' := attributes_update A Desc in
                  if_some (pick_option (object_set_property S1 l x A')) (fun S2 =>
                    res_ter S2 true)
@@ -592,7 +592,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                         object_define_own_prop_write S2 A')
                   *)
                  (if (attributes_configurable A) then
-                   Let A':=
+                   'let A':=
                      match A return attributes with
                      | attributes_data_of Ad =>
                        attributes_accessor_of_attributes_data Ad
@@ -637,7 +637,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
           if_spec (runs_type_object_get_own_prop runs S C lmap x) (fun S D =>
             if_bool (default S false) (fun S b =>
               if b then
-                Let follow := fun S => res_ter S true in
+                'let follow := fun S => res_ter S true in
                 match D with
                 | full_descriptor_undef =>
                   follow S
@@ -645,7 +645,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                   ifb descriptor_is_accessor Desc
                   then if_bool (runs_type_object_delete runs S C lmap x false) (fun S _ =>
                          follow S)
-                  else Let follow := fun S =>
+                  else 'let follow := fun S =>
                          ifb descriptor_writable Desc = Some false then
                            if_bool (runs_type_object_delete runs S C lmap x false) (fun S _ =>
                              follow S)
@@ -707,19 +707,19 @@ Definition run_to_descriptor runs S C v : specres descriptor :=
 Definition prim_new_object S w : result :=
   match w with
   | prim_bool b =>
-      Let O1 := object_new prealloc_bool_proto "Boolean" in
-      Let O := object_with_primitive_value O1 b in
+      'let O1 := object_new prealloc_bool_proto "Boolean" in
+      'let O := object_with_primitive_value O1 b in
       let '(l, S1) := object_alloc S O in
       out_ter S1 l
   | prim_number n =>
-      Let O1 := object_new prealloc_number_proto "Number" in
-      Let O := object_with_primitive_value O1 n in
+      'let O1 := object_new prealloc_number_proto "Number" in
+      'let O := object_with_primitive_value O1 n in
       let '(l, S1) := object_alloc S O in
       out_ter S1 l
   | prim_string s =>
-      Let O2 := object_new prealloc_string_proto "String" in
-      Let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
-      Let O :=  object_with_primitive_value O1 s in
+      'let O2 := object_new prealloc_string_proto "String" in
+      'let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
+      'let O :=  object_with_primitive_value O1 s in
       let '(l, S1) := object_alloc S O in
       out_ter S1 l
   | _ =>
@@ -869,7 +869,7 @@ Definition ref_get_value runs S C rv : specres value :=
   | resvalue_value v =>
     res_spec S v
   | resvalue_ref r =>
-    Let for_base_or_object := fun tt =>
+    'let for_base_or_object := fun tt =>
       match ref_base r with
       | ref_base_type_value v =>
         ifb ref_has_primitive_base r then
@@ -914,12 +914,12 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
     if_bool (object_can_put runs S C l x) (fun S1 b =>
       if b then
         if_spec (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
-          Let follow := fun _ =>
+          'let follow := fun _ =>
             if_spec (run_object_get_prop runs S2 C l x) (fun S3 D' =>
-              Let follow' := fun _ =>
+              'let follow' := fun _ =>
                 match vthis with
                 | value_object lthis =>
-                  Let Desc := descriptor_intro_data v true true true in
+                  'let Desc := descriptor_intro_data v true true true in
                   if_success (object_define_own_prop runs S3 C l x Desc str) (fun S4 rv =>
                     res_void S4)
                 | value_prim wthis =>
@@ -941,7 +941,7 @@ Definition object_put_complete runs B S C vthis l x v str : result_void :=
           | attributes_data_of Ad =>
             match vthis with
             | value_object lthis =>
-              Let Desc := descriptor_intro (Some v) None None None None None in
+              'let Desc := descriptor_intro (Some v) None None None None None in
               if_success (object_define_own_prop runs S2 C l x Desc str) (fun S3 rv =>
                 res_void S3)
             | value_prim wthis =>
@@ -1015,21 +1015,21 @@ Definition ref_put_value runs S C rv v : result_void :=
   end.
 
 Definition env_record_create_mutable_binding runs S C L x (deletable_opt : option bool) : result_void :=
-  Let deletable := unsome_default false deletable_opt in
+  'let deletable := unsome_default false deletable_opt in
   if_some (pick_option (env_record_binds S L)) (fun E =>
     match E with
     | env_record_decl Ed =>
       ifb decl_env_record_indom Ed x then
         impossible_with_heap_because S "Already declared environnment record in [env_record_create_mutable_binding]."
       else
-        Let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
+        'let S' := env_record_write_decl_env S L x (mutability_of_bool deletable) undef in
         res_void S'
     | env_record_object l pt =>
       if_bool (object_has_prop runs S C l x) (fun S1 has =>
         if has then
           impossible_with_heap_because S1 "Already declared binding in [env_record_create_mutable_binding]."
         else (
-          Let A := attributes_data_intro undef true true deletable in
+          'let A := attributes_data_intro undef true true deletable in
           if_success (object_define_own_prop runs S1 C l x A throw_true) (fun S2 rv =>
             res_void S2)))
     end).
@@ -1056,7 +1056,7 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
     | env_record_decl Ed =>
       if_some (pick_option (Heap.binds Ed x)) (fun evs =>
         ifb evs = (mutability_uninitialized_immutable, undef) then
-          Let S' := env_record_write_decl_env S L x mutability_immutable v in
+          'let S' := env_record_write_decl_env S L x mutability_immutable v in
           res_void S'
         else
           impossible_with_heap_because S "Non suitable binding in [env_record_initialize_immutable_binding].")
@@ -1074,7 +1074,7 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
     | builtin_default_value_default =>
       let gpref := unsome_default preftype_number prefo in
       let lpref := other_preftypes gpref in
-      Let sub := fun S' x (K:state->result) =>
+      'let sub := fun S' x (K:state->result) =>
         (if_value (run_object_get runs S' C l x) (fun S1 vfo =>
           if_some (run_callable S1 vfo) (fun co =>
             match co with
@@ -1087,7 +1087,7 @@ Definition object_default_value runs S C l (prefo : option preftype) : result :=
                   end))
             | None => K S1
             end))) in
-      Let gmeth := method_of_preftype gpref in
+      'let gmeth := method_of_preftype gpref in
       sub S gmeth (fun S' =>
         let lmeth := method_of_preftype lpref in
         sub S' lmeth (fun S'' => run_error S'' native_error_type))
@@ -1141,8 +1141,8 @@ Definition call_object_new S v : result :=
   | type_string | type_bool | type_number =>
     to_object S v
   | type_null | type_undef =>
-    Let O := object_new prealloc_object_proto "Object" in
-    Let p := object_alloc S O in (* LATER: Let on pairs *)
+    'let O := object_new prealloc_object_proto "Object" in
+    'let p := object_alloc S O in (* LATER: ['let] on pairs *)
     let '(l, S') := p in
     out_ter S' l
   end.
@@ -1158,37 +1158,37 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
   match B with
 
   | prealloc_object =>
-    Let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     call_object_new S v
 
   | prealloc_function =>
     result_not_yet_implemented (* LATER:  Waiting for specification *)
 
   | prealloc_bool =>
-    Let v := get_arg 0 args in
-    Let b := convert_value_to_boolean v in
-    Let O1 := object_new prealloc_bool_proto "Boolean" in
-    Let O := object_with_primitive_value O1 b in
-    Let p := object_alloc S O in (* LATER: Let pair *)
+    'let v := get_arg 0 args in
+    'let b := convert_value_to_boolean v in
+    'let O1 := object_new prealloc_bool_proto "Boolean" in
+    'let O := object_with_primitive_value O1 b in
+    'let p := object_alloc S O in (* LATER: ['let] on pair *)
     let '(l, S') := p in
     out_ter S' l
 
   | prealloc_number =>
-    Let follow := fun S' v =>
-      Let O1 := object_new prealloc_number_proto "Number" in
-      Let O := object_with_primitive_value O1 v in
+    'let follow := fun S' v =>
+      'let O1 := object_new prealloc_number_proto "Number" in
+      'let O := object_with_primitive_value O1 v in
       let '(l, S1) := object_alloc S' O in
       out_ter S1 l : result
       in
     ifb args = nil then
       follow S JsNumber.zero
     else
-      Let v := get_arg 0 args in
+      'let v := get_arg 0 args in
       if_number (to_number runs S C v) follow
 
   | prealloc_array =>
-    Let O := object_new prealloc_array_proto "Array" in
-    Let p := object_alloc S O in
+    'let O := object_new prealloc_array_proto "Array" in
+    'let p := object_alloc S O in
     let '(l, S') := p in
     if_not_throw (object_define_own_prop runs S' C l "length" (attributes_data_intro JsNumber.zero true true true) throw_false) (fun S _ =>
       out_ter S l)
@@ -1197,15 +1197,15 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     result_not_yet_implemented (* LATER:  Waiting for specification *)
 
   | prealloc_error =>
-    Let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     build_error S prealloc_error_proto v
 
   | prealloc_native_error ne =>
-    Let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     build_error S (prealloc_native_error ne) v
 
   | prealloc_native_error_proto ne =>
-    Let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     build_error S B v
 
   | _ => (* NOTE:  Are there other cases missing? *)
@@ -1215,15 +1215,15 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
 
 Definition run_construct_default runs S C l args :=
   if_value (run_object_get runs S C l "prototype") (fun S1 v1 =>
-    Let vproto :=
+    'let vproto :=
       ifb type_of v1 = type_object then v1
       else prealloc_object_proto
       in
-    Let O := object_new vproto "Object" in
-    Let p := object_alloc S1 O in (* LATER: Let pair *)
+    'let O := object_new vproto "Object" in
+    'let p := object_alloc S1 O in (* LATER: ['let] on pair *)
     let '(l', S2) := p in
     if_value (runs_type_call runs S2 C l l' args) (fun S3 v2 =>
-      Let vr := ifb type_of v2 = type_object then v2 else l' in
+      'let vr := ifb type_of v2 = type_object then v2 else l' in
       res_ter S3 vr)).
 
 Definition run_construct runs S C co l args : result :=
@@ -1241,7 +1241,7 @@ Definition run_construct runs S C co l args : result :=
 (** Function Calls *)
 
 Definition run_call_default runs S C (lf : object_loc) : result :=
-  Let default := (out_ter S undef : result) in
+  'let default := (out_ter S undef : result) in
   if_some (run_object_method object_code_ S lf) (fun OC =>
        match OC with
        | None => default
@@ -1256,28 +1256,28 @@ Definition run_call_default runs S C (lf : object_loc) : result :=
 
 Definition creating_function_object_proto runs S C l : result :=
   if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 lproto =>
-    Let A1 := attributes_data_intro l true false true in
+    'let A1 := attributes_data_intro l true false true in
     if_bool (object_define_own_prop runs S1 C lproto "constructor" A1 false) (fun S2 b =>
-      Let A2 := attributes_data_intro lproto true false false in
+      'let A2 := attributes_data_intro lproto true false false in
       object_define_own_prop runs S2 C l "prototype" A2 false)).
 
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
-  Let O := object_new prealloc_function_proto "Function" in
-  Let O1 := object_with_get O builtin_get_function in
-  Let O2 := object_with_invokation O1
+  'let O := object_new prealloc_function_proto "Function" in
+  'let O1 := object_with_get O builtin_get_function in
+  'let O2 := object_with_invokation O1
     (Some construct_default)
     (Some call_default)
     (Some builtin_has_instance_function) in
-  Let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in
-  Let p := object_alloc S O3 in (* LATER: Let on pairs *)
+  'let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in
+  'let p := object_alloc S O3 in (* LATER: ['let] on pairs *)
   let '(l, S1) := p in
-  Let A1 := attributes_data_intro (JsNumber.of_int (length names)) false false false in
+  'let A1 := attributes_data_intro (JsNumber.of_int (length names)) false false false in
   if_bool (object_define_own_prop runs S1 C l "length" A1 false) (fun S2 b2 =>
     if_bool (creating_function_object_proto runs S2 C l) (fun S3 b3 =>
       if negb str then res_ter S3 l
       else (
-        Let vthrower := value_object prealloc_throw_type_error in
-        Let A2 := attributes_accessor_intro vthrower vthrower false false in
+        'let vthrower := value_object prealloc_throw_type_error in
+        'let A2 := attributes_accessor_intro vthrower vthrower false false in
         if_bool (object_define_own_prop runs S3 C l "caller" A2 false) (fun S4 b4 =>
           if_bool (object_define_own_prop runs S4 C l "arguments" A2 false) (fun S5 b5 =>
             res_ter S5 l))))).
@@ -1286,10 +1286,10 @@ Fixpoint binding_inst_formal_params runs S C L (args : list value) (names : list
   match names with
   | nil => res_void S
   | argname :: names' =>
-    Let v := hd undef args in
-    Let args' := tl args in
+    'let v := hd undef args in
+    'let args' := tl args in
     if_bool (env_record_has_binding runs S C L argname) (fun S1 hb =>
-      Let follow := fun S' =>
+      'let follow := fun S' =>
         if_void (env_record_set_mutable_binding runs S' C L argname v str) (fun S'' =>
           binding_inst_formal_params runs S'' C L args' names' str)
         in
@@ -1303,12 +1303,12 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
   match fds with
   | nil => res_void S
   | fd :: fds' =>
-      Let fbd := funcdecl_body fd in
-      Let str_fd := funcbody_is_strict fbd in
-      Let fparams := funcdecl_parameters fd in
-      Let fname := funcdecl_name fd in
+      'let fbd := funcdecl_body fd in
+      'let str_fd := funcbody_is_strict fbd in
+      'let fparams := funcdecl_parameters fd in
+      'let fname := funcdecl_name fd in
       if_object (creating_function_object runs S C fparams fbd (execution_ctx_variable_env C) str_fd) (fun S1 fo =>
-        Let follow := fun S2 =>
+        'let follow := fun S2 =>
           if_void (env_record_set_mutable_binding runs S2 C L fname fo str) (fun S3 =>
             binding_inst_function_decls runs S3 C L fds' str bconfig)
           in
@@ -1321,7 +1321,7 @@ Fixpoint binding_inst_function_decls runs S C L (fds : list funcdecl) str bconfi
                   impossible_with_heap_because S3 "Undefined full descriptor in [binding_inst_function_decls]."
                 | full_descriptor_some A =>
                   ifb attributes_configurable A then (
-                    Let A' := attributes_data_intro undef true true bconfig in
+                    'let A' := attributes_data_intro undef true true bconfig in
                     if_bool (object_define_own_prop runs S3 C prealloc_global fname A' true)
                       (fun S _ => follow S)
                   ) else ifb descriptor_is_accessor A
@@ -1358,27 +1358,27 @@ Fixpoint arguments_object_map_loop runs S C l xs len args X str lmap xsmap {stru
       res_void S
     else (
       if_some (pick_option (object_binds S l)) (fun O =>
-        Let O' := object_for_args_object O lmap builtin_get_args_obj
+        'let O' := object_for_args_object O lmap builtin_get_args_obj
                     builtin_get_own_prop_args_obj builtin_define_own_prop_args_obj
                     builtin_delete_args_obj in
         res_void (object_write S l O')))
   | S len' => (* args <> nil *)
-    Let tdl := LibList.take_drop_last args in let (rmlargs, largs) := tdl in
-    Let arguments_object_map_loop' := fun S xsmap =>
+    'let tdl := LibList.take_drop_last args in let (rmlargs, largs) := tdl in
+    'let arguments_object_map_loop' := fun S xsmap =>
       arguments_object_map_loop runs S C l xs len' rmlargs X str lmap xsmap in
-    Let A := attributes_data_intro_all_true largs in
+    'let A := attributes_data_intro_all_true largs in
     if_bool (object_define_own_prop runs S C l (convert_prim_to_string len') A false) (fun S1 b =>
       ifb len' >= length xs then
         arguments_object_map_loop' S1 xsmap
       else (
         let dummy := "" in
-        Let x := nth_def dummy len' xs in
+        'let x := nth_def dummy len' xs in
         ifb str = true \/ Mem x xsmap then
           arguments_object_map_loop' S1 xsmap
         else
           if_object (make_arg_getter runs S1 C x X) (fun S2 lgetter =>
             if_object (make_arg_setter runs S2 C x X) (fun S3 lsetter =>
-              Let A' := attributes_accessor_intro (value_object lgetter) (value_object lsetter) false true in
+              'let A' := attributes_accessor_intro (value_object lgetter) (value_object lsetter) false true in
               if_bool (object_define_own_prop runs S3 C lmap (convert_prim_to_string len') A' false) (fun S4 b' =>
                 arguments_object_map_loop' S4 (x :: xsmap)))))
       )
@@ -1389,26 +1389,26 @@ Definition arguments_object_map runs S C l xs args X str : result_void :=
     arguments_object_map_loop runs S' C l xs (length args) args X str lmap nil).
 
 Definition create_arguments_object runs S C lf xs args X str : result :=
-  Let O := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
-  Let p := object_alloc S O in
-  let '(l, S') := p in (* LATER: Let pair *)
-  Let A := attributes_data_intro (JsNumber.of_int (length args)) true false true in
+  'let O := object_create_builtin prealloc_object_proto "Arguments" Heap.empty in
+  'let p := object_alloc S O in
+  let '(l, S') := p in (* LATER: ['let] on pair *)
+  'let A := attributes_data_intro (JsNumber.of_int (length args)) true false true in
   if_bool (object_define_own_prop runs S' C l "length" A false) (fun S1 b =>
     if_void (arguments_object_map runs S1 C l xs args X str) (fun S2 =>
       if str then (
-        Let vthrower := value_object prealloc_throw_type_error in
-        Let A := attributes_accessor_intro vthrower vthrower false false in
+        'let vthrower := value_object prealloc_throw_type_error in
+        'let A := attributes_accessor_intro vthrower vthrower false false in
         if_bool (object_define_own_prop runs S2 C l "caller" A false) (fun S3 b' =>
           if_bool (object_define_own_prop runs S3 C l "callee" A false) (fun S4 b'' =>
             res_ter S4 l))
       ) else (
-        Let A := attributes_data_intro (value_object lf) true false true in
+        'let A := attributes_data_intro (value_object lf) true false true in
         if_bool (object_define_own_prop runs S2 C l "callee" A false) (fun S3 b' =>
           res_ter S3 l)))).
 
 Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
   let arguments := "arguments" in
-  Let str := prog_intro_strictness p in
+  'let str := prog_intro_strictness p in
     if_object (create_arguments_object runs S C lf xs args
                    (execution_ctx_variable_env C) str) (fun S1 largs =>
       if str then
@@ -1421,7 +1421,7 @@ Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : res
   match vds with
   | nil => res_void S
   | vd :: vds' =>
-    Let bivd := fun S => binding_inst_var_decls runs S C L vds' bconfig str in
+    'let bivd := fun S => binding_inst_var_decls runs S C L vds' bconfig str in
     if_bool (env_record_has_binding runs S C L vd) (fun S1 has =>
       if has then
         bivd S1
@@ -1434,13 +1434,13 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
   | nil => impossible_with_heap_because S
     "Empty [execution_ctx_variable_env] in [execution_ctx_binding_inst]."
   | L::_ =>
-    Let str := prog_intro_strictness p in
-    Let follow := fun S' names =>
-      Let bconfig := decide (ct = codetype_eval) in
-      Let fds := prog_funcdecl p in
+    'let str := prog_intro_strictness p in
+    'let follow := fun S' names =>
+      'let bconfig := decide (ct = codetype_eval) in
+      'let fds := prog_funcdecl p in
       if_void (binding_inst_function_decls runs S' C L fds str bconfig) (fun S1 =>
         if_bool (env_record_has_binding runs S1 C L "arguments") (fun S2 bdefined =>
-          Let follow2 := fun S' =>
+          'let follow2 := fun S' =>
             let vds := prog_vardecl p in
             binding_inst_var_decls runs S' C L vds bconfig str
             in
@@ -1469,13 +1469,13 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
 Definition entering_func_code runs S C lf vthis (args : list value) : result :=
   if_some (run_object_method object_code_ S lf) (fun bdo =>
     if_some bdo (fun bd =>
-      Let str := funcbody_is_strict bd in
-      Let follow := fun S' vthis' =>
+      'let str := funcbody_is_strict bd in
+      'let follow := fun S' vthis' =>
         if_some (run_object_method object_scope_ S' lf) (fun lexo =>
           if_some lexo (fun lex =>
-            Let p := lexical_env_alloc_decl S' lex in
+            'let p := lexical_env_alloc_decl S' lex in
             let '(lex', S1) := p in
-            Let C' := execution_ctx_intro_same lex' vthis' str in
+            'let C' := execution_ctx_intro_same lex' vthis' str in
             if_void (execution_ctx_binding_inst runs S1 C' codetype_func (Some lf) (funcbody_prog bd) args) (fun S2 =>
             run_call_default runs S2 C' lf)))
         in
@@ -1493,7 +1493,7 @@ Definition entering_func_code runs S C lf vthis (args : list value) : result :=
 
 Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
   if_some (run_object_method object_get_own_prop_ S l) (fun B =>
-    Let default := fun S' =>
+    'let default := fun S' =>
       if_some (run_object_method object_properties_ S' l) (fun P =>
         res_spec S' (
           if_some_or_default (convert_option_attributes (Heap.read_option P x))
@@ -1510,7 +1510,7 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
             if_some (run_object_method object_parameter_map_ S1 l) (fun lmapo =>
               if_some lmapo (fun lmap =>
                 if_spec (runs_type_object_get_own_prop runs S1 C lmap x) (fun S2 D =>
-                  Let follow := fun S' A =>
+                  'let follow := fun S' A =>
                     res_spec S' (full_descriptor_some A) in
                   match D with
                      | full_descriptor_undef =>
@@ -1537,7 +1537,7 @@ Definition run_object_get_own_prop runs S C l x : specres full_descriptor :=
                 then res_spec S full_descriptor_undef
                 else if_string (run_object_prim_value S l) (fun S (str : string) =>
                        if_spec (to_int32 runs S C x) (fun S k => (* This actually cannot change the heap of return a different result than the first time... but this is closer to eyeball closesness than not computing it twice. *)
-                         Let len := Z.of_nat (String.length str) in
+                         'let len := Z.of_nat (String.length str) in
                          let idx := k in
                          ifb len <= idx
                          then res_spec S full_descriptor_undef
@@ -1598,23 +1598,23 @@ Definition from_prop_descriptor runs S C D : result :=
   | full_descriptor_undef => out_ter S undef
   | full_descriptor_some A =>
     if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 l =>
-      Let follow := fun S0 _ =>
-        Let A1 := attributes_data_intro_all_true (attributes_enumerable A) in
+      'let follow := fun S0 _ =>
+        'let A1 := attributes_data_intro_all_true (attributes_enumerable A) in
         if_bool (object_define_own_prop runs S0 C l "enumerable" (descriptor_of_attributes A1) throw_false) (fun S0' _ =>
-          Let A2 := attributes_data_intro_all_true (attributes_configurable A) in
+          'let A2 := attributes_data_intro_all_true (attributes_configurable A) in
           if_bool (object_define_own_prop runs S0' C l "configurable" (descriptor_of_attributes A2) throw_false) (fun S' _ =>
             res_ter S' l))
         in
       match A with
       | attributes_data_of Ad =>
-        Let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
+        'let A1 := attributes_data_intro_all_true (attributes_data_value Ad) in
         if_bool (object_define_own_prop runs S1 C l "value" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
-          Let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
+          'let A2 := attributes_data_intro_all_true (attributes_data_writable Ad) in
           if_bool (object_define_own_prop runs S2 C l "writable" (descriptor_of_attributes A2) throw_false) follow)
       | attributes_accessor_of Aa =>
-        Let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
+        'let A1 := attributes_data_intro_all_true (attributes_accessor_get Aa) in
         if_bool (object_define_own_prop runs S1 C l "get" (descriptor_of_attributes A1) throw_false) (fun S2 _ =>
-          Let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
+          'let A2 := attributes_data_intro_all_true (attributes_accessor_set Aa) in
           if_bool (object_define_own_prop runs S2 C l "set" (descriptor_of_attributes A2) throw_false) follow)
       end)
   end.
@@ -1678,14 +1678,14 @@ Definition run_equal runs S C v1 v2 : result :=
     to_number runs S C v in
   let conv_primitive := fun S v =>
     to_primitive runs S C v None in
-  Let checkTypesThen := fun S0 v1 v2 (K : type -> type -> result) =>
+  'let checkTypesThen := fun S0 v1 v2 (K : type -> type -> result) =>
     let ty1 := type_of v1 in
     let ty2 := type_of v2 in
     ifb ty1 = ty2 then
       out_ter S0 (equality_test_for_same_type ty1 v1 v2) : result
     else K ty1 ty2 in
   checkTypesThen S v1 v2 (fun ty1 ty2 =>
-    Let dc_conv := fun v1 F v2 =>
+    'let dc_conv := fun v1 F v2 =>
       if_value (F S v2) (fun S0 v2' =>
         runs_type_equal runs S0 C v1 v2') in
     let so b : result :=
@@ -1766,8 +1766,8 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
     if_some (get_inequality_op op) (fun io =>
       let '(b_swap, b_neg) :=  io in
       if_spec (convert_twice_primitive runs S C v1 v2) ((fun S1 ww => let '(w1,w2) := ww in
-        Let p := if b_swap then (w2, w1) else (w1, w2) in
-        let '(wa, wb) := p in (* LATER: let pair*)
+        'let p := if b_swap then (w2, w1) else (w1, w2) in
+        let '(wa, wb) := p in (* LATER: ['let] on pair*)
         let wr := inequality_test_primitive wa wb in
         res_out (out_ter S1 (ifb wr = prim_undef then false
           else ifb b_neg = true /\ wr = true then false
@@ -1836,8 +1836,8 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
         if_number (to_number runs S2 C v2) (fun S3 n1 =>
           if_some (run_prepost_op op) (fun po =>
             let '(number_op, is_pre) := po in
-            Let n2 := number_op n1 in
-            Let v := prim_number (if is_pre then n2 else n1) in
+            'let n2 := number_op n1 in
+            'let v := prim_number (if is_pre then n2 else n1) in
             if_void (ref_put_value runs S3 C rv1 n2) (fun S4 =>
               out_ter S4 v)))))
   else
@@ -1914,8 +1914,8 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
   match pds return result with
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
-    Let x := string_of_propname pn in
-    Let follows := fun S1 A =>
+    'let x := string_of_propname pn in
+    'let follows := fun S1 A =>
       if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
         init_object runs S2 C l pds') in
     match pb with
@@ -1982,7 +1982,7 @@ Definition run_expr_binary_op runs S C op e1 e2 : result :=
         run_binary_op runs S2 C op v1 v2))
   | Some b_ret =>
     if_spec (run_expr_get_value runs S C e1) (fun S1 v1 =>
-      Let b1 := convert_value_to_boolean v1 in
+      'let b1 := convert_value_to_boolean v1 in
       ifb b1 = b_ret then res_ter S1 v1
       else
         if_spec (run_expr_get_value runs S1 C e2) (fun S2 v =>
@@ -2000,7 +2000,7 @@ Definition run_expr_access runs S C e1 e2 : result :=
 
 Definition run_expr_assign runs S C (opo : option binary_op) e1 e2 : result :=
   if_success (runs_type_expr runs S C e1) (fun S1 rv1 =>
-    Let follow := fun S rv' =>
+    'let follow := fun S rv' =>
       match rv' return result with
       | resvalue_value v =>
         if_void (ref_put_value runs S C rv1 v) (fun S' =>
@@ -2022,7 +2022,7 @@ Definition run_expr_function runs S C fo args bd : result :=
     let lex := execution_ctx_lexical_env C in
     creating_function_object runs S C args bd lex (funcbody_is_strict bd)
   | Some fn =>
-    Let p := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in (* LATER:  Let pair *)
+    'let p := lexical_env_alloc_decl S (execution_ctx_lexical_env C) in (* LATER:  ['let] on pair *)
     let '(lex', S') := p in
     let follow L :=
       if_some (pick_option (env_record_binds S' L)) (fun E =>
@@ -2037,20 +2037,20 @@ Definition run_expr_function runs S C fo args bd : result :=
 
 
 Definition entering_eval_code runs S C direct bd K : result :=
-  Let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
-  Let C' := if direct then C else execution_ctx_initial str in
-  Let p :=
+  'let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
+  'let C' := if direct then C else execution_ctx_initial str in
+  'let p :=
     if str
       then lexical_env_alloc_decl S (execution_ctx_lexical_env C')
       else (execution_ctx_lexical_env C', S)
    in
-  let '(lex, S') := p in (* LATER: Let pair *)
-  Let C1 :=
+  let '(lex, S') := p in (* LATER: ['let] on pair *)
+  'let C1 :=
     if str
       then execution_ctx_with_lex_same C' lex
       else C'
     in
-  Let p := funcbody_prog bd in
+  'let p := funcbody_prog bd in
   if_void (execution_ctx_binding_inst runs S' C1 codetype_eval None p nil) (fun S1 =>
     K S1 C1).
 
@@ -2084,7 +2084,7 @@ Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result 
 
 
 Definition run_expr_call runs S C e1 e2s : result :=
-  Let is_eval_direct := is_syntactic_eval e1 in
+  'let is_eval_direct := is_syntactic_eval e1 in
   if_success (runs_type_expr runs S C e1) (fun S1 rv =>
     if_spec (ref_get_value runs S1 C rv) (fun S2 f =>
       if_spec (run_list_expr runs S2 C nil e2s) (fun S3 vs =>
@@ -2095,7 +2095,7 @@ Definition run_expr_call runs S C e1 e2s : result :=
           else
           *)
           ifb (is_callable S3 l) then
-            Let follow := fun vthis =>
+            'let follow := fun vthis =>
               ifb l = prealloc_global_eval then
                 run_eval runs S3 C is_eval_direct vs
               else runs_type_call runs S3 C l vthis vs in
@@ -2118,8 +2118,8 @@ Definition run_expr_call runs S C e1 e2s : result :=
 
 Definition run_expr_conditionnal runs S C e1 e2 e3 : result :=
   if_spec (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    Let b := convert_value_to_boolean v1 in
-    Let e := if b then e2 else e3 in
+    'let b := convert_value_to_boolean v1 in
+    'let e := if b then e2 else e3 in
     if_spec (run_expr_get_value runs S1 C e) res_ter).
 
 Definition run_expr_new runs S C e1 (e2s : list expr) : result :=
@@ -2147,15 +2147,15 @@ Definition run_stat_label runs S C lab t : result :=
 Definition run_stat_with runs S C e1 t2 : result :=
   if_spec (run_expr_get_value runs S C e1) (fun S1 v1 =>
     if_object (to_object S1 v1) (fun S2 l =>
-      Let lex := execution_ctx_lexical_env C in
-      Let p := lexical_env_alloc_object S2 lex l provide_this_true in
-      let '(lex', S3) := p in (* LATER: Let pair *)
-      Let C' := execution_ctx_with_lex C lex' in
+      'let lex := execution_ctx_lexical_env C in
+      'let p := lexical_env_alloc_object S2 lex l provide_this_true in
+      let '(lex', S3) := p in (* LATER: ['let] on pair *)
+      'let C' := execution_ctx_with_lex C lex' in
       runs_type_stat runs S3 C' t2)).
 
 Definition run_stat_if runs S C e1 t2 to : result :=
   if_spec (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    Let b := convert_value_to_boolean v1 in
+    'let b := convert_value_to_boolean v1 in
     if b then
       runs_type_stat runs S1 C t2
     else
@@ -2168,11 +2168,11 @@ Definition run_stat_if runs S C e1 t2 to : result :=
 
 Definition run_stat_while runs S C rv labs e1 t2 : result :=
   if_spec (run_expr_get_value runs S C e1) (fun S1 v1 =>
-    Let b := convert_value_to_boolean v1 in
+    'let b := convert_value_to_boolean v1 in
     if b then
       if_ter (runs_type_stat runs S1 C t2) (fun S2 R =>
-        Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
-        Let loop := fun _ => runs_type_stat_while runs S2 C rv' labs e1 t2 in
+        'let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+        'let loop := fun _ => runs_type_stat_while runs S2 C rv' labs e1 t2 in
         ifb res_type R <> restype_continue
              \/ ~ res_label_in R labs then (
            ifb res_type R = restype_break /\ res_label_in R labs then
@@ -2200,7 +2200,7 @@ Fixpoint run_stat_switch_no_default runs S C vi rv scs : result :=
     out_ter S rv
   | switchclause_intro e ts :: scs' =>
     if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
-      Let b := strict_equality_test v1 vi in
+      'let b := strict_equality_test v1 vi in
       if b then
         if_success (run_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
           run_stat_switch_end runs S2 C rv2 scs')
@@ -2218,7 +2218,7 @@ Fixpoint run_stat_switch_with_default_B runs S C vi rv ts0 scs : result :=
     run_stat_switch_with_default_default runs S C ts0 scs
   | switchclause_intro e ts :: scs' =>
     if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
-      Let b := strict_equality_test v1 vi in
+      'let b := strict_equality_test v1 vi in
       if b then
         if_success (run_block runs S1 C (LibList.rev ts)) (fun S2 rv2 =>
           run_stat_switch_end runs S2 C rv2 scs')
@@ -2234,7 +2234,7 @@ Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts0 scs2 : res
     else
       run_stat_switch_with_default_B runs S C vi rv ts0 scs2
   | switchclause_intro e ts :: scs' =>
-    Let follow := fun S =>
+    'let follow := fun S =>
       if_success_state rv (run_block runs S C (LibList.rev ts)) (fun S1 rv0 =>
         run_stat_switch_with_default_A runs S1 C true vi rv0 scs' ts0 scs2)
       in
@@ -2242,7 +2242,7 @@ Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts0 scs2 : res
       follow S
     else
       if_spec (run_expr_get_value runs S C e) (fun S1 v1 =>
-        Let b := strict_equality_test v1 vi in
+        'let b := strict_equality_test v1 vi in
         if b then
           follow S1
         else
@@ -2251,7 +2251,7 @@ Fixpoint run_stat_switch_with_default_A runs S C found vi rv scs1 ts0 scs2 : res
 
 Definition run_stat_switch runs S C labs e sb : result :=
   if_spec (run_expr_get_value runs S C e) (fun S1 vi =>
-    Let follow := fun W =>
+    'let follow := fun W =>
       if_success
         (if_break W (fun S2 R =>
            if res_label_in R labs then
@@ -2266,10 +2266,10 @@ Definition run_stat_switch runs S C labs e sb : result :=
 
 Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
   if_ter (runs_type_stat runs S C t2) (fun S1 R =>
-    Let rv' := ifb res_value R = resvalue_empty then rv else res_value R in
-    Let loop := fun _ =>
+    'let rv' := ifb res_value R = resvalue_empty then rv else res_value R in
+    'let loop := fun _ =>
       if_spec (run_expr_get_value runs S1 C e1) (fun S2 v1 =>
-        Let b := convert_value_to_boolean v1 in
+        'let b := convert_value_to_boolean v1 in
           if b then
             runs_type_stat_do_while runs S2 C rv' labs e1 t2
           else res_ter S2 rv') in
@@ -2285,7 +2285,7 @@ Definition run_stat_do_while runs S C rv labs e1 t2 : result :=
          else loop tt)).
 
 Definition run_stat_try runs S C t1 t2o t3o : result :=
-  Let finally := fun S1 R =>
+  'let finally := fun S1 R =>
     match t3o with
     | None => res_ter S1 R
     | Some t3 =>
@@ -2297,8 +2297,8 @@ Definition run_stat_try runs S C t1 t2o t3o : result :=
     match t2o with
     | None => finally S1 (res_throw v)
     | Some (x, t2) =>
-      Let lex := execution_ctx_lexical_env C in
-      Let p := lexical_env_alloc_decl S1 lex in (* LATER: Let pair *)
+      'let lex := execution_ctx_lexical_env C in
+      'let p := lexical_env_alloc_decl S1 lex in (* LATER: ['let] on pair *)
       let '(lex', S') := p in
       match lex' with
       | L :: oldlex =>
@@ -2326,10 +2326,10 @@ Definition run_stat_return runs S C eo : result :=
 
 Definition run_stat_for_loop runs S C labs rv eo2 eo3 t : result :=
   (* Corresponds to the extended term [stat_for_2] in the rules. *)
-  Let follows := fun S =>
+  'let follows := fun S =>
     if_ter (runs_type_stat runs S C t) (fun S R =>
-      Let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
-      Let loop := fun S => runs_type_stat_for_loop runs S C labs rv' eo2 eo3 t in
+      'let rv' := ifb res_value R <> resvalue_empty then res_value R else rv in
+      'let loop := fun S => runs_type_stat_for_loop runs S C labs rv' eo2 eo3 t in
       ifb res_type R = restype_break /\ res_label_in R labs then
         res_ter S rv'
       else (
@@ -2348,7 +2348,7 @@ Definition run_stat_for_loop runs S C labs rv eo2 eo3 t : result :=
   | None => follows S
   | Some e2 =>
     if_spec (run_expr_get_value runs S C e2) (fun S v2 =>
-      Let b := convert_value_to_boolean v2 in
+      'let b := convert_value_to_boolean v2 in
       if b then follows S
       else res_ter S rv)
   end.
@@ -2511,7 +2511,7 @@ Definition run_prog runs S C p : result :=
 
 Fixpoint push runs S C l args ilen: result :=
   (* Corresponds to the construction [spec_call_array_proto_push_3] of the specification. *)
-  Let vlen := JsNumber.of_int ilen
+  'let vlen := JsNumber.of_int ilen
   in match args with
   | nil =>
     if_not_throw (object_put runs S C l "length" vlen throw_true) (fun S _ =>
@@ -2654,7 +2654,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
               res_ter S (neg ext))
           | x :: xs' =>
             if_spec (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
-              Let check_configurable := fun A =>
+              'let check_configurable := fun A =>
                 if attributes_configurable A then
                   res_ter S0 false
                 else object_is_frozen xs'
@@ -2780,11 +2780,11 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       end)
 
   | prealloc_error =>
-    Let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     build_error S prealloc_error_proto v
 
   | prealloc_native_error_proto ne =>
-    Let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     build_error S B v
 
   | prealloc_throw_type_error =>
