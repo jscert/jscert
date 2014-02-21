@@ -285,3 +285,57 @@ End HeapAxioms.
 
 End HeapGen.
 
+
+(**************************************************************)
+(* To be added to LibRelation *)
+
+Require Export LibRelation.
+
+Lemma tclosure_tclosure' : forall A (R : binary A) x y,
+  tclosure R x y <-> tclosure' R x y.
+Proof.
+  introv. iff C.
+   destruct C as [x y z HR HC]. gen x. induction HC; introv HR.
+    apply~ tclosure'_step.
+    applys~ tclosure'_trans x. constructors~.
+   induction C.
+    constructors*. constructors~.
+    apply* tclosure_trans.
+Qed.
+
+Lemma tclosure_ind_right : forall A (R : binary A) (P : A -> A -> Prop),
+  (forall x y, R x y -> P x y) ->
+  (forall y x z, tclosure R x y -> P x y -> R y z -> P x z) ->
+  forall x y, tclosure R x y -> P x y.
+Proof.
+  introv S Ind H. inverts H as HR HC.
+  induction HC using rtclosure_ind_right.
+   apply* S.
+   apply* Ind. apply* tclosure_step_rtclosure.
+Qed.
+
+Lemma tclosure_right : forall A (R : binary A) x y,
+  tclosure R x y ->
+  exists z, rtclosure R x z /\ R z y.
+Proof.
+  introv H. induction H using tclosure_ind_right.
+   exists x. splits~. constructors~.
+   exists y. splits~. apply~ tclosure_rtclosure.
+Qed.
+
+Lemma rtclosure_le : forall A (R1 R2 : binary A),
+  incl R1 R2 -> incl (rtclosure R1) (rtclosure R2).
+Proof. introv Incl HC. induction HC; constructors*. Qed.
+
+Lemma tclosure_tclosure_step : forall A (R : binary A) x y z,
+       tclosure R x y -> R y z -> tclosure R x z.
+Proof. intros. apply* tclosure_rtclosure_step. apply* tclosure_rtclosure. Qed.
+
+Lemma tclosure_le : forall A (R1 R2 : binary A),
+  incl R1 R2 -> incl (tclosure R1) (tclosure R2).
+Proof.
+  introv Incl HC. induction HC using tclosure_ind_right.
+   apply* tclosure_once.
+   apply* tclosure_tclosure_step.
+Qed.
+
