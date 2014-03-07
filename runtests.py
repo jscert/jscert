@@ -71,7 +71,10 @@ argp.add_argument("--verbose",action="store_true",
     help="Print the output of the tests as they happen.")
 
 argp.add_argument("--debug",action="store_true",
-    help="Run the interpreter with debugging flags (-print-heap -verbose -skip-init)")
+    help="Run the interpreter with debugging flags (-print-heap -verbose -skip-init).")
+
+argp.add_argument("--no_parasite",action="store_true",
+    help="Run the interpreter with -no-parasite flag (the options --debug and --verbose might be useless in this mode).")
 
 args = argp.parse_args()
 
@@ -399,6 +402,8 @@ def jsRefArgBuilder(filename):
     else:
         arglist.append("-file")
         arglist.append(filename)
+    if args.no_parasite:
+        arglist.append("-no-parasite")
     return arglist
 
 if args.spidermonkey:

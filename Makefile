@@ -207,7 +207,7 @@ coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 # INTERPRETER
 
 run_tests: interpreter
-	./runtests.py
+	./runtests.py --no_parasite
 
 run_tests_spidermonkey:
 	./runtests.py --spidermonkey --interp_path $(SPIDERMONKEY)
