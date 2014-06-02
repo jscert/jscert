@@ -1844,20 +1844,24 @@ Definition run_unary_op runs S C (op : unary_op) e : result :=
     match op with
 
     | unary_op_delete =>
-      if_success (runs_type_expr runs S C e) (fun S1 rv =>
+      if_success (runs_type_expr runs S C e) (fun S rv =>
         match rv with
         | resvalue_ref r =>
-          ifb ref_is_unresolvable r then
-            res_ter S1 true
-          else
+          ifb ref_is_unresolvable r then (
+            if ref_strict r then
+              run_error S native_error_syntax
+            else res_ter S true
+          ) else
             match ref_base r with
             | ref_base_type_value v =>
-              if_object (to_object S1 v) (fun S2 l =>
-                runs_type_object_delete runs S2 C l (ref_name r) (ref_strict r))
+              if_object (to_object S v) (fun S l =>
+                runs_type_object_delete runs S C l (ref_name r) (ref_strict r))
             | ref_base_type_env_loc L =>
-              env_record_delete_binding runs S1 C L (ref_name r)
+              if ref_strict r then
+                run_error S native_error_syntax
+              else env_record_delete_binding runs S C L (ref_name r)
             end
-        | _ => res_ter S1 true
+        | _ => res_ter S true
         end)
 
     | unary_op_typeof =>

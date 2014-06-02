@@ -3,7 +3,7 @@
 
 var fun = function (){
     "use strict";
-    delete fundfd; // This should throw a SyntaxError exception at call time.
+    delete fundfd; // This should throw a SyntaxError exception at call time, not parsing time!
     $ERROR("#1.1: This code should return a SyntaxError exception.")
 };
 
@@ -15,5 +15,4 @@ try {
     }
 }
 
-// TODO: Check other forms of strict mode and delete form.
 
