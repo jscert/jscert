@@ -1026,26 +1026,46 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ~ (resvalue_is_ref rv) ->
       red_expr S0 C (expr_delete_1 (out_ter S rv)) (out_ter S true)
 
-  | red_expr_delete_1_ref_unresolvable : forall S0 S C r,
+  | red_expr_delete_1_ref_unresolvable : forall S0 S C r o,
       ref_is_unresolvable r ->
-      red_expr S0 C (expr_delete_1 (out_ter S r)) (out_ter S true)
+      red_expr S C (expr_delete_2 r) o ->
+      red_expr S0 C (expr_delete_1 (out_ter S r)) o
+
+  | red_expr_delete_2_strict : forall S C r o,
+      ref_strict r = true ->
+      red_expr S C (spec_error native_error_syntax) o ->
+      red_expr S C (expr_delete_2 r) o
+
+  | red_expr_delete_2_not_strict : forall S C r,
+      ref_strict r = false ->
+      red_expr S C (expr_delete_2 r) (out_ter S true)
 
   | red_expr_delete_1_ref_property : forall S0 S C r v o1 o,
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
       red_expr S C (spec_to_object v) o1 ->
-      red_expr S C (expr_delete_2 r o1) o ->
+      red_expr S C (expr_delete_3 r o1) o ->
       red_expr S0 C (expr_delete_1 (out_ter S r)) o
 
-  | red_expr_delete_2 : forall S0 S C r l o,
+  | red_expr_delete_3 : forall S0 S C r l o,
       red_expr S C (spec_object_delete l (ref_name r) (ref_strict r)) o ->
-      red_expr S0 C (expr_delete_2 r (out_ter S l)) o
+      red_expr S0 C (expr_delete_3 r (out_ter S l)) o
 
   | red_expr_delete_1_ref_env_record : forall S0 S C r L o,
       ref_is_env_record r L ->
-      red_expr S C (spec_env_record_delete_binding L (ref_name r)) o ->
+      red_expr S C (expr_delete_4 r L) o ->
       red_expr S0 C (expr_delete_1 (out_ter S r)) o
-    
+
+  | red_expr_delete_4_strict : forall S C r L o,
+      ref_strict r = true ->
+      red_expr S C (spec_error native_error_syntax) o ->
+      red_expr S C (expr_delete_4 r L) o
+
+  | red_expr_delete_4_not_strict : forall S C r L o,
+      ref_strict r = false ->
+      red_expr S C (spec_env_record_delete_binding L (ref_name r)) o ->
+      red_expr S C (expr_delete_2 r) o
+
   (** Unary op : void  (11.4.2)*)
 
   | red_expr_unary_op_void : forall S C v,
