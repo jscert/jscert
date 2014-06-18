@@ -93,7 +93,9 @@ Inductive ext_expr :=
   | expr_unary_op_1 : unary_op -> (specret value) -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
   | expr_delete_1 : out -> ext_expr
-  | expr_delete_2 : ref -> out -> ext_expr
+  | expr_delete_2 : ref -> ext_expr
+  | expr_delete_3 : ref -> out -> ext_expr
+  | expr_delete_4 : ref -> env_loc -> ext_expr
   | expr_typeof_1 : out -> ext_expr
   | expr_typeof_2 : (specret value) -> ext_expr
   | expr_prepost_1 : unary_op -> out -> ext_expr
@@ -789,7 +791,9 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_unary_op_1 _ y => out_of_specret y
   | expr_unary_op_2 _ _ => None
   | expr_delete_1 o => Some o
-  | expr_delete_2 _ o => Some o
+  | expr_delete_2 _ => None
+  | expr_delete_3 _ o => Some o
+  | expr_delete_4 _ _ => None
   | expr_typeof_1 o => Some o
   | expr_typeof_2 y => out_of_specret y
   | expr_prepost_1 _ o => Some o
