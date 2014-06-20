@@ -408,7 +408,7 @@ Theorem pr_red_expr : forall (S:state) (C:execution_ctx) (ee:ext_expr) (o:out) (
   wf_ext_expr S str ee ->
   wf_out S str o.
 Proof.
-  introv Hred HS HC Hee. induction Hred; wf_impossible; auto.(*this takes a long time*)
+  introv Hred HS HC Hee. induction Hred; wf_impossible; auto. (*this takes a long time*)
 
   apply* wf_out_of_ext_expr.
 
