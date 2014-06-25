@@ -54,6 +54,7 @@ apt-get install opam
 opam install coq 
 opam install ocamlfind ;
 opam install xml-light ;
+opam install bisect ;
 #+end_src
 
       Now you can build JSCert:
