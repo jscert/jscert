@@ -1050,13 +1050,15 @@ Proof.
 
   rconstructors*.
 
-  (*red_spec_env_record_create_mutable_binding*)
   wf_inverts3a.
+
+  (*red_spec_env_record_create_mutable_binding*)
+  wf_inverts3a. admit. (*need the invariant with the env_heap*)
 
   wf_inverts3a. subst. forwards* M:wf_env_record_write_decl_env str prim_undef. constructor. inverts M. constructor; eauto. rconstructors*.
 (*need lemmas to show that a wf_state + a wf thing = a wf_state extending the other one*)(*done*)
 
-  wf_inverts3a. apply* IHHred2. constructor*. admit. (* problem with spec_env_record_create_mutable_binding_2: accept any l ?*)(*should work now (?)*) admit.
+  wf_inverts3a. 
 
   wf_inverts3a. wf_out_change_state. apply* IHHred2. rconstructors*. apply* IHHred1. rconstructors*. auto with wf_base. subst. simpl. rconstructors*.
 
