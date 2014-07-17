@@ -67,9 +67,8 @@ JS_SRC=\
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
 	coq/JsPrettyRules.v \
-	coq/JsCorrectness.v \
-	coq/JsWellFormednessDef.v \
-	coq/JsWellFormednessProof.v
+	coq/JsCorrectness.v
+
 
 JS_VO=$(JS_SRC:.v=.vo)
 
