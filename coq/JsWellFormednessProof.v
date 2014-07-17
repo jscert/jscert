@@ -132,6 +132,7 @@ Proof.
   introv Hext HS. inverts HS. inverts* Hext. constructor*. 
 Qed.
 
+
 Lemma wf_object_loc_state_extends : forall (S S':state) (str:strictness_flag) (l:object_loc),
   state_extends S' S ->
   wf_object_loc S str l ->
@@ -139,6 +140,28 @@ Lemma wf_object_loc_state_extends : forall (S S':state) (str:strictness_flag) (l
 Proof.
   introv Hext HS. unfolds. unfolds. inverts* Hext.
 Qed.
+
+
+Lemma wf_decl_env_record_state_extends :  forall (S S':state) (str:strictness_flag) (d:decl_env_record),
+  state_extends S' S ->
+  wf_decl_env_record S str d ->
+  wf_decl_env_record S' str d.
+Proof.
+  introv Hext HSd. unfolds wf_decl_env_record. introv H.
+  forwards* M: HSd s m v. eapply wf_value_state_extends; eauto.
+Qed.
+
+
+Lemma wf_env_record_state_extends :  forall (S S':state) (str:strictness_flag) (E:env_record),
+  state_extends S' S ->
+  wf_env_record S str E ->
+  wf_env_record S' str E.
+Proof.
+  introv Hext HSE. inverts* HSE; constructor*.
+  eapply wf_decl_env_record_state_extends; eauto.
+  eapply wf_object_loc_state_extends; eauto.
+Qed.
+
 
 Lemma wf_ref_state_extends : forall (S S':state) (str:strictness_flag) (r:ref),
   state_extends S' S ->
@@ -149,6 +172,7 @@ Proof.
   eapply wf_value_state_extends; eauto.
   eapply wf_env_loc_state_extends; eauto.
 Qed.
+
 
 Lemma wf_resvalue_state_extends : forall (S S':state) (str:strictness_flag) (rv:resvalue),
   state_extends S' S ->
@@ -164,6 +188,7 @@ Proof.
   constructor. auto.
 Qed.
 
+
 Lemma wf_attributes_state_extends : forall (S S':state) (str:strictness_flag) (A:attributes),
   state_extends S' S ->
   wf_attributes S str A ->
@@ -172,13 +197,15 @@ Proof.
   introv Hext HSA. inverts* HSA; constructor*; apply wf_value_state_extends with S; assumption.
 Qed.
 
+
 Lemma wf_descriptor_state_extends : forall (S S':state) (str:strictness_flag) (Desc:descriptor),
   state_extends S' S ->
   wf_descriptor S str Desc ->
   wf_descriptor S' str Desc.
 Proof.
-  introv Hext HSdesc. inverts* HSdesc. constructor*; clear ob1 ob2 ob3; [inverts H|inverts H0|inverts H1]; constructor*; eapply wf_value_state_extends; eauto.
+  introv Hext HSdesc. inverts* HSdesc. constructor*; clear ob1 ob2 ob3; inverts H; constructor*; eapply wf_value_state_extends; eauto.
 Qed.
+
 
 Lemma wf_object_state_extends : forall (S S':state) (str:strictness_flag) (obj:object),
   state_extends S' S ->
@@ -188,6 +215,7 @@ Proof.
   introv Hext HSobj. inverts HSobj; destruct obj; simpl in wf_object_proto_; simpl in wf_object_properties. constructor*; simpl; auto. eapply wf_value_state_extends; eauto.
   introv HA. eapply wf_attributes_state_extends; eauto.
 Qed.
+
 
 Lemma wf_out_state_extends : forall (S S':state) (str:strictness_flag) (o:out),
   state_extends S S' ->(*it's a trap!*)
@@ -201,10 +229,7 @@ Qed.
 
 
 
-
-
-
-(*other lemmas*)
+(*lemmas: if x of type x is well-formed then out_of_X x is well-formed too*)
 
 Lemma wf_out_of_specret_value :  forall (S:state) (str:strictness_flag) (s:specret value) (o:out),
   out_of_specret s = Some o ->
@@ -214,6 +239,7 @@ Proof.
   introv Ho Hs. inverts Hs; inverts* Ho.
 Qed.
 
+
 Lemma wf_out_of_specret_int :  forall (S:state) (str:strictness_flag) (s:specret int) (o:out),
   out_of_specret s = Some o ->
   wf_specret_int S str s ->
@@ -221,6 +247,7 @@ Lemma wf_out_of_specret_int :  forall (S:state) (str:strictness_flag) (s:specret
 Proof.
   introv Ho Hs. inverts Hs; inverts* Ho.
 Qed.
+
 
 Lemma wf_out_of_specret_valuevalue :  forall (S:state) (str:strictness_flag) (s:specret (value*value)) (o:out),
   out_of_specret s = Some o ->
@@ -230,6 +257,7 @@ Proof.
   introv Ho Hs. inverts Hs; inverts* Ho.
 Qed.
 
+
 Lemma wf_out_of_specret_ref :  forall (S:state) (str:strictness_flag) (s:specret ref) (o:out),
   out_of_specret s = Some o ->
   wf_specret_ref S str s ->
@@ -237,6 +265,7 @@ Lemma wf_out_of_specret_ref :  forall (S:state) (str:strictness_flag) (s:specret
 Proof.
   introv Ho Hs. inverts Hs; inverts* Ho.
 Qed.
+
 
 Lemma wf_out_of_specret_full_descriptor :  forall (S:state) (str:strictness_flag) (s:specret full_descriptor) (o:out),
   out_of_specret s = Some o ->
@@ -247,6 +276,7 @@ Proof.
 Qed.
 
 
+(*tactic to apply the right wf_out_of_specret_X*)
 Ltac wf_out_of_specret :=
   match goal with
     | [ H:wf_specret_value ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
@@ -282,6 +312,7 @@ Proof.
   destruct sv; inverts* H; inverts* H2; inverts* H0.
 Qed.
 
+
 Lemma wf_out_of_ext_prog : forall (S:state) (str:strictness_flag) (ep:ext_prog) (o:out),
   out_of_ext_prog ep = Some o ->
   wf_ext_prog S str ep ->
@@ -291,6 +322,10 @@ Proof.
   destruct ep; inverts Ho; inverts* Hep.
 Qed.  
 
+
+
+
+(*other lemmas*)
 
 (*only true for now*)
 (*i use this to remove the funcdecl case in the proof of pr_red_prog*)
@@ -309,7 +344,6 @@ Proof.
 Qed.
 
 
-
 Lemma wf_res_overwrite_value_if_empty : forall (S:state) (str:strictness_flag) (rv:resvalue) (R:res),
   wf_resvalue S str rv ->
   wf_res S str R ->
@@ -317,8 +351,6 @@ Lemma wf_res_overwrite_value_if_empty : forall (S:state) (str:strictness_flag) (
 Proof.
   introv Hrv HR. inverts HR. inverts Hrv; unfold res_overwrite_value_if_empty; simpl; cases_if; subst;rconstructors*.
 Qed.  
-
-
 
 
 Ltac wf_out_change_state :=
@@ -333,34 +365,44 @@ Ltac wf_out_extends :=
       apply wf_out_state_extends with S'; [apply H|apply H']
   end.
 
+Lemma eq_env_loc_dec : forall (L L':env_loc),
+  {L = L'} + {L <> L'}.
+Proof.
+  introv.
+  apply eq_nat_dec.
+Qed.
 
 
-  Lemma wf_env_record_write : forall (S S':state) (E:env_record) (L:env_loc),
-    wf_state S ->
-    S' = env_record_write S L E ->
-    wf_state S' /\ state_extends S' S.
-  Proof.
-    introv HS HS'. destruct S; subst; simpl.
-    split. 
-    (*wf_state*)
-      inverts HS; simpl; simpl in wf_state_env_record_heap.
-      inverts wf_state_prealloc_global; inverts H; simpl in wf_state_prealloc_global_binds.
-      constructor*.
-      (*wf_state_wf_objects*)
-        introv Hl. inverts Hl. forwards M: wf_state_wf_objects obj str. exists x0; auto.
-        inverts M. constructor*. inverts wf_object_proto_; constructor*.
-        introv HA. forwards* M:wf_object_properties x1 A. inverts M; constructor*. inverts H0; constructor*.
-      (*wf_state_prealloc_global*)
-        exists x; constructor; auto.
-      (*wf_state_env_record_heap*)
-        simpl. unfolds. rewrite Heap.dom_write. apply in_union_get_1. auto.
-    (*state_extends*)
-      clear HS. splits; try apply heap_extends_refl.
-      simpl. unfolds. introv H. unfolds in H. unfolds. rewrite Heap.dom_write.
-      apply in_union_get_1. auto.
-Qed.  
+Lemma heap_write_extends : forall {X Y:Type} (T T':Heap.heap X Y) (x:X) (y:Y),
+  (forall (a b:X), {a=b}+{a<>b}) ->
+  T' = Heap.write T x y ->
+  heap_extends T' T.
+Proof.
+  introv Hd Hw. unfolds. introv HT. rewrite Heap.indom_equiv_binds.
+  subst. forwards M: Hd x x0. inverts M.
+  exists y. apply* @Heap.binds_write_eq.
+  rewrite Heap.indom_equiv_binds in HT. inverts HT. exists x1. apply* @Heap.binds_write_neq.
+Qed.
 
 
+(*str doesn't matter for objects (for now)*)
+Lemma wf_object_str : forall (str str0:strictness_flag) (S:state) (obj:object),
+  wf_object S str obj ->
+  wf_object S str0 obj.
+Proof.
+  introv Hstr. inverts Hstr; constructor*.
+  (*wf_object_proto_*)
+    inverts wf_object_proto_; constructor*.
+  (*wf_object_properties*)
+    clear wf_object_proto_. introv HA. forwards* M:wf_object_properties x A. clear wf_object_properties HA.
+    inverts M; constructor*.
+    inverts H; constructor*.
+Qed.
+
+
+
+
+(*lemmas about object_loc*)
 
 Lemma eq_object_loc_dec : forall (l l':object_loc),
   {l = l'} + {l <> l'}.
@@ -380,6 +422,7 @@ Proof.
   introv. destruct S.  unfolds. simpl. apply Heap.binds_write_eq.
 Qed.
 
+
 Lemma object_binds_write_neq : forall (S:state) (l l':object_loc) (o o':object),
   object_binds S l o ->
   l <> l' ->  
@@ -388,6 +431,7 @@ Proof.
   introv Hl Hl'. unfolds; destruct S; simpl. apply Heap.binds_write_neq; auto.
 
 Qed.
+
 
 Lemma object_binds_write_inv : forall (S:state) (l l':object_loc) (o o':object),
   object_binds (object_write S l o) l' o' ->
@@ -398,6 +442,55 @@ Proof.
     apply Heap.binds_write_inv. auto.
   auto.
 Qed.
+
+
+
+
+(*important lemmas*)
+
+Lemma wf_env_record_write : forall (str:strictness_flag) (S S':state) (E:env_record) (L:env_loc),
+  wf_state S ->
+  wf_env_record S str E ->
+  S' = env_record_write S L E ->
+  wf_state S' /\ state_extends S' S.
+Proof.
+  introv HS HS'. destruct S; subst; simpl.
+  split. 
+  (*wf_state*)
+    inverts HS; simpl; simpl in wf_state_env_loc_global_env_record.
+    inverts wf_state_prealloc_global. inverts H0; simpl in wf_state_prealloc_global_binds.
+    constructor*.
+    (*wf_state_wf_objects*)
+      introv Hl. inverts Hl. forwards M: wf_state_wf_objects obj str. exists x0. unfolds object_binds; subst; simpl; simpl in H0; auto.
+      clear wf_state_wf_objects HS' wf_state_wf_env_records.
+      inverts M. constructor*. inverts wf_object_proto_; unfolds object_indom; subst; simpl; simpl in H2; constructor*.
+      introv HA. forwards* M:wf_object_properties x1 A. inverts M; constructor*. inverts H1; subst; simpl; simpl in H0; constructor*.
+      (*wf_state_prealloc_global*)
+        exists x; constructor; subst; auto.
+      (*wf_state_prealloc_native_error_proto*)
+        unfolds object_indom; subst; simpl in wf_state_prealloc_native_error_proto; simpl; auto.
+      (*wf_state_wf_env_records*)
+        introv HL. inverts HL.
+        clear wf_state_wf_objects wf_state_env_loc_global_env_record wf_state_prealloc_global_get wf_state_prealloc_global_get_own_prop wf_state_prealloc_global_binds wf_state_prealloc_global_define_own_prop x.
+        forwards M:eq_env_loc_dec L x0. inverts M.
+        (*L = x0*)
+          clear wf_state_wf_env_records.
+          unfolds env_record_binds. subst; simpl in H0. forwards M:@Heap.binds_write_inv H0.
+          inverts M; inverts H; try solve [exfalso; auto]. clear H0 H1.
+          inverts HS'; constructor*. unfolds; introv HH; forwards M:H HH; inverts M; constructors*.
+        (*L <> x0*)
+          clear HS'. subst. forwards M:wf_state_wf_env_records E0 str0.
+          exists x0. unfolds env_record_binds; simpl; simpl in H0. apply Heap.binds_write_inv in H0; inverts H0; inverts H; try solve [exfalso; auto]; auto.
+          clear wf_state_wf_env_records H1 H0 x0.
+          inverts M; constructor*. unfolds wf_decl_env_record; simpl; simpl in H.
+          introv HH. apply H in HH. inverts HH; constructor*.
+      (*wf_state_env_loc_global_env_record*)
+        subst; unfolds; simpl. rewrite Heap.dom_write. apply in_union_get_1. auto.
+  (*state_extends*)
+    clear HS HS'. subst; simpl; splits; try apply heap_extends_refl.
+    simpl. unfolds. introv H. unfolds in H. unfolds. rewrite Heap.dom_write.
+    apply in_union_get_1. auto.
+Qed.  
 
 
 Lemma wf_set_property : forall (S S':state) (str:strictness_flag) (l:object_loc) (x:prop_name) (A:attributes),
@@ -424,9 +517,11 @@ Proof.
         constructor*.
         (*wf_object_proto_*)
           unfolds object_map_properties; simpl. eapply wf_value_state_extends; eauto.
-          inverts HS. clear H Hext wf_state_prealloc_global wf_state_env_record_heap.
+          inverts HS. clear H Hext wf_state_prealloc_global wf_state_wf_env_records wf_state_env_loc_global_env_record.
           forwards M:wf_state_wf_objects x0 str0. exists* x1.
           destruct x0; simpl; inverts M; auto.
+        (*wf_object_define_own_prop*)
+          unfolds object_map_properties; simpl. inverts HS. clear Hext wf_state_prealloc_global wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. forwards M:wf_state_wf_objects x0 str. exists* x1.  inverts M; destruct x0; simpl in wf_object_define_own_prop; simpl; auto.
         (*wf_object_properties*)
           introv Hb. eapply wf_attributes_state_extends; eauto. clear Hext Hl. forwards M:string_dec x x2. inverts M.
           (*x=x2*)
@@ -436,14 +531,14 @@ Proof.
           (*x<>x2*)
             inverts HS.
             forwards M:wf_state_wf_objects x0 str0. exists x1; auto.
-            clear wf_state_wf_objects wf_state_prealloc_global wf_state_env_record_heap H0 H x1.
+            clear wf_state_wf_objects wf_state_prealloc_global wf_state_wf_env_records wf_state_env_loc_global_env_record H0 H x1.
             destruct x0; simpl in Hb;
             forwards M':(@Heap.binds_write_inv prop_name attributes) Hb; inverts M' ; inverts H; try solve [exfalso; auto]; clear H1 Hb H0.
             inverts M. simpl in wf_object_properties; forwards M:wf_object_properties x2 A0; auto.
       (*l<>x1*)
         forwards M:object_binds_write_inv H. inverts M; inverts H2; try solve [exfalso; apply H1; reflexivity]; clear H1 H3.
         unfolds object_map_properties; simpl.
-        inverts HS. clear H wf_state_prealloc_global wf_state_env_record_heap.
+        inverts HS. clear H wf_state_prealloc_global wf_state_wf_env_records wf_state_env_loc_global_env_record.
         forwards M:wf_state_wf_objects obj str0. exists* x1.
         eapply wf_object_state_extends; eauto.
     (*wf_state_prealloc_global*)
@@ -462,6 +557,14 @@ Proof.
         inverts HS. inverts wf_state_prealloc_global. exists x1. constructor*.
         destruct S; subst; simpl; apply Heap.binds_write_neq; auto.
         inverts H1; simpl in wf_state_prealloc_global_binds; auto.
+    (*wf_state_prealloc_native_error_proto*)
+        introv. inverts Hext. apply* H. inverts* HS. apply* wf_state_prealloc_native_error_proto.
+    (*wf_state_wf_env_records*)
+      introv HL.
+      inverts HL. inverts HS. clear wf_state_wf_objects wf_state_prealloc_global wf_state_env_loc_global_env_record.
+      eapply wf_env_record_state_extends; eauto. apply* wf_state_wf_env_records.
+      exists x0. clear wf_state_wf_env_records Hext HA Hl.
+      inverts Hset. inverts H0. destruct S; simpl in H. unfolds env_record_binds; auto.
     (*wf_state_env_record_heap*)
       inverts HS. inverts Hext. auto.
   (*state_extends*)
@@ -469,14 +572,14 @@ Proof.
 Qed.
 
 
-
 Lemma wf_env_record_write_decl_env : forall (S S':state) (str:strictness_flag) (L:env_loc) (x:prop_name) (mu:mutability) (v:value),
   wf_state S ->
+  wf_env_loc S str L ->
   S' = env_record_write_decl_env S L x mu v ->
   wf_value S str v ->
   wf_state S' /\ state_extends S' S.
 Proof.
-  introv HS HS' Hv.
+  introv HS HL HS' Hv.
   assert (Hext:state_extends S' S).
   (*state_extends (assert)*)
     unfolds. unfolds env_record_write_decl_env. unfolds decl_env_record_write. destruct (Heap.read (state_env_record_heap S) L); subst; simpl. destruct S; subst; simpl. split. simpl. apply heap_extends_refl.
@@ -485,28 +588,61 @@ Proof.
     splits; apply heap_extends_refl.
   split.
   (*wf_state*)
-    constructor*; inverts HS; subst.
+    constructor*; inverts keep HS; subst.
     (*wf_state_wf_objects*)
-      clear wf_state_prealloc_global wf_state_env_record_heap.
+      clear wf_state_prealloc_global wf_state_wf_env_records wf_state_env_loc_global_env_record.
       introv Hl. inverts Hl. eapply wf_object_state_extends; eauto.
       apply wf_state_wf_objects. clear wf_state_wf_objects Hv Hext.
       destruct S; simpl in H. unfolds env_record_write_decl_env. simpl in H.
       destruct (Heap.read state_env_record_heap L); subst; simpl; exists* x0.
     (*wf_state_prealloc_global*)
-      clear wf_state_wf_objects wf_state_env_record_heap Hext.
+      clear wf_state_wf_objects wf_state_wf_env_records wf_state_env_loc_global_env_record Hext.
       inverts wf_state_prealloc_global. exists x0.
       inverts H; destruct S; simpl in wf_state_prealloc_global_binds; simpl in wf_state_prealloc_global_define_own_prop; simpl in wf_state_prealloc_global_get; simpl in wf_state_prealloc_global_get_own_prop.
       unfolds env_record_write_decl_env; simpl. constructor*; destruct (Heap.read state_env_record_heap L); simpl; auto.
-    (*wf_state_env_record_heap*)
-      clear wf_state_wf_objects wf_state_prealloc_global Hext.
+    (*wf_state_prealloc_native_error_proto*)
+      introv. inverts Hext. apply H. apply* wf_state_prealloc_native_error_proto.
+    (*wf_state_wf_env_records*)
+      clear wf_state_wf_objects wf_state_prealloc_global wf_state_env_loc_global_env_record.
+      introv HL'. inverts HL'. forwards M:eq_env_loc_dec x0 L. inverts M.
+      (*x0 = L*)
+      forwards* M:wf_state_wf_env_records (Heap.read (state_env_record_heap S) L) str0. exists L. destruct S. simpl; unfolds; simpl. rewrite Heap.binds_equiv_read; auto. inverts* HL.
+      clear wf_state_prealloc_native_error_proto.
+      unfolds env_record_write_decl_env; simpl; simpl in H; simpl in Hext.
+      inverts keep HL. simpl in H0; rewrite Heap.indom_equiv_binds in H0. inverts H0. 
+      rewrite Heap.binds_equiv_read in H1; try solve [inverts* HL].
+      subst.
+      destruct (Heap.read (state_env_record_heap S) L). 
+        (*env_record_decl*)
+          destruct S.
+          unfolds in H; simpl in H; apply Heap.binds_write_inv in H; inverts H; inverts H0; try solve [exfalso; auto]; clear H.
+          constructor*. inverts M. unfolds. introv HH. eapply wf_value_state_extends; eauto. unfolds in HH. unfolds decl_env_record_write. apply Heap.binds_write_inv in HH.
+          inverts HH.
+          (*s = x*)
+            inverts H. inverts H2. inverts Hv; rconstructors*.
+          (*s <> x*)
+            inverts H. unfolds wf_decl_env_record. apply* H0.
+        (*env_record_object*)
+          apply* wf_state_wf_env_records.
+      (*x0 <> L*)
+        eapply wf_env_record_state_extends; eauto.
+        apply* wf_state_wf_env_records. exists x0. clear Hext wf_state_wf_env_records.
+        destruct S. unfolds env_record_write_decl_env. simpl in H.
+        destruct (Heap.read state_env_record_heap L).
+        (*env_record_decl*)
+          unfolds env_record_binds; simpl; simpl in H. apply Heap.binds_write_inv in H; inverts H; inverts H1; try solve [exfalso; auto]; auto.
+        (*env_record_object*)
+          auto.
+    (*wf_state_env_loc_global_env_record*)
+        clear wf_state_wf_objects wf_state_prealloc_global Hext.
       unfolds env_record_write_decl_env. destruct (Heap.read (state_env_record_heap S) L); simpl. unfolds env_record_write. unfolds state_map_env_record_heap. unfolds state_with_env_record_heap.
-      destruct S; subst; simpl. simpl in wf_state_env_record_heap. unfolds.
-      rewrite Heap.dom_write. apply in_union_get_1. unfolds in wf_state_env_record_heap. assumption.
+      destruct S; subst; simpl. simpl in wf_state_env_loc_global_env_record. unfolds.
+      rewrite Heap.dom_write. apply in_union_get_1. unfolds in wf_state_env_loc_global_env_record. assumption.
       assumption.
   (*state_extends*)
     assumption.
 Qed.
- 
+
 
 Lemma wf_state_wf_prealloc_global : forall (S:state) (str:strictness_flag),
   wf_state S ->
@@ -516,9 +652,77 @@ Proof.
 Qed.
 
 
+Lemma object_alloc_state_extends : forall (l:object_loc) (O:object) (S S':state),
+  (l,S') = object_alloc S O ->
+  state_extends S' S.
+Proof.
+  introv Hall. unfolds object_alloc. destruct S. destruct state_fresh_locations.
+  unfolds. simpl. inverts Hall. simpl.
+  split.
+  apply* @heap_write_extends. apply eq_object_loc_dec.
+  apply heap_extends_refl.
+Qed.
+
+    
+Lemma wf_object_alloc : forall (str:strictness_flag) (l:object_loc) (O:object) (S S':state),
+  (l,S') = object_alloc S O ->
+  wf_state S ->
+  wf_object S str O ->
+  wf_state S' /\ wf_object_loc S' str l.
+Proof.
+  introv Hall. forwards* M:object_alloc_state_extends l O S S'.
+  split.
+  (*wf_state*)
+  constructor*.
+    (*wf_state_wf_objects*)
+      introv Hobj. inverts Hobj. forwards E:eq_object_loc_dec x l. unfolds object_alloc. destruct S. destruct state_fresh_locations. inverts Hall.
+      inverts E; unfolds object_binds; simpl in H1; apply Heap.binds_write_inv in H1.
+      (*x=l*)
+        clear H. inverts H1; try solve [inverts H; exfalso; auto]. inverts H; subst. clear H1.
+        eapply wf_object_state_extends; eauto. apply wf_object_str with str; auto.
+      (*x<>l*)
+        clear H0. inverts H1; inverts H0; try solve [exfalso; auto]. clear H1 H2.
+        eapply wf_object_state_extends; eauto. clear M. apply wf_object_str with str; auto. clear str0. inverts H. forwards* M:wf_state_wf_objects obj str.
+    (*wf_state_prealloc_global*)
+      inverts H. clear wf_state_wf_objects wf_state_wf_env_records wf_state_env_loc_global_env_record. inverts wf_state_prealloc_global. inverts H.
+      unfolds object_alloc. destruct S. destruct state_fresh_locations. inverts Hall.  simpl in wf_state_prealloc_global_binds. simpl.
+      assert (E:object_loc_normal n<>prealloc_global). introv H. inverts H.
+      exists x. constructor*.
+      (*wf_state_prealloc_global_binds*)
+        clear M. apply* @Heap.binds_write_neq.
+    (*wf_state_prealloc_native_error_proto*)
+      introv. inverts M. apply* H1. inverts H. apply* wf_state_prealloc_native_error_proto.
+    (*wf_state_wf_env_records*)
+        clear H0. destruct S. unfolds object_alloc. destruct state_fresh_locations. inverts Hall. introv HH.
+        inverts H. clear wf_state_wf_objects wf_state_prealloc_global wf_state_env_loc_global_env_record.
+        unfolds env_record_binds. simpl. simpl in wf_state_wf_env_records. simpl in HH. eapply wf_state_wf_env_records in HH. eapply wf_env_record_state_extends; eauto.    
+    (*wf_state_env_loc_global_env_record*)
+      clear H0 M. unfolds object_alloc; destruct S; destruct state_fresh_locations; inverts Hall; simpl.
+      inverts* H.
+  (*wf_object_loc*)
+    clear M H0 H. destruct S; destruct state_fresh_locations; inverts* Hall.
+    unfolds. unfolds. rewrite Heap.indom_equiv_binds.
+    simpl. exists O. apply* @Heap.binds_write_eq.
+Qed.
+
+
+Lemma wf_decl_env_record_rem : forall (S:state) (str:strictness_flag) (Ed:decl_env_record) (x:prop_name),
+  wf_decl_env_record S str Ed ->
+  wf_decl_env_record S str (decl_env_record_rem Ed x).
+Proof.
+  introv Hed. unfolds. introv Hb. unfolds decl_env_record_rem. unfolds decl_env_record_binds.
+  apply Heap.binds_rem_inv in Hb. inverts Hb.
+  unfolds wf_decl_env_record. unfolds decl_env_record_binds.
+  apply* Hed.
+Qed.
+
+
+
+
 (*Theorems: the initial state and context are wf*)
 Theorem wf_state_initial : wf_state state_initial.
 Proof.
+(* this was the proof for the older wf_state*)
 (*  constructor.
   (*wf_state_wf_objects*)
     introv Hb. inverts Hb. unfolds state_initial. unfolds in H. simpl in H.
@@ -544,7 +748,9 @@ Proof.
   exists (env_record_object_default prealloc_global).
     apply Heap.binds_write_eq.
 Qed.
-*)Admitted.
+*)
+Admitted.
+
 
 Theorem wf_execution_ctx_initial : forall (str:strictness_flag),
   wf_execution_ctx str (execution_ctx_initial str).
@@ -606,7 +812,7 @@ Admitted.
 
 
 
-
+(*tactics used in the proof of pr_red_ext_expr*)
 Ltac wf_impossible_aux :=
 match goal with
   | [ H:wf_expr _ _ _ |- _ ] => inversion H; subst
@@ -634,11 +840,19 @@ Ltac wf_inverts :=
     | [H:wf_ovalue _ _ (Some _) |-_] => inverts H
     | [H:wf_ovalue _ _ None |-_] => clear H
     | [H:wf_env_record _ _ (env_record_object _ _) |-_] => inverts H
+    | [H:wf_resvalue _ _ (resvalue_value _) |- _] => inverts H
+    | [H:wf_resvalue _ _ (resvalue_ref _) |- _] => inverts H
+    | [H:wf_res _ _ (res_intro _ _ _) |- _] => inverts H
+    | [H:wf_res _ _ (res_ref _) |- _] => inverts H
+    | [H:wf_res _ _ (res_val _) |- _] => inverts H
+    | [H:wf_ref _ _ (ref_intro _ _ _) |- _] => inverts H
+    | [H:wf_ref_base_type _ _ (ref_base_type_value _) |- _]=> inverts H
+    | [H:wf_ref_base_type _ _ (ref_base_type_env_loc _) |- _]=> inverts H
   end.
-
 
 Ltac wf_inverts3a :=
   try (wf_inverts; try (wf_inverts; try wf_inverts)); auto.
+
 
 Ltac appredspec :=
   match goal with
@@ -648,6 +862,7 @@ Ltac appredspec :=
     | [H:red_spec _ _ _ ?s |- wf_specret_valuevalue _ _ ?s] => forwards*: pr_red_spec_valuevalue H
     | [H:red_spec _ _ _ ?s |- wf_specret_full_descriptor _ _ ?s] => forwards*: pr_red_spec_full_descriptor H
   end.
+
 
 Ltac wf_state_extends :=
   match goal with
@@ -679,6 +894,7 @@ Hint Resolve wf_state_wf_prealloc_global : wf_base.
 Hint Constructors Forall wf_expr wf_prog wf_stat wf_var_decl wf_ext_expr wf_ext_stat wf_ext_prog state_of_out wf_ext_spec wf_res wf_full_descriptor : wf_base.
 
 
+
 Theorem pr_red_expr : forall (S:state) (C:execution_ctx) (ee:ext_expr) (o:out) (str:strictness_flag),
   red_expr S C ee o ->
   wf_state S ->
@@ -687,7 +903,7 @@ Theorem pr_red_expr : forall (S:state) (C:execution_ctx) (ee:ext_expr) (o:out) (
   wf_out S str o.
 Proof.
 
-  introv Hred HS HC Hee. induction Hred; auto. (*this takes a long time*)
+  introv Hred HS HC Hee. induction Hred; auto.
 
   apply* wf_out_of_ext_expr.
 
@@ -715,17 +931,17 @@ Proof.
 
   wf_inverts. inverts H0. apply* IHHred2.
 
-  wf_inverts3a. constructor*. constructor*. repeat constructor.
+  wf_inverts3a; rconstructors*.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. inverts H5. (*maybe wf_inverts*)repeat constructor*. inverts* H1.
+  wf_inverts3a. auto with wf_base.
 
-  repeat constructor*.
+  rconstructors*.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor. inverts H6. inverts* H2 (*idem*). apply* IHHred1. constructor. inverts H6. inverts* H2. destruct r; subst. simpl in H0. subst. inverts H3. inverts H1. auto.
+  wf_inverts3a. wf_inverts. destruct r; subst; simpl in H0; subst; inverts H2. auto with wf_base.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. inverts H5. inverts H1. constructor*. unfolds in H. destruct r; subst. simpl in H. subst. inverts* H2. inverts* H0.
+  wf_inverts3a. wf_inverts. destruct r; subst; inverts H; subst; simpl in H0; subst; inverts H1.  auto with wf_base.
 
   wf_inverts3a.
 
@@ -733,12 +949,12 @@ Proof.
   
   wf_inverts. inverts H0. apply* IHHred2.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. inverts H4. inverts H0. repeat constructor*. 
+  wf_inverts3a. auto with wf_base.
 
   wf_inverts3a. constructor*. repeat constructor.
   
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. apply* pr_red_spec_value. constructor. inverts H6. assumption.
-
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. apply* pr_red_spec_value. rconstructors*.
+  
   wf_inverts3a. constructor*. repeat constructor. 
 
   wf_inverts3a.
@@ -830,7 +1046,7 @@ Proof.
   wf_inverts. apply* IHHred2.
 
   (*red_spec_equal_4_recurse*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. inverts H5. inverts H0. rconstructors*. eapply wf_value_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. rconstructors*. eapply wf_value_state_extends; eauto.
 
   (*red_expr_binary_op_strict_equal*)
   wf_inverts3a. rconstructors*.
@@ -875,7 +1091,7 @@ Proof.
 
   wf_inverts3a. inverts H3. wf_out_change_state. apply* IHHred2. rconstructors*. wf_state_extends. auto with wf_base.
 
-  wf_inverts3a. inverts H1. inverts H5. inverts H1. wf_out_change_state. apply* IHHred. rconstructors*. auto with wf_base.
+  wf_inverts3a. inverts H1. wf_inverts. auto with wf_base.
 
   wf_inverts3a. inverts H1. wf_out_change_state. auto with wf_base.
 
@@ -909,7 +1125,7 @@ Proof.
   wf_inverts3a. apply* IHHred. inverts Hred. inverts H0. inverts H1. rconstructors*.
   
   (*red_spec_object_put*)
-  wf_inverts3a. apply* IHHred. destruct B; subst. constructor*.
+  wf_inverts3a. apply* IHHred. destruct B; subst. inverts H2. rconstructors*.
 
   (*red_spec_object_can_put*)
   wf_inverts3a. inverts H. destruct B. apply* IHHred.
@@ -922,8 +1138,8 @@ Proof.
 
   (*red_spec_object_define_own_prop*)
   wf_inverts3a. inverts H. inverts keep HS. inverts H0. apply* IHHred.
-  destruct (object_define_own_prop_ x0). constructor*.
-  admit. (*problem: the define_own_prop_ can be args_obj (which isn't wf) instead of default*)
+  forwards M:wf_state_wf_objects x0 str. exists* l. inverts M.
+  rewrite wf_object_define_own_prop; constructor*.
 
   (*red_spec_object_has_instance*)
   wf_impossible.
@@ -952,11 +1168,11 @@ Proof.
 
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. wf_state_extends; auto. inverts H. inverts keep H3. forwards M:wf_state_wf_objects x0 str.  exists* l. inverts M. inverts H0. auto.  (*have to add something about object_proto_ x with Heap.binds (state_object_heap S) prealloc_global x in wf_state (need to show it is wf)*) (*done*)
+  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. wf_state_extends; auto. inverts H. inverts keep H3. forwards M:wf_state_wf_objects x0 str.  exists* l. inverts M. inverts H0. auto.
 
   auto with wf_base.
 
-  wf_inverts3a. apply* IHHred. constructor*. appredspec. constructor*. inverts* H4. (*change wf_spec_object_can_put_4 so that last arg is x such that object_proto S prealloc_global x): done*)(*change wf_spec_object_get_prop so that it can be proto of prealloc_global ?*)(*done*)
+  wf_inverts3a. apply* IHHred. constructor*. appredspec. constructor*. inverts* H4.
 
   wf_inverts3a. auto with wf_base.
   
@@ -969,51 +1185,51 @@ Proof.
   rconstructors*.
 
   (*red_spec_object_put (again)*)
-  wf_inverts3a. (*apply* IHHred2. rconstructors*. apply* IHHred1. rconstructors*.*)
+  wf_inverts3a.
 
-  wf_inverts3a. clear H4. wf_out_change_state. auto with wf_base.
+  wf_inverts3a. wf_out_change_state. auto with wf_base.
 
-  wf_inverts3a. clear H5. wf_out_change_state. auto with wf_base. 
+  wf_inverts3a. wf_out_change_state. auto with wf_base. 
 
   wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor*. apply* IHHred1. rconstructors*. wf_state_extends. subst. rconstructors*. wf_state_extends.
 
-  wf_impossible.
+  wf_inverts3a. auto with wf_base.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*; try wf_state_extends. appredspec. constructor*. wf_state_extends.
 
   wf_inverts3a. inverts H8. inversion H3.
-(*  subst. wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor*. apply* IHHred1. rconstructors*. auto with wf_base. admit. (*will have to add spec_call to wf…*)*)
 
   wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor*. apply* IHHred1. constructor*. auto with wf_base. subst. rconstructors*. auto with wf_base.
 
-  wf_inverts3a.
+  wf_inverts3a. auto with wf_base.
 
   auto with wf_base.
 
   (*red_spec_object_define_own_prop (again)*)
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*; auto with wf_base. (*define a wf_descriptor_state_extends lemma*)(*done*)
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*; auto with wf_base.
 
- (* wf_inverts3a. cases_if; forwards* HS':wf_set_property str; subst; try constructor*.
-  unfolds unsome_default. destruct Desc ; subst. inverts H3; simpl; inverts H5; [constructor*|auto]. rconstructors*.
-  clear H0 H1 H8. destruct Desc; subst; simpl. inverts H3. destruct descriptor_get; subst; simpl. inverts* H7. constructors*.
-  clear H0 H1 H8. destruct Desc; subst; simpl. inverts H3. destruct descriptor_set; subst; simpl. inverts* H8. constructors*.
- rconstructors*.*)admit. (*problem because I removed the accessors from wf*)
-
+  wf_inverts3a. cases_if; forwards* HS':wf_set_property str; subst; try constructor*;
+  try solve [unfolds unsome_default; destruct Desc ; subst; simpl; inverts H8; simpl; inverts H2; [constructor*|auto]| rconstructors*];
+  clear HS HC H4 H9 H0 C l x throw; exfalso; apply H1; clear H1; inverts H8; unfolds descriptor_is_generic; unfolds descriptor_is_accessor; unfolds descriptor_is_data; simpl; destruct ov1; destruct ob1; try solve [right; introv H1; inverts H1; inverts H0|right; introv H1; inverts H1; inverts H2|left; auto].
+  
   wf_inverts3a. rconstructors*.
 
-  wf_inverts3a. inverts H8. auto with wf_base. (*should work now, i had forgotten something in wf_spec_object_define_own_prop_3*)
+  wf_inverts3a. inverts H8. auto with wf_base.
 
   wf_inverts3a.
 
   wf_inverts3a.
   
-  wf_inverts3a.
+  wf_inverts3a. exfalso. clear Hred HS HC IHHred H3 C l x throw o. inverts H6. inverts H7. apply H; clear H. simpl. unfolds descriptor_is_data. admit.
+  (*problem with the rule for spec_object_define_own_prop_5:
+when Desc is generic, apply red_spec_object_define_own_prop_5_generic
+and according to the spec, no other possible choice
+but in the pretty rules you can also apply red_spec_object_define_own_prop_5a
+maybe there should be a condition '~descriptor_is_generic Desc' in this rule ?*)
 
-  wf_inverts3a. (* assert (HA':wf_attributes S str A'). clear HS HC H8 H1 Hred IHHred. destruct A; subst; simpl; inverts H4; rconstructors*.*) admit. (*again, problem with the accessors*)
-(*    forwards* HS':wf_set_property str A'.
-    inverts HS'. wf_out_change_state. apply* IHHred. constructor*. wf_state_extends. wf_state_extends.*)
+  wf_impossible.
 
   wf_inverts3a.
 
@@ -1028,64 +1244,65 @@ Proof.
 
   wf_inverts3a. auto with wf_base.
 
-
   (*red_spec_prim_value_get*)
   wf_inverts3a.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. inverts H5. inverts H0. inverts H3. constructor*. wf_state_extends.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. inverts H0. constructor*. wf_state_extends.
   
   (*red_spec_ref_put_value_value*)
-  wf_inverts3a. apply* IHHred. constructor*. inverts HS. inverts wf_state_prealloc_global. inverts H1. unfolds. unfolds. rewrite Heap.indom_equiv_binds. exists x; auto.
+  wf_inverts3a. apply* IHHred. constructor*. inverts HS. inverts wf_state_prealloc_global. inverts H1. constructor*. unfolds. rewrite Heap.indom_equiv_binds. exists x; auto.
 
-  wf_inverts3a. apply* IHHred. cases_if; subst; simpl; rconstructors*. inverts H4. inverts H3. simpl in H0. subst. inverts H1. assumption. admit. (*pb with spec_object_put: use another value than prealloc_global*)
+  wf_inverts3a. apply* IHHred. cases_if; subst; simpl; rconstructors*; destruct r; simpl in H0; inverts H3; subst; inverts H4; auto.
 
-  wf_inverts3a. apply* IHHred. rconstructors*. destruct r; subst. simpl in H. subst. inverts H2. inverts H0. inverts H1. inverts H0. assumption.
+  wf_inverts3a. apply* IHHred. rconstructors*. destruct r; subst. simpl in H. subst. wf_inverts. wf_inverts. inverts H1. assumption.
  
   wf_inverts3a.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. admit. (*change spec_object_put so that other than prealloc_global works*)
+  wf_inverts3a. wf_inverts. inverts H0. wf_out_change_state. apply* IHHred. inverts Hred. inverts H. rconstructors*. auto with wf_base.
 
   (*red_spec_env_record_has_binding*)
-  wf_inverts3a. rconstructors*. (*need the thing about wf_env_record_heap in wf_state*) admit.
+  wf_inverts3a. apply* IHHred. rconstructors*. inverts* HS.
 
   rconstructors*.
 
   wf_inverts3a.
 
   (*red_spec_env_record_create_mutable_binding*)
-  wf_inverts3a. admit. (*need the invariant with the env_heap*)
+  wf_inverts3a. apply* IHHred. constructor*. inverts* HS.
 
   wf_inverts3a. subst. forwards* M:wf_env_record_write_decl_env str prim_undef. constructor. inverts M. constructor; eauto. rconstructors*.
-(*need lemmas to show that a wf_state + a wf thing = a wf_state extending the other one*)(*done*)
 
   wf_inverts3a. 
+  
+  wf_inverts3a.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred2. rconstructors*. apply* IHHred1. rconstructors*. auto with wf_base. subst. simpl. rconstructors*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor*. apply* IHHred1. constructor*; auto with wf_base. subst. rconstructors*.
 
   wf_inverts3a. auto with wf_base.
 
   (*red_spec_env_record_set_mutable_binding*)
-  wf_inverts3a. apply* IHHred. admit. (*to do this i need to add the thing about wf_env_heap in wf_state*)
+  wf_inverts3a. apply* IHHred. constructor*. inverts* HS.
 
   wf_inverts3a. apply* IHHred. cases_if; subst; simpl; auto with wf_base. forwards* M:wf_env_record_write_decl_env. inverts M. rconstructors*.
 
-  wf_inverts3a. (*pb with spec_object_put: need to accept any l ?*)(*fixed*)
+  wf_inverts3a. auto with wf_base.
 
   (*red_spec_env_record_get_binding_value*)
-  wf_inverts3a. apply* IHHred. constructor*. (*same thing with the wf_env_heap*) admit.
+  wf_inverts3a. apply* IHHred. constructor*. inverts* HS.
 
-  wf_inverts3a. apply* IHHred. cases_if; subst; simpl; auto with wf_base. rconstructors*. admit. (*need to add wf_env_record to env_record_has_binding and wf_decl etc to wf_env_record.*)
+  wf_inverts3a. apply* IHHred. cases_if; subst; simpl; auto with wf_base. rconstructors*. unfolds decl_env_record_binds. inverts H2. forwards* M:H3.
 
   wf_inverts3a.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. (*pb with spec_object_get: maybe allow all l ? and no other value ?*)(*actually add a wf_object_loc hyp in spec_env_record_get_binding_value_2*)
+  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. eapply wf_value_state_extends; eauto. constructor*.
 
   (*red_spec_env_record_delete_binding*)
-  wf_inverts3a.
+  wf_inverts3a. apply* IHHred. constructor*. inverts* HS.
 
-  wf_inverts3a. cases_if. inversion H0. clear H0. forwards* E:wf_env_record_write H1. rconstructors*. inverts H0. rconstructors*.
+  wf_inverts3a. cases_if; try solve [inverts H0; rconstructors*]. inverts H0. forwards* E:wf_env_record_write str (decl_env_record_rem Ed x). constructor. inverts H5. apply* wf_decl_env_record_rem.
+  rconstructors*.
 
   rconstructors*.
 
@@ -1142,7 +1359,7 @@ Proof.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. eapply wf_prog_state_extends; eauto.
 
-  wf_inverts3a. admit. (*??? where does S come from in spec_binding_inst_8*)
+  wf_inverts3a. admit. (*where does S come from in spec_binding_inst_8 ?*)
 
   (*red_spec_call*)
   wf_impossible.
@@ -1180,23 +1397,26 @@ Proof.
   wf_impossible.
 
   (*red_spec_error*)
-  wf_inverts3a. apply* IHHred2. constructor*. apply* IHHred1. rconstructors*. (*need to know that (prealloc_native_error_proto ne) with ne:native_error is in the domain of the object heap*) admit.
+  wf_inverts3a. apply* IHHred2. constructor*. apply* IHHred1. rconstructors*. inverts HS. auto.
 
-  wf_inverts3a. rconstructors*. admit. (*problem with the res_throw*)
+  wf_inverts3a. rconstructors*.
 
   wf_inverts3a. rconstructors*.
 
   rconstructors*.
 
   (*red_spec_build_error*)
-  
-  wf_inverts3a. admit. (*need a theorem : (l,S') = object_alloc S O -> state_extends S',S*)
+  wf_inverts3a.
+  forwards* M1: object_alloc_state_extends H0.
+  forwards* M2: wf_object_alloc str O H0. unfolds object_new. unfolds object_create.  subst; constructor*; auto. simpl. introv HH. assert (HH':exists (AA:attributes), Heap.binds Heap.empty x AA). exists* A. rewrite <- Heap.indom_equiv_binds in HH'.
+    unfolds Heap.indom. rewrite Heap.dom_empty in HH'. inverts HH'.
+  inverts M2. auto with wf_base.
 
-  wf_inverts3a. rconstructors*. (*problem: l can't be wf… need to add it in the spec_build_error_1*)(*done*)
+  wf_inverts3a. rconstructors*.
 
   wf_inverts3a. 
 
-  wf_inverts3a. wf_out_change_state. inverts H6. inverts H1. forwards* M:wf_set_property str H; rconstructors*. unfolds; inverts H5; apply* H0. inverts M. unfolds; inverts H1; apply* H6; inverts H5; apply* H1. (*problem with the object_set_property*)(*actually need to add the wf_object_loc to spec_build_error_2*)(*done*)
+  wf_inverts3a. wf_out_change_state. wf_inverts. forwards* M:wf_set_property str H; rconstructors*. unfolds; inverts H5; apply* H0. inverts M. unfolds; inverts H1; apply* H6; inverts H5; apply* H1.
 
   wf_impossible.
 
@@ -1295,7 +1515,7 @@ Proof.
     forwards: IHHred HC; auto.
   (*case red_prog_nil*)
     apply* wf_out_ter. (*apply state_extends_refl.*)
-    apply wf_res_intro; eapply wf_resvalue_empty; auto.
+    apply wf_res_intro; constructor*.
   (*case red_prog_cons*)
     inverts Hep. inverts keep H0. apply Forall_last_inv in H1. inverts H1.
     forwards: IHHred1 HS HC.

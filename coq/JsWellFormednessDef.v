@@ -1,6 +1,8 @@
 Set Implicit Arguments.
 Require Export JsPrettyInterm JsInit JsPrettyRules1.
 
+(*definition of state_extends*)
+
 (*H extends H'*)
 Definition heap_extends {X Y:Type} (H H':Heap.heap X Y) : Prop :=
   forall (x:X), Heap.indom H' x -> Heap.indom H x.
@@ -49,6 +51,7 @@ Inductive state_of_out : out -> state -> Prop  :=
       state_of_out (out_ter S R) S.
 
 
+(*well-formedness for binary operators*)
 Inductive wf_binary_op : binary_op -> Prop :=
   | wf_binary_op_mult : wf_binary_op binary_op_mult
   | wf_binary_op_div : wf_binary_op binary_op_div
@@ -84,6 +87,7 @@ Inductive wf_obinary_op : option binary_op -> Prop :=
   | wf_obinary_op_some : forall (op:binary_op),
       wf_binary_op op ->
       wf_obinary_op (Some op).
+
 
 (*well-formedness for programs*)
 (*the state and the strictness flag are currently unused but may be needed later*)
@@ -161,39 +165,47 @@ Inductive wf_ovalue (S:state) (str:strictness_flag) : option value -> Prop :=
 
 
 
-(*well-formedness for objects*)
-Inductive wf_decl_env_record (S:state) (str:strictness_flag) : decl_env_record -> Prop :=
-  |wf_decl_env_record_intro : forall (env:decl_env_record),
-     (forall (s:string) (m:mutability) (v:value), decl_env_record_binds env s m v -> wf_value S str v) ->
-     wf_decl_env_record S str env.
+(*well-formedness for env_records*)
+
+Definition wf_decl_env_record (S:state) (str:strictness_flag) (env:decl_env_record) : Prop :=
+  forall (s:string) (m:mutability) (v:value),
+    decl_env_record_binds env s m v ->
+    wf_value S str v.
 
 
 Inductive wf_env_record (S:state) (str:strictness_flag) : env_record -> Prop :=
   | wf_env_record_decl : forall (env:decl_env_record),
-      (*wf_decl_env_record S str env ->*)
+      wf_decl_env_record S str env ->
       wf_env_record S str (env_record_decl env)
   | wf_env_record_object : forall (l:object_loc) (f:provide_this_flag),
       wf_object_loc S str l ->
       wf_env_record S str (env_record_object l f).
 
+
+
+
+(*well-formedness for env_loc*)
 (*check that the env_loc is bound to some env_record in the state*)
 Inductive wf_env_loc (S:state) (str:strictness_flag) : env_loc -> Prop :=
   | wf_env_loc_bound : forall (L:env_loc),
-      (*env_record_binds S L E -> ie Heap.binds (state_env_record_heap S) L E, JsPreliminary.v l830
-      wf_env_record S str E ->*)
       Heap.indom (state_env_record_heap S) L ->
       wf_env_loc S str L.
 
 
+
+
+(*well-formedness for descriptors*)
+(*the descriptor has to has get and set to None*)
 Inductive wf_descriptor (S:state) (str:strictness_flag) : descriptor -> Prop :=
-  | wf_descriptor_intro : forall (ov1 ov2 ov3:option value) (ob1 ob2 ob3:option bool),
-      (*other constraints on get and set (ov2-3) ?*)
+  | wf_descriptor_intro : forall (ov1:option value) (ob1 ob2 ob3:option bool),
       wf_ovalue S str ov1 ->
-      wf_ovalue S str ov2 ->
-      wf_ovalue S str ov3 ->
-      wf_descriptor S str (descriptor_intro ov1 ob1 ov2 ov3 ob2 ob3).
+      wf_descriptor S str (descriptor_intro ov1 ob1 None None ob2 ob3).
 
 
+
+
+(*well-formedness for attributes*)
+(*only data attributes are well-formed*)
 Inductive wf_attributes (S:state) (str:strictness_flag) : attributes -> Prop :=
   | wf_attributes_data_of : forall (v:value) (b1 b2 b3:bool),
       wf_value S str v ->
@@ -203,12 +215,14 @@ Inductive wf_attributes (S:state) (str:strictness_flag) : attributes -> Prop :=
       wf_value S str v' ->
       wf_attributes S str (attributes_accessor_of (attributes_accessor_intro v v' b b')).*)
 
+
 Inductive wf_oattributes (S:state) (str:strictness_flag) : option attributes -> Prop :=
   | wf_oattributes_none :
       wf_oattributes S str None
   | wf_oattributes_some : forall (A:attributes),
       wf_attributes S str A ->
       wf_oattributes S str (Some A).
+
 
 Inductive wf_full_descriptor (S:state) (str:strictness_flag) : full_descriptor -> Prop :=
   | wf_full_descriptor_undef : wf_full_descriptor S str full_descriptor_undef
@@ -217,12 +231,18 @@ Inductive wf_full_descriptor (S:state) (str:strictness_flag) : full_descriptor -
       wf_full_descriptor S str (full_descriptor_some A).
 
 
+
+
+(*well-formedness for objects*)
 Record wf_object (S:state) (str:strictness_flag) (obj:object) :=
   wf_object_intro {
     wf_object_proto_ : wf_value S str (object_proto_ obj);
+    wf_object_define_own_prop : object_define_own_prop_ obj = builtin_define_own_prop_default;
     wf_object_properties : forall (x:prop_name) (A:attributes),
       Heap.binds (object_properties_ obj) x A ->
       wf_attributes S str A}.
+
+
 
 
 (*well-formedness for states*)
@@ -236,15 +256,20 @@ Record wf_state_prealloc_global_aux (S:state) (obj:object) := wf_state_prealloc_
     object_get_ obj = builtin_get_default;
   wf_state_prealloc_global_get_own_prop :
      object_get_own_prop_ obj = builtin_get_own_prop_default}.
-
                                     
+
 Record wf_state (S:state) := wf_state_intro {
   wf_state_wf_objects : (forall (obj:object) (str:strictness_flag),
     (exists (l:object_loc), object_binds S l obj) ->
     wf_object S str obj);
   wf_state_prealloc_global :
     exists obj, wf_state_prealloc_global_aux S obj;
-  wf_state_env_record_heap :
+  wf_state_prealloc_native_error_proto : forall (ne:native_error),
+    object_indom S (prealloc_native_error_proto ne);
+  wf_state_wf_env_records : forall (E:env_record) (str:strictness_flag),
+    (exists (L:env_loc), env_record_binds S L E) ->
+    wf_env_record S str E;
+  wf_state_env_loc_global_env_record :
     Heap.indom (state_env_record_heap S) env_loc_global_env_record}.
 
 
@@ -258,6 +283,7 @@ Definition only_global_scope (C:execution_ctx) :=
 
 Definition wf_execution_ctx (str:strictness_flag) (C:execution_ctx) :=
   only_global_scope C.
+
 
 
 
@@ -278,6 +304,7 @@ Inductive wf_ref (S:state) (str:strictness_flag) : ref -> Prop :=
       wf_ref_base_type S str rbase ->
       wf_ref S str (ref_intro rbase x b).
 
+
 Inductive wf_resvalue (S:state) (str:strictness_flag) : resvalue -> Prop :=
   | wf_resvalue_empty : wf_resvalue S str resvalue_empty
   | wf_resvalue_value : forall v:value,
@@ -288,10 +315,16 @@ Inductive wf_resvalue (S:state) (str:strictness_flag) : resvalue -> Prop :=
       wf_resvalue S str (resvalue_ref r).
 
 
+Inductive wf_restype : restype -> Prop :=
+  | wf_restype_normal : wf_restype restype_normal
+  | wf_restype_throw : wf_restype restype_throw.
+
+
 Inductive wf_res (S:state) (str:strictness_flag) : res -> Prop :=
-  | wf_res_intro : forall (rv:resvalue) (lab:label), (*not sure about the label and the type*)
+  | wf_res_intro : forall (rt:restype) (rv:resvalue) (lab:label), (*not sure about the label and the type*)
+      wf_restype rt ->
       wf_resvalue S str rv ->
-      wf_res S str (res_intro restype_normal rv lab).
+      wf_res S str (res_intro rt rv lab).
 
 
 Inductive wf_out (S:state) (str:strictness_flag) : out -> Prop :=
@@ -301,6 +334,7 @@ Inductive wf_out (S:state) (str:strictness_flag) : out -> Prop :=
       state_extends S' S ->
       wf_res S' str R ->
       wf_out S str (out_ter S' R).
+
 
 
 
@@ -359,6 +393,7 @@ Inductive wf_specret_full_descriptor : state -> strictness_flag -> specret full_
 
 
 
+
 Inductive wf_ext_prog (S:state) (str:strictness_flag) : ext_prog -> Prop :=
   | wf_prog_basic : forall (p:prog),
       wf_prog S str p ->
@@ -377,6 +412,7 @@ Inductive wf_ext_prog (S:state) (str:strictness_flag) : ext_prog -> Prop :=
       wf_resvalue S str rv ->
       wf_out S str o ->
       wf_ext_prog S str (prog_2 rv o).
+
 
 
 
@@ -406,6 +442,7 @@ Inductive wf_ext_stat (S:state) (str:strictness_flag) : ext_stat -> Prop :=
   | wf_stat_var_decl_item_3 : forall (s:string) (o:out),
       wf_out S str o ->
       wf_ext_stat S str (stat_var_decl_item_3 s o).
+
 
 
 
@@ -687,13 +724,11 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
   | wf_spec_object_delete_3 : forall (l:object_loc) (x:prop_name) (b:bool) (b':bool),
       wf_ext_expr S str (spec_object_delete_3 l x b b')
   | wf_spec_env_record_has_binding : forall (L:env_loc) (x:prop_name),
-(*      wf_env_loc S str L ->*)
       wf_ext_expr S str (spec_env_record_has_binding L x)
   | wf_spec_env_record_has_binding_1 : forall (L:env_loc) (x:prop_name) (E:env_record),
       wf_env_record S str E ->
       wf_ext_expr S str (spec_env_record_has_binding_1 L x E)
   | wf_spec_env_record_get_binding_value : forall (L:env_loc) (x:prop_name) (b:bool),
-(*      wf_env_loc S str L ->*)
       wf_ext_expr S str (spec_env_record_get_binding_value L x b)
   | wf_spec_env_record_get_binding_value_1 : forall (L:env_loc) (x:prop_name) (b:bool) (E:env_record),
       wf_env_record S str E ->
@@ -738,6 +773,7 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_ext_expr S str (spec_env_record_delete_binding L x)
   | wf_spec_env_record_delete_binding_1 : forall (L:env_loc) (x:prop_name) (E:env_record),
       wf_env_loc S str L ->
+      wf_env_record S str E ->
       wf_ext_expr S str (spec_env_record_delete_binding_1 L x E)
   | wf_spec_env_record_create_set_mutable_binding : forall (L:env_loc) (x:prop_name) (ob:option bool) (v:value) (b:bool),
       wf_env_loc S str L ->
@@ -748,13 +784,6 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_env_loc S str L ->
       wf_value S str v ->
       wf_ext_expr S str (spec_env_record_create_set_mutable_binding_1 o L x v b)
- (* | wf_spec_env_record_implicit_this_value : forall (L:env_loc),
-      wf_env_loc S str L ->
-      wf_ext_expr S str (spec_env_record_implicit_this_value L)
-  | wf_spec_env_record_implicit_this_value_1 : forall (L:env_loc) (E:env_record),
-      wf_env_loc S str L ->
-      wf_env_record S str E ->
-      wf_ext_expr S str (spec_env_record_implicit_this_value_1 L E)*)
 
   (*spec_object_get*)
   | wf_spec_object_get : forall (v:value) (x:prop_name),
@@ -787,7 +816,6 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
   | wf_spec_object_can_put_4 : forall (l:object_loc) (x:prop_name) (v:value),
       wf_object_loc S str l ->
       wf_value S str v ->
-(*      object_proto S l v ->*)
       wf_ext_expr S str (spec_object_can_put_4 l x v)
   | wf_spec_object_can_put_5 : forall (l:object_loc) (sD:(specret full_descriptor)),
       wf_object_loc S str l ->
@@ -798,33 +826,33 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_ext_expr S str (spec_object_can_put_6 (attributes_data_intro v b1 b2 b3) b')
 
   (*spec_object_put*)
-  | wf_spec_object_put : forall (l:object_loc) (x:prop_name) (v':value) (b:bool),
-      wf_object_loc S str l ->
+  | wf_spec_object_put : forall (x:prop_name) (v v':value) (b:bool),
+      wf_value S str v ->
       wf_value S str v' ->
-      wf_ext_expr S str (spec_object_put l x v' b)
-  | wf_spec_object_put_1 : forall (l l':object_loc) (x:prop_name) (v':value) (b:bool),
+      wf_ext_expr S str (spec_object_put v x v' b)
+  | wf_spec_object_put_1 : forall (l:object_loc) (x:prop_name) (v v':value) (b:bool),
       wf_object_loc S str l ->
-      wf_object_loc S str l' ->
+      wf_value S str v ->
       wf_value S str v' ->
-      wf_ext_expr S str (spec_object_put_1 builtin_put_default l l' x v' b)
-  | wf_spec_object_put_2 : forall (l l':object_loc) (x:prop_name) (v':value) (b:bool) (o:out),
+      wf_ext_expr S str (spec_object_put_1 builtin_put_default v l x v' b)
+  | wf_spec_object_put_2 : forall (l:object_loc) (x:prop_name) (v v':value) (b:bool) (o:out),
       wf_object_loc S str l ->
-      wf_object_loc S str l' ->
+      wf_value S str v ->
       wf_value S str v' ->
       wf_out S str o ->
-      wf_ext_expr S str (spec_object_put_2 l l' x v' b o)
-  | wf_spec_object_put_3 : forall (l l':object_loc) (x:prop_name) (v':value) (b:bool) (sD:(specret full_descriptor)),
+      wf_ext_expr S str (spec_object_put_2 v l x v' b o)
+  | wf_spec_object_put_3 : forall (l:object_loc) (x:prop_name) (v v':value) (b:bool) (sD:(specret full_descriptor)),
       wf_object_loc S str l ->
-      wf_object_loc S str l' ->
+      wf_value S str v ->
       wf_value S str v' ->
       wf_specret_full_descriptor S str sD ->
-      wf_ext_expr S str (spec_object_put_3 l l' x v' b sD)
-  | wf_spec_object_put_4 : forall (l l':object_loc) (x:prop_name) (v':value) (b:bool) (sD:(specret full_descriptor)),
+      wf_ext_expr S str (spec_object_put_3 v l x v' b sD)
+  | wf_spec_object_put_4 : forall (l:object_loc) (x:prop_name) (v v':value) (b:bool) (sD:(specret full_descriptor)),
       wf_object_loc S str l ->
-      wf_object_loc S str l' ->
+      wf_value S str v ->
       wf_value S str v' ->
       wf_specret_full_descriptor S str sD ->
-      wf_ext_expr S str (spec_object_put_4 l l' x v' b sD)
+      wf_ext_expr S str (spec_object_put_4 v l x v' b sD)
   | wf_spec_object_put_5 : forall (o:out),
       wf_out S str o ->
       wf_ext_expr S str (spec_object_put_5 o)
@@ -869,11 +897,11 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_attributes S str A ->
       wf_descriptor S str Desc ->
       wf_ext_expr S str (spec_object_define_own_prop_5 l x A Desc b)
-  | wf_spec_object_define_own_prop_6a : forall (l:object_loc) (x:prop_name) (A:attributes) (Desc:descriptor) (b:bool),
+(*  | wf_spec_object_define_own_prop_6a : forall (l:object_loc) (x:prop_name) (A:attributes) (Desc:descriptor) (b:bool),
       wf_object_loc S str l ->
       wf_attributes S str A ->
       wf_descriptor S str Desc ->
-      wf_ext_expr S str (spec_object_define_own_prop_6a l x A Desc b)
+      wf_ext_expr S str (spec_object_define_own_prop_6a l x A Desc b)*)
   | wf_spec_object_define_own_prop_6b : forall (l:object_loc) (x:prop_name) (A:attributes) (Desc:descriptor) (b:bool),
       wf_object_loc S str l ->
       wf_attributes S str A ->
@@ -911,22 +939,6 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_ext_expr S str (spec_returns o).
 
 
-
-
-(*may need these ones too*)
-(*(** Extended expressions for comparison *)
-
-  | spec_eq : value -> value -> ext_expr
-  | spec_eq0 : value -> value -> ext_expr
-  | spec_eq1 : value -> value -> ext_expr
-  | spec_eq2 : ext_expr -> value -> value -> ext_expr
- 
-  
-
-*)
-
-
-(*may also need things from ext_spec*)
 
 
 Inductive wf_ext_spec (S:state) (str:strictness_flag) : ext_spec -> Prop :=
@@ -994,5 +1006,3 @@ Inductive wf_ext_spec (S:state) (str:strictness_flag) : ext_spec -> Prop :=
       wf_object_loc S str l ->
       wf_value S str v ->
       wf_ext_spec S str (spec_object_get_prop_3 l x v).
-
-                                                        
