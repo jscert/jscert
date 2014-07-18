@@ -62,8 +62,8 @@ Implicit Type sc : switchclause.
 (**************************************************************)
 (** Shorthand **)
 
-Definition vret := ret (T:=value).
-Definition dret := ret (T:=full_descriptor).
+Definition vret := ret.
+Definition dret := ret.
 
 
 (**************************************************************)
@@ -1161,18 +1161,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (type_of v1 = type_string \/ type_of v2 = type_string) ->
       red_spec S C (spec_convert_twice (spec_to_string v1) (spec_to_string v2)) y1 ->
       red_expr S C (expr_binary_op_add_string_1 y1) o ->
-      red_expr S0 C (expr_binary_op_add_1 (ret S (v1,v2))) o
+      red_expr S0 C (expr_binary_op_add_1 (ret S ((v1,v2):value2))) o
 
   | red_expr_binary_op_add_string_1 : forall S0 S C s1 s2 s,
       s = String.append s1 s2 ->
-      red_expr S0 C (expr_binary_op_add_string_1 (ret S (value_prim s1, value_prim s2))) (out_ter S s)
+      red_expr S0 C (expr_binary_op_add_string_1 (ret S ((value_prim s1, value_prim s2):value2))) (out_ter S s)
 
   | red_expr_binary_op_add_1_number : forall S0 S C v1 v2 y1 o,
       ~ (type_of v1 = type_string \/ type_of v2 = type_string) ->
       red_spec S C (spec_convert_twice (spec_to_number v1) (spec_to_number v2)) y1 ->
       red_expr S C (expr_puremath_op_1 JsNumber.add y1) o ->
       (* LATER: maybe we could go more directly to "expr_binary_op_3 JsNumber.add" *)
-      red_expr S0 C (expr_binary_op_add_1 (ret S (v1,v2))) o
+      red_expr S0 C (expr_binary_op_add_1 (ret S ((v1,v2):value2))) o
 
   (** Binary op : pure maths operations (11.5) *)
 
@@ -1184,7 +1184,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_expr_puremath_op_1 : forall S0 S C F n n1 n2,
       n = F n1 n2 ->
-      red_expr S0 C (expr_puremath_op_1 F (ret S (value_prim n1, value_prim n2))) (out_ter S n)
+      red_expr S0 C (expr_puremath_op_1 F (ret S ((value_prim n1, value_prim n2):value2))) (out_ter S n)
 
   (** Binary op : shift operations (11.7) *)
 
@@ -1224,7 +1224,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
             else If (b_neg = true /\ wr = true) then false
             else If (b_neg = true /\ wr = false) then true
             else wr) ->
-      red_expr S0 C (expr_inequality_op_2 b_swap b_neg (ret S (value_prim w1, value_prim w2))) (out_ter S wr')
+      red_expr S0 C (expr_inequality_op_2 b_swap b_neg (ret S ((value_prim w1, value_prim w2):value2))) (out_ter S wr')
 
   (** Binary op : instanceof (11.8.6) *)
 
@@ -1662,18 +1662,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** CanPut (8.12.4) *)
 
-  | red_spec_object_can_put_1_default : forall S C l x o (y:specret full_descriptor), (* Step 1 *)
+  | red_spec_object_can_put_1_default : forall S C l x o (y:specret), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_object_can_put_2 l x y) o ->
       red_expr S C (spec_object_can_put_1 builtin_can_put_default l x) o
 
   | red_spec_object_can_put_2_accessor : forall S0 S C l x Aa b, (* Steps 2 and 2.a *)
       b = (If attributes_accessor_set Aa = undef then false else true) ->
-      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_accessor_of Aa))) (out_ter S0 b)
+      red_expr S C (spec_object_can_put_2 l x (ret S0 (attributes_accessor_of Aa))) (out_ter S0 b)
 
   | red_spec_object_can_put_2_data : forall S0 S C l x Ad b, (* Step 2.b *)
       b = attributes_data_writable Ad ->
-      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_data_of Ad))) (out_ter S0 b)
+      red_expr S C (spec_object_can_put_2 l x (ret S0 (attributes_data_of Ad))) (out_ter S0 b)
 
   | red_spec_object_can_put_2_undef : forall S0 S C l x o lproto, (* Step 3 *)
       object_proto S l lproto ->
@@ -1721,7 +1721,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_void throw native_error_type) o ->
       red_expr S0 C (spec_object_put_2 vthis l x v throw (out_ter S false)) o
 
-  | red_spec_object_put_2_true : forall S0 S C vthis l x v throw o (y:specret full_descriptor), (* Step 2 *)
+  | red_spec_object_put_2_true : forall S0 S C vthis l x v throw o (y:specret), (* Step 2 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_object_put_3 vthis l x v throw y) o ->
       red_expr S0 C (spec_object_put_2 vthis l x v throw (out_ter S true)) o
@@ -1730,11 +1730,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       Desc = descriptor_intro (Some v) None None None None None ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
-      red_expr S0 C (spec_object_put_3 lthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
+      red_expr S0 C (spec_object_put_3 lthis l x v throw (ret S (attributes_data_of Ad))) o
 
   | red_spec_object_put_3_data_prim : forall S0 S C (wthis:prim) l x v throw Ad o, (* Step 3, for prim values *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
-      red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
+      red_expr S0 C (spec_object_put_3 wthis l x v throw (ret S (attributes_data_of Ad))) o
 
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o D, (* Step 4 *)
       (D = full_descriptor_undef) \/ (D = (attributes_accessor_of Aa)) ->
@@ -1778,7 +1778,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Delete (8.12.7) *)
 
-  | red_spec_object_delete_1_default : forall S C l x throw o (y:specret full_descriptor), (* Step 1 *)
+  | red_spec_object_delete_1_default : forall S C l x throw o (y:specret), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_object_delete_2 l x throw y) o ->
       red_expr S C (spec_object_delete_1 builtin_delete_default l x throw) o
@@ -1853,7 +1853,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** DefineOwnProperty (8.12.9) *)
 
-  | red_spec_object_define_own_prop_1_default : forall S C l x Desc throw o (y:specret full_descriptor), (* Step 1 *)
+  | red_spec_object_define_own_prop_1_default : forall S C l x Desc throw o (y:specret), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_object_define_own_prop_2 l x Desc throw y) o ->
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc throw) o
@@ -2485,7 +2485,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Arguments Object: Get (returns value) (10.6) *)
 
-  | red_spec_object_get_args_obj : forall lmap S C vthis l x o (y:specret full_descriptor), (* Steps 1 - 2 *)
+  | red_spec_object_get_args_obj : forall lmap S C vthis l x o (y:specret), (* Steps 1 - 2 *)
      object_method object_parameter_map_ S l (Some lmap) ->
      red_spec S C (spec_object_get_own_prop lmap x) y ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap y) o ->
@@ -2502,7 +2502,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Arguments Object: DefineOwnProperty (returns bool) (10.6) *)
 
-  | red_spec_object_define_own_prop_args_obj : forall lmap S C l x Desc throw o (y:specret full_descriptor), (* Steps 1 - 2 *)
+  | red_spec_object_define_own_prop_args_obj : forall lmap S C l x Desc throw o (y:specret), (* Steps 1 - 2 *)
       object_method object_parameter_map_ S l (Some lmap) ->
       red_spec S C (spec_object_get_own_prop lmap x) y ->
       red_expr S C (spec_args_obj_define_own_prop_1 l x Desc throw lmap y) o ->
@@ -2564,7 +2564,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Arguments Object: Delete (10.6) *)
 
-  | red_spec_object_delete_args_obj : forall lmap S C l x throw o (y:specret full_descriptor), (* Steps 1 - 2 *)
+  | red_spec_object_delete_args_obj : forall lmap S C l x throw o (y:specret), (* Steps 1 - 2 *)
       object_method object_parameter_map_ S l (Some lmap) ->
       red_spec S C (spec_object_get_own_prop lmap x) y ->
       red_expr S C (spec_args_obj_delete_1 l x throw lmap y) o ->
@@ -3043,7 +3043,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_get_own_prop_descriptor_2 l o1) o ->
       red_expr S C (spec_call_object_get_own_prop_descriptor_1 l vx) o
 
-  | red_spec_call_object_get_own_prop_descriptor_2 : forall S0 S C l x o (y:specret full_descriptor), (* steps 3 and 4 *)
+  | red_spec_call_object_get_own_prop_descriptor_2 : forall S0 S C l x o (y:specret), (* steps 3 and 4 *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_from_descriptor y) o ->
       red_expr S0 C (spec_call_object_get_own_prop_descriptor_2 l (out_ter S x)) o
@@ -3101,7 +3101,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_prop_2 l o1 va) o ->
       red_expr S C (spec_call_object_define_prop_1 l vx va) o
 
-  | red_spec_call_object_object_define_prop_2 : forall S C l x va o (y: specret descriptor), (* step 3 *)
+  | red_spec_call_object_object_define_prop_2 : forall S C l x va o (y: specret), (* step 3 *)
       red_spec S C (spec_to_descriptor va) y ->
       red_expr S C (spec_call_object_define_prop_3 l x y) o ->
       red_expr S C (spec_call_object_define_prop_2 l (out_ter S x) va) o
@@ -3145,7 +3145,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_4 o1 l lp x xs Descs) o ->
       red_expr S C (spec_call_object_define_props_3 l lp (x::xs) Descs) o
 
-  | red_spec_call_object_define_props_4 : forall S0 S C v l lp o o1 x xs Descs (y:specret attributes), (* step 5.b *)
+  | red_spec_call_object_define_props_4 : forall S0 S C v l lp o o1 x xs Descs (y:specret), (* step 5.b *)
       red_spec S C (spec_to_descriptor v) y ->
       red_expr S C (spec_call_object_define_props_5 l lp x xs Descs y) o1 ->
       red_expr S0 C (spec_call_object_define_props_4 (out_ter S v) l lp x xs Descs) o
@@ -3183,7 +3183,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_seal_2 l xs) o ->
       red_expr S C (spec_call_object_seal_1 l) o
 
-  | red_spec_call_object_seal_2_cons : forall S C l xs x o (y:specret full_descriptor), (* Step 2.a *)
+  | red_spec_call_object_seal_2_cons : forall S C l xs x o (y:specret), (* Step 2.a *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_call_object_seal_3 l x xs y) o ->
       red_expr S C (spec_call_object_seal_2 l (x::xs)) o
@@ -3192,7 +3192,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
       red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A') throw_true) o1 ->
       red_expr S C (spec_call_object_seal_4 l xs o1) o ->
-      red_expr S C (spec_call_object_seal_3 l x xs (ret (T:=full_descriptor) S0 A)) (out_ter S false)
+      red_expr S C (spec_call_object_seal_3 l x xs (ret S0 A)) (out_ter S false)
 
   | red_spec_call_object_seal_4 : forall S0 S C l xs b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_seal_2 l xs) o ->
@@ -3219,7 +3219,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_freeze_2 l xs) o ->
       red_expr S C (spec_call_object_freeze_1 l) o
 
-  | red_spec_call_object_freeze_2_cons : forall S C l xs x o (y:specret full_descriptor), (* Step 2.a *)
+  | red_spec_call_object_freeze_2_cons : forall S C l xs x o (y:specret), (* Step 2.a *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_call_object_freeze_3 l x xs y) o ->
       red_expr S C (spec_call_object_freeze_2 l (x::xs)) o
@@ -3233,7 +3233,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
           | attributes_accessor_of Aa => attributes_accessor_of Aa
           end ->
       red_expr S C (spec_call_object_freeze_4 l x xs A') o ->
-      red_expr S C (spec_call_object_freeze_3 l x xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_freeze_3 l x xs (ret S0 A)) o
 
   | red_spec_call_object_freeze_4 : forall S C Desc A A' xs l x o1 o, (* Steps 2.c and 2.d *)
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
@@ -3284,19 +3284,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
       red_expr S C (spec_call_object_is_sealed_1 l) o
 
-  | red_spec_call_object_is_sealed_2_cons : forall S C l xs x o (y:specret full_descriptor), (* Step 2.a *)
+  | red_spec_call_object_is_sealed_2_cons : forall S C l xs x o (y:specret), (* Step 2.a *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_call_object_is_sealed_3 l xs y) o ->
       red_expr S C (spec_call_object_is_sealed_2 l (x::xs)) o
 
   | red_spec_call_object_is_sealed_3_prop_configurable : forall S0 S C A xs l x o, (* Step 2.b, true *)
       attributes_configurable A = true ->
-      red_expr S C (spec_call_object_is_sealed_3 l xs (ret (T:=full_descriptor) S0 A)) (out_ter S false)
+      red_expr S C (spec_call_object_is_sealed_3 l xs (ret S0 A)) (out_ter S false)
 
   | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S0 S C A xs l x o, (* Step 2.b, false *)
       attributes_configurable A = false ->
       red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
-      red_expr S C (spec_call_object_is_sealed_3 l xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_is_sealed_3 l xs (ret S0 A)) o
 
   | red_spec_call_object_is_sealed_2_nil : forall S C l b x o, (* Step 3-4 *)
       object_extensible S l b ->
@@ -3319,7 +3319,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_frozen_2 l xs) o ->
       red_expr S C (spec_call_object_is_frozen_1 l) o
 
-  | red_spec_call_object_is_frozen_2_cons : forall S C l xs x o (y:specret full_descriptor), (* Step 2.a *)
+  | red_spec_call_object_is_frozen_2_cons : forall S C l xs x o (y:specret), (* Step 2.a *)
       red_spec S C (spec_object_get_own_prop l x) y ->
       red_expr S C (spec_call_object_is_frozen_3 l xs y) o ->
       red_expr S C (spec_call_object_is_frozen_2 l (x::xs)) o
@@ -3327,12 +3327,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_frozen_3_desc_is_data : forall S0 S C A xs l x o, (* Step 2.b, true *)
       attributes_is_data A = true ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
-      red_expr S C (spec_call_object_is_frozen_3 l xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_is_frozen_3 l xs (ret S0 A)) o
 
   | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S0 S C A xs l x o, (* Step 2.b, false *)
       attributes_is_data A = false ->
       red_expr S C (spec_call_object_is_frozen_5 l xs A) o ->
-      red_expr S C (spec_call_object_is_frozen_3 l xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_is_frozen_3 l xs (ret S0 A)) o
 
   | red_spec_call_object_is_frozen_4_prop_is_writable: forall S C A xs l x o, (* Step 2.b.i, true *)
       attributes_writable A = true ->
@@ -3428,7 +3428,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_proto_has_own_prop_3 (ret S' full_descriptor_undef)) (out_ter S' false)
 
   | red_spec_call_object_proto_has_own_prop_3_not_undef : forall S S' C A, (* Step 5 *)
-      red_expr S C (spec_call_object_proto_has_own_prop_3 (ret (T := full_descriptor) S' A)) (out_ter S' true)
+      red_expr S C (spec_call_object_proto_has_own_prop_3 (ret S' A)) (out_ter S' true)
 
    (** Object.prototype.isPrototypeOf() (returns bool)  (15.2.4.6) *)
 
@@ -3484,17 +3484,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_call_object_proto_prop_is_enumerable_3 o1 s) o ->
       red_expr S C (spec_call_object_proto_prop_is_enumerable_2 vthis (out_ter S' s)) o
 
-  | red_spec_call_object_proto_prop_is_enumerable_3 : forall S S' C l x o (y:specret full_descriptor),
+  | red_spec_call_object_proto_prop_is_enumerable_3 : forall S S' C l x o (y:specret),
       red_spec S' C (spec_object_get_own_prop l x) y ->
       red_expr S' C (spec_call_object_proto_prop_is_enumerable_4 y) o ->
       red_expr S C (spec_call_object_proto_prop_is_enumerable_3 (out_ter S' l) x) o
 
   | red_spec_call_object_proto_prop_is_enumerable_4_undef : forall S0 S C,
-      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 full_descriptor_undef)) (out_ter S0 false)
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret S0 full_descriptor_undef)) (out_ter S0 false)
 
   | red_spec_call_object_proto_prop_is_enumerable_4_not_undef : forall S0 S C A b,
       b = attributes_enumerable A ->
-      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 A)) (out_ter S0 b)
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret S0 A)) (out_ter S0 b)
 
   (*------------------------------------------------------------*)
   (** ** Function builtin functions *)
@@ -4013,19 +4013,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 (**************************************************************)
 (** ** Reduction rules for specification functions *)
 
-with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> Prop :=
+with red_spec : state -> execution_ctx -> ext_spec -> specret -> Prop :=
 
   (** Abort rule for specification functions *)
 
-  | red_spec_abort : forall S C exts T o,
+  | red_spec_abort : forall S C exts o,
       out_of_ext_spec exts = Some o ->
       abort o ->
       ~ abort_intercepted_spec exts ->
-      red_spec S C exts (@specret_out T o)
+      red_spec S C exts (specret_out o)
 
   (** Conversion to 32-bit integer (9.5) *)
 
-  | red_spec_to_int32 : forall S C v o1 (y:specret int),
+  | red_spec_to_int32 : forall S C v o1 (y:specret),
       red_expr S C (spec_to_number v) o1 ->
       red_spec S C (spec_to_int32_1 o1) y ->
       red_spec S C (spec_to_int32 v) y
@@ -4035,7 +4035,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** Conversion to unsigned 32-bit integer (9.6) *)
 
-  | red_spec_to_uint32 : forall S C v o1 (y:specret int),
+  | red_spec_to_uint32 : forall S C v o1 (y:specret),
       red_expr S C (spec_to_number v) o1 ->
       red_spec S C (spec_to_uint32_1 o1) y ->
       red_spec S C (spec_to_uint32 v) y
@@ -4047,28 +4047,28 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** Auxiliary: conversion of two values at once (9.1) *)
 
-  | red_spec_convert_twice : forall S C ex1 ex2 o1 (y:specret (value*value)),
+  | red_spec_convert_twice : forall S C ex1 ex2 o1 (y:specret),
       red_expr S C ex1 o1 ->
       red_spec S C (spec_convert_twice_1 o1 ex2) y ->
       red_spec S C (spec_convert_twice ex1 ex2) y
 
-  | red_spec_convert_twice_1 : forall S0 S C v1 ex2 o2 (y:specret (value*value)),
+  | red_spec_convert_twice_1 : forall S0 S C v1 ex2 o2 (y:specret),
       red_expr S C ex2 o2 ->
       red_spec S C (spec_convert_twice_2 v1 o2) y ->
       red_spec S0 C (spec_convert_twice_1 (out_ter S v1) ex2) y
 
   | red_spec_convert_twice_2 : forall S0 S C v1 v2,
-      red_spec S0 C (spec_convert_twice_2 v1 (out_ter S v2)) (ret S (v1,v2))
+      red_spec S0 C (spec_convert_twice_2 v1 (out_ter S v2)) (ret S ((v1,v2):value2))
 
   (** Auxiliary: [spec_expr_get_value_conv] as a combination
       of [spec_expr_get_value] and a conversion *)
 
-  | red_spec_expr_get_value_conv : forall S C e K (y:specret value) (y1:specret value),
+  | red_spec_expr_get_value_conv : forall S C e K (y:specret) (y1:specret),
       red_spec S C (spec_expr_get_value e) y1 ->
       red_spec S C (spec_expr_get_value_conv_1 K y1) y ->
       red_spec S C (spec_expr_get_value_conv K e) y
 
-  | red_spec_expr_get_value_conv_1 : forall S0 S C K v o1 (y:specret value),
+  | red_spec_expr_get_value_conv_1 : forall S0 S C K v o1 (y:specret),
       red_expr S C (K v) o1 ->
       red_spec S0 C (spec_expr_get_value_conv_2 o1) y ->
       red_spec S0 C (spec_expr_get_value_conv_1 K (ret S v)) y
@@ -4078,164 +4078,164 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** Reduction of lists of expressions *)
 
-  | red_spec_list_expr : forall S C es (y:specret (list value)),
+  | red_spec_list_expr : forall S C es (y:specret),
       red_spec S C (spec_list_expr_1 nil es) y ->
       red_spec S C (spec_list_expr es) y
 
   | red_spec_list_expr_1_nil : forall S C vs,
       red_spec S C (spec_list_expr_1 vs nil) (ret S vs)
 
-  | red_spec_list_expr_1_cons : forall S C vs es e y1 (y:specret (list value)),
+  | red_spec_list_expr_1_cons : forall S C vs es e y1 (y:specret),
       red_spec S C (spec_expr_get_value e) y1 ->
       red_spec S C (spec_list_expr_2 vs y1 es) y ->
       red_spec S C (spec_list_expr_1 vs (e::es)) y
 
-  | red_spec_list_expr_2 : forall S0 S C v vs es (y:specret (list value)),
+  | red_spec_list_expr_2 : forall S0 S C v vs es (y:specret),
       red_spec S C (spec_list_expr_1 (vs&v) es) y ->
       red_spec S0 C (spec_list_expr_2 vs (ret S v) es) y
 
   (** ToPropertyDescriptor ( Obj ) - (returns a Descriptor) (8.10.5) *)
 
-  | red_spec_to_descriptor_not_object : forall S C v (y:specret descriptor), (* Step 1 *)
+  | red_spec_to_descriptor_not_object : forall S C v (y:specret), (* Step 1 *)
       type_of v <> type_object ->
       red_spec S C (spec_error_spec native_error_type) y ->
       red_spec S C (spec_to_descriptor v) y
 
-  | red_spec_to_descriptor_object : forall S C l xs x Desc (y:specret descriptor), (* Step 2 *)
+  | red_spec_to_descriptor_object : forall S C l xs x Desc (y:specret), (* Step 2 *)
       Desc = descriptor_intro_empty ->
       red_spec S C (spec_to_descriptor_1a l Desc) y ->
       red_spec S C (spec_to_descriptor l) y
 
-  | red_spec_to_descriptor_1a : forall S C o1 l Desc (y:specret descriptor), (* step 3 *)
+  | red_spec_to_descriptor_1a : forall S C o1 l Desc (y:specret), (* step 3 *)
       red_expr S C (spec_object_has_prop l "enumerable") o1 ->
       red_spec S C (spec_to_descriptor_1b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_1a l Desc) y
 
-  | red_spec_to_descriptor_1b_false : forall S0 S C l Desc (y:specret descriptor), (* step 3, neg *)
+  | red_spec_to_descriptor_1b_false : forall S0 S C l Desc (y:specret), (* step 3, neg *)
       red_spec S C (spec_to_descriptor_2a l Desc) y ->
       red_spec S0 C (spec_to_descriptor_1b (out_ter S false) l Desc) y
 
-  | red_spec_to_descriptor_1b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 3a *)
+  | red_spec_to_descriptor_1b_true : forall S0 S C o1 l Desc (y:specret), (* step 3a *)
       red_expr S C (spec_object_get l "enumerable")  o1 ->
       red_spec S C (spec_to_descriptor_1c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_1b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_1c : forall S0 S C o1 l v b Desc Desc' (y:specret descriptor), (* step 3b *)
+  | red_spec_to_descriptor_1c : forall S0 S C o1 l v b Desc Desc' (y:specret), (* step 3b *)
       b = (convert_value_to_boolean v) ->
       Desc' = descriptor_with_enumerable Desc (Some b) ->
       red_spec S C (spec_to_descriptor_2a l Desc') y ->
       red_spec S0 C (spec_to_descriptor_1c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_2a : forall S C o1 l Desc (y:specret descriptor), (* step 4 *)
+  | red_spec_to_descriptor_2a : forall S C o1 l Desc (y:specret), (* step 4 *)
       red_expr S C (spec_object_has_prop l "configurable") o1 ->
       red_spec S C (spec_to_descriptor_2b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_2a l Desc) y
 
-  | red_spec_to_descriptor_2b_false : forall S0 S C l Desc (y:specret descriptor), (* step 4, neg *)
+  | red_spec_to_descriptor_2b_false : forall S0 S C l Desc (y:specret), (* step 4, neg *)
       red_spec S C (spec_to_descriptor_3a l Desc) y ->
       red_spec S0 C (spec_to_descriptor_2b (out_ter S false) l Desc) y
 
-  | red_spec_to_descriptor_2b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 4a *)
+  | red_spec_to_descriptor_2b_true : forall S0 S C o1 l Desc (y:specret), (* step 4a *)
       red_expr S C (spec_object_get l "configurable")  o1 ->
       red_spec S C (spec_to_descriptor_2c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_2b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_2c : forall S0 S C o1 l v b Desc Desc' (y:specret descriptor), (* step 4b *)
+  | red_spec_to_descriptor_2c : forall S0 S C o1 l v b Desc Desc' (y:specret), (* step 4b *)
       b = (convert_value_to_boolean v) ->
       Desc' = descriptor_with_configurable Desc (Some b) ->
       red_spec S C (spec_to_descriptor_3a l Desc') y ->
       red_spec S0 C (spec_to_descriptor_2c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_3a : forall S C o1 l Desc (y:specret descriptor), (* step 5 *)
+  | red_spec_to_descriptor_3a : forall S C o1 l Desc (y:specret), (* step 5 *)
       red_expr S C (spec_object_has_prop l "value") o1 ->
       red_spec S C (spec_to_descriptor_3b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_3a l Desc) y
 
-  | red_spec_to_descriptor_3b_false : forall S0 S C l Desc (y:specret descriptor), (* step 5, neg *)
+  | red_spec_to_descriptor_3b_false : forall S0 S C l Desc (y:specret), (* step 5, neg *)
       red_spec S C (spec_to_descriptor_4a l Desc) y ->
       red_spec S0 C (spec_to_descriptor_3b (out_ter S false) l Desc) y
 
-  | red_spec_to_descriptor_3b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 5a *)
+  | red_spec_to_descriptor_3b_true : forall S0 S C o1 l Desc (y:specret), (* step 5a *)
       red_expr S C (spec_object_get l "value")  o1 ->
       red_spec S C (spec_to_descriptor_3c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_3b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_3c : forall S0 S C o1 l v Desc Desc' (y:specret descriptor), (* step 5b *)
+  | red_spec_to_descriptor_3c : forall S0 S C o1 l v Desc Desc' (y:specret), (* step 5b *)
       Desc' = descriptor_with_value Desc (Some v) ->
       red_spec S C (spec_to_descriptor_4a l Desc') y ->
       red_spec S0 C (spec_to_descriptor_3c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_4a : forall S C o1 l Desc (y:specret descriptor), (* step 6 *)
+  | red_spec_to_descriptor_4a : forall S C o1 l Desc (y:specret), (* step 6 *)
       red_expr S C (spec_object_has_prop l "writable") o1 ->
       red_spec S C (spec_to_descriptor_4b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_4a l Desc) y
 
-  | red_spec_to_descriptor_4b_false : forall S0 S C l Desc (y:specret descriptor), (* step 6, neg *)
+  | red_spec_to_descriptor_4b_false : forall S0 S C l Desc (y:specret), (* step 6, neg *)
       red_spec S C (spec_to_descriptor_5a l Desc) y ->
       red_spec S0 C (spec_to_descriptor_4b (out_ter S false) l Desc) y
 
-  | red_spec_to_descriptor_4b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 6a *)
+  | red_spec_to_descriptor_4b_true : forall S0 S C o1 l Desc (y:specret), (* step 6a *)
       red_expr S C (spec_object_get l "writable")  o1 ->
       red_spec S C (spec_to_descriptor_4c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_4b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_4c : forall S0 S C o1 l v b Desc Desc' (y:specret descriptor), (* step 6b *)
+  | red_spec_to_descriptor_4c : forall S0 S C o1 l v b Desc Desc' (y:specret), (* step 6b *)
       b = (convert_value_to_boolean v) ->
       Desc' = descriptor_with_writable Desc (Some b) ->
       red_spec S C (spec_to_descriptor_5a l Desc') y ->
       red_spec S0 C (spec_to_descriptor_4c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_5a :forall S C o1 l Desc (y:specret descriptor), (* step 7 *)
+  | red_spec_to_descriptor_5a :forall S C o1 l Desc (y:specret), (* step 7 *)
       red_expr S C (spec_object_has_prop l "get") o1 ->
       red_spec S C (spec_to_descriptor_5b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_5a l Desc) y
 
-  | red_spec_to_descriptor_5b_false : forall S0 S C o1 l Desc (y:specret descriptor), (* step 7, neg *)
+  | red_spec_to_descriptor_5b_false : forall S0 S C o1 l Desc (y:specret), (* step 7, neg *)
       red_spec S C (spec_to_descriptor_6a l Desc) y ->
       red_spec S0 C (spec_to_descriptor_5b (out_ter S false) l Desc) y
 
-  | red_spec_to_descriptor_5b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 7a *)
+  | red_spec_to_descriptor_5b_true : forall S0 S C o1 l Desc (y:specret), (* step 7a *)
       red_expr S C (spec_object_get l "get")  o1 ->
       red_spec S C (spec_to_descriptor_5c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_5b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_5c_error : forall S0 S C l v Desc (y:specret descriptor), (* step 7b *)
+  | red_spec_to_descriptor_5c_error : forall S0 S C l v Desc (y:specret), (* step 7b *)
       ((is_callable S v = false) /\ (v <> undef)) ->
       red_spec S C (spec_error_spec native_error_type) y ->
       red_spec S0 C (spec_to_descriptor_5c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_5c_ok : forall S0 S C l v Desc Desc' (y:specret descriptor), (* step 7c *)
+  | red_spec_to_descriptor_5c_ok : forall S0 S C l v Desc Desc' (y:specret), (* step 7c *)
       ~ ((is_callable S v = false) /\ (v <> undef)) ->
       Desc' = descriptor_with_get Desc (Some v) ->
       red_spec S C (spec_to_descriptor_6a l Desc') y ->
       red_spec S0 C (spec_to_descriptor_5c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_6a :forall S C o1 l Desc (y:specret descriptor), (* step 8 *)
+  | red_spec_to_descriptor_6a :forall S C o1 l Desc (y:specret), (* step 8 *)
       red_expr S C (spec_object_has_prop l "set") o1 ->
       red_spec S C (spec_to_descriptor_6b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_6a l Desc) y
 
-  | red_spec_to_descriptor_6b_false : forall S0 S C o1 l Desc (y:specret descriptor), (* step 8, neg *)
+  | red_spec_to_descriptor_6b_false : forall S0 S C o1 l Desc (y:specret), (* step 8, neg *)
       red_spec S C (spec_to_descriptor_7 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_6b (out_ter S false) l Desc) y
 
-  | red_spec_to_descriptor_6b_true : forall S0 S C o1 l Desc (y:specret descriptor), (* step 8a *)
+  | red_spec_to_descriptor_6b_true : forall S0 S C o1 l Desc (y:specret), (* step 8a *)
       red_expr S C (spec_object_get l "set")  o1 ->
       red_spec S C (spec_to_descriptor_6c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_6b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_6c_error : forall S0 S C l v Desc (y:specret descriptor), (* step 8b *)
+  | red_spec_to_descriptor_6c_error : forall S0 S C l v Desc (y:specret), (* step 8b *)
       ((is_callable S v = false) /\ (v <> undef)) ->
       red_spec S C (spec_error_spec native_error_type) y ->
       red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_6c_ok : forall S0 S C l v Desc Desc' (y:specret descriptor), (* step 8c *)
+  | red_spec_to_descriptor_6c_ok : forall S0 S C l v Desc Desc' (y:specret), (* step 8c *)
       ~ ((is_callable S v = false) /\ (v <> undef)) ->
       Desc' = descriptor_with_set Desc (Some v) ->
       red_spec S C (spec_to_descriptor_7 l Desc') y ->
       red_spec S0 C (spec_to_descriptor_6c (out_ter S v) l Desc) y
 
-  | red_spec_to_descriptor_7_error : forall S C l Desc (y:specret descriptor), (* step 9 *)
+  | red_spec_to_descriptor_7_error : forall S C l Desc (y:specret), (* step 9 *)
       descriptor_inconsistent Desc ->
       red_spec S C (spec_error_spec native_error_type) y ->
       red_spec S C (spec_to_descriptor_7 l Desc) y
@@ -4246,12 +4246,12 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** GetOwnProperty (8.12.1) returns a [full_descriptor] *)
 
-  | red_spec_object_get_own_prop : forall S C l x B (y:specret full_descriptor),
+  | red_spec_object_get_own_prop : forall S C l x B (y:specret),
       object_method object_get_own_prop_ S l B ->
       red_spec S C (spec_object_get_own_prop_1 B l x) y ->
       red_spec S C (spec_object_get_own_prop l x) y
 
-  | red_spec_object_get_own_prop_1_default : forall S C l x Ao (y:specret full_descriptor), (* Beginning of steps 1 and 3 *)
+  | red_spec_object_get_own_prop_1_default : forall S C l x Ao (y:specret), (* Beginning of steps 1 and 3 *)
       object_property S l x Ao ->
       red_spec S C (spec_object_get_own_prop_2 l x Ao) y ->
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y
@@ -4264,7 +4264,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (* Arguments Object: GetOwnProperty (passes a fully-populated property descriptor to the continuation) (10.6) *)
 
-  | red_spec_object_get_own_prop_args_obj : forall S C l x (y:specret full_descriptor) (y1:specret full_descriptor), (* Step 1 *)
+  | red_spec_object_get_own_prop_args_obj : forall S C l x (y:specret) (y1:specret), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y1 ->
       red_spec S C (spec_args_obj_get_own_prop_1 l x y1) y ->
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_args_obj l x) y
@@ -4272,23 +4272,23 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_own_prop_args_obj_1_undef : forall S0 S C l x, (* Step 2 *)
       red_spec S0 C (spec_args_obj_get_own_prop_1 l x (ret S full_descriptor_undef)) (ret S full_descriptor_undef)
 
-  | red_spec_object_get_own_prop_args_obj_1_attrs : forall lmap S0 S C l x A (y:specret full_descriptor) (y1:specret full_descriptor), (* Steps 3 - 4 *)
+  | red_spec_object_get_own_prop_args_obj_1_attrs : forall lmap S0 S C l x A (y:specret) (y1:specret), (* Steps 3 - 4 *)
       object_method object_parameter_map_ S l (Some lmap) ->
       red_spec S C (spec_object_get_own_prop lmap x) y1 ->
       red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A y1) y ->
       red_spec S0 C (spec_args_obj_get_own_prop_1 l x (ret S (full_descriptor_some A))) y
 
-  | red_spec_object_get_own_prop_args_obj_2_attrs : forall o1 S0 S C l x lmap A Amap (y:specret full_descriptor), (* Step 5 *)
+  | red_spec_object_get_own_prop_args_obj_2_attrs : forall o1 S0 S C l x lmap A Amap (y:specret), (* Step 5 *)
       red_expr S0 C (spec_object_get (value_object lmap) x) o1 ->
       red_spec S0 C (spec_args_obj_get_own_prop_3 A o1) y ->
       red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A (ret S0 (full_descriptor_some Amap))) y
 
-  | red_spec_object_get_own_prop_args_obj_3 : forall S C Ad S' v (y:specret full_descriptor), (* Step 5 *)
+  | red_spec_object_get_own_prop_args_obj_3 : forall S C Ad S' v (y:specret), (* Step 5 *)
       red_spec S' C (spec_args_obj_get_own_prop_4 (attributes_data_with_value Ad v)) y ->
       red_spec S C (spec_args_obj_get_own_prop_3 (attributes_data_of Ad) (out_ter S' v)) y
       (* What happens if we have an accessor property descriptor? The spec assumes it is a data property descriptor. *)
 
-  | red_spec_object_get_own_prop_args_obj_2_undef : forall S0 S C l x lmap A (y:specret full_descriptor), (* Step 5 else *)
+  | red_spec_object_get_own_prop_args_obj_2_undef : forall S0 S C l x lmap A (y:specret), (* Step 5 else *)
       red_spec S0 C (spec_args_obj_get_own_prop_4 A) y ->
       red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A (ret S0 full_descriptor_undef)) y
 
@@ -4297,7 +4297,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (* String Object: GetOwnProperty (15.5.5.2) returns a [full_descriptor] *)
 
-  | red_spec_object_get_own_prop_string : forall S C l x (y:specret full_descriptor) (y1:specret full_descriptor), (* Step 1 *)
+  | red_spec_object_get_own_prop_string : forall S C l x (y:specret) (y1:specret), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_default l x) y1 ->
       red_spec S C (spec_string_get_own_prop_1 l x y1) y ->
       red_spec S C (spec_object_get_own_prop_1 builtin_get_own_prop_string l x) y
@@ -4305,12 +4305,12 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_own_prop_string_1_attrs : forall S0 S C l x A, (* Step 2 *)
       red_spec S0 C (spec_string_get_own_prop_1 l x (ret S (full_descriptor_some A))) (ret S (full_descriptor_some A))
 
-  | red_spec_object_get_own_prop_string_1_undef : forall S0 S C l x (y1:specret int) (y:specret full_descriptor), (* Step 3 *)
+  | red_spec_object_get_own_prop_string_1_undef : forall S0 S C l x (y1:specret) (y:specret), (* Step 3 *)
       red_spec S C (spec_to_int32 x) y1 ->
       red_spec S C (spec_string_get_own_prop_2 l x y1) y ->
       red_spec S0 C (spec_string_get_own_prop_1 l x (ret S full_descriptor_undef)) y
 
-  | red_spec_object_get_own_prop_string_2 : forall S0 S C l x k o1 (y:specret full_descriptor), (* Step 3 *)
+  | red_spec_object_get_own_prop_string_2 : forall S0 S C l x k o1 (y:specret), (* Step 3 *)
       red_expr S C (spec_to_string (abs k)) o1 ->
       red_spec S C (spec_string_get_own_prop_3 l x o1) y ->
       red_spec S0 C (spec_string_get_own_prop_2 l x (ret S k)) y
@@ -4319,17 +4319,17 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       x <> x' ->
       red_spec S0 C (spec_string_get_own_prop_3 l x (out_ter S x')) (ret S full_descriptor_undef)
 
-  | red_spec_object_get_own_prop_string_3_same : forall S0 S C l s x (y:specret full_descriptor), (* Step 4 *)
+  | red_spec_object_get_own_prop_string_3_same : forall S0 S C l s x (y:specret), (* Step 4 *)
       object_prim_value S l s -> (* Can this return something else than a string?  Is that always defined? *)
       red_spec S C (spec_string_get_own_prop_4 x s) y ->
       red_spec S0 C (spec_string_get_own_prop_3 l x (out_ter S x)) y
 
-  | red_spec_object_get_own_prop_string_4 : forall S C l x s y1 (y:specret full_descriptor), (* Step 5 *)
+  | red_spec_object_get_own_prop_string_4 : forall S C l x s y1 (y:specret), (* Step 5 *)
       red_spec S C (spec_to_int32 x) y1 ->
       red_spec S C (spec_string_get_own_prop_5 s y1) y ->
       red_spec S C (spec_string_get_own_prop_4 x s) y
 
-  | red_spec_object_get_own_prop_string_5 : forall S0 S C s idx len (y:specret full_descriptor), (* Step 6 *)
+  | red_spec_object_get_own_prop_string_5 : forall S0 S C s idx len (y:specret), (* Step 6 *)
       len = String.length s ->
       red_spec S C (spec_string_get_own_prop_6 s idx len) y ->
       red_spec S0 C (spec_string_get_own_prop_5 s (ret S idx)) y
@@ -4347,12 +4347,12 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_ref_get_value_value : forall S C v, (* Step 1 *)
       red_spec S C (spec_get_value v) (ret S v)
 
-  | red_spec_ref_get_value_ref_a : forall S C r (y:specret value), (* Steps 2 and 3 *)
+  | red_spec_ref_get_value_ref_a : forall S C r (y:specret), (* Steps 2 and 3 *)
       ref_is_unresolvable r ->
       red_spec S C (spec_error_spec native_error_ref) y ->
       red_spec S C (spec_get_value r) y
 
-  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o1 (y:specret value), (* Steps 2 and 4 *)
+  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o1 (y:specret), (* Steps 2 and 4 *)
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
       ext_get = (If ref_has_primitive_base r
@@ -4366,7 +4366,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_ref_get_value_ref_b_1 : forall S0 S C v,  (* LATER: could be made a generic conversion rule *)
       red_spec S0 C (spec_get_value_ref_b_1 (out_ter S v)) (ret S v)
 
-  | red_spec_ref_get_value_ref_c : forall L S C r o1 (y:specret value), (* Step 5. *)
+  | red_spec_ref_get_value_ref_c : forall L S C r o1 (y:specret), (* Step 5. *)
       ref_base r = ref_base_type_env_loc L ->
       red_expr S C (spec_env_record_get_binding_value L (ref_name r) (ref_strict r)) o1 ->
       red_spec S C (spec_get_value_ref_c_1 o1) y ->
@@ -4377,12 +4377,12 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** Auxiliary: [spec_expr_get_value] as a combination of [red_expr] and [get_value] *)
 
-  | red_spec_expr_get_value : forall S C e o1 (y:specret value),
+  | red_spec_expr_get_value : forall S C e o1 (y:specret),
       red_expr S C e o1 ->
       red_spec S C (spec_expr_get_value_1 o1) y ->
       red_spec S C (spec_expr_get_value e) y
 
-  | red_spec_expr_get_value_1 : forall S0 S C rv (y:specret value),
+  | red_spec_expr_get_value_1 : forall S0 S C rv (y:specret),
       red_spec S C (spec_get_value rv) y ->
       red_spec S0 C (spec_expr_get_value_1 (out_ter S rv)) y
 
@@ -4396,11 +4396,11 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_lexical_env_get_identifier_ref nil x str) (ret S r)
 
   (* LATER: eliminate this intermediate form that is not useful at all *)
-  | red_spec_lexical_env_get_identifier_ref_cons : forall S C L lexs x str (y:specret ref),
+  | red_spec_lexical_env_get_identifier_ref_cons : forall S C L lexs x str (y:specret),
       red_spec S C (spec_lexical_env_get_identifier_ref_1 L lexs x str) y ->
       red_spec S C (spec_lexical_env_get_identifier_ref (L::lexs) x str) y
 
-  | red_spec_lexical_env_get_identifier_ref_cons_1 : forall o1 S C L lexs x str (y:specret ref),
+  | red_spec_lexical_env_get_identifier_ref_cons_1 : forall o1 S C L lexs x str (y:specret),
       red_expr S C (spec_env_record_has_binding L x) o1 ->
       red_spec S C (spec_lexical_env_get_identifier_ref_2 L lexs x str o1) y ->
       red_spec S C (spec_lexical_env_get_identifier_ref_1 L lexs x str) y
@@ -4409,14 +4409,14 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       r = ref_create_env_loc L x str ->
       red_spec S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S true)) (ret S r)
 
-  | red_spec_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x str S (y:specret ref),
+  | red_spec_lexical_env_get_identifier_ref_cons_2_false : forall S0 C L lexs x str S (y:specret),
       red_spec S C (spec_lexical_env_get_identifier_ref lexs x str) y ->
       red_spec S0 C (spec_lexical_env_get_identifier_ref_2 L lexs x str (out_ter S false)) y
 
 
   (** Throw an error *) (* LATER:merge *)
 
-  | red_spec_error_spec : forall T S C ne o1 (y:specret T),
+  | red_spec_error_spec : forall S C ne o1 (y:specret),
       red_expr S C (spec_error ne) o1 ->
       red_spec S C (spec_error_spec_1 o1) y ->
       red_spec S C (spec_error_spec ne) y
@@ -4426,14 +4426,14 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
 
   (** GetProperty (returns a fully-populated property descriptor)  (8.6.2)  *)
 
-  | red_spec_object_get_prop : forall S C l x B (y:specret full_descriptor),
+  | red_spec_object_get_prop : forall S C l x B (y:specret),
       object_method object_get_prop_ S l B ->
       red_spec S C (spec_object_get_prop_1 B l x) y ->
       red_spec S C (spec_object_get_prop l x) y
 
   (** GetProperty (8.12.2) returns a [full_descriptor] *)
 
-  | red_spec_object_get_prop_1_default : forall S C l x y1 (y:specret full_descriptor), (* Step 1 *)
+  | red_spec_object_get_prop_1_default : forall S C l x y1 (y:specret), (* Step 1 *)
       red_spec S C (spec_object_get_own_prop l x) y1 ->
       red_spec S C (spec_object_get_prop_2 l x y1) y ->
       red_spec S C (spec_object_get_prop_1 builtin_get_prop_default l x) y
@@ -4442,7 +4442,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S0 C (spec_object_get_prop_2 l x (ret S (full_descriptor_some A)))
         (ret S (full_descriptor_some A))
 
-  | red_spec_object_get_prop_2_undef : forall S0 S C l x vproto (y:specret full_descriptor), (* Step 3 *)
+  | red_spec_object_get_prop_2_undef : forall S0 S C l x vproto (y:specret), (* Step 3 *)
       object_proto S l vproto ->
       red_spec S C (spec_object_get_prop_3 l x vproto) y ->
       red_spec S0 C (spec_object_get_prop_2 l x (ret S full_descriptor_undef)) y
@@ -4450,7 +4450,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
   | red_spec_object_get_prop_3_null : forall S C l x, (* Step 4 *)
       red_spec S C (spec_object_get_prop_3 l x null) (dret S full_descriptor_undef)
 
-  | red_spec_object_get_prop_3_not_null : forall S C l x lproto (y:specret full_descriptor), (* Step 5 *)
+  | red_spec_object_get_prop_3_not_null : forall S C l x lproto (y:specret), (* Step 5 *)
       red_spec S C (spec_object_get_prop lproto x) y ->
       red_spec S C (spec_object_get_prop_3 l x lproto) y
 

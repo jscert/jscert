@@ -59,12 +59,12 @@ Inductive ext_expr :=
 
   (** Extended expressions associated with primitive expressions *)
 
-  | expr_identifier_1 : specret ref -> ext_expr
+  | expr_identifier_1 : specret -> ext_expr
 
   | expr_object_0 : out -> propdefs -> ext_expr
   | expr_object_1 : object_loc -> propdefs -> ext_expr
   | expr_object_2 : object_loc -> string -> propbody -> propdefs -> ext_expr 
-  | expr_object_3_val : object_loc -> string -> specret value -> propdefs -> ext_expr
+  | expr_object_3_val : object_loc -> string -> specret -> propdefs -> ext_expr
   | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_4 : object_loc -> string -> attributes -> propdefs -> ext_expr
@@ -74,51 +74,51 @@ Inductive ext_expr :=
   | expr_function_2 : string -> env_loc -> out -> ext_expr
   | expr_function_3 : object_loc -> out -> ext_expr
 
-  | expr_access_1 : specret value -> expr -> ext_expr (* The left expression has been executed *)
-  | expr_access_2 : value -> specret value -> ext_expr (* The right expression is executed. *)
+  | expr_access_1 : specret -> expr -> ext_expr (* The left expression has been executed *)
+  | expr_access_2 : value -> specret -> ext_expr (* The right expression is executed. *)
   | expr_access_3 : value -> out -> value -> ext_expr
   | expr_access_4 : value -> out -> ext_expr
 
-  | expr_new_1 : (specret value) -> list expr -> ext_expr (* The arguments too. *)
-  | expr_new_2 : value -> (specret (list value)) -> ext_expr (* The call has been executed. *)
+  | expr_new_1 : specret -> list expr -> ext_expr (* The arguments too. *)
+  | expr_new_2 : value -> specret -> ext_expr (* The call has been executed. *)
 
   | expr_call_1 : out -> bool -> list expr -> ext_expr
-  | expr_call_2 : res -> bool -> list expr -> (specret value) -> ext_expr (* The function has been evaluated. *)
-  | expr_call_3 : res -> value -> bool -> (specret (list value)) -> ext_expr (* The arguments have been executed. *)
-  | expr_call_4 : res -> object_loc -> bool -> list value -> ext_expr
-  | expr_call_5 : object_loc -> bool -> list value -> out -> ext_expr (* The call has been executed. *)
+  | expr_call_2 : res -> bool -> list expr -> specret -> ext_expr (* The function has been evaluated. *)
+  | expr_call_3 : res -> value -> bool -> specret -> ext_expr (* The arguments have been executed. *)
+  | expr_call_4 : res -> object_loc -> bool -> listvalue -> ext_expr
+  | expr_call_5 : object_loc -> bool -> listvalue -> out -> ext_expr (* The call has been executed. *)
 
-  | spec_eval : bool -> value -> list value -> ext_expr
+  | spec_eval : bool -> value -> listvalue -> ext_expr
 
-  | expr_unary_op_1 : unary_op -> (specret value) -> ext_expr (* The argument have been executed. *)
+  | expr_unary_op_1 : unary_op -> specret -> ext_expr (* The argument have been executed. *)
   | expr_unary_op_2 : unary_op -> value -> ext_expr (* The argument is a value. *)
   | expr_delete_1 : out -> ext_expr
   | expr_delete_2 : ref -> ext_expr
   | expr_delete_3 : ref -> out -> ext_expr
   | expr_delete_4 : ref -> env_loc -> ext_expr
   | expr_typeof_1 : out -> ext_expr
-  | expr_typeof_2 : (specret value) -> ext_expr
+  | expr_typeof_2 : specret -> ext_expr
   | expr_prepost_1 : unary_op -> out -> ext_expr
-  | expr_prepost_2 : unary_op -> res -> (specret value) -> ext_expr
+  | expr_prepost_2 : unary_op -> res -> specret -> ext_expr
   | expr_prepost_3 : unary_op -> res -> out -> ext_expr
   | expr_prepost_4 : value -> out -> ext_expr
   | expr_unary_op_neg_1 : out -> ext_expr
-  | expr_unary_op_bitwise_not_1 : specret int -> ext_expr
+  | expr_unary_op_bitwise_not_1 : specret -> ext_expr
   | expr_unary_op_not_1 : out -> ext_expr
-  | expr_conditional_1 : specret value -> expr -> expr -> ext_expr
+  | expr_conditional_1 : specret -> expr -> expr -> ext_expr
   | expr_conditional_1': out -> expr -> expr -> ext_expr
-  | expr_conditional_2 : specret value -> ext_expr
+  | expr_conditional_2 : specret -> ext_expr
 
-  | expr_binary_op_1 : binary_op -> (specret value) -> expr -> ext_expr
-  | expr_binary_op_2 : binary_op -> value -> (specret value) -> ext_expr
+  | expr_binary_op_1 : binary_op -> specret -> expr -> ext_expr
+  | expr_binary_op_2 : binary_op -> value -> specret -> ext_expr
   | expr_binary_op_3 : binary_op -> value -> value -> ext_expr
-  | expr_binary_op_add_1 : specret (value*value) -> ext_expr
-  | expr_binary_op_add_string_1 : specret (value*value) -> ext_expr
-  | expr_puremath_op_1 : (number -> number -> number) -> specret (value*value) -> ext_expr
-  | expr_shift_op_1 : (int -> int -> int) -> specret int -> value -> ext_expr
-  | expr_shift_op_2 : (int -> int -> int) -> int -> specret int -> ext_expr
+  | expr_binary_op_add_1 : specret -> ext_expr
+  | expr_binary_op_add_string_1 : specret -> ext_expr
+  | expr_puremath_op_1 : (number -> number -> number) -> specret -> ext_expr
+  | expr_shift_op_1 : (int -> int -> int) -> specret -> value -> ext_expr
+  | expr_shift_op_2 : (int -> int -> int) -> int -> specret -> ext_expr
   | expr_inequality_op_1 : bool -> bool -> value -> value -> ext_expr
-  | expr_inequality_op_2 : bool -> bool -> specret (value*value) -> ext_expr
+  | expr_inequality_op_2 : bool -> bool -> specret -> ext_expr
   | expr_binary_op_in_1 : object_loc -> out -> ext_expr
   | expr_binary_op_disequal_1 : out -> ext_expr
   | spec_equal : value -> value -> ext_expr
@@ -126,17 +126,17 @@ Inductive ext_expr :=
   | spec_equal_2 : bool -> ext_expr
   | spec_equal_3 : value -> (value -> ext_expr) -> value -> ext_expr
   | spec_equal_4 : value -> out -> ext_expr
-  | expr_bitwise_op_1 : (int -> int -> int) -> specret int -> value -> ext_expr
-  | expr_bitwise_op_2 : (int -> int -> int) -> int -> specret int -> ext_expr
-  | expr_lazy_op_1 : bool -> (specret value) -> expr -> ext_expr
+  | expr_bitwise_op_1 : (int -> int -> int) -> specret -> value -> ext_expr
+  | expr_bitwise_op_2 : (int -> int -> int) -> int -> specret -> ext_expr
+  | expr_lazy_op_1 : bool -> specret -> expr -> ext_expr
   | expr_lazy_op_2 : bool -> value -> out -> expr -> ext_expr
-  | expr_lazy_op_2_1 : (specret value) -> ext_expr
+  | expr_lazy_op_2_1 : specret -> ext_expr
 
   | expr_assign_1 : out -> option binary_op -> expr -> ext_expr
-  | expr_assign_2 : res -> (specret value) -> binary_op -> expr -> ext_expr
-  | expr_assign_3 : res -> value -> binary_op -> (specret value) -> ext_expr
+  | expr_assign_2 : res -> specret -> binary_op -> expr -> ext_expr
+  | expr_assign_3 : res -> value -> binary_op -> specret -> ext_expr
   | expr_assign_3' : res -> out -> ext_expr
-  | expr_assign_4 : res -> (specret value) -> ext_expr
+  | expr_assign_4 : res -> specret -> ext_expr
   | expr_assign_5 : value -> out -> ext_expr
 
   (** Extended expressions for conversions *)
@@ -163,32 +163,32 @@ Inductive ext_expr :=
 
   | spec_object_get : value -> prop_name -> ext_expr
   | spec_object_get_1 : builtin_get -> value -> object_loc -> prop_name -> ext_expr
-  | spec_object_get_2 : value -> specret full_descriptor -> ext_expr
+  | spec_object_get_2 : value -> specret -> ext_expr
   | spec_object_get_3 : value -> value -> ext_expr
 
   | spec_object_can_put : object_loc -> prop_name -> ext_expr
   | spec_object_can_put_1 : builtin_can_put -> object_loc -> prop_name -> ext_expr
-  | spec_object_can_put_2 : object_loc -> prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_object_can_put_2 : object_loc -> prop_name -> specret -> ext_expr
 
   (* LATER: shift names since spec_object_can_put_3 is not used *)
   | spec_object_can_put_4 : object_loc -> prop_name -> value -> ext_expr
-  | spec_object_can_put_5 : object_loc -> specret full_descriptor -> ext_expr
+  | spec_object_can_put_5 : object_loc -> specret -> ext_expr
   | spec_object_can_put_6 : attributes_data -> bool -> ext_expr
 
   | spec_object_put : value -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_1 : builtin_put -> value -> object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_2 : value -> object_loc -> prop_name -> value -> bool -> out -> ext_expr
-  | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> specret full_descriptor -> ext_expr
-  | spec_object_put_4 : value -> object_loc -> prop_name -> value -> bool -> specret full_descriptor -> ext_expr
+  | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> specret -> ext_expr
+  | spec_object_put_4 : value -> object_loc -> prop_name -> value -> bool -> specret -> ext_expr
   | spec_object_put_5 : out -> ext_expr
 
   | spec_object_has_prop : object_loc -> prop_name -> ext_expr
   | spec_object_has_prop_1 : builtin_has_prop -> object_loc -> prop_name -> ext_expr
-  | spec_object_has_prop_2 : specret full_descriptor -> ext_expr
+  | spec_object_has_prop_2 : specret -> ext_expr
 
   | spec_object_delete : object_loc -> prop_name -> bool -> ext_expr
   | spec_object_delete_1 : builtin_delete -> object_loc -> prop_name -> bool -> ext_expr
-  | spec_object_delete_2 : object_loc -> prop_name -> bool -> (specret full_descriptor) -> ext_expr
+  | spec_object_delete_2 : object_loc -> prop_name -> bool -> specret -> ext_expr
   | spec_object_delete_3 : object_loc -> prop_name -> bool -> bool -> ext_expr
 
   | spec_object_default_value : object_loc -> option preftype -> ext_expr
@@ -202,7 +202,7 @@ Inductive ext_expr :=
 
   | spec_object_define_own_prop : object_loc -> prop_name -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_1 : builtin_define_own_prop -> object_loc -> prop_name -> descriptor -> bool -> ext_expr
-  | spec_object_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> (specret full_descriptor) -> ext_expr
+  | spec_object_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> specret -> ext_expr
   | spec_object_define_own_prop_3 : object_loc -> prop_name -> descriptor -> bool -> full_descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_4 : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_5 : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
@@ -247,7 +247,7 @@ Inductive ext_expr :=
 
   (** Extended expressions for operations on property descriptors (8.10) *)
 
-  | spec_from_descriptor : (specret full_descriptor) -> ext_expr
+  | spec_from_descriptor : specret -> ext_expr
   | spec_from_descriptor_1 : attributes -> out -> ext_expr
   | spec_from_descriptor_2 : object_loc -> attributes_data -> out -> ext_expr
   | spec_from_descriptor_3 : object_loc -> attributes_accessor -> out -> ext_expr
@@ -263,78 +263,78 @@ Inductive ext_expr :=
   | spec_entering_eval_code_1 : funcbody -> ext_expr -> bool -> ext_expr
   | spec_entering_eval_code_2 : out -> ext_expr -> ext_expr
 
-  | spec_call_global_eval : bool -> list value -> ext_expr
+  | spec_call_global_eval : bool -> listvalue -> ext_expr
   | spec_call_global_eval_1 : bool -> value -> ext_expr
   | spec_call_global_eval_2 : prog -> ext_expr
   | spec_call_global_eval_3 : out -> ext_expr
 
   (** Extended expressions for function calls *)
 
-  | spec_entering_func_code : object_loc -> value -> list value -> ext_expr -> ext_expr
-  | spec_entering_func_code_1 : object_loc -> list value -> funcbody -> value -> strictness_flag -> ext_expr -> ext_expr
-  | spec_entering_func_code_2 : object_loc -> list value -> funcbody -> out -> ext_expr -> ext_expr
-  | spec_entering_func_code_3 : object_loc -> list value -> strictness_flag -> funcbody -> value -> ext_expr -> ext_expr
+  | spec_entering_func_code : object_loc -> value -> listvalue -> ext_expr -> ext_expr
+  | spec_entering_func_code_1 : object_loc -> listvalue -> funcbody -> value -> strictness_flag -> ext_expr -> ext_expr
+  | spec_entering_func_code_2 : object_loc -> listvalue -> funcbody -> out -> ext_expr -> ext_expr
+  | spec_entering_func_code_3 : object_loc -> listvalue -> strictness_flag -> funcbody -> value -> ext_expr -> ext_expr
   | spec_entering_func_code_4 : out -> ext_expr -> ext_expr
 
-  | spec_binding_inst_formal_params : list value -> env_loc -> list string -> strictness_flag -> ext_expr
-  | spec_binding_inst_formal_params_1 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
-  | spec_binding_inst_formal_params_2 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
-  | spec_binding_inst_formal_params_3 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> ext_expr
-  | spec_binding_inst_formal_params_4 : list value -> env_loc -> list string -> strictness_flag -> out -> ext_expr
-  | spec_binding_inst_function_decls :  list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> ext_expr
-  | spec_binding_inst_function_decls_1 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
-  | spec_binding_inst_function_decls_2 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_inst_function_decls_3 : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> specret full_descriptor -> ext_expr
-  | spec_binding_inst_function_decls_3a : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> full_descriptor -> ext_expr
-  | spec_binding_inst_function_decls_4 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_inst_function_decls_5 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> ext_expr
-  | spec_binding_inst_function_decls_6 : list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
-  | spec_binding_inst_arg_obj :   object_loc -> prog -> list string -> list value -> env_loc -> ext_expr
+  | spec_binding_inst_formal_params : listvalue -> env_loc -> list string -> strictness_flag -> ext_expr
+  | spec_binding_inst_formal_params_1 : listvalue -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
+  | spec_binding_inst_formal_params_2 : listvalue -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
+  | spec_binding_inst_formal_params_3 : listvalue -> env_loc -> string -> list string -> strictness_flag -> value -> ext_expr
+  | spec_binding_inst_formal_params_4 : listvalue -> env_loc -> list string -> strictness_flag -> out -> ext_expr
+  | spec_binding_inst_function_decls :  listvalue -> env_loc -> list funcdecl -> strictness_flag -> bool -> ext_expr
+  | spec_binding_inst_function_decls_1 : listvalue -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
+  | spec_binding_inst_function_decls_2 : listvalue -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_inst_function_decls_3 : listvalue -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> specret -> ext_expr
+  | spec_binding_inst_function_decls_3a : listvalue -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> full_descriptor -> ext_expr
+  | spec_binding_inst_function_decls_4 : listvalue -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_inst_function_decls_5 : listvalue -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> ext_expr
+  | spec_binding_inst_function_decls_6 : listvalue -> env_loc -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
+  | spec_binding_inst_arg_obj :   object_loc -> prog -> list string -> listvalue -> env_loc -> ext_expr
   | spec_binding_inst_arg_obj_1 : prog -> env_loc -> strictness_flag -> out -> ext_expr
   | spec_binding_inst_arg_obj_2 : prog -> env_loc -> object_loc -> out -> ext_expr
   | spec_binding_inst_var_decls : env_loc -> list string -> bool -> strictness_flag -> ext_expr
   | spec_binding_inst_var_decls_1 : env_loc -> string -> list string -> bool -> strictness_flag -> out -> ext_expr
   | spec_binding_inst_var_decls_2 : env_loc -> list string -> bool -> strictness_flag -> out -> ext_expr
-  | spec_binding_inst : codetype -> option object_loc -> prog -> list value -> ext_expr
-  | spec_binding_inst_1 : codetype -> option object_loc -> prog -> list value -> env_loc -> ext_expr
-  | spec_binding_inst_2 : codetype -> object_loc -> prog -> list string -> list value -> env_loc -> out -> ext_expr
-  | spec_binding_inst_3 : codetype -> option object_loc -> prog -> list string -> list value -> env_loc -> ext_expr
-  | spec_binding_inst_4 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> out -> ext_expr
-  | spec_binding_inst_5 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> ext_expr
-  | spec_binding_inst_6 : codetype -> option object_loc -> prog -> list string -> list value -> bool -> env_loc -> out -> ext_expr
+  | spec_binding_inst : codetype -> option object_loc -> prog -> listvalue -> ext_expr
+  | spec_binding_inst_1 : codetype -> option object_loc -> prog -> listvalue -> env_loc -> ext_expr
+  | spec_binding_inst_2 : codetype -> object_loc -> prog -> list string -> listvalue -> env_loc -> out -> ext_expr
+  | spec_binding_inst_3 : codetype -> option object_loc -> prog -> list string -> listvalue -> env_loc -> ext_expr
+  | spec_binding_inst_4 : codetype -> option object_loc -> prog -> list string -> listvalue -> bool -> env_loc -> out -> ext_expr
+  | spec_binding_inst_5 : codetype -> option object_loc -> prog -> list string -> listvalue -> bool -> env_loc -> ext_expr
+  | spec_binding_inst_6 : codetype -> option object_loc -> prog -> list string -> listvalue -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_7 : prog -> bool -> env_loc -> out -> ext_expr
   | spec_binding_inst_8 : prog -> bool -> env_loc -> ext_expr
   
   | spec_make_arg_getter : string -> lexical_env -> ext_expr
   | spec_make_arg_setter : string -> lexical_env -> ext_expr
   
-  | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> (specret full_descriptor) -> ext_expr
+  | spec_args_obj_get_1 : value -> object_loc -> prop_name -> object_loc -> specret -> ext_expr
   
   
-  | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> specret full_descriptor -> ext_expr
+  | spec_args_obj_define_own_prop_1 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> specret -> ext_expr
   | spec_args_obj_define_own_prop_2 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> full_descriptor -> out -> ext_expr
   | spec_args_obj_define_own_prop_3 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> out -> ext_expr
   | spec_args_obj_define_own_prop_4 : object_loc -> prop_name -> descriptor -> bool -> object_loc -> ext_expr
   | spec_args_obj_define_own_prop_5 : out -> ext_expr
   | spec_args_obj_define_own_prop_6 : ext_expr
   
-  | spec_args_obj_delete_1 : object_loc -> prop_name -> bool -> object_loc -> specret full_descriptor -> ext_expr
+  | spec_args_obj_delete_1 : object_loc -> prop_name -> bool -> object_loc -> specret -> ext_expr
   | spec_args_obj_delete_2 : object_loc -> prop_name -> bool -> object_loc -> full_descriptor -> out -> ext_expr
   | spec_args_obj_delete_3 : out -> ext_expr
   | spec_args_obj_delete_4 : bool -> ext_expr
   
-  | spec_arguments_object_map : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> ext_expr
-  | spec_arguments_object_map_1 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> out -> ext_expr
-  | spec_arguments_object_map_2 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> ext_expr
-  | spec_arguments_object_map_3 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> out -> ext_expr
-  | spec_arguments_object_map_4 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> string -> ext_expr
-  | spec_arguments_object_map_5 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> string -> out -> ext_expr
-  | spec_arguments_object_map_6 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> object_loc -> out -> ext_expr
-  | spec_arguments_object_map_7 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> out -> ext_expr
+  | spec_arguments_object_map : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> ext_expr
+  | spec_arguments_object_map_1 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> out -> ext_expr
+  | spec_arguments_object_map_2 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> ext_expr
+  | spec_arguments_object_map_3 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> out -> ext_expr
+  | spec_arguments_object_map_4 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> string -> ext_expr
+  | spec_arguments_object_map_5 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> string -> out -> ext_expr
+  | spec_arguments_object_map_6 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> object_loc -> out -> ext_expr
+  | spec_arguments_object_map_7 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> object_loc -> list string -> int -> out -> ext_expr
   | spec_arguments_object_map_8 : object_loc -> object_loc -> list string -> ext_expr
 
-  | spec_create_arguments_object : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> ext_expr
-  | spec_create_arguments_object_1 : object_loc -> list string -> list value -> lexical_env -> strictness_flag -> object_loc -> out -> ext_expr
+  | spec_create_arguments_object : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> ext_expr
+  | spec_create_arguments_object_1 : object_loc -> list string -> listvalue -> lexical_env -> strictness_flag -> object_loc -> out -> ext_expr
   | spec_create_arguments_object_2 : object_loc -> strictness_flag -> object_loc -> out -> ext_expr
   | spec_create_arguments_object_3 : object_loc -> value -> attributes -> out -> ext_expr
   | spec_create_arguments_object_4 : object_loc -> out -> ext_expr
@@ -386,24 +386,24 @@ Inductive ext_expr :=
   | spec_create_new_function_in :  execution_ctx -> list string -> funcbody -> ext_expr
 
   (* TODO: Check if object_loc or value could be None *)
-  (* TODO: get rid of this: | spec_call : builtin -> option object_loc -> option value -> list value -> ext_expr *)
-  | spec_call : object_loc -> value -> list value -> ext_expr (* object with the call method, this value, arguments *)
-  | spec_call_1 : call -> object_loc -> value -> list value -> ext_expr
+  (* TODO: get rid of this: | spec_call : builtin -> option object_loc -> option value -> listvalue -> ext_expr *)
+  | spec_call : object_loc -> value -> listvalue -> ext_expr (* object with the call method, this value, arguments *)
+  | spec_call_1 : call -> object_loc -> value -> listvalue -> ext_expr
 
-  | spec_call_prealloc : prealloc -> value -> list value -> ext_expr
+  | spec_call_prealloc : prealloc -> value -> listvalue -> ext_expr
 
-  | spec_call_default : object_loc -> value -> list value -> ext_expr
+  | spec_call_default : object_loc -> value -> listvalue -> ext_expr
   | spec_call_default_1 : object_loc -> ext_expr
   | spec_call_default_2 : option funcbody -> ext_expr
   | spec_call_default_3 : out -> ext_expr
 
-  | spec_construct : object_loc -> list value -> ext_expr
-  | spec_construct_1 : construct -> object_loc -> list value -> ext_expr
+  | spec_construct : object_loc -> listvalue -> ext_expr
+  | spec_construct_1 : construct -> object_loc -> listvalue -> ext_expr
 
-  | spec_construct_prealloc : prealloc -> list value -> ext_expr
+  | spec_construct_prealloc : prealloc -> listvalue -> ext_expr
 
-  | spec_construct_default : object_loc -> list value -> ext_expr
-  | spec_construct_default_1 : object_loc -> list value -> out -> ext_expr
+  | spec_construct_default : object_loc -> listvalue -> ext_expr
+  | spec_construct_default_1 : object_loc -> listvalue -> out -> ext_expr
   | spec_construct_default_2 : object_loc -> out -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
@@ -425,28 +425,28 @@ Inductive ext_expr :=
   | spec_call_object_define_props_2 : out -> object_loc -> ext_expr
   | spec_call_object_define_props_3 : object_loc -> object_loc -> list prop_name -> list (prop_name * attributes) -> ext_expr
   | spec_call_object_define_props_4 : out -> object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> ext_expr
-  | spec_call_object_define_props_5 : object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> specret attributes -> ext_expr
+  | spec_call_object_define_props_5 : object_loc -> object_loc -> prop_name -> list prop_name -> list (prop_name * attributes) -> specret -> ext_expr
   | spec_call_object_define_props_6 : object_loc -> list (prop_name * attributes) -> ext_expr
   | spec_call_object_define_props_7 : out -> object_loc -> list (prop_name * attributes) -> ext_expr
 
   | spec_call_object_seal_1 : value -> ext_expr
   | spec_call_object_seal_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> specret -> ext_expr
   | spec_call_object_seal_4 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> specret -> ext_expr
 
   | spec_call_object_freeze_1 : value -> ext_expr
   | spec_call_object_freeze_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> specret -> ext_expr
   | spec_call_object_freeze_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_freeze_5 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_frozen_1 : value -> ext_expr
   | spec_call_object_is_frozen_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_is_frozen_3 : object_loc -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_is_frozen_3 : object_loc -> list prop_name -> specret -> ext_expr
   | spec_call_object_is_frozen_4 : object_loc -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_is_frozen_5 : object_loc -> list prop_name -> full_descriptor -> ext_expr
 
@@ -455,7 +455,7 @@ Inductive ext_expr :=
 
   | spec_call_object_define_prop_1: value -> value -> value -> ext_expr
   | spec_call_object_define_prop_2: object_loc -> out -> value -> ext_expr
-  | spec_call_object_define_prop_3: object_loc -> string -> specret descriptor -> ext_expr
+  | spec_call_object_define_prop_3: object_loc -> string -> specret -> ext_expr
   | spec_call_object_define_prop_4: object_loc -> out -> ext_expr
 
   | spec_call_object_get_own_prop_descriptor_1: value -> value -> ext_expr
@@ -467,7 +467,7 @@ Inductive ext_expr :=
 
   | spec_call_object_proto_has_own_prop_1 : out -> value -> ext_expr
   | spec_call_object_proto_has_own_prop_2 : out -> prop_name -> ext_expr
-  | spec_call_object_proto_has_own_prop_3 : specret full_descriptor -> ext_expr
+  | spec_call_object_proto_has_own_prop_3 : specret -> ext_expr
 
   | spec_call_object_proto_is_prototype_of_2_1 : value -> value -> ext_expr
   | spec_call_object_proto_is_prototype_of_2_2 : out -> object_loc -> ext_expr
@@ -477,14 +477,14 @@ Inductive ext_expr :=
   | spec_call_object_proto_prop_is_enumerable_1 : value -> value -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_2 : value -> out -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
-  | spec_call_object_proto_prop_is_enumerable_4 : (specret full_descriptor) -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_4 : specret -> ext_expr
 
-  | spec_call_array_new_1 : list value -> ext_expr
-  | spec_call_array_new_2 : object_loc -> list value -> int -> ext_expr
+  | spec_call_array_new_1 : listvalue -> ext_expr
+  | spec_call_array_new_2 : object_loc -> listvalue -> int -> ext_expr
 
   | spec_call_array_proto_pop_1 : out -> ext_expr
   | spec_call_array_proto_pop_2 : object_loc -> out -> ext_expr
-  | spec_call_array_proto_pop_3 : object_loc -> (specret int) -> ext_expr
+  | spec_call_array_proto_pop_3 : object_loc -> specret -> ext_expr
   | spec_call_array_proto_pop_3_empty_1 : object_loc -> ext_expr
   | spec_call_array_proto_pop_3_empty_2 : out -> ext_expr
   | spec_call_array_proto_pop_3_nonempty_1 : object_loc -> int -> ext_expr
@@ -493,13 +493,13 @@ Inductive ext_expr :=
   | spec_call_array_proto_pop_3_nonempty_4 : object_loc -> value -> value -> out -> ext_expr
   | spec_call_array_proto_pop_3_nonempty_5 : value -> out -> ext_expr
 
-  | spec_call_array_proto_push_1 : out -> list value -> ext_expr
-  | spec_call_array_proto_push_2 : object_loc -> list value -> out -> ext_expr
-  | spec_call_array_proto_push_3 : object_loc -> list value -> (specret int) -> ext_expr
-  | spec_call_array_proto_push_4 : object_loc -> list value -> int -> ext_expr
-  | spec_call_array_proto_push_4_nonempty_1 : object_loc -> list value -> int -> value -> ext_expr
-  | spec_call_array_proto_push_4_nonempty_2 : object_loc -> list value -> int -> value -> out -> ext_expr
-  | spec_call_array_proto_push_4_nonempty_3 : object_loc -> list value -> int -> value -> out -> ext_expr
+  | spec_call_array_proto_push_1 : out -> listvalue -> ext_expr
+  | spec_call_array_proto_push_2 : object_loc -> listvalue -> out -> ext_expr
+  | spec_call_array_proto_push_3 : object_loc -> listvalue -> specret -> ext_expr
+  | spec_call_array_proto_push_4 : object_loc -> listvalue -> int -> ext_expr
+  | spec_call_array_proto_push_4_nonempty_1 : object_loc -> listvalue -> int -> value -> ext_expr
+  | spec_call_array_proto_push_4_nonempty_2 : object_loc -> listvalue -> int -> value -> out -> ext_expr
+  | spec_call_array_proto_push_4_nonempty_3 : object_loc -> listvalue -> int -> value -> out -> ext_expr
   | spec_call_array_proto_push_5 : object_loc -> value -> ext_expr
   | spec_call_array_proto_push_6 : value -> out -> ext_expr
 
@@ -508,7 +508,7 @@ Inductive ext_expr :=
   | spec_call_bool_proto_value_of_1 : value -> ext_expr
   | spec_call_bool_proto_value_of_2 : value -> ext_expr
 
-  | spec_call_number_proto_to_string_1 : value -> list value -> ext_expr
+  | spec_call_number_proto_to_string_1 : value -> listvalue -> ext_expr
   | spec_call_number_proto_to_string_2 : value -> out -> ext_expr
   | spec_construct_number_1 : out -> ext_expr
   | spec_call_number_proto_value_of_1 : value -> ext_expr
@@ -534,7 +534,7 @@ with ext_stat :=
   | stat_basic : stat -> ext_stat
 
   (** Extended statements associated with primitive statements *)
-  | stat_expr_1: (specret value) -> ext_stat
+  | stat_expr_1: specret -> ext_stat
 
   | stat_block_1 : out -> stat -> ext_stat
   | stat_block_2 : resvalue -> out -> ext_stat
@@ -543,14 +543,14 @@ with ext_stat :=
 
   | stat_var_decl_1 : out -> list (string * option expr) -> ext_stat
   | stat_var_decl_item : (string * option expr) -> ext_stat
-  | stat_var_decl_item_1 : string -> specret ref -> expr -> ext_stat
-  | stat_var_decl_item_2 : string -> ref -> (specret value) -> ext_stat
+  | stat_var_decl_item_1 : string -> specret -> expr -> ext_stat
+  | stat_var_decl_item_2 : string -> ref -> specret -> ext_stat
   | stat_var_decl_item_3 : string -> out -> ext_stat
 
-  | stat_if_1 : specret value -> stat -> option stat -> ext_stat
+  | stat_if_1 : specret -> stat -> option stat -> ext_stat
 
   | stat_while_1 : label_set -> expr -> stat -> resvalue -> ext_stat
-  | stat_while_2 : label_set -> expr -> stat -> resvalue -> specret value -> ext_stat
+  | stat_while_2 : label_set -> expr -> stat -> resvalue -> specret -> ext_stat
   | stat_while_3 : label_set -> expr -> stat -> resvalue -> out -> ext_stat
   | stat_while_4 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
   | stat_while_5 : label_set -> expr -> stat -> resvalue -> res -> ext_stat
@@ -563,17 +563,17 @@ with ext_stat :=
   | stat_do_while_4 : label_set -> stat -> expr -> resvalue -> res -> ext_stat
   | stat_do_while_5 : label_set -> stat -> expr -> resvalue -> res -> ext_stat
   | stat_do_while_6 : label_set -> stat -> expr -> resvalue -> ext_stat
-  | stat_do_while_7 : label_set -> stat -> expr -> resvalue -> specret value -> ext_stat
+  | stat_do_while_7 : label_set -> stat -> expr -> resvalue -> specret -> ext_stat
 
-  | stat_for_1 : label_set -> specret value -> option expr -> option expr -> stat -> ext_stat
+  | stat_for_1 : label_set -> specret -> option expr -> option expr -> stat -> ext_stat
   | stat_for_2 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
-  | stat_for_3 : label_set -> resvalue -> expr -> specret value -> option expr -> stat -> ext_stat
+  | stat_for_3 : label_set -> resvalue -> expr -> specret -> option expr -> stat -> ext_stat
   | stat_for_4 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
   | stat_for_5 : label_set -> resvalue -> option expr -> out -> option expr -> stat -> ext_stat
   | stat_for_6 : label_set -> resvalue -> option expr -> option expr -> stat -> res -> ext_stat
   | stat_for_7 : label_set -> resvalue -> option expr -> option expr -> stat -> res -> ext_stat
   | stat_for_8 : label_set -> resvalue -> option expr -> option expr -> stat -> ext_stat
-  | stat_for_9 : label_set -> resvalue -> option expr -> expr -> specret value -> stat -> ext_stat
+  | stat_for_9 : label_set -> resvalue -> option expr -> expr -> specret -> stat -> ext_stat
 
   | stat_for_var_1 : out -> label_set -> option expr -> option expr -> stat -> ext_stat
 
@@ -593,10 +593,10 @@ with ext_stat :=
 
   (* Extended statements for 'switch' *)
                                                                            
-  | stat_switch_1: (specret value) -> label_set -> switchbody -> ext_stat
+  | stat_switch_1: specret -> label_set -> switchbody -> ext_stat
   | stat_switch_2: out -> label_set -> ext_stat
   | stat_switch_nodefault_1: value -> resvalue -> list switchclause -> ext_stat
-  | stat_switch_nodefault_2: (specret value) -> value -> resvalue -> list stat -> list switchclause -> ext_stat
+  | stat_switch_nodefault_2: specret -> value -> resvalue -> list stat -> list switchclause -> ext_stat
   | stat_switch_nodefault_3: bool -> value -> resvalue -> list stat -> list switchclause -> ext_stat
   | stat_switch_nodefault_4: out -> list switchclause -> ext_stat
   | stat_switch_nodefault_5: resvalue -> list switchclause -> ext_stat
@@ -604,13 +604,13 @@ with ext_stat :=
 
   | stat_switch_default_1: value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_1: bool -> value -> resvalue -> list switchclause -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_A_2: (specret value) -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_A_2: specret -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_3: bool -> value -> resvalue -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_4: resvalue -> value -> list stat -> list switchclause -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_A_5: resvalue -> out -> value -> list switchclause -> list stat -> list switchclause -> ext_stat
 
   | stat_switch_default_B_1: value -> resvalue -> list stat -> list switchclause -> ext_stat
-  | stat_switch_default_B_2: (specret value) -> value -> resvalue -> list stat -> list stat -> list switchclause -> ext_stat
+  | stat_switch_default_B_2: specret -> value -> resvalue -> list stat -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_B_3: bool -> value -> resvalue -> list stat -> list stat -> list switchclause -> ext_stat
   | stat_switch_default_B_4: out -> list stat -> list switchclause -> ext_stat
 
@@ -619,11 +619,11 @@ with ext_stat :=
   | stat_switch_default_7: resvalue -> list switchclause -> ext_stat
   | stat_switch_default_8: resvalue -> out -> list switchclause -> ext_stat
 
-  | stat_with_1 : stat -> specret value -> ext_stat (* The expression have been executed. *)
+  | stat_with_1 : stat -> specret -> ext_stat (* The expression have been executed. *)
 
-  | stat_throw_1 : (specret value) -> ext_stat (* The expression have been executed. *)
+  | stat_throw_1 : specret -> ext_stat (* The expression have been executed. *)
 
-  | stat_return_1 : (specret value) -> ext_stat (* The expression have been executed. *)
+  | stat_return_1 : specret -> ext_stat (* The expression have been executed. *)
 
   | stat_try_1 : out -> option (string*stat) -> option stat -> ext_stat (* The try block has been executed. *)
   | stat_try_2 : out -> lexical_env -> stat -> option stat -> ext_stat (* The catch block is actived and will be executed. *)
@@ -650,7 +650,7 @@ with ext_spec :=
   | spec_to_uint32_1 : out -> ext_spec
 
   | spec_expr_get_value_conv : (value -> ext_expr) -> expr -> ext_spec
-  | spec_expr_get_value_conv_1 : (value -> ext_expr) -> (specret value) -> ext_spec
+  | spec_expr_get_value_conv_1 : (value -> ext_expr) -> specret -> ext_spec
   | spec_expr_get_value_conv_2 : out -> ext_spec
 
   | spec_convert_twice : ext_expr -> ext_expr -> ext_spec
@@ -659,8 +659,8 @@ with ext_spec :=
 
   (** Extended expressions for lists of expressions *)
   | spec_list_expr : list expr -> ext_spec
-  | spec_list_expr_1 : list value -> list expr -> ext_spec
-  | spec_list_expr_2 : list value -> (specret value) -> list expr -> ext_spec 
+  | spec_list_expr_1 : listvalue -> list expr -> ext_spec
+  | spec_list_expr_2 : listvalue -> specret -> list expr -> ext_spec 
 
   | spec_to_descriptor : value -> ext_spec
   | spec_to_descriptor_1a : object_loc -> descriptor -> ext_spec
@@ -689,7 +689,7 @@ with ext_spec :=
 
   | spec_object_get_prop : object_loc -> prop_name -> ext_spec
   | spec_object_get_prop_1 : builtin_get_prop -> object_loc -> prop_name -> ext_spec
-  | spec_object_get_prop_2 : object_loc -> prop_name -> specret full_descriptor -> ext_spec
+  | spec_object_get_prop_2 : object_loc -> prop_name -> specret -> ext_spec
   | spec_object_get_prop_3 : object_loc -> prop_name -> value -> ext_spec
 
   | spec_get_value : resvalue -> ext_spec
@@ -712,16 +712,16 @@ with ext_spec :=
   | spec_error_spec_1 : out -> ext_spec
 
   (* .. *)
-  | spec_args_obj_get_own_prop_1 : object_loc -> prop_name -> (specret full_descriptor) -> ext_spec
-  | spec_args_obj_get_own_prop_2 : object_loc -> prop_name -> object_loc -> full_descriptor -> (specret full_descriptor) -> ext_spec
+  | spec_args_obj_get_own_prop_1 : object_loc -> prop_name -> specret -> ext_spec
+  | spec_args_obj_get_own_prop_2 : object_loc -> prop_name -> object_loc -> full_descriptor -> specret -> ext_spec
   | spec_args_obj_get_own_prop_3 : full_descriptor -> out -> ext_spec
   | spec_args_obj_get_own_prop_4 : full_descriptor -> ext_spec
 
-  | spec_string_get_own_prop_1 : object_loc -> prop_name -> (specret full_descriptor) -> ext_spec
-  | spec_string_get_own_prop_2 : object_loc -> prop_name -> (specret int) -> ext_spec
+  | spec_string_get_own_prop_1 : object_loc -> prop_name -> specret -> ext_spec
+  | spec_string_get_own_prop_2 : object_loc -> prop_name -> specret -> ext_spec
   | spec_string_get_own_prop_3 : object_loc -> prop_name -> out -> ext_spec
   | spec_string_get_own_prop_4 : prop_name -> string -> ext_spec
-  | spec_string_get_own_prop_5 : string -> (specret int) -> ext_spec
+  | spec_string_get_own_prop_5 : string -> specret -> ext_spec
   | spec_string_get_own_prop_6 : string -> int -> int -> ext_spec
 .
 
@@ -744,7 +744,7 @@ Definition spec_to_primitive_auto v :=
 
 (** Auxiliary definition for extracting [out] of [specret] *)
 
-Definition out_of_specret T (y:specret T) :=
+Definition out_of_specret (y:specret) :=
   match y with
   | specret_out o => Some o
   | specret_val _ _ => None
@@ -1451,10 +1451,10 @@ Definition spec_identifier_resolution C x :=
 (**************************************************************)
 (** ** Instantiation of arguments in function calls *)
 
-Inductive arguments_from : list value -> list value -> Prop :=
+Inductive arguments_from : listvalue -> listvalue -> Prop :=
  | arguments_from_nil : forall Vs,
       arguments_from Vs nil
- | arguments_from_undef : forall Vs: list value,
+ | arguments_from_undef : forall Vs: listvalue,
       arguments_from nil Vs ->
       arguments_from nil (undef::Vs)
  | arguments_from_cons : forall Vs1 Vs2 v,

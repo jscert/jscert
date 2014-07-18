@@ -704,7 +704,7 @@ Inductive out :=
 
 Definition out_void S := out_ter S res_empty.
 
-(** Internal functions may return values other than JS results,
+(*(** Internal functions may return values other than JS results,
     or may trigger JS exceptions, or diverge. The type
     [specret A] accounts for such results: [specret_val S a]
     describes a normal result as a pair of a heap [S] and a
@@ -727,7 +727,39 @@ Implicit Arguments ret [[T]].
     used by specifications functions that do no return any value.  *)
 
 Definition ret_void S := specret_val S tt.
+*)
 
+Definition value2 := (value * value)%type.  (* needed for coercions to work properly *)
+Definition listvalue := (list value)%type.
+
+Inductive specval :=
+ | specval_void : specval
+ | specval_value : value -> specval
+ | specval_value2 : value2 -> specval
+ | specval_int : int -> specval
+ | specval_ref : ref -> specval
+ | specval_full_descriptor : full_descriptor -> specval
+ | specval_attributes : attributes -> specval
+ | specval_descriptor : descriptor -> specval
+ | specval_listvalue : listvalue -> specval.
+
+Coercion specval_value : value >-> specval.
+Coercion specval_value2 : value2 >-> specval.
+Coercion specval_int : Z >-> specval.
+Coercion specval_ref : ref >-> specval.
+Coercion specval_full_descriptor : full_descriptor >-> specval.
+Coercion specval_attributes : attributes >-> specval.
+Coercion specval_descriptor : descriptor >-> specval.
+Coercion specval_listvalue : listvalue >-> specval.
+
+
+Inductive specret :=
+ | specret_val : state -> specval -> specret
+ | specret_out : out -> specret.
+
+Definition ret S (a:specval) := specret_val S a.
+
+Definition ret_void S := specret_val S specval_void.
 
 (**************************************************************)
 (** ** Auxiliary definition for DeclarationBindingInstantiation *)

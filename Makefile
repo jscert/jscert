@@ -63,12 +63,9 @@ JS_SRC=\
 	coq/JsPreliminary.v \
 	coq/JsPreliminaryAux.v \
 	coq/JsInit.v \
-	coq/JsInterpreter.v \
-  coq/JsInterpreterExtraction.v \
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
 	coq/JsPrettyRules.v \
-	coq/JsCorrectness.v \
 	coq/JsWellFormednessDef.v \
 	coq/JsWellFormednessProof.v
 

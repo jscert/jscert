@@ -231,45 +231,9 @@ Qed.
 
 (*lemmas: if x of type x is well-formed then out_of_X x is well-formed too*)
 
-Lemma wf_out_of_specret_value :  forall (S:state) (str:strictness_flag) (s:specret value) (o:out),
+Lemma wf_out_of_specret_lem :  forall (S:state) (str:strictness_flag) (s:specret) (o:out),
   out_of_specret s = Some o ->
-  wf_specret_value S str s ->
-  wf_out S str o.
-Proof.
-  introv Ho Hs. inverts Hs; inverts* Ho.
-Qed.
-
-
-Lemma wf_out_of_specret_int :  forall (S:state) (str:strictness_flag) (s:specret int) (o:out),
-  out_of_specret s = Some o ->
-  wf_specret_int S str s ->
-  wf_out S str o.
-Proof.
-  introv Ho Hs. inverts Hs; inverts* Ho.
-Qed.
-
-
-Lemma wf_out_of_specret_valuevalue :  forall (S:state) (str:strictness_flag) (s:specret (value*value)) (o:out),
-  out_of_specret s = Some o ->
-  wf_specret_valuevalue S str s ->
-  wf_out S str o.
-Proof.
-  introv Ho Hs. inverts Hs; inverts* Ho.
-Qed.
-
-
-Lemma wf_out_of_specret_ref :  forall (S:state) (str:strictness_flag) (s:specret ref) (o:out),
-  out_of_specret s = Some o ->
-  wf_specret_ref S str s ->
-  wf_out S str o.
-Proof.
-  introv Ho Hs. inverts Hs; inverts* Ho.
-Qed.
-
-
-Lemma wf_out_of_specret_full_descriptor :  forall (S:state) (str:strictness_flag) (s:specret full_descriptor) (o:out),
-  out_of_specret s = Some o ->
-  wf_specret_full_descriptor S str s ->
+  wf_specret S str s ->
   wf_out S str o.
 Proof.
   introv Ho Hs. inverts Hs; inverts* Ho.
@@ -279,16 +243,8 @@ Qed.
 (*tactic to apply the right wf_out_of_specret_X*)
 Ltac wf_out_of_specret :=
   match goal with
-    | [ H:wf_specret_value ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
-      apply* wf_out_of_specret_value
-    | [ H:wf_specret_int ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
-      apply* wf_out_of_specret_int
-    | [ H:wf_specret_valuevalue ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
-      apply* wf_out_of_specret_valuevalue
-    | [ H:wf_specret_ref ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
-      apply* wf_out_of_specret_ref
-    | [ H:wf_specret_full_descriptor ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
-      apply* wf_out_of_specret_full_descriptor
+    | [ H:wf_specret ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
+      apply* wf_out_of_specret_lem
   end.
 
 
@@ -765,51 +721,14 @@ Qed.
 
 (*Theorems: wf is preserved by reduction*)
 
-Theorem pr_red_spec_value : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret value),
+Theorem pr_red_spec : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret),
   wf_state S ->
   wf_execution_ctx str C ->
   wf_ext_spec S str es ->
   red_spec S C es s ->
-  wf_specret_value S str s.
+  wf_specret S str s.
 Proof.
 Admitted.
-
-Theorem pr_red_spec_int : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret int),
-  wf_state S ->
-  wf_execution_ctx str C ->
-  wf_ext_spec S str es ->
-  red_spec S C es s ->
-  wf_specret_int S str s.
-Proof.
-Admitted.
-
-Theorem pr_red_spec_valuevalue : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret (value*value)),
-  wf_state S ->
-  wf_execution_ctx str C ->
-  wf_ext_spec S str es ->
-  red_spec S C es s ->
-  wf_specret_valuevalue S str s.
-Proof.
-Admitted.
-
-Theorem pr_red_spec_ref : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret ref),
-  wf_state S ->
-  wf_execution_ctx str C ->
-  wf_ext_spec S str es ->
-  red_spec S C es s ->
-  wf_specret_ref S str s.
-Proof.
-Admitted.
-
-Theorem pr_red_spec_full_descriptor : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret full_descriptor),
-  wf_state S ->
-  wf_execution_ctx str C ->
-  wf_ext_spec S str es ->
-  red_spec S C es s ->
-  wf_specret_full_descriptor S str s.
-Proof.
-Admitted.
-
 
 
 (*tactics used in the proof of pr_red_ext_expr*)
@@ -827,12 +746,19 @@ Ltac wf_inverts :=
   match goal with
     | [H:wf_out _ _ (out_ter _ _)|-_] => inverts H
     | [H:wf_out _ _ (out_void _)|-_] => inverts H
-    | [H:wf_specret_value _ _ (ret _ _)|-_] => inverts H
-    | [H:wf_specret_int _ _ (ret _ _)|-_] => inverts H
-    | [H:wf_specret_valuevalue _ _ (ret _ _)|-_] => inverts H
-    | [H:wf_specret_ref _ _ (ret _ _)|-_] => inverts H
-    | [H:wf_specret_full_descriptor _ _ (ret _ _)|-_] => inverts H
-    | [H:wf_specret_full_descriptor _ _ (dret _ _)|-_] => inverts H
+    | [H:wf_specret _ _ (ret _ _)|-_] => inverts H
+    | [H:wf_specret _ _ (dret _ _)|-_] => inverts H
+    | [H:wf_specret _ _ specval_void|-_] => clear H
+    | [H:wf_specval _ _ (specval_value _)|-_] => inverts H
+    | [H:wf_specval _ _ (specval_value2 _)|-_] => inverts H
+    | [H:wf_specval _ _ (specval_int _)|-_] => inverts H
+    | [H:wf_specval _ _ (specval_ref _)|-_] => inverts H
+    | [H:wf_specval _ _ (specval_full_descriptor _)|-_] => inverts H
+    | [H:wf_specval _ _ (specval_attributes _)|-_] => inverts H
+    | [H:wf_specval _ _ (specval_descriptor _)|-_] => inverts H
+    | [H:wf_specval _ _ (specval_listvalue _)|-_] => inverts H
+    | [H:wf_full_descriptor _ _ full_descriptor_undef|-_] => clear H
+    | [H:wf_full_descriptor _ _ (full_descriptor_some _)|-_] => inverts H
     | [H:wf_ext_expr _ _ _|-_] => inverts H
     | [H:wf_ext_spec _ _ _ |-_] => inverts H
     | [H:wf_obinary_op (Some _) |-_] => inverts H
@@ -843,11 +769,16 @@ Ltac wf_inverts :=
     | [H:wf_resvalue _ _ (resvalue_value _) |- _] => inverts H
     | [H:wf_resvalue _ _ (resvalue_ref _) |- _] => inverts H
     | [H:wf_res _ _ (res_intro _ _ _) |- _] => inverts H
+    | [H:wf_res _ _ (res_normal _) |- _] => inverts H
     | [H:wf_res _ _ (res_ref _) |- _] => inverts H
     | [H:wf_res _ _ (res_val _) |- _] => inverts H
     | [H:wf_ref _ _ (ref_intro _ _ _) |- _] => inverts H
     | [H:wf_ref_base_type _ _ (ref_base_type_value _) |- _]=> inverts H
     | [H:wf_ref_base_type _ _ (ref_base_type_env_loc _) |- _]=> inverts H
+    | [H:wf_descriptor _ _ (descriptor_intro _ _ _ _ _ _)|-_] => inverts H
+    | [H:wf_attributes _ _ (attributes_data_of (attributes_data_intro _ _ _ _))|-_] => inverts H
+    | [H:wf_oattributes _ _ None|-_] => clear H
+    | [H:wf_oattributes _ _ (Some _)|-_] => inverts H
   end.
 
 Ltac wf_inverts3a :=
@@ -856,11 +787,7 @@ Ltac wf_inverts3a :=
 
 Ltac appredspec :=
   match goal with
-    | [H:red_spec _ _ _ ?s |- wf_specret_value _ _ ?s] => forwards*: pr_red_spec_value H
-    | [H:red_spec _ _ _ ?s |- wf_specret_int _ _ ?s] => forwards*: pr_red_spec_int H
-    | [H:red_spec _ _ _ ?s |- wf_specret_ref _ _ ?s] => forwards*: pr_red_spec_ref H
-    | [H:red_spec _ _ _ ?s |- wf_specret_valuevalue _ _ ?s] => forwards*: pr_red_spec_valuevalue H
-    | [H:red_spec _ _ _ ?s |- wf_specret_full_descriptor _ _ ?s] => forwards*: pr_red_spec_full_descriptor H
+    | [H:red_spec _ _ _ ?s |- wf_specret _ _ ?s] => forwards*: pr_red_spec H
   end.
 
 
@@ -885,13 +812,13 @@ Hint Extern 0 (wf_out _ _ _) => wf_out_extends : wf_base.
 Hint Extern 0 (wf_out _ _ _) => wf_out_change_state : wf_base.
 Hint Extern 1 => constructor : wf_base.
 Hint Extern 0 => wf_inverts : wf_base.
-Hint Resolve pr_red_spec_ref pr_red_spec_value : wf_base.
+Hint Resolve pr_red_spec : wf_base.
 Hint Extern 1 => wf_inverts3a : wf_base.
 Hint Extern 1 => appredspec : wf_base.
 Hint Extern 0 => wf_state_extends : wf_base.
 Hint Resolve wf_state_wf_prealloc_global : wf_base.
 
-Hint Constructors Forall wf_expr wf_prog wf_stat wf_var_decl wf_ext_expr wf_ext_stat wf_ext_prog state_of_out wf_ext_spec wf_res wf_full_descriptor : wf_base.
+Hint Constructors Forall wf_expr wf_prog wf_stat wf_var_decl wf_ext_expr wf_ext_stat wf_ext_prog state_of_out wf_ext_spec wf_res wf_full_descriptor wf_specret wf_specval : wf_base.
 
 
 
@@ -917,15 +844,15 @@ Proof.
 
   apply* IHHred2. constructor. apply* IHHred1. constructor.  wf_inverts. inverts H1. assumption.
   
-  wf_inverts3a. wf_out_change_state. apply* IHHred. repeat constructor*. eapply pr_red_spec_value; eauto. inverts H5. constructor*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. appredspec. constructor*.
 
   wf_inverts3a. inverts H1. wf_out_change_state. apply* IHHred2. repeat constructor. eapply wf_resvalue_state_extends; eauto. apply* IHHred1.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred2. constructors. cases_if; subst; constructor. apply* IHHred1. constructor. inverts H4. eapply wf_resvalue_state_extends; eauto. subst. constructor.
+  wf_inverts3a. wf_out_change_state. apply* IHHred2. constructors. cases_if; subst; constructor. apply* IHHred1. constructor. eapply wf_resvalue_state_extends; eauto. subst. constructor.
 
   wf_inverts3a. repeat constructor*. eapply wf_value_state_extends; eauto.
 
-  wf_inverts. inverts H2. apply* IHHred. constructor. eapply pr_red_spec_value; eauto. constructor*.
+  wf_inverts. inverts H2. apply* IHHred. constructor. appredspec. constructor*.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred.
 
@@ -949,11 +876,11 @@ Proof.
   
   wf_inverts. inverts H0. apply* IHHred2.
 
-  wf_inverts3a. auto with wf_base.
+  wf_inverts3a. wf_out_change_state. auto with wf_base.
 
   wf_inverts3a. constructor*. repeat constructor.
   
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. apply* pr_red_spec_value. rconstructors*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. appredspec. rconstructors*.
   
   wf_inverts3a. constructor*. repeat constructor. 
 
@@ -963,7 +890,7 @@ Proof.
 
   wf_inverts3a. constructor*. repeat constructor.
 
-  wf_inverts3a. apply* IHHred. constructor. eapply pr_red_spec_int; eauto. constructor~.
+  wf_inverts3a. apply* IHHred. constructor. appredspec. constructor~.
 
   auto with wf_base.
 
@@ -971,25 +898,25 @@ Proof.
 
   auto with wf_base.
 
-  wf_inverts3a. apply* IHHred. inverts H2. constructor~. eapply pr_red_spec_value; eauto. constructor~.
+  wf_inverts3a. apply* IHHred. inverts H2. auto with wf_base.
 
   (*red_expr_binary_op_1*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor~. eapply pr_red_spec_value; eauto. constructor~. eapply wf_expr_state_extends; eauto.
-
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec. constructor*. wf_state_extends.
+  
   (*red_expr_binary_op_2*)
   wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. eapply wf_value_state_extends; eauto.
 
   (*red_expr_binary_op_add*)
-  wf_inverts. apply* IHHred. constructor. eapply pr_red_spec_valuevalue; eauto. rconstructors*.
+  wf_inverts. apply* IHHred. constructor. appredspec. rconstructors*.
 
   (*red_expr_binary_op_add_1_string*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. eapply pr_red_spec_valuevalue; eauto. rconstructors*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. appredspec. rconstructors*.
 
   (*red_expr_binary_op_add_string_1*)
   wf_inverts3a. rconstructors*.
 
   (*red_expr_binary_op_add_1_number*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. eapply pr_red_spec_valuevalue; eauto. rconstructors*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. appredspec. rconstructors*.
 
   (*red_expr_puremath_op*)
   wf_inverts. apply* IHHred. rconstructors*. appredspec. rconstructors*.
@@ -1085,19 +1012,25 @@ Proof.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec. rconstructors*. eapply wf_expr_state_extends; eauto.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. inverts H7. rconstructors*. appredspec. rconstructors*. eapply wf_expr_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. rconstructors*. appredspec. rconstructors*. wf_state_extends.
 
-  wf_inverts3a. wf_out_change_state. inverts H4. apply* IHHred. rconstructors*. eapply wf_resvalue_state_extends; eauto. appredspec. rconstructors*. eapply wf_expr_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. wf_inverts. auto with wf_base.
 
-  wf_inverts3a. inverts H3. wf_out_change_state. apply* IHHred2. rconstructors*. wf_state_extends. auto with wf_base.
+  wf_inverts3a. wf_inverts. wf_out_change_state. apply* IHHred2. rconstructors*. wf_state_extends. auto with wf_base.
 
-  wf_inverts3a. inverts H1. wf_inverts. auto with wf_base.
+  wf_inverts3a. wf_inverts. wf_out_change_state. auto with wf_base.
 
   wf_inverts3a. inverts H1. wf_out_change_state. auto with wf_base.
 
-  wf_inverts3a. inverts H5. rconstructors*. wf_state_extends.
+  wf_inverts3a. wf_out_change_state.
 
   wf_inverts3a. auto with wf_base.
+
+  (*red_expr_binary_op_coma*)
+  wf_inverts3a. auto with wf_base.
+
+  (*red_spec_returns*)
+  wf_inverts3a.
 
   (*red_spec_to_boolean*)
   wf_inverts3a. auto with wf_base.
@@ -1148,21 +1081,20 @@ Proof.
   wf_impossible.
 
   (*red_spec_object_get (again)*)
-  wf_inverts3a. forwards M:pr_red_spec_full_descriptor str H; auto. constructor*. inverts M. inverts Hred. inverts* H1.
-  inverts H1; apply* IHHred; rconstructors*. clear IHHred. inverts H5. rconstructors*. 
+  wf_inverts3a. auto with wf_base.
 
   wf_inverts3a. rconstructors*.
 
-  wf_inverts3a. rconstructors*. inverts H7. inverts H1. simpl in H. subst*.
+  wf_inverts3a. rconstructors*. inverts H1. inverts H3. simpl in H. subst*.
 
-  wf_inverts3a.
+  wf_inverts3a. wf_inverts. inverts H2.
 
   wf_inverts3a.
 
   wf_impossible.
 
   (*red_spec_object_can_put (again)*)
-  wf_inverts3a. forwards* M:pr_red_spec_full_descriptor H. constructor*.
+  wf_inverts3a. forwards* M:pr_red_spec H. constructor*.
 
   wf_inverts3a. auto with wf_base.
 
@@ -1178,7 +1110,7 @@ Proof.
   
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. destruct Ad. constructor*. inverts H7. inverts H1. assumption.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. destruct Ad. constructor*. inverts H1. inverts H3. assumption.
 
   rconstructors*.
 
@@ -1197,7 +1129,7 @@ Proof.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*; try wf_state_extends. appredspec. constructor*. wf_state_extends.
 
-  wf_inverts3a. inverts H8. inversion H3.
+  wf_inverts3a. inversion H3. inversion H5.
 
   wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor*. apply* IHHred1. constructor*. auto with wf_base. subst. rconstructors*. auto with wf_base.
 
@@ -1212,11 +1144,11 @@ Proof.
 
   wf_inverts3a. cases_if; forwards* HS':wf_set_property str; subst; try constructor*;
   try solve [unfolds unsome_default; destruct Desc ; subst; simpl; inverts H8; simpl; inverts H2; [constructor*|auto]| rconstructors*];
-  clear HS HC H4 H9 H0 C l x throw; exfalso; apply H1; clear H1; inverts H8; unfolds descriptor_is_generic; unfolds descriptor_is_accessor; unfolds descriptor_is_data; simpl; destruct ov1; destruct ob1; try solve [right; introv H1; inverts H1; inverts H0|right; introv H1; inverts H1; inverts H2|left; auto].
+  clear HS HC H4 H0 C l x throw; exfalso; apply H1; clear H1; inverts H8; unfolds descriptor_is_generic; unfolds descriptor_is_accessor; unfolds descriptor_is_data; simpl; destruct ov1; destruct ob1; try solve [right; introv H1; inverts H1; inverts H0|right; introv H1; inverts H1; inverts H2|left; auto].
   
   wf_inverts3a. rconstructors*.
 
-  wf_inverts3a. inverts H8. auto with wf_base.
+  wf_inverts3a.
 
   wf_inverts3a.
 
@@ -1451,7 +1383,7 @@ maybe there should be a condition '~descriptor_is_generic Desc' in this rule ?*)
 (**)
 
 
-Admitted.
+Admitted. (*Qed takes too long*)
 
 
 
@@ -1477,24 +1409,25 @@ Proof.
     constructor*; try apply state_extends_refl; rconstructors*.
   (*red_stat_var_decl_item_some*)
     apply* IHHred. inverts H1. constructor*.
-    eapply pr_red_spec_ref; eauto. constructor*.
+    eapply pr_red_spec; eauto. constructor*.
   (*red_stat_var_decl_item_1*)
     replace (ret S r) with (specret_val S r) in H2.
     inverts H2.
     apply wf_out_state_extends with S; auto.
-    apply* IHHred; constructor*.
-    eapply pr_red_spec_value; eauto. constructor*. eapply wf_expr_state_extends; eauto. auto.
+    apply* IHHred; inverts H5; constructor*.
+    eapply pr_red_spec; eauto. constructor*. eapply wf_expr_state_extends; eauto. auto.
   (*red_stat_var_decl_item_2*)
     inverts H4.
     apply wf_out_state_extends with S; auto.
     apply* IHHred. constructor*. eapply pr_red_expr; eauto. rconstructors*.
     eapply wf_ref_state_extends; eauto.
+    inverts* H5.
   (*red_stat_var_decl_item_3*)
     rconstructors*.
   (*red_stat_expr*)
-    apply* IHHred. constructor*. eapply pr_red_spec_value; eauto. constructor*. inverts* H1.
+    apply* IHHred. constructor*. eapply pr_red_spec; eauto. constructor*. inverts* H1.
   (*red_stat_expr_1*)
-    rconstructors*.
+    inverts H3. rconstructors*.
 Qed.
 
  
