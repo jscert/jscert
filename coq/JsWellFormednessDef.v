@@ -65,8 +65,8 @@ Inductive wf_binary_op : binary_op -> Prop :=
   | wf_binary_op_gt : wf_binary_op binary_op_gt
   | wf_binary_op_le : wf_binary_op binary_op_le
   | wf_binary_op_ge : wf_binary_op binary_op_ge
-(*  | wf_binary_op_instanceof : wf_binary_op binary_op_instanceof
-  | wf_binary_op_in : wf_binary_op binary_op_in*)
+  | wf_binary_op_instanceof : wf_binary_op binary_op_instanceof
+  | wf_binary_op_in : wf_binary_op binary_op_in
   | wf_binary_op_equal : wf_binary_op binary_op_equal
   | wf_binary_op_disequal : wf_binary_op binary_op_disequal
   | wf_binary_op_strict_equal : wf_binary_op binary_op_strict_equal
@@ -93,6 +93,7 @@ Inductive wf_obinary_op : option binary_op -> Prop :=
 (*the state and the strictness flag are currently unused but may be needed later*)
 
 Inductive wf_expr (S:state) (str:strictness_flag) : expr -> Prop :=
+  | wf_expr_this : wf_expr S str expr_this
   | wf_expr_identifier : forall (s:string),
       wf_expr S str (expr_identifier s)
   | wf_expr_literal : forall (i:literal),
@@ -238,6 +239,7 @@ Record wf_object (S:state) (str:strictness_flag) (obj:object) :=
   wf_object_intro {
     wf_object_proto_ : wf_value S str (object_proto_ obj);
     wf_object_define_own_prop : object_define_own_prop_ obj = builtin_define_own_prop_default;
+    wf_object_get_own_prop : object_get_own_prop_ obj = builtin_get_own_prop_default;
     wf_object_properties : forall (x:prop_name) (A:attributes),
       Heap.binds (object_properties_ obj) x A ->
       wf_attributes S str A}.
@@ -277,12 +279,22 @@ Record wf_state (S:state) := wf_state_intro {
 
 (*well-formedness for execution contexts (scope chains)*)
 
+
+Inductive wf_lexical_env (S:state) (str:strictness_flag) : lexical_env -> Prop :=
+  | wf_lexical_env_nil : wf_lexical_env S str nil
+  | wf_lexical_env_cons : forall (L:env_loc) (lex:lexical_env),
+      wf_env_loc S str L ->
+      wf_lexical_env S str lex ->
+      wf_lexical_env S str (L::lex).
+
 Definition only_global_scope (C:execution_ctx) :=
   execution_ctx_lexical_env C = (env_loc_global_env_record::nil). (*maybe too strict*)
 
 
-Definition wf_execution_ctx (str:strictness_flag) (C:execution_ctx) :=
-  only_global_scope C.
+Record wf_execution_ctx (S:state) (str:strictness_flag) (C:execution_ctx) := wf_execution_ctx_intro {
+  wf_execution_ctx_wf_lexical_env : wf_lexical_env S str (execution_ctx_lexical_env C);
+  wf_execution_ctx_this_binding : wf_value S str (execution_ctx_this_binding C);
+  wf_execution_ctx_only_global_scope : only_global_scope C}.
 
 
 
@@ -542,6 +554,10 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
   | wf_expr_inequality_op_2 : forall (b1 b2:bool) (svv:specret),
       wf_specret S str svv ->
       wf_ext_expr S str (expr_inequality_op_2 b1 b2 svv)
+  | wf_expr_binary_op_in_1 : forall (l:object_loc) (o:out),
+      wf_object_loc S str l ->
+      wf_out S str o ->
+      wf_ext_expr S str (expr_binary_op_in_1 l o)
   | wf_expr_binary_op_disequal_1 : forall (o:out),
       wf_out S str o ->
       wf_ext_expr S str (expr_binary_op_disequal_1 o)
@@ -641,6 +657,28 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
   | wf_spec_binding_inst_8 : forall (p:prog) (b:bool) (L:env_loc),
       wf_prog S str p ->
       wf_ext_expr S str (spec_binding_inst_8 p b L)
+  (*spec_*_has_instance*)
+  | wf_spec_object_has_instance : forall (l:object_loc) (v:value),
+      wf_object_loc S str l ->
+      wf_value S str v ->
+      wf_ext_expr S str (spec_object_has_instance l v)
+  | wf_spec_object_has_instance_1 : forall (B:builtin_has_instance) (l:object_loc) (v:value),
+      wf_object_loc S str l ->
+      wf_value S str v ->
+      wf_ext_expr S str (spec_object_has_instance_1 B l v)
+  | wf_spec_function_has_instance_1 : forall (l:object_loc) (o:out),
+      wf_object_loc S str l ->
+      wf_out S str o ->
+      wf_ext_expr S str (spec_function_has_instance_1 l o)
+  | wf_spec_function_has_instance_2 : forall (l l':object_loc),
+      wf_object_loc S str l ->
+      wf_object_loc S str l' ->
+      wf_ext_expr S str (spec_function_has_instance_2 l l')
+  | wf_spec_function_has_instance_3 : forall (l:object_loc) (v:value),
+      wf_object_loc S str l ->
+      wf_value S str v ->
+      wf_ext_expr S str (spec_function_has_instance_3 l v)
+
   (*spec_error*)
   | wf_spec_error : forall (n:native_error),
       wf_ext_expr S str (spec_error n)
@@ -925,43 +963,54 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
 
 
 Inductive wf_ext_spec (S:state) (str:strictness_flag) : ext_spec -> Prop :=
-  | wf_spec_identifier_resolution : forall (C:execution_ctx) (x:prop_name),
-      wf_execution_ctx str C ->
-      wf_ext_spec S str (spec_identifier_resolution C x)
-  | wf_spec_expr_get_value : forall (e:expr),
-      wf_expr S str e ->
-      wf_ext_spec S str (spec_expr_get_value e)
-  | wf_spec_expr_get_value_conv : forall (F:value -> ext_expr) (e:expr),
-      (forall (v:value), wf_value S str v -> wf_ext_expr S str (F v)) ->
-      wf_expr S str e ->
-      wf_ext_spec S str (spec_expr_get_value_conv F e)
-  | wf_spec_get_value : forall (rv:resvalue),
-      wf_resvalue S str rv ->
-      wf_ext_spec S str (spec_get_value rv)
+  (*spec_to_int32*)
   | wf_spec_to_int32 : forall (v:value),
       wf_value S str v ->
       wf_ext_spec S str (spec_to_int32 v)
   | wf_spec_to_int32_1 : forall (o:out),
       wf_out S str o ->
       wf_ext_spec S str (spec_to_int32_1 o)
+  (*spec_to_uint_32*)
   | wf_spec_to_uint32 : forall (v:value),
       wf_value S str v ->
       wf_ext_spec S str (spec_to_uint32 v)
   | wf_spec_to_uint32_1 : forall (o:out),
       wf_out S str o ->
       wf_ext_spec S str (spec_to_uint32_1 o)
-  | wf_spec_convert_twice : forall (ee:ext_expr) (ee':ext_expr),
-      wf_ext_expr S str ee ->
-      wf_ext_expr S str ee' ->
-      wf_ext_spec S str (spec_convert_twice ee ee')
-  | wf_spec_convert_twice_1 : forall (o:out) (ee:ext_expr),
+  (*spec_convert_twice*)
+  | wf_spec_convert_twice_to_primitive : forall (v v':value),
+      wf_value S str v ->
+      wf_value S str v' ->
+      wf_ext_spec S str (spec_convert_twice (spec_to_primitive_auto v) (spec_to_primitive_auto v'))
+  | wf_spec_convert_twice_to_string : forall (v v':value),
+      wf_value S str v ->
+      wf_value S str v' ->
+      wf_ext_spec S str (spec_convert_twice (spec_to_string v) (spec_to_string v'))
+  | wf_spec_convert_twice_to_number : forall (v v':value),
+      wf_value S str v ->
+      wf_value S str v' ->
+      wf_ext_spec S str (spec_convert_twice (spec_to_number v) (spec_to_number v'))
+  | wf_spec_convert_twice_1 : forall (S':state) (o:out) (ee:ext_expr),
       wf_out S str o ->
-      wf_ext_expr S str ee ->
+      state_of_out o S' ->
+      wf_ext_expr S' str ee ->
       wf_ext_spec S str (spec_convert_twice_1 o ee)
   | wf_spec_convert_twice_2 : forall (v:value) (o:out),
       wf_value S str v ->
       wf_out S str o ->
       wf_ext_spec S str (spec_convert_twice_2 v o)
+  (*spec_expr_get_value_conv*)
+  | wf_spec_expr_get_value_conv : forall (F:value -> ext_expr) (e:expr),
+      (forall (v:value) (S':state), wf_state S' -> wf_value S' str v -> wf_ext_expr S' str (F v)) ->
+      wf_expr S str e ->
+      wf_ext_spec S str (spec_expr_get_value_conv F e)
+  | wf_spec_expr_get_value_conv_1 : forall (F:value -> ext_expr) (s:specret),
+      (forall (v:value) (S':state), wf_state S' -> wf_value S' str v -> wf_ext_expr S' str (F v)) ->
+      wf_specret S str s ->
+      wf_ext_spec S str (spec_expr_get_value_conv_1 F s)
+  | wf_spec_expr_get_value_conv_2 : forall (o:out),
+      wf_out S str o ->
+      wf_ext_spec S str (spec_expr_get_value_conv_2 o)
   (*spec_object_get_own_prop*)
   | wf_spec_object_get_own_prop : forall (l:object_loc) (x:prop_name),
       wf_object_loc S str l ->
@@ -973,7 +1022,42 @@ Inductive wf_ext_spec (S:state) (str:strictness_flag) : ext_spec -> Prop :=
       wf_object_loc S str l ->
       wf_oattributes S str oA ->
       wf_ext_spec S str (spec_object_get_own_prop_2 l x oA)
-
+  (*spec_ref_get_value*)
+  | wf_spec_get_value : forall (rv:resvalue),
+      wf_resvalue S str rv ->
+      wf_ext_spec S str (spec_get_value rv)
+  | wf_spec_get_value_ref_b_1 : forall (o:out),
+      wf_out S str o ->
+      wf_ext_spec S str (spec_get_value_ref_b_1 o)
+  | wf_spec_get_value_ref_c_1 : forall (o:out),
+      wf_out S str o ->
+      wf_ext_spec S str (spec_get_value_ref_c_1 o)
+  (*spec_expr_get_value*)
+  | wf_spec_expr_get_value : forall (e:expr),
+      wf_expr S str e ->
+      wf_ext_spec S str (spec_expr_get_value e)
+  | wf_spec_expr_get_value_1 : forall (o:out),
+      wf_out S str o ->
+      wf_ext_spec S str (spec_expr_get_value_1 o)
+  (*spec_lexical_env_get_identifier_ref*)
+  | wf_spec_lexical_env_get_identifier_ref : forall (lex:lexical_env) (x:prop_name) (str':bool),
+      wf_lexical_env S str lex ->
+      wf_ext_spec S str (spec_lexical_env_get_identifier_ref lex x str')
+  | wf_spec_lexical_env_get_identifier_ref_1 : forall (L:env_loc) (lex:lexical_env) (x:prop_name) (str':bool),
+      wf_env_loc S str L ->
+      wf_lexical_env S str lex ->
+      wf_ext_spec S str (spec_lexical_env_get_identifier_ref_1 L lex x str')
+  | wf_spec_lexical_env_get_identifier_ref_2 : forall (L:env_loc) (lex:lexical_env) (x:prop_name) (str':bool) (o:out),
+      wf_env_loc S str L ->
+      wf_lexical_env S str lex ->
+      wf_out S str o ->
+      wf_ext_spec S str (spec_lexical_env_get_identifier_ref_2 L lex x str' o)
+  (*spec_error_spec*)
+  | wf_spec_error_spec : forall (ne:native_error),
+      wf_ext_spec S str (spec_error_spec ne)
+  | wf_spec_error_spec_1 : forall (o:out),
+      wf_out S str o ->
+      wf_ext_spec S str (spec_error_spec_1 o)
   (*spec_object_get_prop*)
   | wf_spec_object_get_prop : forall (l:object_loc) (x:prop_name),
       wf_object_loc S str l ->

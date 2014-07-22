@@ -2,6 +2,7 @@ Set Implicit Arguments.
 Require Export JsWellFormednessDef JsSyntaxInfos.
 
 
+
 Hint Constructors Forall wf_expr wf_prog wf_stat wf_var_decl wf_ext_expr wf_ext_stat wf_ext_prog state_of_out.
 
 Tactic Notation "rconstructors" := repeat constructors.
@@ -67,6 +68,7 @@ Qed.
 
 (*lemmas : if S' extends S and X is wf in S, it is in S' too*)
 (* for X=expr, stat, prog... *)
+
 
 Lemma wf_expr_state_extends : forall (S S':state) (str:strictness_flag) (e:expr),
   state_extends S' S ->
@@ -217,6 +219,24 @@ Proof.
 Qed.
 
 
+Lemma wf_lexical_env_state_extends : forall (S S':state) (str:strictness_flag) (lex:lexical_env),
+  state_extends S' S ->
+  wf_lexical_env S str lex ->
+  wf_lexical_env S' str lex.
+Proof.
+  introv Hext HS. induction HS; constructor*. apply* wf_env_loc_state_extends. 
+Qed.
+
+
+Lemma wf_execution_ctx_state_extends : forall (S S':state) (str:strictness_flag) (C:execution_ctx),
+  state_extends S' S ->
+  wf_execution_ctx S str C ->
+  wf_execution_ctx S' str C.
+Proof.
+  introv Hext HS. inverts HS; constructor*; solve [apply* wf_lexical_env_state_extends|apply* wf_value_state_extends]. 
+Qed.
+
+
 Lemma wf_out_state_extends : forall (S S':state) (str:strictness_flag) (o:out),
   state_extends S S' ->(*it's a trap!*)
   wf_out S str o ->
@@ -227,6 +247,16 @@ Proof.
 Qed.
 
 
+Lemma wf_specret_state_extends : forall (S S':state) (str:strictness_flag) (s:specret),
+  state_extends S S' ->(*it's a trap!*)
+  wf_specret S str s ->
+  wf_specret S' str s.
+Proof.
+  introv Hext Hs.
+  destruct s.
+  inverts Hs; constructor*; apply* state_extends_trans.
+  inverts Hs; constructor. apply* wf_out_state_extends. 
+Qed.
 
 
 (*lemmas: if x of type x is well-formed then out_of_X x is well-formed too*)
@@ -251,6 +281,15 @@ Ltac wf_out_of_specret :=
 Lemma wf_out_of_ext_expr : forall (S:state) (str:strictness_flag) (e:ext_expr) (o:out),
   out_of_ext_expr e = Some o ->
   wf_ext_expr S str e ->
+  wf_out S str o.
+Proof.
+introv Ho He. inverts He; inverts* Ho; wf_out_of_specret.
+Qed.
+
+
+Lemma wf_out_of_ext_spec : forall (S:state) (str:strictness_flag) (e:ext_spec) (o:out),
+  out_of_ext_spec e = Some o ->
+  wf_ext_spec S str e ->
   wf_out S str o.
 Proof.
 introv Ho He. inverts He; inverts* Ho; wf_out_of_specret.
@@ -313,6 +352,12 @@ Ltac wf_out_change_state :=
   match goal with
     | [ H:state_extends ?S' ?S |- wf_out ?S _ _ ] =>
       apply wf_out_state_extends with S'; [apply H|]
+  end.
+
+Ltac wf_specret_change_state :=
+  match goal with
+    | [ H:state_extends ?S' ?S |- wf_specret ?S _ _ ] =>
+      apply wf_specret_state_extends with S'; [apply H|]
   end.
 
 Ltac wf_out_extends :=
@@ -478,6 +523,8 @@ Proof.
           destruct x0; simpl; inverts M; auto.
         (*wf_object_define_own_prop*)
           unfolds object_map_properties; simpl. inverts HS. clear Hext wf_state_prealloc_global wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. forwards M:wf_state_wf_objects x0 str. exists* x1.  inverts M; destruct x0; simpl in wf_object_define_own_prop; simpl; auto.
+        (*wf_object_get_own_prop*)
+          unfolds object_map_properties; simpl. inverts HS. clear Hext wf_state_prealloc_global wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. forwards M:wf_state_wf_objects x0 str. exists* x1.  inverts M; destruct x0; simpl in wf_object_get_own_prop; simpl; auto.          
         (*wf_object_properties*)
           introv Hb. eapply wf_attributes_state_extends; eauto. clear Hext Hl. forwards M:string_dec x x2. inverts M.
           (*x=x2*)
@@ -673,62 +720,173 @@ Proof.
 Qed.
 
 
+Record wf_state_initial_wf_objects_aux (S:state) (str:strictness_flag):=
+  {wf_initial_object_prealloc_global : wf_object S str object_prealloc_global;
+   wf_initial_object_prealloc_object : wf_object S str object_prealloc_object;
+   wf_initial_object_prealloc_object_proto : wf_object S str object_prealloc_object_proto;
+   wf_initial_object_prealloc_bool : wf_object S str object_prealloc_bool;
+   wf_initial_object_prealloc_bool_proto : wf_object S str object_prealloc_bool_proto;
+   wf_initial_object_prealloc_numbe : wf_object S str object_prealloc_number;
+   wf_initial_object_prealloc_number_proto : wf_object S str object_prealloc_number_proto;
+   wf_initial_object_prealloc_function : wf_object S str object_prealloc_function;
+   wf_initial_object_prealloc_function_proto  : wf_object S str object_prealloc_function_proto ;
+   wf_initial_object_prealloc_array : wf_object S str object_prealloc_array;
+   wf_initial_object_prealloc_array_proto : wf_object S str object_prealloc_array_proto;
+   wf_initial_object_prealloc_string : wf_object S str object_prealloc_string;
+   wf_initial_object_prealloc_string_proto : wf_object S str object_prealloc_string_proto;
+   wf_initial_object_prealloc_error_proto : wf_object S str object_prealloc_error_proto;
+   wf_initial_object_prealloc_native_error_proto_native_error_eval : wf_object S str (object_prealloc_native_error_proto native_error_eval);
+   wf_initial_object_prealloc_native_error_proto_native_error_range : wf_object S str (object_prealloc_native_error_proto native_error_range);
+   wf_initial_object_prealloc_native_error_proto_native_error_ref : wf_object S str (object_prealloc_native_error_proto native_error_ref);
+   wf_initial_object_prealloc_native_error_proto_native_error_syntax : wf_object S str (object_prealloc_native_error_proto native_error_syntax);
+   wf_initial_object_prealloc_native_error_proto_native_error_type : wf_object S str (object_prealloc_native_error_proto native_error_type);
+   wf_initial_object_prealloc_error : wf_object S str (object_prealloc_error);
+   wf_initial_object_prealloc_native_error_native_error_eval : wf_object S str (object_prealloc_native_error native_error_eval);
+   wf_initial_object_prealloc_native_error_native_error_range : wf_object S str (object_prealloc_native_error native_error_range);
+   wf_initial_object_prealloc_native_error_native_error_ref : wf_object S str (object_prealloc_native_error native_error_ref);
+   wf_initial_object_prealloc_native_error_native_error_syntax : wf_object S str (object_prealloc_native_error native_error_syntax);
+   wf_initial_object_prealloc_native_error_native_error_type : wf_object S str (object_prealloc_native_error native_error_type);
+   wf_initial_throw_type_error_object : wf_object S str throw_type_error_object;
+   wf_initial_global_eval_function_object : wf_object S str global_eval_function_object;
+   wf_initial_global_is_nan_function_object : wf_object S str global_is_nan_function_object;
+   wf_initial_global_is_finite_function_object : wf_object S str global_is_finite_function_object;
+   wf_initial_object_get_proto_of_function_object : wf_object S str object_get_proto_of_function_object;
+   wf_initial_object_get_own_prop_descriptor_function_object : wf_object S str object_get_own_prop_descriptor_function_object;
+   wf_initial_object_get_own_prop_name_function_object : wf_object S str object_get_own_prop_name_function_object;
+   wf_initial_object_create_function_object : wf_object S str object_create_function_object;
+   wf_initial_object_define_prop_function_object : wf_object S str object_define_prop_function_object;
+   wf_initial_object_define_props_function_object : wf_object S str object_define_props_function_object;
+   wf_initial_object_seal_function_object : wf_object S str object_seal_function_object;
+   wf_initial_object_freeze_function_object : wf_object S str object_freeze_function_object;
+   wf_initial_object_prevent_extensions_function_object : wf_object S str object_prevent_extensions_function_object;
+   wf_initial_object_is_sealed_function_object : wf_object S str object_is_sealed_function_object;
+   wf_initial_object_is_frozen_function_object : wf_object S str object_is_frozen_function_object;
+   wf_initial_object_is_extensible_function_object : wf_object S str object_is_extensible_function_object;
+   wf_initial_object_proto_to_string_function_object : wf_object S str object_proto_to_string_function_object;
+   wf_initial_object_proto_value_of_function_object : wf_object S str object_proto_value_of_function_object;
+   wf_initial_object_proto_has_own_prop_function_object : wf_object S str object_proto_has_own_prop_function_object;
+   wf_initial_object_proto_is_prototype_of_function_object : wf_object S str object_proto_is_prototype_of_function_object;
+   wf_initial_object_proto_prop_is_enumerable_function_object : wf_object S str object_proto_prop_is_enumerable_function_object;
+   wf_initial_array_proto_pop_function_object : wf_object S str array_proto_pop_function_object;
+   wf_initial_array_proto_push_function_object : wf_object S str array_proto_push_function_object;
+   wf_initial_string_proto_to_string_function_object : wf_object S str string_proto_to_string_function_object;
+   wf_initial_string_proto_value_of_function_object : wf_object S str string_proto_value_of_function_object;
+   wf_initial_bool_proto_to_string_function_object : wf_object S str bool_proto_to_string_function_object;
+   wf_initial_bool_proto_value_of_function_object : wf_object S str bool_proto_value_of_function_object;
+   wf_initial_number_proto_to_string_function_object : wf_object S str number_proto_to_string_function_object;
+   wf_initial_number_proto_value_of_function_object : wf_object S str number_proto_value_of_function_object;
+   wf_initial_error_proto_to_string_function_object : wf_object S str error_proto_to_string_function_object}.
+
+
+
+
+Lemma heap_empty_binds_false : forall {X Y:Type} (x:X) (y:Y),
+  Heap.binds Heap.empty x y ->
+  False.
+Proof.
+  introv Hb.
+  assert (M: exists (y':Y), Heap.binds Heap.empty x y'); [exists* y|].
+  rewrite <- Heap.indom_equiv_binds in M. unfolds in M. rewrite Heap.dom_empty in M.
+  inverts M.
+Qed.  
+
+
+Ltac find_in_heap :=
+  match goal with
+    | [|-Heap.binds _ _ _] => let h := fresh in
+      repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h]))
+    | [|-exists _, Heap.binds _ _ _] => eexists;
+      (let h := fresh in
+        repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h])))
+    | [|-Heap.indom _ _] => rewrite Heap.indom_equiv_binds; eexists;
+      (let h := fresh in
+        repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h])))
+  end.
+
+Lemma wf_initial_objects : forall (str:strictness_flag),
+  wf_state_initial_wf_objects_aux state_initial str.
+Proof.
+  introv.
+  (*first show that some object_locs are well-formed*)
+  assert (Hwf1:wf_value state_initial str object_prealloc_global_proto). admit.
+  assert (Hwf2:wf_value state_initial str prealloc_object_proto).
+    constructor. unfolds. simpl. rewrite Heap.indom_equiv_binds.
+    exists object_prealloc_object_proto.
+    find_in_heap.
+  assert (Hwf3:wf_value state_initial str prealloc_function_proto). 
+    constructor. unfolds. simpl. rewrite Heap.indom_equiv_binds.
+    exists object_prealloc_function_proto.
+    find_in_heap.
+  assert (Hwf4:wf_value state_initial str prealloc_error_proto).
+    constructor. unfolds. simpl. rewrite Heap.indom_equiv_binds.
+    exists object_prealloc_error_proto.
+    find_in_heap.
+  (*now, the theorem*)
+  constructor*;(*now the goals are the wf_object*)
+  (constructor;(*now the goals are the wf_object_proto_, wf_object_define_own_prop and wf_object_properties*)
+    [simpl; solve [constructor*|auto] (*proves the wf_object_proto_*)
+    |auto (*proves the wf_object_define_own_prop*)
+    |auto (*proves the wf_object_get_own_prop*)
+    |introv Hb; (*the goal is now wf_attributes*)
+      (*find every property in the heap*)
+      repeat (simpl in Hb; apply Heap.binds_write_inv in Hb; inverts Hb;
+        [inverts H; constructor; constructor; unfolds; find_in_heap
+        | inverts H; clear H0; rename H1  into Hb]);
+      exfalso; apply* @heap_empty_binds_false]).  
+Qed.
 
 
 (*Theorems: the initial state and context are wf*)
 Theorem wf_state_initial : wf_state state_initial.
 Proof.
-(* this was the proof for the older wf_state*)
-(*  constructor.
+  constructor.
   (*wf_state_wf_objects*)
-    introv Hb. inverts Hb. unfolds state_initial. unfolds in H. simpl in H.
-    unfolds object_heap_initial.
-    unfolds object_heap_initial_function_objects.
-    unfolds object_heap_initial_function_objects_3.
-    unfolds object_heap_initial_function_objects_2.
-    forwards M:@Heap.binds_write_inv H. inverts M. inverts H0.
-    constructor. unfolds error_proto_to_string_function_object. auto. simpl.
-
-
-
-
-  split; simpl.
+    introv Hb. inverts Hb.
+    forwards M:wf_initial_objects str.
+    (*unfold everything*)
+    unfold state_initial in H. unfolds in H. simpl in H.
+    unfolds object_heap_initial; unfolds object_heap_initial_function_objects;
+    unfolds object_heap_initial_function_objects_3;
+    unfolds object_heap_initial_function_objects_2;
+    unfolds object_heap_initial_function_objects_1.
+    (*apply the lemma*)
+    repeat (apply Heap.binds_write_inv in H; inverts H; inverts H0;
+      [inverts* M | clear H; rename H1 into H]).
+    (*now the heap is empty*)
+    exfalso; apply* @heap_empty_binds_false.
+  (*wf_state_prealloc_global*)
+    exists object_prealloc_global. constructor*.
+    find_in_heap.
+  (*wf_state_prealloc_native_error_proto*)
+    introv. unfolds; simpl; rewrite Heap.indom_equiv_binds.
+    exists (object_prealloc_native_error_proto ne).
+    destruct ne;
+    find_in_heap.
+  (*wf_state_wf_env_records*)
+    introv Hb. inverts Hb. unfolds env_record_binds; simpl in H.
+    apply Heap.binds_write_inv in H. inverts H.
+    inverts H0. constructor*. unfolds. unfolds. rewrite Heap.indom_equiv_binds.
     exists object_prealloc_global.
-    assert (H:Heap.binds object_heap_initial prealloc_global object_prealloc_global).
-      repeat (try (apply Heap.binds_write_eq; reflexivity); apply Heap.binds_write_neq);
-      intro H; inversion H.
-    split. apply H.
-    repeat (split; [simpl; reflexivity|]).
-    introv. constructor.
-  rewrite Heap.indom_equiv_binds.
-  exists (env_record_object_default prealloc_global).
-    apply Heap.binds_write_eq.
+    find_in_heap.
+    inverts H0; exfalso; apply* @heap_empty_binds_false.
+  (*wf_state_env_loc_global_env_records*)
+    rewrite Heap.indom_equiv_binds.
+    exists (env_record_object_default prealloc_global). apply Heap.binds_write_eq.
 Qed.
-*)
-Admitted.
+
 
 
 Theorem wf_execution_ctx_initial : forall (str:strictness_flag),
-  wf_execution_ctx str (execution_ctx_initial str).
+  wf_execution_ctx state_initial str (execution_ctx_initial str).
 Proof.
-  introv.
+  introv. constructor*.
+  rconstructors*. find_in_heap.
+  simpl. constructor*. unfolds. find_in_heap.
   reflexivity.
 Qed.  
 
 
 
-
-
-(*Theorems: wf is preserved by reduction*)
-
-Theorem pr_red_spec : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret),
-  wf_state S ->
-  wf_execution_ctx str C ->
-  wf_ext_spec S str es ->
-  red_spec S C es s ->
-  wf_specret S str s.
-Proof.
-Admitted.
 
 
 (*tactics used in the proof of pr_red_ext_expr*)
@@ -740,6 +898,14 @@ end.
 
 Ltac wf_impossible :=
   try solve [wf_impossible_aux;wf_impossible_aux].
+
+Ltac wf_impossible_spec_aux :=
+match goal with
+  | [ H:wf_ext_spec _ _ _ |- _ ] => inversion H; subst
+end.
+
+Ltac wf_impossible_spec :=
+  try solve [wf_impossible_spec_aux].
 
 
 Ltac wf_inverts :=
@@ -779,16 +945,13 @@ Ltac wf_inverts :=
     | [H:wf_attributes _ _ (attributes_data_of (attributes_data_intro _ _ _ _))|-_] => inverts H
     | [H:wf_oattributes _ _ None|-_] => clear H
     | [H:wf_oattributes _ _ (Some _)|-_] => inverts H
+    | [H:wf_value _ _ (value_object _)|-_] => inverts H
+    | [H:wf_value _ _ (value_prim _)|-_] => inverts H
   end.
 
 Ltac wf_inverts3a :=
   try (wf_inverts; try (wf_inverts; try wf_inverts)); auto.
 
-
-Ltac appredspec :=
-  match goal with
-    | [H:red_spec _ _ _ ?s |- wf_specret _ _ ?s] => forwards*: pr_red_spec H
-  end.
 
 
 Ltac wf_state_extends :=
@@ -801,31 +964,164 @@ Ltac wf_state_extends :=
     | [H:state_extends ?S ?S', H':wf_descriptor ?S' ?str ?rv |- wf_descriptor ?S ?str ?rv] => forwards M: wf_descriptor_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_prog ?S' ?str ?rv |- wf_prog ?S ?str ?rv] => forwards M: wf_prog_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_object_loc ?S' ?str ?l |- wf_object_loc ?S ?str ?l] => forwards M: wf_object_loc_state_extends H H'; assumption
+    | [H:state_extends ?S ?S', H':wf_execution_ctx ?S' ?str ?C |- wf_execution_ctx ?S ?str ?C] => forwards M: wf_execution_ctx_state_extends H H'; assumption
+    | [H:state_extends ?S ?S', H':wf_env_loc ?S' ?str ?C |- wf_env_loc ?S ?str ?C] => forwards M: wf_env_loc_state_extends H H'; assumption
+    | [H:state_extends ?S ?S', H':wf_lexical_env ?S' ?str ?C |- wf_lexical_env ?S ?str ?C] => forwards M: wf_lexical_env_state_extends H H'; assumption
   end.
 
 
 Hint Resolve state_extends_refl : core.
 Hint Extern 0 (wf_out _ _ _) => wf_out_extends : core.
+Hint Extern 1 => wf_state_extends : core.
 
 Hint Resolve state_extends_refl : wf_base.
 Hint Extern 0 (wf_out _ _ _) => wf_out_extends : wf_base.
 Hint Extern 0 (wf_out _ _ _) => wf_out_change_state : wf_base.
 Hint Extern 1 => constructor : wf_base.
 Hint Extern 0 => wf_inverts : wf_base.
-Hint Resolve pr_red_spec : wf_base.
 Hint Extern 1 => wf_inverts3a : wf_base.
-Hint Extern 1 => appredspec : wf_base.
 Hint Extern 0 => wf_state_extends : wf_base.
 Hint Resolve wf_state_wf_prealloc_global : wf_base.
 
 Hint Constructors Forall wf_expr wf_prog wf_stat wf_var_decl wf_ext_expr wf_ext_stat wf_ext_prog state_of_out wf_ext_spec wf_res wf_full_descriptor wf_specret wf_specval : wf_base.
 
+(*Theorems: wf is preserved by reduction*)
+
+Theorem pr_red_expr_1 : forall (S:state) (C:execution_ctx) (ee:ext_expr) (o:out) (str:strictness_flag),
+  red_expr S C ee o ->
+  wf_state S ->
+  wf_execution_ctx S str C ->
+  wf_ext_expr S str ee ->
+  wf_out S str o.
+Proof.
+Admitted.
+
+
+Theorem pr_red_spec : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret),
+  wf_state S ->
+  wf_execution_ctx S str C ->
+  wf_ext_spec S str es ->
+  red_spec S C es s ->
+  wf_specret S str s.
+Proof.
+  introv HS HC Hes Hred. induction Hred; wf_impossible_spec; auto.
+ 
+  (*red_spec_abort*)
+  constructor* ; apply* wf_out_of_ext_spec.
+
+  (*red_spec_to_int32*)
+  wf_inverts3a. apply* IHHred. constructor*. apply* pr_red_expr_1.
+
+  wf_inverts3a. rconstructors*.
+
+  (*red_spec_to_uint32*)
+  wf_inverts3a. apply* IHHred. constructor*. apply* pr_red_expr_1.
+
+  wf_inverts3a. rconstructors*.
+
+  (*red_spec_converts_twice*)
+  wf_inverts; apply* IHHred; (forwards* M:pr_red_expr_1 o1 str; try constructor*); inverts M;
+  econstructor; eauto; rconstructors*; wf_state_extends.
+
+  wf_inverts. wf_inverts. inverts H3. inverts H7. inverts H8. wf_specret_change_state. apply* IHHred. constructor*. apply* pr_red_expr_1.
+
+  wf_inverts3a. auto with wf_base.
+
+  (*red_spec_expr_get_value_conv*)
+  wf_inverts. auto with wf_base.
+  
+  wf_inverts3a. apply* IHHred. constructor*. wf_out_change_state. apply* pr_red_expr_1.
+
+  wf_inverts3a. wf_inverts. rconstructors*.
+
+  (*spec_object_get_own_prop*)
+  wf_inverts3a. apply* IHHred. clear IHHred Hred.
+  unfolds object_method. inverts H. inverts H0.
+  inverts HS; clear wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record.
+  forwards* M:wf_state_wf_objects x0 str. clear wf_state_wf_objects.
+  inverts M. rewrite wf_object_get_own_prop. constructor*.
+
+  wf_inverts3a. apply* IHHred. constructor*.
+  unfolds object_property. inverts H. unfolds object_method. inverts H0.
+  inverts H. inverts H0.
+  inverts HS; clear wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record.
+  forwards* M:wf_state_wf_objects x1 str. clear wf_state_wf_objects.
+  inverts M. clear wf_object_proto_ wf_object_define_own_prop wf_object_get_own_prop.
+  destruct (Heap.read_option (object_properties_ x1) x) eqn:M; constructor*.
+  rewrite <- Heap.binds_equiv_read_option in M. apply* wf_object_properties.
+
+  rconstructors*.
+
+  wf_inverts3a. rconstructors*.
+
+  (*red_spec_ref_get_value*)
+  wf_inverts3a. rconstructors*.
+
+  wf_inverts3a. apply* IHHred. constructor*.
+
+  wf_inverts3a. apply* IHHred. constructor*. apply* pr_red_expr_1. destruct r. simpl in H0. inverts H5. subst. inverts H4. cases_if; subst; rconstructors*.
+
+  wf_inverts3a. wf_inverts3a. rconstructors*.
+
+  wf_inverts3a. apply* IHHred. rconstructors*. apply* pr_red_expr_1.
+
+  wf_inverts3a. wf_inverts3a. rconstructors*.
+
+  (*red_spec_expr_get_value*)
+  wf_inverts3a. apply* IHHred. constructor*. apply* pr_red_expr_1.  
+
+  wf_inverts3a. wf_specret_change_state. auto with wf_base.
+
+
+  (*red_spec_lexical_env_get_identifier_ref*)
+  wf_inverts3a.  subst; rconstructors*. 
+
+  wf_inverts3a. apply* IHHred. inverts H0. constructor*. 
+
+
+  wf_inverts3a. apply* IHHred. constructors*. apply* pr_red_expr_1.
+
+  wf_inverts3a. rconstructors*. subst; unfolds ref_create_env_loc. constructor*. constructor. wf_state_extends.
+
+  wf_inverts3a. wf_specret_change_state. apply* IHHred. constructors*.
+
+  (*red_spec_error_spec*)
+  wf_inverts3a. apply* IHHred. constructor*. apply* pr_red_expr_1.
+
+  (*red_spec_object_get_prop*)
+  wf_inverts3a. destruct B. auto with wf_base.
+
+  wf_inverts3a. auto with wf_base.
+
+  wf_inverts3a. auto with wf_base.
+
+  wf_inverts3a. wf_specret_change_state. apply* IHHred; auto with wf_base. constructor*; auto with wf_base. inverts H3. inverts H. inverts H0. unfolds object_binds.
+  forwards M:wf_state_wf_objects x0 str. exists* l. inverts M.
+  auto.
+
+  auto with wf_base.
+
+  wf_inverts3a. apply* IHHred. constructor*.
+
+Qed.
+
+
+
+
+Ltac appredspec :=
+  match goal with
+    | [H:red_spec _ _ _ ?s |- wf_specret _ _ ?s] => forwards*: pr_red_spec H; auto
+  end.
+
+
+Hint Resolve pr_red_spec : wf_base.
+Hint Extern 1 => appredspec : wf_base.
 
 
 Theorem pr_red_expr : forall (S:state) (C:execution_ctx) (ee:ext_expr) (o:out) (str:strictness_flag),
   red_expr S C ee o ->
   wf_state S ->
-  wf_execution_ctx str C ->
+  wf_execution_ctx S str C ->
   wf_ext_expr S str ee ->
   wf_out S str o.
 Proof.
@@ -834,9 +1130,9 @@ Proof.
 
   apply* wf_out_of_ext_expr.
 
-  wf_impossible.
+  subst; rconstructors*; inverts* HC.
   
-  apply* IHHred. eauto with wf_base.
+  apply* IHHred. constructor*. appredspec. constructor*. apply* HC.
 
   wf_inverts3a. repeat constructor*.
   
@@ -844,13 +1140,13 @@ Proof.
 
   apply* IHHred2. constructor. apply* IHHred1. constructor.  wf_inverts. inverts H1. assumption.
   
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. appredspec. constructor*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. auto with wf_base.
 
-  wf_inverts3a. inverts H1. wf_out_change_state. apply* IHHred2. repeat constructor. eapply wf_resvalue_state_extends; eauto. apply* IHHred1.
+  wf_inverts3a. inverts H1. wf_out_change_state. apply* IHHred2. auto with wf_base. repeat constructor. 
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred2. constructors. cases_if; subst; constructor. apply* IHHred1. constructor. eapply wf_resvalue_state_extends; eauto. subst. constructor.
+  wf_inverts3a. wf_out_change_state. apply* IHHred2. auto with wf_base. constructors. cases_if; subst; constructor. apply* IHHred1. auto with wf_base.
 
-  wf_inverts3a. repeat constructor*. eapply wf_value_state_extends; eauto.
+  wf_inverts3a. repeat constructor*.
 
   wf_inverts. inverts H2. apply* IHHred. constructor. appredspec. constructor*.
 
@@ -866,7 +1162,7 @@ Proof.
 
   wf_inverts3a. wf_inverts. destruct r; subst; simpl in H0; subst; inverts H2. auto with wf_base.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. auto with wf_base.
 
   wf_inverts3a. wf_inverts. destruct r; subst; inverts H; subst; simpl in H0; subst; inverts H1.  auto with wf_base.
 
@@ -880,7 +1176,7 @@ Proof.
 
   wf_inverts3a. constructor*. repeat constructor.
   
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. appredspec. rconstructors*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. auto with wf_base.
   
   wf_inverts3a. constructor*. repeat constructor. 
 
@@ -901,16 +1197,16 @@ Proof.
   wf_inverts3a. apply* IHHred. inverts H2. auto with wf_base.
 
   (*red_expr_binary_op_1*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec. constructor*. wf_state_extends.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec; auto. constructor*.
   
   (*red_expr_binary_op_2*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. eapply wf_value_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred.
 
   (*red_expr_binary_op_add*)
   wf_inverts. apply* IHHred. constructor. appredspec. rconstructors*.
 
   (*red_expr_binary_op_add_1_string*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. appredspec. rconstructors*.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor. appredspec; auto. rconstructors*.
 
   (*red_expr_binary_op_add_string_1*)
   wf_inverts3a. rconstructors*.
@@ -927,7 +1223,7 @@ Proof.
   (*red_expr_shift_op*)
   wf_inverts3a. apply* IHHred. constructor*. appredspec. cases_if; subst; constructor*.
   (*red_expr_shift_op_1*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec. constructor*. eapply wf_value_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec. constructor*.
 
   (*red_expr_shift_op_2*)
   wf_inverts3a. rconstructors*.
@@ -942,10 +1238,10 @@ Proof.
   wf_inverts3a. rconstructors*.
 
   (*red_expr_binary_op_instanceof_normal*)
-  wf_inverts3a. inverts H4.
+  wf_inverts3a. auto with wf_base.
 
   (*red_expr_binary_op_in_object*)
-  wf_inverts3a. inverts H4.
+  wf_inverts3a. auto with wf_base.
 
   (*red_expr_binary_op_equal*)
   wf_inverts3a.
@@ -973,7 +1269,7 @@ Proof.
   wf_inverts. apply* IHHred2.
 
   (*red_spec_equal_4_recurse*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. rconstructors*. eapply wf_value_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. rconstructors*.
 
   (*red_expr_binary_op_strict_equal*)
   wf_inverts3a. rconstructors*.
@@ -985,18 +1281,19 @@ Proof.
   wf_inverts3a. auto with wf_base.
 
   (*red_expr_bitwise_op_1*)
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. appredspec. rconstructors*. eapply wf_value_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. appredspec. rconstructors*.
 
   (*red_expr_bitwise_op_2*)
   wf_inverts3a. wf_out_change_state. rconstructors*.
 
   (*red_expr_binary_op_lazy*)
-  wf_inverts3a. inverts H2. apply* IHHred. rconstructors*. appredspec. rconstructors*. 
-  wf_inverts3a. wf_out_change_state. apply* IHHred2. rconstructors*. eapply wf_expr_state_extends; eauto.
+  wf_inverts3a. inverts H2. apply* IHHred. rconstructors*. appredspec. rconstructors*.
+ 
+  wf_inverts3a. wf_out_change_state. apply* IHHred2.
 
-  wf_inverts3a.  wf_out_change_state. rconstructors*. eapply wf_value_state_extends; eauto.
+  wf_inverts3a.  wf_out_change_state. rconstructors*.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. appredspec. rconstructors*. eapply wf_expr_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. appredspec. rconstructors*.
 
   wf_inverts3a. wf_out_change_state. rconstructors*.
 
@@ -1010,13 +1307,13 @@ Proof.
   (*red_expr_assign*)
   wf_inverts3a. inverts H0. auto.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec. rconstructors*. eapply wf_expr_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. appredspec. rconstructors*.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. rconstructors*. appredspec. rconstructors*. wf_state_extends.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. rconstructors*. appredspec. rconstructors*.
 
   wf_inverts3a. wf_out_change_state. wf_inverts. auto with wf_base.
 
-  wf_inverts3a. wf_inverts. wf_out_change_state. apply* IHHred2. rconstructors*. wf_state_extends. auto with wf_base.
+  wf_inverts3a. wf_inverts. wf_out_change_state. apply* IHHred2. rconstructors*.
 
   wf_inverts3a. wf_inverts. wf_out_change_state. auto with wf_base.
 
@@ -1038,7 +1335,7 @@ Proof.
   (*red_spec_to_number*)
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a. 
+  wf_inverts3a. apply* IHHred2. constructor*. apply* IHHred1. constructor*. constructor*.
 
   wf_inverts3a. auto with wf_base.
 
@@ -1050,15 +1347,15 @@ Proof.
   (*red_spec_to_string*)
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a.
+  wf_inverts3a. apply* IHHred2. constructor*. apply* IHHred1. auto with wf_base.
 
   wf_inverts3a. auto with wf_base.
 
   (*red_spec_object_get*)
-  wf_inverts3a. apply* IHHred. inverts Hred. inverts H0. inverts H1. rconstructors*.
+  wf_inverts3a. apply* IHHred. inverts Hred. inverts H0. rconstructors*.
   
   (*red_spec_object_put*)
-  wf_inverts3a. apply* IHHred. destruct B; subst. inverts H2. rconstructors*.
+  wf_inverts3a. apply* IHHred. destruct B; subst. rconstructors*.
 
   (*red_spec_object_can_put*)
   wf_inverts3a. inverts H. destruct B. apply* IHHred.
@@ -1075,7 +1372,7 @@ Proof.
   rewrite wf_object_define_own_prop; constructor*.
 
   (*red_spec_object_has_instance*)
-  wf_impossible.
+  wf_inverts3a.
 
   (*red_spec_call*)
   wf_impossible.
@@ -1100,11 +1397,11 @@ Proof.
 
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. wf_state_extends; auto. inverts H. inverts keep H3. forwards M:wf_state_wf_objects x0 str.  exists* l. inverts M. inverts H0. auto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. inverts H. inverts keep H3. forwards M:wf_state_wf_objects x0 str.  exists* l. inverts M. inverts H0. auto.
 
   auto with wf_base.
 
-  wf_inverts3a. apply* IHHred. constructor*. appredspec. constructor*. inverts* H4.
+  wf_inverts3a. apply* IHHred. constructor*. appredspec. constructor*.
 
   wf_inverts3a. auto with wf_base.
   
@@ -1123,11 +1420,11 @@ Proof.
 
   wf_inverts3a. wf_out_change_state. auto with wf_base. 
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor*. apply* IHHred1. rconstructors*. wf_state_extends. subst. rconstructors*. wf_state_extends.
+  wf_inverts3a. wf_out_change_state. apply* IHHred2. constructor*. apply* IHHred1. rconstructors*. subst. rconstructors*.
 
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*; try wf_state_extends. appredspec. constructor*. wf_state_extends.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. appredspec. constructor*.
 
   wf_inverts3a. inversion H3. inversion H5.
 
@@ -1135,12 +1432,10 @@ Proof.
 
   wf_inverts3a. auto with wf_base.
 
-  auto with wf_base.
-
   (*red_spec_object_define_own_prop (again)*)
   wf_inverts3a. auto with wf_base.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*; auto with wf_base.
+  wf_inverts3a. wf_out_change_state. apply* IHHred.
 
   wf_inverts3a. cases_if; forwards* HS':wf_set_property str; subst; try constructor*;
   try solve [unfolds unsome_default; destruct Desc ; subst; simpl; inverts H8; simpl; inverts H2; [constructor*|auto]| rconstructors*];
@@ -1179,7 +1474,7 @@ maybe there should be a condition '~descriptor_is_generic Desc' in this rule ?*)
   (*red_spec_prim_value_get*)
   wf_inverts3a.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. inverts H0. constructor*. wf_state_extends.
+  wf_inverts3a. wf_out_change_state. apply* IHHred. wf_inverts. inverts H0. constructor*.
   
   (*red_spec_ref_put_value_value*)
   wf_inverts3a. apply* IHHred. constructor*. inverts HS. inverts wf_state_prealloc_global. inverts H1. constructor*. unfolds. rewrite Heap.indom_equiv_binds. exists x; auto.
@@ -1188,7 +1483,7 @@ maybe there should be a condition '~descriptor_is_generic Desc' in this rule ?*)
 
   wf_inverts3a. apply* IHHred. rconstructors*. destruct r; subst. simpl in H. subst. wf_inverts. wf_inverts. inverts H1. assumption.
  
-  wf_inverts3a.
+  wf_inverts3a. auto with wf_base.
 
   wf_inverts3a. wf_inverts. inverts H0. wf_out_change_state. apply* IHHred. inverts Hred. inverts H. rconstructors*. auto with wf_base.
 
@@ -1253,8 +1548,7 @@ maybe there should be a condition '~descriptor_is_generic Desc' in this rule ?*)
 
   wf_inverts3a.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. eapply wf_env_loc_state_extends; eauto.
-  wf_state_extends.
+  wf_inverts3a. wf_out_change_state. apply* IHHred.
 
   (*red_spec_binding_inst*)
   rconstructors*.
@@ -1281,17 +1575,35 @@ maybe there should be a condition '~descriptor_is_generic Desc' in this rule ?*)
 
   wf_inverts3a. apply* IHHred2. constructor*. apply* IHHred1. forwards* M:wf_prog_funcdecl_nil H2. subst. rewrite M. constructor*.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. eapply wf_prog_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred.
 
   wf_inverts3a. 
 
   wf_inverts3a. 
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. eapply wf_prog_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred.
 
-  wf_inverts3a. wf_out_change_state. apply* IHHred. constructor*. eapply wf_prog_state_extends; eauto.
+  wf_inverts3a. wf_out_change_state. apply* IHHred.
 
   wf_inverts3a. admit. (*where does S come from in spec_binding_inst_8 ?*)
+
+  (*red_spec_object_has_instance*)
+  wf_inverts3a. auto with wf_base.
+
+  wf_inverts3a. apply* IHHred2. constructor*. auto with wf_base.
+
+  wf_inverts3a. auto with wf_base.
+
+  wf_inverts3a. wf_inverts3a. auto with wf_base.
+
+  wf_inverts3a. apply* IHHred. constructor*.
+  inverts H. inverts H0. inverts HS. forwards* M:wf_state_wf_objects x str. inverts* M.
+
+  auto with wf_base.
+
+  auto with wf_base.
+
+  wf_inverts3a. auto with wf_base.
 
   (*red_spec_call*)
   wf_impossible.
@@ -1390,7 +1702,7 @@ Admitted. (*Qed takes too long*)
 Theorem pr_red_stat : forall (S:state) (C:execution_ctx) (et:ext_stat) (o:out) (str:strictness_flag),
   red_stat S C et o ->
   wf_state S ->
-  wf_execution_ctx str C ->
+  wf_execution_ctx S str C ->
   wf_ext_stat S str et ->
   wf_out S str o.
 Proof.
@@ -1409,18 +1721,17 @@ Proof.
     constructor*; try apply state_extends_refl; rconstructors*.
   (*red_stat_var_decl_item_some*)
     apply* IHHred. inverts H1. constructor*.
-    eapply pr_red_spec; eauto. constructor*.
+    eapply pr_red_spec; eauto. constructor*. inverts* HC.
   (*red_stat_var_decl_item_1*)
     replace (ret S r) with (specret_val S r) in H2.
     inverts H2.
     apply wf_out_state_extends with S; auto.
     apply* IHHred; inverts H5; constructor*.
-    eapply pr_red_spec; eauto. constructor*. eapply wf_expr_state_extends; eauto. auto.
+    eapply pr_red_spec; eauto. wf_state_extends. constructor*. auto.
   (*red_stat_var_decl_item_2*)
     inverts H4.
     apply wf_out_state_extends with S; auto.
     apply* IHHred. constructor*. eapply pr_red_expr; eauto. rconstructors*.
-    eapply wf_ref_state_extends; eauto.
     inverts* H5.
   (*red_stat_var_decl_item_3*)
     rconstructors*.
@@ -1436,7 +1747,7 @@ Theorem pr_red_prog : forall (S:state) (C:execution_ctx) (ep:ext_prog) (o:out) (
 
   red_prog S C ep o ->
   wf_state S ->
-  wf_execution_ctx str C ->
+  wf_execution_ctx S str C ->
   wf_ext_prog S str ep ->
   wf_out S str o.
 Proof.
@@ -1445,7 +1756,7 @@ Proof.
     eapply wf_out_of_ext_prog; eauto.
   (*case red_javascript_intro_1*)
     inverts Hep. inverts H1. inverts H2.
-    forwards: IHHred HC; auto.
+    wf_out_change_state. apply* IHHred.
   (*case red_prog_nil*)
     apply* wf_out_ter. (*apply state_extends_refl.*)
     apply wf_res_intro; constructor*.
@@ -1460,7 +1771,7 @@ Proof.
       apply state_of_out_ter.
       eapply wf_element_state_extends; eauto.
       auto.
-   (*case red_prog_1_funcdecl*) 
+  (*case red_prog_1_funcdecl*) 
     inverts Hep. inverts H3.
   (*case red_prog_1_stat*)
     inverts Hep. inverts H3. inverts H2. inverts H6. inverts H4. wf_out_change_state.
@@ -1470,8 +1781,6 @@ Proof.
     inverts Hep. inverts H3.
     apply* wf_out_ter. subst.
     apply* wf_res_overwrite_value_if_empty.
-    eapply wf_resvalue_state_extends. eauto.
-    auto.
 Qed.
 
 
@@ -1487,6 +1796,7 @@ Proof.
   (*wf_state_initial*)
     apply wf_state_initial.
   (*wf_execution_ctx_initial*)
+    rewrite add_infos_prog_false.
     apply wf_execution_ctx_initial.
   (*wf_ext_prog*)
     assert (Ho1:wf_out state_initial (prog_intro_strictness p) o1).

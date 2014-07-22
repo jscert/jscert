@@ -3519,7 +3519,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_function_get_1_normal : forall S0 S C l x v, (* Step 3 *)
       ~ (spec_function_get_error_case S x v) ->
       red_expr S0 C (spec_function_get_1 l x (out_ter S v)) (out_ter S v)
-
+*)
    (** Function: HasInstance  (returns bool)  (15.3.5.3) *)
 
    | red_spec_object_has_instance_1_function_prim : forall S C l w, (* Step 1 *)
@@ -3555,7 +3555,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
        lv <> lo ->
        red_expr S C (spec_function_has_instance_2 lo lv) o ->
        red_expr S C (spec_function_has_instance_3 lo lv) o
-
+(*
   (*------------------------------------------------------------*)
   (** ** Function built using Function.prototype.bind (15.3.4.5) *)
 
