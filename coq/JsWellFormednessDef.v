@@ -118,6 +118,13 @@ Inductive wf_expr (S:state) (str:strictness_flag) : expr -> Prop :=
       wf_expr S str (expr_assign e1 oop e2).
 
 
+Inductive wf_oexpr (S:state) (str:strictness_flag) : option expr -> Prop :=
+  | wf_oexpr_none : wf_oexpr S str None
+  | wf_oexpr_some : forall (e:expr),
+      wf_expr S str e ->
+      wf_oexpr S str (Some e).
+
+
 Inductive wf_var_decl (S:state) (str:strictness_flag) : string*option expr -> Prop :=
   | wf_var_decl_none : forall (s:string),
       wf_var_decl S str (s,None)
@@ -130,9 +137,88 @@ Inductive wf_stat (S:state) (str:strictness_flag) : stat -> Prop :=
   | wf_stat_expr : forall (e:expr),
       wf_expr S str e ->
       wf_stat S str (stat_expr e)
+  | wf_stat_label : forall (s:string) (t:stat),
+      wf_stat S str t ->
+      wf_stat S str (stat_label s t)
+  | wf_stat_block_nil :(*not elegant :( but I need this for the recursion in wf_stat_state_extends*)
+      wf_stat S str (stat_block nil)
+  | wf_stat_block_cons : forall (t:stat) (lt:list stat),
+      wf_stat S str t ->
+      wf_stat S str (stat_block lt) ->
+      wf_stat S str (stat_block (lt&t))
   | wf_stat_var_decl : forall (l:list (string*option expr)),
       Forall (wf_var_decl S str) l ->
-      wf_stat S str (stat_var_decl l).
+      wf_stat S str (stat_var_decl l)
+  | wf_stat_if_none : forall (e:expr) (t:stat),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_stat S str (stat_if e t None)
+  | wf_stat_if_some : forall (e:expr) (t t':stat),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_stat S str t' ->
+      wf_stat S str (stat_if e t (Some t'))
+  | wf_stat_do_while : forall (ls:label_set) (t:stat) (e:expr),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_stat S str (stat_do_while ls t e)
+  | wf_stat_while : forall (ls:label_set) (e:expr) (t:stat),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_stat S str (stat_while ls e t)
+  | wf_stat_throw : forall (e:expr),
+      wf_expr S str e ->
+      wf_stat S str (stat_throw e)
+  | wf_stat_return : forall (oe:option expr),
+      wf_oexpr S str oe ->
+      wf_stat S str (stat_return oe)
+  | wf_stat_break : forall (lab:label),
+      wf_stat S str (stat_break lab)
+  | wf_stat_continue : forall (lab:label),
+      wf_stat S str (stat_continue lab)
+  | wf_stat_try : forall (t:stat),
+      wf_stat S str t ->
+      wf_stat S str (stat_try t None None)
+  | wf_stat_trycatch : forall (t1 t2 :stat) (s:string),
+      wf_stat S str t1 ->
+      wf_stat S str t2 ->
+      wf_stat S str (stat_try t1 (Some (s,t2)) None)
+  | wf_stat_tryfinally : forall (t1 t2:stat),
+      wf_stat S str t1 ->
+      wf_stat S str t2 ->
+      wf_stat S str (stat_try t1 None (Some t2))
+  | wf_stat_trycatchfinally : forall (t1 t2 t3:stat) (s:string),
+      wf_stat S str t1 ->
+      wf_stat S str t2 ->
+      wf_stat S str t3 ->
+      wf_stat S str (stat_try t1 (Some (s,t2)) (Some t3))
+  | wf_stat_for : forall (labs:label_set) (oe1 oe2 oe3:option expr) (t:stat),
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_oexpr S str oe3 ->
+      wf_stat S str t ->
+      wf_stat S str (stat_for labs oe1 oe2 oe3 t)
+  | wf_stat_for_var : forall (labs:label_set) (l:list (string*option expr)) (oe1 oe2:option expr) (t:stat),
+      Forall (wf_var_decl S str) l ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_stat S str (stat_for_var labs l oe1 oe2 t).
+
+
+Inductive wf_ostat (S:state) (str:strictness_flag) : (option stat) -> Prop :=
+  | wf_ostat_none : wf_ostat S str None
+  | wf_ostat_some : forall (t:stat),
+      wf_stat S str t ->
+      wf_ostat S str (Some t).
+
+
+Inductive wf_ostringstat (S:state) (str:strictness_flag) : (option (string * stat)) -> Prop :=
+  | wf_ostringstat_none : wf_ostringstat S str None
+  | wf_ostringstat_some : forall (s:string) (t:stat),
+      wf_stat S str t ->
+      wf_ostringstat S str (Some (s,t)).
+
 
 
 Inductive wf_element (S:state) (str:strictness_flag) : element -> Prop :=
@@ -293,8 +379,9 @@ Definition only_global_scope (C:execution_ctx) :=
 
 Record wf_execution_ctx (S:state) (str:strictness_flag) (C:execution_ctx) := wf_execution_ctx_intro {
   wf_execution_ctx_wf_lexical_env : wf_lexical_env S str (execution_ctx_lexical_env C);
-  wf_execution_ctx_this_binding : wf_value S str (execution_ctx_this_binding C);
-  wf_execution_ctx_only_global_scope : only_global_scope C}.
+  wf_execution_ctx_wf_variable_env : wf_lexical_env S str (execution_ctx_variable_env C); 
+  wf_execution_ctx_this_binding : wf_value S str (execution_ctx_this_binding C)}.
+  (*wf_execution_ctx_only_global_scope : only_global_scope C}.*)
 
 
 
@@ -329,6 +416,9 @@ Inductive wf_resvalue (S:state) (str:strictness_flag) : resvalue -> Prop :=
 
 Inductive wf_restype : restype -> Prop :=
   | wf_restype_normal : wf_restype restype_normal
+  | wf_restype_break : wf_restype restype_break
+  | wf_restype_continue : wf_restype restype_continue
+  | wf_restype_return : wf_restype restype_return
   | wf_restype_throw : wf_restype restype_throw.
 
 
@@ -416,12 +506,28 @@ Inductive wf_ext_prog (S:state) (str:strictness_flag) : ext_prog -> Prop :=
 
 
 Inductive wf_ext_stat (S:state) (str:strictness_flag) : ext_stat -> Prop :=
+  (*stat_basic*)
   | wf_stat_basic : forall (t:stat),
       wf_stat S str t ->
       wf_ext_stat S str (stat_basic t)
+  (*stat_expr*)
   | wf_stat_expr_1 : forall (sv:specret),
       wf_specret S str sv ->
       wf_ext_stat S str (stat_expr_1 sv)
+  (*stat_block*)
+  | wf_stat_block_1 : forall (o:out) (t:stat),
+      wf_out S str o ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_block_1 o t)
+  | wf_stat_block_2 : forall (rv:resvalue) (o:out),
+      wf_resvalue S str rv ->
+      wf_out S str o ->
+      wf_ext_stat S str (stat_block_2 rv o)
+  (*stat_label*)
+  | wf_stat_label_1 : forall (lab:label) (o:out),
+      wf_out S str o ->
+      wf_ext_stat S str (stat_label_1 lab o)
+  (*stat_var_decl*)
   | wf_stat_var_decl_1 : forall (S':state) (o:out) (l:list (string*option expr)),
       wf_out S str o ->
       state_of_out o S' ->
@@ -440,10 +546,192 @@ Inductive wf_ext_stat (S:state) (str:strictness_flag) : ext_stat -> Prop :=
       wf_ext_stat S str (stat_var_decl_item_2 s r sv)
   | wf_stat_var_decl_item_3 : forall (s:string) (o:out),
       wf_out S str o ->
-      wf_ext_stat S str (stat_var_decl_item_3 s o).
-
-
-
+      wf_ext_stat S str (stat_var_decl_item_3 s o)
+  (*stat_if*)
+  | wf_stat_if_1_none : forall (y:specret) (t:stat),
+      wf_specret S str y ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_if_1 y t None)
+  | wf_stat_if_1_some : forall (y:specret) (t t':stat),
+      wf_specret S str y ->
+      wf_stat S str t ->
+      wf_stat S str t' ->
+      wf_ext_stat S str (stat_if_1 y t (Some t'))
+  (*stat_while*)
+  | wf_stat_while_1 : forall (labs:label_set) (e:expr) (t:stat) (rv:resvalue),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_resvalue S str rv ->
+      wf_ext_stat S str (stat_while_1 labs e t rv)
+  | wf_stat_while_2 : forall (labs:label_set) (e:expr) (t:stat) (rv:resvalue) (y:specret),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_resvalue S str rv ->
+      wf_specret S str y ->
+      wf_ext_stat S str (stat_while_2 labs e t rv y)
+  | wf_stat_while_3 : forall (labs:label_set) (e:expr) (t:stat) (rv:resvalue) (o:out),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_resvalue S str rv ->
+      wf_out S str o ->
+      wf_ext_stat S str (stat_while_3 labs e t rv o)
+  | wf_stat_while_4 : forall (labs:label_set) (e:expr) (t:stat) (rv:resvalue) (R:res),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_resvalue S str rv ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_while_4 labs e t rv R)
+  | wf_stat_while_5 : forall (labs:label_set) (e:expr) (t:stat) (rv:resvalue) (R:res),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_resvalue S str rv ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_while_5 labs e t rv R)
+  | wf_stat_while_6 : forall (labs:label_set) (e:expr) (t:stat) (rv:resvalue) (R:res),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_resvalue S str rv ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_while_6 labs e t rv R)
+  (*stat_do_while*)
+  | wf_stat_do_while_1 : forall (labs:label_set) (t:stat) (e:expr) (rv:resvalue),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_resvalue S str rv ->
+      wf_ext_stat S str (stat_do_while_1 labs t e rv)
+  | wf_stat_do_while_2 : forall (labs:label_set) (t:stat) (e:expr) (rv:resvalue) (o:out),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_resvalue S str rv ->
+      wf_out S str o ->
+      wf_ext_stat S str (stat_do_while_2 labs t e rv o)
+  | wf_stat_do_while_3 : forall (labs:label_set) (t:stat) (e:expr) (rv:resvalue) (R:res),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_resvalue S str rv ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_do_while_3 labs t e rv R)
+  | wf_stat_do_while_4 : forall (labs:label_set) (t:stat) (e:expr) (rv:resvalue) (R:res),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_resvalue S str rv ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_do_while_4 labs t e rv R)
+  | wf_stat_do_while_5 : forall (labs:label_set) (t:stat) (e:expr) (rv:resvalue) (R:res),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_resvalue S str rv ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_do_while_5 labs t e rv R)
+  | wf_stat_do_while_6 : forall (labs:label_set) (t:stat) (e:expr) (rv:resvalue),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_resvalue S str rv ->
+      wf_ext_stat S str (stat_do_while_6 labs t e rv)
+  | wf_stat_do_while_7 : forall (labs:label_set) (t:stat) (e:expr) (rv:resvalue) (y:specret),
+      wf_stat S str t ->
+      wf_expr S str e ->
+      wf_resvalue S str rv ->
+      wf_specret S str y ->
+      wf_ext_stat S str (stat_do_while_7 labs t e rv y)
+  (*stat_for*)
+  | wf_stat_for_1 : forall (labs:label_set) (y:specret) (oe1 oe2:option expr) (t:stat),
+      wf_specret S str y ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_1 labs y oe1 oe2 t)
+  | wf_stat_for_2 : forall (labs:label_set) (rv:resvalue) (oe1 oe2:option expr) (t:stat),
+      wf_resvalue S str rv ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_2 labs rv oe1 oe2 t)
+  | wf_stat_for_3 : forall (labs:label_set) (rv:resvalue) (e:expr) (y:specret) (oe:option expr) (t:stat),
+      wf_resvalue S str rv ->
+      wf_expr S str e ->
+      wf_specret S str y ->
+      wf_oexpr S str oe ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_3 labs rv e y oe t)
+  | wf_stat_for_4 : forall (labs:label_set) (rv:resvalue) (oe1 oe2:option expr) (t:stat),
+      wf_resvalue S str rv ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_4 labs rv oe1 oe2 t)
+  | wf_stat_for_5 : forall (labs:label_set) (rv:resvalue) (oe1 oe2:option expr) (o:out) (t:stat),
+      wf_resvalue S str rv ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_out S str o ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_5 labs rv oe1 o oe2 t)
+  | wf_stat_for_6 : forall (labs:label_set) (rv:resvalue) (oe1 oe2:option expr) (t:stat) (R:res),
+      wf_resvalue S str rv ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_for_6 labs rv oe1 oe2 t R)
+  | wf_stat_for_7 : forall (labs:label_set) (rv:resvalue) (oe1 oe2:option expr) (t:stat) (R:res),
+      wf_resvalue S str rv ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_res S str R ->
+      wf_ext_stat S str (stat_for_7 labs rv oe1 oe2 t R)
+  | wf_stat_for_8 : forall (labs:label_set) (rv:resvalue) (oe1 oe2:option expr) (t:stat),
+      wf_resvalue S str rv ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_8 labs rv oe1 oe2 t)
+  | wf_stat_for_9 : forall (labs:label_set) (rv:resvalue) (oe:option expr) (e:expr) (y:specret) (t:stat),
+      wf_resvalue S str rv ->
+      wf_oexpr S str oe ->
+      wf_expr S str e ->
+      wf_specret S str y ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_9 labs rv oe e y t)
+  | wf_stat_for_var_1 : forall (o:out) (labs:label_set) (oe1 oe2:option expr) (t:stat),
+      wf_out S str o ->
+      wf_oexpr S str oe1 ->
+      wf_oexpr S str oe2 ->
+      wf_stat S str t ->
+      wf_ext_stat S str (stat_for_var_1 o labs oe1 oe2 t)
+  (*stat_throw*)
+  | wf_stat_throw_1 : forall (y:specret),
+      wf_specret S str y ->
+      wf_ext_stat  S str (stat_throw_1 y)
+  (*stat_return*)
+  | wf_stat_return_1 : forall (y:specret),
+      wf_specret S str y ->
+      wf_ext_stat S str (stat_return_1 y)
+  (*stat_try*)
+  | wf_stat_try_1 : forall (o:out) (ost:option (string*stat)) (ot:option stat),
+      wf_out S str o ->
+      wf_ostringstat S str ost ->
+      wf_ostat S str ot ->
+      wf_ext_stat S str (stat_try_1 o ost ot)
+  | wf_stat_try_2 : forall (o:out) (lex:lexical_env) (t:stat) (ot:option stat),
+      wf_out S str o ->
+      wf_lexical_env S str lex ->
+      wf_stat S str t ->
+      wf_ostat S str ot ->
+      wf_ext_stat S str (stat_try_2 o lex t ot)
+  | wf_stat_try_3 : forall (o:out) (ot:option stat),
+      wf_out S str o ->
+      wf_ostat S str ot ->
+      wf_ext_stat S str (stat_try_3 o ot)
+  | wf_stat_try_4 : forall (R:res) (ot:option stat),
+      wf_res S str R ->
+      wf_ostat S str ot ->
+      wf_ext_stat S str (stat_try_4 R ot)
+  | wf_stat_try_5 : forall (R:res) (o:out),
+      wf_res S str R ->
+      wf_out S str o ->
+      wf_ext_stat S str (stat_try_5 R o).
 
 
 Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
@@ -628,34 +916,56 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_value S str v ->
       wf_out S str o ->
       wf_ext_expr S str (expr_assign_5 v o)
+  (*spec_binding_inst_var_decl*)
+  | wf_spec_binding_inst_var_decls : forall (L:env_loc) (ls:list string) (b:bool) (str':strictness_flag),
+      wf_env_loc S str L ->
+      wf_ext_expr S str (spec_binding_inst_var_decls L ls b str')
+  | wf_spec_binding_inst_var_decls_1 : forall (L:env_loc) (s:string) (ls:list string) (b:bool) (str':strictness_flag) (o:out),
+      wf_env_loc S str L ->
+      wf_out S str o ->
+      wf_ext_expr S str (spec_binding_inst_var_decls_1 L s ls b str' o)
+  | wf_spec_binding_inst_var_decls_2 : forall (L:env_loc) (ls:list string) (b:bool) (str':strictness_flag) (o:out),
+      wf_env_loc S str L ->
+      wf_out S str o ->
+      wf_ext_expr S str (spec_binding_inst_var_decls_2 L ls b str' o)
+  (*spec_binding_inst_function_decls*)
   | wf_spec_binding_inst_function_decls : forall (L:env_loc) (str':strictness_flag) (b:bool),
+      wf_env_loc S str L ->
       wf_ext_expr S str (spec_binding_inst_function_decls nil L nil str' b)
+  (*spec_binding_inst*)
   | wf_spec_binding_inst : forall (p:prog), (*probably too strict, but I needed this*)
       wf_prog S str p ->
       wf_ext_expr S str (spec_binding_inst codetype_global None p nil)
   | wf_spec_binding_inst_1 : forall (p:prog) (L:env_loc),
       wf_prog S str p ->
+      wf_env_loc S str L ->
       wf_ext_expr S str (spec_binding_inst_1 codetype_global None p nil L)
   | wf_spec_binding_inst_3 : forall (p:prog) (L:env_loc),
       wf_prog S str p ->
+      wf_env_loc S str L ->
       wf_ext_expr S str (spec_binding_inst_3 codetype_global None p nil nil L)
   | wf_spec_binding_inst_4 : forall (p:prog) (L:env_loc) (b:bool) (o:out),
       wf_prog S str p ->
+      wf_env_loc S str L ->
       wf_out S str o ->
       wf_ext_expr S str (spec_binding_inst_4 codetype_global None p nil nil b L o)
   | wf_spec_binding_inst_5 : forall (p:prog) (L:env_loc) (b:bool),
       wf_prog S str p ->
+      wf_env_loc S str L ->
       wf_ext_expr S str (spec_binding_inst_5 codetype_global None p nil nil b L)
   | wf_spec_binding_inst_6 : forall (p:prog) (L:env_loc) (b:bool) (o:out),
       wf_prog S str p ->
+      wf_env_loc S str L ->
       wf_out S str o ->
       wf_ext_expr S str (spec_binding_inst_6 codetype_global None p nil nil b L o)
   | wf_spec_binding_inst_7 : forall (p:prog) (b:bool) (L:env_loc) (o:out),
       wf_prog S str p ->
+      wf_env_loc S str L ->
       wf_out S str o ->
       wf_ext_expr S str (spec_binding_inst_7 p b L o)
   | wf_spec_binding_inst_8 : forall (p:prog) (b:bool) (L:env_loc),
       wf_prog S str p ->
+      wf_env_loc S str L ->
       wf_ext_expr S str (spec_binding_inst_8 p b L)
   (*spec_*_has_instance*)
   | wf_spec_object_has_instance : forall (l:object_loc) (v:value),

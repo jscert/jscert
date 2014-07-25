@@ -1900,6 +1900,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_5 l x A Desc throw) o
 
   | red_spec_object_define_own_prop_5_a : forall S C l x A Desc throw o, (* Step 9 *)
+      ~ descriptor_is_generic Desc ->
       (attributes_is_data A) <> (descriptor_is_data Desc) ->
       red_expr S C (spec_object_define_own_prop_6a l x A Desc throw) o ->
       red_expr S C (spec_object_define_own_prop_5 l x A Desc throw) o
@@ -2456,9 +2457,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_8 code bconfig L) o ->
       red_expr S0 C (spec_binding_inst_6 ct olf code xs args bconfig L (out_ter S bdefined)) o
 
-  | red_spec_binding_inst_8 : forall S0 L S C code bconfig o, (* Step 8 *)
+  | red_spec_binding_inst_8 : forall L S C code bconfig o, (* Step 8 *)
       red_expr S C (spec_binding_inst_var_decls L (prog_vardecl code) bconfig (prog_intro_strictness code)) o ->
-      red_expr S0 C (spec_binding_inst_8 code bconfig L) o
+      red_expr S C (spec_binding_inst_8 code bconfig L) o
 
 (*
   (*------------------------------------------------------------*)
