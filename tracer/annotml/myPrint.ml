@@ -9,3 +9,5 @@ let log ltype =
 
 let enter_call = log "enter_call"
 let exit_call = log "exit_call"
+
+let () = at_exit (fun () -> close_out outf)
