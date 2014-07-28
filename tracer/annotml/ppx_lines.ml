@@ -10,7 +10,11 @@ let resname = "__res__"
 let arg_from_loc loc =
   let f,ls,cs = get_pos_info loc.loc_start in
   let _,le,ce = get_pos_info loc.loc_end in
-  ["", Exp.constant (Const_string (Printf.sprintf "%s[%d,%d]..[%d,%d]" f ls cs le ce,None))]
+  ["", Exp.constant (Const_string (f,None));
+   "", Exp.constant (Const_int ls);
+   "", Exp.constant (Const_int cs);
+   "", Exp.constant (Const_int le);
+   "", Exp.constant (Const_int ce)]
 
 let rec map_expr default mapper expr =
   match expr with 
@@ -19,12 +23,12 @@ let rec map_expr default mapper expr =
       (Exp.apply ~loc f (List.map (fun (l,e) -> l, map_expr default mapper e) el)) in
     Exp.sequence ~loc
       (Exp.apply ~loc 
-         (Exp.ident (mknoloc (Longident.parse "MyPrint.fstart"))) 
+         (Exp.ident (mknoloc (Longident.parse "MyPrint.enter_call"))) 
          (arg_from_loc loc))
       (Exp.let_ Nonrecursive [Vb.mk (Pat.var (mknoloc resname)) orig_expr]
          (Exp.sequence ~loc
             (Exp.apply ~loc 
-               (Exp.ident (mknoloc (Longident.parse "MyPrint.fend"))) 
+               (Exp.ident (mknoloc (Longident.parse "MyPrint.exit_call"))) 
                (arg_from_loc loc))
             (Exp.ident (mknoloc (Lident resname)))))
   | x -> default.expr mapper x
