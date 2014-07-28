@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+<meta charset=utf-8>
+<title>JavaScript Reference Tracer</title>
+
+<link rel=stylesheet href=codemirror/lib/codemirror.css>
+<script src=codemirror/lib/codemirror.js></script>
+<script src=codemirror_ocaml.js></script>
+
+<style>
+.source_div {
+   border-top: 1px solid black; 
+   border-bottom: 1px solid black;
+}
+</style>
+
+</head>
+<body>
+
+<h1>Demo</h1>
+
+<div class='source_div'>
+<textarea id='source_code' class='source' rows='10'>
+test
+test
+test
+</textarea>
+</div>
+
+<script>
+  var editor = CodeMirror.fromTextArea(document.getElementById('source_code'), {
+    mode: 'ocaml',
+    value: "let rec sum xs =\n xs + 1 (* ok *)",
+    lineNumbers: true,
+    lineWrapping: true,
+    // readOnly: true,
+    extraKeys: {
+      'Shift-Q': function(cm) {
+         cm.setCursor({ line: 0, ch: 0 }); }
+      },
+  });
+</script>
+
+<p>test</p>
+
+
+</body>
+</html>
+

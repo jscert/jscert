@@ -607,7 +607,7 @@ Definition ref_get_value runs S C rv : specres value :=
           if_value (prim_value_get runs S C v (ref_name r)) (@res_spec _)
         else
           match v with
-           | value_object l =>
+           | value_object l =>ls
              if_value (run_object_get runs S C l (ref_name r)) (@res_spec _)
            | value_prim _ =>
              impossible_with_heap_because S "[ref_get_value] received a primitive value whose kind is not primitive."
