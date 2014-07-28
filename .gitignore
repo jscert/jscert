@@ -22,3 +22,4 @@ report
 /test_data/query_scripts/dist/*
 /test_data/test_results.db
 /test_reports/*
+/interp/src/*.cmo
