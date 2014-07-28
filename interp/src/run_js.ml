@@ -49,7 +49,7 @@ let arguments () =
 let get_value_ref state r =
     match JsInterpreter.ref_get_value
         (JsInterpreter.runs max_int)
-        state (JsPreliminary.execution_ctx_initial false)
+        state (JsCommon.execution_ctx_initial false)
         (JsSyntax.Coq_resvalue_ref r) with
     | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_val (_, v)) ->
        Some v
@@ -58,7 +58,7 @@ let get_value_ref state r =
 let get_global_value state name =
     let x = Translate_syntax.string_to_coq name in
     let r =
-      JsPreliminary.ref_create_env_loc
+      JsCommon.ref_create_env_loc
         JsSyntax.env_loc_global_env_record
         x true in
     get_value_ref state r

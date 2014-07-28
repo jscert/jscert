@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export JsPreliminary JsPreliminaryAux.
+Require Export JsCommon JsCommonAux.
 
 
 Coercion JsNumber.of_int : Z >-> JsNumber.number.

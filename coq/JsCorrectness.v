@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix LibList.
-Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
+Require Import JsSyntax JsSyntaxAux JsCommon JsCommonAux JsPreliminary.
 Require Import JsInterpreterMonads JsInterpreter JsPrettyInterm JsPrettyRules.
 
 Ltac tryfalse_nothing :=

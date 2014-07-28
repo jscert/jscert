@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 Require Import Shared.
-Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit JsInterpreterMonads.
+Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsCommon JsCommonAux JsPreliminary JsInit JsInterpreterMonads.
 Require Import LibFix LibList.
 
 

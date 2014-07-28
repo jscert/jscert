@@ -59,8 +59,9 @@ JS_SRC=\
 	coq/JsSyntax.v \
 	coq/JsSyntaxAux.v \
 	coq/JsSyntaxInfos.v \
+	coq/JsCommon.v \
+	coq/JsCommonAux.v \
 	coq/JsPreliminary.v \
-	coq/JsPreliminaryAux.v \
 	coq/JsInit.v \
 	coq/JsInterpreterMonads.v \
 	coq/JsInterpreter.v \
@@ -83,8 +84,8 @@ ifneq ($(FAST),)
 		coq/JsSyntax.v \
 		coq/JsSyntaxAux.v \
 		coq/JsSyntaxInfos.v \
-		coq/JsPreliminary.v \
-		coq/JsPreliminaryAux.v \
+		coq/JsCommon.v \
+		coq/JsCommonAux.v \
 		coq/JsInit.v \
 		coq/JsPrettyInterm.v \
 		coq/JsPrettyIntermAux.v \
@@ -275,7 +276,7 @@ interp/src/run_js.cmx: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmx
 
 interp/src/run_jsbisect.ml: interp/src/run_js.ml
 	cp $< $@
-	perl -pe 's/JsInterpreter/JsInterpreterBisect/' $@ > $@.bak
+	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./' $@ > $@.bak
 	mv $@.bak $@
 
 interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmx

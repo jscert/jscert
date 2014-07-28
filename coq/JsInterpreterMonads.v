@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 Require Import Shared.
-Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
+Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsCommon JsCommonAux JsPreliminary JsInit.
 
 (**************************************************************)
 (** ** Implicit Types -- copied from JsPreliminary *)

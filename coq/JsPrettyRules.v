@@ -1,4 +1,4 @@
-Require Import JsPreliminary JsPreliminaryAux JsPrettyInterm JsPrettyIntermAux JsSyntaxInfos JsInit.
+Require Import JsCommon JsCommonAux JsPrettyInterm JsPrettyIntermAux JsSyntaxInfos JsInit.
 
 
 (**************************************************************)
