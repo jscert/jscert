@@ -6,7 +6,7 @@ let write_file filename strl =
 
 
 let load_file f =
-    let ic = try open_in f with _ -> failwith ("Error while reading file “" + f + "”.") in
+    let ic = try open_in f with _ -> failwith ("Error while reading file “" ^ f ^ "”.") in
     let n = in_channel_length ic in
     let s = String.create n in
     really_input ic s 0 n ;
@@ -30,13 +30,15 @@ let _ =
             List.(concat (map (fun f ->
                 let rep s1 s2 s3 =
                     Str.(global_replace (regexp (quote s1)) s2 s3)
-                in "\t" :: f :: ": \"" ::
+                in let esc s =
                     fold_left (fun s (s1, s2) ->
-                        rep s1 s2 s) (load_file f)
+                        rep s1 s2 s) s
                         ["\"", "\\\"";
                          "\r", "";
                          "\n", "\\n";
                          "\\", "\\\\"]
+                in "\t\"" :: esc f :: "\": \"" ::
+                    esc (load_file f)
                 :: "\",\n" :: []
                 ) fileList)) @
                 "}\n" :: []
