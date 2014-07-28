@@ -51,7 +51,7 @@ let get_value_ref state r =
         (JsInterpreter.runs max_int)
         state (JsPreliminary.execution_ctx_initial false)
         (JsSyntax.Coq_resvalue_ref r) with
-    | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_val (_, v)) ->
+    | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_val (_, v)) ->
        Some v
     | _ -> None
 
@@ -95,11 +95,11 @@ let _ =
             (JsInterpreter.runs max_int)
             exp'
     with
-    | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
+    | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
           print_endline "\n\nA `nothing' object has been created.\n" ;
           print_endline "\n\nFIXME:  this should be impossible!\n" ;
           exit_if_test ()
-    | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_out o) ->
+    | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_out o) ->
       begin
         match o with
         | JsSyntax.Coq_out_ter (state, res) ->
@@ -161,11 +161,11 @@ let _ =
         | JsSyntax.Coq_out_div ->
           print_endline "\n\nDIV\n" ; exit_if_test ()
       end;
-    | JsInterpreter.Coq_result_impossible ->
+    | JsInterpreterMonads.Coq_result_impossible ->
       print_endline "\n\nFIXME:  this should be impossible!\n" ; exit_if_test ()
-    | JsInterpreter.Coq_result_not_yet_implemented ->
+    | JsInterpreterMonads.Coq_result_not_yet_implemented ->
       print_endline "\n\nNYI:  this is not implemented yet!\n" ; exit 2
-    | JsInterpreter.Coq_result_bottom s ->
+    | JsInterpreterMonads.Coq_result_bottom s ->
       print_endline ("\n\nBOTTOM\nCurrent state:\n" ^ Prheap.prstate !skipInit s)
   with
   | Assert_failure (file, line, col) ->

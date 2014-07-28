@@ -2,7 +2,7 @@ Set Implicit Arguments.
 Require Import Shared.
 Require Import LibFix LibList.
 Require Import JsSyntax JsSyntaxAux JsPreliminary JsPreliminaryAux.
-Require Import JsInterpreter JsPrettyInterm JsPrettyRules.
+Require Import JsInterpreterMonads JsInterpreter JsPrettyInterm JsPrettyRules.
 
 Ltac tryfalse_nothing :=
   try match goal with x: nothing |- _ => destruct x end;

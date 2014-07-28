@@ -62,8 +62,9 @@ JS_SRC=\
 	coq/JsPreliminary.v \
 	coq/JsPreliminaryAux.v \
 	coq/JsInit.v \
+	coq/JsInterpreterMonads.v \
 	coq/JsInterpreter.v \
-  coq/JsInterpreterExtraction.v \
+    coq/JsInterpreterExtraction.v \
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
 	coq/JsPrettyRules.v \
@@ -85,7 +86,6 @@ ifneq ($(FAST),)
 		coq/JsPreliminary.v \
 		coq/JsPreliminaryAux.v \
 		coq/JsInit.v \
-		coq/JsInterpreter.v \
 		coq/JsPrettyInterm.v \
 		coq/JsPrettyIntermAux.v \
 		coq/JsPrettyRules.v
