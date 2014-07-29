@@ -55,7 +55,7 @@
 <div id='file_list'></div>
 
 <div class='source_div'>
-<textarea id='source_code' class='source' rows='20'>
+<textarea id='source_code' class='source' rows='40'>
 </textarea>
 </div>
 
@@ -179,6 +179,7 @@
          'F': function(cm) { finish(); updateSelection(cm); },
       },
    });
+   editor.setSize(800,600);
 
    editor.on('dblclick', function() {
       var line = editor.getCursor().line;
