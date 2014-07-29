@@ -166,6 +166,10 @@ Inductive wf_stat (S:state) (str:strictness_flag) : stat -> Prop :=
       wf_expr S str e ->
       wf_stat S str t ->
       wf_stat S str (stat_while ls e t)
+  | wf_stat_with : forall (e:expr) (t:stat),
+      wf_expr S str e ->
+      wf_stat S str t ->
+      wf_stat S str (stat_with e t)
   | wf_stat_throw : forall (e:expr),
       wf_expr S str e ->
       wf_stat S str (stat_throw e)
@@ -700,6 +704,11 @@ Inductive wf_ext_stat (S:state) (str:strictness_flag) : ext_stat -> Prop :=
       wf_oexpr S str oe2 ->
       wf_stat S str t ->
       wf_ext_stat S str (stat_for_var_1 o labs oe1 oe2 t)
+  (*stat_with*)
+  | wf_stat_with_1 : forall (t:stat) (y:specret),
+      wf_stat S str t ->
+      wf_specret S str y ->
+      wf_ext_stat S str (stat_with_1 t y)
   (*stat_throw*)
   | wf_stat_throw_1 : forall (y:specret),
       wf_specret S str y ->

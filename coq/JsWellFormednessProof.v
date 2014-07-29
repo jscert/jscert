@@ -1087,7 +1087,7 @@ Theorem pr_red_spec : forall (S:state) (C:execution_ctx) (str:strictness_flag) (
   red_spec S C es s ->
   wf_specret S str s.
 Proof.
-  introv HS HC Hes Hred. induction Hred; wf_impossible_spec; auto.
+(*  introv HS HC Hes Hred. induction Hred; wf_impossible_spec; auto.
  
   (*red_spec_abort*)
   constructor* ; apply* wf_out_of_ext_spec.
@@ -1187,7 +1187,7 @@ Proof.
   wf_inverts3a. apply* IHHred. constructor*.
 
 (*Qed.*)
-
+*)
 
 Admitted.
 
@@ -1211,7 +1211,7 @@ Theorem pr_red_expr : forall (S:state) (C:execution_ctx) (ee:ext_expr) (o:out) (
   wf_ext_expr S str ee ->
   wf_out S str o.
 Proof.
-
+(*
   introv Hred HS HC Hee. induction Hred; auto.
 
   apply* wf_out_of_ext_expr.
@@ -1775,7 +1775,7 @@ maybe there should be a condition '~descriptor_is_generic Desc' in this rule ?*)
 
   wf_impossible.
 
-(**)
+*)(**)
 (**)
 
 
@@ -1788,45 +1788,49 @@ Ltac wf_inverts_stat :=
   end.
 
 
-Lemma lexical_env_alloc_decl_state_extends : forall (S S':state) (lex lex':lexical_env),
-  (lex',S') = lexical_env_alloc_decl S lex ->
+Lemma lexical_env_alloc_state_extends : forall (S S':state) (lex lex':lexical_env) (E:env_record),
+  (lex',S') = lexical_env_alloc S lex E ->
   state_extends S' S.
 Proof.
-  introv HH. unfolds lexical_env_alloc_decl. unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
+  introv HH. unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
   unfolds. split. simpl. apply* @heap_extends_refl.
   simpl. apply* @heap_write_extends. apply* eq_env_loc_dec.
 Qed.
 
 
-Lemma wf_lexical_env_alloc_decl : forall (S S':state) (str:strictness_flag) (lex lex':lexical_env),
+Lemma wf_lexical_env_alloc : forall (S S':state) (str:strictness_flag) (lex lex':lexical_env) (E:env_record),
   wf_state S ->
   wf_lexical_env S str lex ->
-  (lex',S') = lexical_env_alloc_decl S lex ->
+  wf_env_record S str E ->
+  (lex',S') = lexical_env_alloc S lex E ->
   wf_state S' /\ wf_lexical_env S' str lex'.
 Proof.
-  introv HS Hl HH.
-  forwards* M:lexical_env_alloc_decl_state_extends. split.
+  introv HS Hl HE HH.
+  forwards* M:lexical_env_alloc_state_extends. split.
   (*wf_state*)
-    unfolds lexical_env_alloc_decl. unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
+    unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
     inverts HS. constructor*.
     (*wf_state_wf_objects*)
-      introv E. unfolds object_binds. clear wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. simpl in E; simpl in wf_state_wf_objects.
+      introv EE. unfolds object_binds. clear wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. simpl in EE; simpl in wf_state_wf_objects.
       forwards* MM: wf_object_state_extends str0 obj M.
     (*wf_state_prealloc_global*)
       clear wf_state_wf_objects wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. inverts wf_state_prealloc_global. exists* x.
     (*wf_state_wf_env_records*)
       clear wf_state_wf_objects wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_env_loc_global_env_record Hl.
-      introv Hb. inverts Hb. unfolds in H. simpl in H. apply Heap.binds_write_inv in H. inverts H. inverts H0. rconstructors*. unfolds.
-        introv Hb. unfolds in Hb. exfalso; apply* @heap_empty_binds_false.
+      introv Hb. inverts Hb. unfolds in H. simpl in H. apply Heap.binds_write_inv in H. inverts H. inverts H0. 
+      clear wf_state_wf_env_records. inverts HE.
+        constructor; unfolds wf_decl_env_record. introv Hb. forwards* MM:H Hb. inverts* MM.
+        constructor; unfolds wf_object_loc. unfolds* object_indom.
       inverts H0. eapply wf_env_record_state_extends; eauto.
     (*wf_state_env_loc_global_env_record*)
       simpl. simpl in wf_state_env_loc_global_env_record. unfolds Heap.indom.
       rewrite Heap.dom_write. apply* in_union_get_1.
   (*wf_lexical_env*)
-    unfolds lexical_env_alloc_decl. unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
+    unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
     constructor*. constructor*. simpl. find_in_heap.
     eapply wf_lexical_env_state_extends; eauto.
 Qed.
+
 
 Lemma wf_execution_ctx_with_lex : forall (S:state) (str:strictness_flag) (C:execution_ctx) (lex:lexical_env),
   wf_execution_ctx S str C ->
@@ -1886,12 +1890,20 @@ Proof.
   (*red_stat_for*)
   wf_inverts_stat. subst; cases_if; auto with wf_base. wf_inverts3a. wf_out_change_state. apply* IHHred. rconstructors*. inverts* H4.
 
+  (*red_stat_with*)
+  wf_inverts_stat. wf_inverts3a.
+  unfolds lexical_env_alloc_object.
+  forwards* M1: lexical_env_alloc_state_extends S lex.
+  forwards* M2: wf_lexical_env_alloc S str lex. subst; inverts* HC. constructor*. inverts* M2.
+  wf_out_change_state. wf_out_change_state. apply* IHHred. subst*. destruct C; constructor*; simpl. inverts* HC. apply wf_lexical_env_state_extends with S; auto. inverts* HC. apply wf_value_state_extends with S; auto.
+  constructor*. apply wf_stat_state_extends with S; auto.
+
   (*red_stat_label*)
   wf_inverts_stat. subst. wf_inverts3a. auto with wf_base.
 
   (*red_stat_try*)
   wf_inverts_stat. wf_inverts3a.
-  forwards* M1: lexical_env_alloc_decl_state_extends S lex. forwards* M2: wf_lexical_env_alloc_decl S lex. inverts* HC. subst. apply wf_lexical_env_state_extends with S0; auto. apply* wf_execution_ctx_wf_lexical_env. inverts M2.
+  forwards* M1: lexical_env_alloc_state_extends S lex. forwards* M2: wf_lexical_env_alloc S lex. inverts* HC. subst. apply wf_lexical_env_state_extends with S0; auto. apply* wf_execution_ctx_wf_lexical_env. constructor*. unfolds*. introv Hb; unfolds in Hb; exfalso; apply* @heap_empty_binds_false. inverts M2.
   wf_out_change_state. wf_out_change_state. apply* IHHred. apply wf_execution_ctx_state_extends with S; auto. constructor*. apply* pr_red_expr. apply wf_execution_ctx_state_extends with S; auto. constructor*. subst. inverts* H8. inverts* H12; subst. simpl in H3. subst. wf_inverts. wf_state_extends. apply wf_stat_state_extends with S; auto. apply wf_ostat_state_extends with S; auto.
 
   wf_inverts_stat. wf_inverts3a.
