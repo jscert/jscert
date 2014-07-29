@@ -39,14 +39,14 @@
 </textarea>
 </div>
 
-<script src="trace.js"></script>
+<script type = "text/javascript" src="trace.js"></script>
 
-<script>
+<script type = "text/javascript">
    // Assumes tracer_files to be a string containing the source code
 
    // Assumes tracer_items to be an array with items, e.g.:
-   // { type: 'enter_call', line: 4, col: 0 },
-   // { type: 'exit_call', line: 4, col: 0 },
+   // { type: 'enter_call', file: 'foo.ml', start_line: 4, start_col: 0, end_line: 5, end_col: 10 },
+   // { type: 'exit_call', file: 'foo.ml', start_line: 4, start_col: 0, end_line: 5, end_col: 10 },
 
    var tracer_length = tracer_items.length;
    var tracer_pos = 0; 
