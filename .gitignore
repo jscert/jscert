@@ -23,3 +23,6 @@ report
 /test_data/test_results.db
 /test_reports/*
 /interp/src/*.cmo
+
+*~
+

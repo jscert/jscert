@@ -26,7 +26,7 @@ let _ =
     write_file fileOut (
             "var tracer_items = [\n" ::
             load_file fileTrace ::
-            "\n];\n\nvar tracer_files = {\n" ::
+            "];\n\nvar tracer_files = {\n" ::
             List.(concat (map (fun f ->
                 let rep s1 s2 s3 =
                     Str.(global_replace (regexp (quote s1)) s2 s3)
