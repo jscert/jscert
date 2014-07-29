@@ -5,8 +5,10 @@ ppx_lines.native: ppx_lines.ml
 myPrint.cmo: myPrint.ml
 	ocamlfind ocamlc -c -o myPrint.cmo myPrint.ml
 
-testFoo: ppx_lines.native myPrint.cmo test/foo.ml
-	ocamlc -dsource -ppx ./ppx_lines.native myPrint.cmo test/foo.ml -o testFoo
+testFoo: ppx_lines.native myPrint.cmo test/foo.ml test/bar.ml
+	ocamlc -dsource -ppx ./ppx_lines.native -c test/bar.ml
+	ocamlc -dsource -ppx ./ppx_lines.native -I test -c test/foo.ml
+	ocamlc myPrint.cmo test/bar.cmo test/foo.cmo -o testFoo
 
 tests: testFoo
 	./testFoo

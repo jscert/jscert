@@ -1,3 +1,3 @@
 let f x = x + 1 in
 let res = List.map string_of_int [1;2;3] in
-f (41 + 1)
+f (Bar.g 2)
