@@ -65,7 +65,7 @@ JS_SRC=\
 	coq/JsInit.v \
 	coq/JsInterpreterMonads.v \
 	coq/JsInterpreter.v \
-    coq/JsInterpreterExtraction.v \
+        coq/JsInterpreterExtraction.v \
 	coq/JsPrettyInterm.v \
 	coq/JsPrettyIntermAux.v \
 	coq/JsPrettyRules.v \
@@ -286,12 +286,39 @@ mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*
 mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
 mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | perl -pe 's|parser/src|src|g'}
 mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
-mlfileswithbisect=${shell echo ${mlfilestransformed} | perl -pe 's|interp/src/extract/JsInterpreter.cmx||' | perl -pe 's|interp/src/run_js.cmx||'}
-mlfileswithoutbisect=${shell echo ${mlfilestransformed} | perl -pe 's|interp/src/extract/JsInterpreterBisect.cmx||' | perl -pe 's|interp/src/run_jsbisect.cmx||'}
+basicfiles=${shell echo ${mlfilestransformed} | perl -pe 's|interp/src/extract/JsInterpreterTrace.cmx||' | perl -pe 's|interp/src/run_jstrace.cmx||' | perl -pe 's|interp/src/extract/JsInterpreter.cmx||' | perl -pe 's|interp/src/run_js.cmx||' | perl -pe 's|interp/src/extract/JsInterpreterBisect.cmx||' | perl -pe 's|interp/src/run_jsbisect.cmx||'}
 
-interp/run_js: interp/src/run_jsbisect.ml ${mlfilessortedwithparsermoved:.ml=.cmx}
-	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $(mlfileswithoutbisect)
-	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $(mlfileswithbisect)
+interp/run_js: ${basicfiles} interp/src/extract/JsInterpreter.cmx interp/src/run_js.cmx
+	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $^
+
+inter/run_jsbisect: ${basicfiles} interp/src/extract/JsInterpreterBisect.cmx interp/src/run_jsbisect.cmx
+	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $^
+
+
+#######################################################
+# Tracing version of the interpreter
+
+tracer/annotml/ppx_lines.native: tracer/annotml/ppx_lines.ml
+	ocamlfind ocamlopt -c -package compiler-libs.common -o tracer/annot/ppx_lines.cmx $<
+	ocamlfind ocamlopt -linkpkg -package compiler-libs.common tracer/annot/ppx_lines.cmx -o $@
+
+interp/src/extract/JsInterpreterTrace.cmx: ${basicfiles} interp/src/extract/JsInterpreter.ml tracer/annotml/ppx_lines.native
+	cp interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreterTrace.ml
+	$(OCAMLOPT) -ppx tracer/annotml/ppx_lines.native -c -I interp/src -I interp/src/extract -I tracer/annotml -o $@ interp/src/extract/JsInterpreterTrace.ml
+
+interp/src/run_jstrace.ml: interp/src/run_js.ml
+	cp $< $@
+	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./' $@ > $@.bak
+	mv $@.bak $@
+
+interp/src/run_jstrace.cmx: interp/src/run_jstrace.ml interp/src/extract/JsInterpreterTrace.cmx
+	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
+
+tracer/annotml/myPrint.cmx: tracer/annotml/myPrint.ml
+	$(OCAMLOPT) -c -o $@ $<
+
+interp/run_jstrace: ${basicfiles} tracer/annotml/myPrint.cmx interp/src/extract/JsInterpreterTrace.cmx interp/src/run_jstrace.cmx
+	ocamlfind $(OCAMLOPT) $(PARSER_INC) -o interp/run_jstrace xml-light.cmxa unix.cmxa str.cmxa $^
 
 
 #######################################################
@@ -303,9 +330,12 @@ DEPS=$(JS_SRC) $(TLC_SRC) $(FLOCQ_SRC)
 
 depend: .depend
 
+ifeq ($(KEEP_DEPENDS),1)
+else
 .depend : $(DEPS) Makefile
 	$(COQDEP) $(DEPS) > .depend
 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
+endif
 
 ifeq ($(findstring $(MAKECMDGOALS),init depend clean clean_all),)
 include .depend

@@ -1,5 +1,3 @@
-
-
 generate.out: generate.ml
 	ocamlc str.cma generate.ml -o $@
 
@@ -8,4 +6,3 @@ trace.js: annotml/trace.log generate.out
 
 view: navig.html trace.js 
 	chromium-browser $<		
-	
