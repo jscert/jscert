@@ -10,7 +10,7 @@ var tracer_items = [
 
 var tracer_files = {
 	'foo.ml':
-	"fdsqfdsfsq\nfdsqfdfsfddsfsq\nfdsqfdsfdsfdsfsq\nfdsqfdfqdsfdsfsq\nfdfqdfqs\nfdsqfdsfdsfdsfsq\nfdsqfdfqdsfdsfsq\nfdfdsqfdsfdsfdsfsq\nfdsqfdfqdsfdsfsq\n",
+	"fdsqfdsfsq\nfdsqfdf (* #sec-4.3.6 *) sfddsfsq\nfdsqfdsfdsfdsfsq\nfdsqfdfqdsfdsfsq\nfdfqdfqs\nfdsqfdsfdsfdsfsq\nfdsqfdfqdsfdsfsq\nfdfdsqfdsfdsfdsfsq\nfdsqfdfqdsfdsfsq\n",
 	'bar.ml':
-	"fdsfdsfsq\nfdsfdsfqdsfddsfsq\nfdsqfdfdsfdfsfsq\nfdsqffqdsfsq\nffqdsfdsqfqs\nffqdsfdqsfdsfdsfsq\nffqdsffdsfsq\nfdffq\nfdqsdfsdqf\n",
-}
+	"ffdffdfsffdsqfdsfds\n",
+}}

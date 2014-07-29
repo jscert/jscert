@@ -1,3 +1,5 @@
+
+
 <!doctype html>
 <html>
 <head>
@@ -14,6 +16,10 @@
    border-bottom: 1px solid black;
 }
 
+.file_list {
+   font-weight: bold;
+}
+
 .CodeMirror-selected { background: #F3F781; }
 .CodeMirror-focused .CodeMirror-selected { background: #F3F781; }
 
@@ -25,6 +31,9 @@
 <h2>Tracer</h2>
 <p>Instructions: type 'S' for step (next function call), 'N' for next (next call at same level), 'B' for backstep (symmetric to step), 'P' for previous (symmetric to next), 'F' for finish (next call at upper level), 'R' for restart.</p>
 
+<div class='file_list'>
+<span id='current_file'>foo</span>
+</div>
 <div class='source_div'>
 <textarea id='source_code' class='source' rows='20'>
 </textarea>
@@ -42,7 +51,13 @@
    var tracer_length = tracer_items.length;
    var tracer_pos = 0; 
 
+   function check_enter_call() {
+      if (! tracer_items[tracer_pos].type == 'enter_call')
+         alert('invariant broken');
+   }
+
    function shared_step(dir) { // dir is -1 or +1
+      check_enter_call();
       var i = tracer_pos;
       while (true) { 
          i += dir; 
@@ -55,21 +70,25 @@
       }         
    }
 
-   function shared_next(dir, target) { // dir is -1 or +1, // target is 0 (next) or -1 (finish)
-      var i = tracer_pos; 
+   // dir is -1 or +1,
+   // target is 0 for (next/prev) 
+   // or -1 (finish)
+   function shared_next(dir, target) { 
+      check_enter_call();
+      var i = tracer_pos;
       var depth = 0;
       while (true) {
          if (i < 0 || i >= tracer_length) 
             return; // not found
+         if (i != tracer_pos && depth == target) {
+            tracer_pos = i;
+            return;
+         }
          var ty = tracer_items[i].type;
          if (ty == 'enter_call') {
             depth++;
          } else if (ty == 'exit_call') {
             depth--;
-            if (depth == target) {
-               shared_step(dir);
-               return;
-            }
          }
          i += dir; 
       }
@@ -83,18 +102,27 @@
 
    var curfile = '';
 
+   var docs = {};
+   for (file in tracer_files) {
+      var txt = tracer_files[file];
+      docs[file] = CodeMirror.Doc(txt, 'ocaml');
+   }
+
+   var editor = null;
+
    function updateSelection(cm) {
       var item = tracer_items[tracer_pos];
       if (curfile != item.file) {
          curfile = item.file;
-         editor.setValue(tracer_files[item.file]);
+         cm.swapDoc(docs[curfile]);
+         document.getElementById('current_file').innerHTML = curfile; 
       }
-      var anchor = {line: item.start_line, ch: item.start_col};
-      var head = {line: item.end_line, ch: item.end_col};
+      var anchor = {line: item.start_line-1, ch: item.start_col};
+      var head = {line: item.end_line-1, ch: item.end_col};
       cm.setSelection(anchor, head);
    }
 
-   var editor = CodeMirror.fromTextArea(document.getElementById('source_code'), {
+   editor = CodeMirror.fromTextArea(document.getElementById('source_code'), {
       mode: 'ocaml',
       lineNumbers: true,
       lineWrapping: true,
@@ -130,4 +158,22 @@
 
 </body>
 </html>
+
+
+
+<!---
+$timeout(function() {codeMirror.refresh();});
+
+this.codeMirrorInstance.setValue(content);
+var that = this;
+setTimeout(function() {
+    that.codeMirrorInstance.refresh();
+},1);
+
+http://codemirror.net/demo/buffers.html
+
+//CodeMirror.Doc(text
+---->
+
+
 
