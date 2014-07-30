@@ -291,7 +291,7 @@ basicfiles=${shell echo ${mlfilestransformed} | perl -pe 's|interp/src/extract/J
 interp/run_js: ${basicfiles} interp/src/extract/JsInterpreter.cmx interp/src/run_js.cmx
 	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $^
 
-inter/run_jsbisect: ${basicfiles} interp/src/extract/JsInterpreterBisect.cmx interp/src/run_jsbisect.cmx
+interp/run_jsbisect: ${basicfiles} interp/src/extract/JsInterpreterBisect.cmx interp/src/run_jsbisect.cmx
 	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $^
 
 
@@ -299,8 +299,8 @@ inter/run_jsbisect: ${basicfiles} interp/src/extract/JsInterpreterBisect.cmx int
 # Tracing version of the interpreter
 
 tracer/annotml/ppx_lines.native: tracer/annotml/ppx_lines.ml
-	ocamlfind ocamlopt -c -package compiler-libs.common -o tracer/annot/ppx_lines.cmx $<
-	ocamlfind ocamlopt -linkpkg -package compiler-libs.common tracer/annot/ppx_lines.cmx -o $@
+	cd tracer/annotml; ocamlfind ocamlopt -c -package compiler-libs.common -o ppx_lines.cmx ppx_lines.ml
+	cd tracer/annotml; ocamlfind ocamlopt -linkpkg -package compiler-libs.common ppx_lines.cmx -o ppx_lines.native
 
 interp/src/extract/JsInterpreterTrace.cmx: ${basicfiles} interp/src/extract/JsInterpreter.ml tracer/annotml/ppx_lines.native
 	cp interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreterTrace.ml
@@ -348,6 +348,7 @@ endif
 clean_cm:
 	bash -c "rm -f interp/src/*.{cmi,cmx,cmo}" || echo ok
 	bash -c "rm -f interp/src/extract/*.{cmi,cmx,cmo}" || echo ok
+	bash -c "rm -f tracer/annotml/*.{cmi,cmx,cmo}" || echo ok
 
 clean: clean_cm
 	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
