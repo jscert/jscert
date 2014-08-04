@@ -1764,7 +1764,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_put_5_return : forall S0 S C rv, (* Steps 3.c and 7 *)
       red_expr S0 C (spec_object_put_5 (out_ter S rv)) (out_void S)
-(*
+
   (** HasProperty (8.12.6) *)
 
   | red_spec_object_has_prop_1_default : forall S C l x y1 o, (* Step 1 *)
@@ -1803,7 +1803,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       attributes_configurable A = false ->
       red_expr S C (spec_error_or_cst throw native_error_type false) o ->
       red_expr S0 C (spec_object_delete_2 l x throw (ret S (full_descriptor_some A))) o
-
+(*
   (** DefaultValue (8.12.8)
       Note: rules are better factorized than the specification *)
 

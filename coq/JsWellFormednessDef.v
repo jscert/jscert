@@ -1059,13 +1059,17 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_value S str v ->
       wf_ext_expr S str (spec_check_object_coercible v)
   | wf_spec_object_delete : forall (l:object_loc) (x:prop_name) (b:bool),
+      wf_object_loc S str l ->
       wf_ext_expr S str (spec_object_delete l x b)
   | wf_spec_object_delete_1 : forall (bdel:builtin_delete) (l:object_loc) (x:prop_name) (b:bool),
+      wf_object_loc S str l ->
       wf_ext_expr S str (spec_object_delete_1 bdel l x b)
   | wf_spec_object_delete_2 : forall (l:object_loc) (x:prop_name) (b:bool) (sD:specret),
+      wf_object_loc S str l ->
       wf_specret S str sD ->
       wf_ext_expr S str (spec_object_delete_2 l x b sD)
   | wf_spec_object_delete_3 : forall (l:object_loc) (x:prop_name) (b:bool) (b':bool),
+      wf_object_loc S str l ->
       wf_ext_expr S str (spec_object_delete_3 l x b b')
   | wf_spec_env_record_has_binding : forall (L:env_loc) (x:prop_name),
       wf_ext_expr S str (spec_env_record_has_binding L x)

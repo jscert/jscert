@@ -796,6 +796,77 @@ Proof.
 Qed.
 
 
+Lemma object_write_state_extends : forall (S:state) (O:object) (l:object_loc),
+  state_extends (object_write S l O) S.
+Proof.
+  introv. unfolds. destruct S; split; simpl; [apply* @heap_write_extends; apply* eq_object_loc_dec | apply heap_extends_refl].
+Qed.
+
+
+Lemma object_rem_property_state_extends : forall (S S':state) (l:object_loc) (x:prop_name),
+  object_rem_property S l x S' ->
+  state_extends S' S.
+Proof.
+  introv Hr. unfolds in Hr. unfolds in Hr. inverts Hr. inverts H.
+  apply object_write_state_extends.
+Qed.
+
+(*
+Lemma wf_object_write : forall (S:state) (str:strictness_flag) (l:object_loc) (O:object),
+  wf_state S ->
+  wf_object S str O ->
+  wf_state (object_write S l O).
+Proof.
+  introv HS HO. forwards M:object_write_state_extends S O l. constructor*.
+  (*wf_state_wf_objects*)
+    introv Hl. apply* wf_object_state_extends. apply wf_object_str with str. inverts Hl. apply object_binds_write_inv in H. inverts H; inverts* H0.
+    (*x <> l*)
+      inverts HS. apply* wf_state_wf_objects.
+  (*wf_state_prealloc_global*)
+    inverts HS. inverts wf_state_prealloc_global. exists x. inverts H.
+    constructor*.
+    
+  (*wf_state_prealloc_native_error_proto*)
+  (*wf_state_wf_env_records*)
+  (*wf_state_env_loc_global_env_record*)
+*)
+
+Lemma wf_object_rem_property : forall (S S':state) (l:object_loc) (x:prop_name),
+  wf_state S ->
+  object_rem_property S l x S' ->
+  wf_state S'.
+Proof.
+  introv HS Hr. forwards M:object_rem_property_state_extends Hr. unfolds in Hr; unfolds in Hr; inverts Hr; inverts H. constructor*.
+  (*wf_state_wf_objects*)
+    introv Hl. inverts Hl. apply* wf_object_state_extends. clear M. apply object_binds_write_inv in H. inverts H; inverts* H1.
+    (*x = l*)
+      inverts HS. forwards* M:wf_state_wf_objects x0 str.
+      unfolds object_map_properties. destruct x0. inverts M. simpl.
+      rconstructors*; simpl.
+      simpl in wf_object_properties. introv HH. apply Heap.binds_rem_inv in HH. inverts* HH.
+    (*x <> l*)
+      inverts HS. apply* wf_state_wf_objects.
+  (*wf_state_prealloc_global*)
+    inverts HS. forwards MM:eq_object_loc_dec l prealloc_global. inverts MM.
+    (*l = prealloc_global*)
+      clear M wf_state_wf_objects wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record.
+      inverts wf_state_prealloc_global. inverts H. forwards* M:Heap_binds_func H0 wf_state_prealloc_global_binds. apply object_loc_comparable. subst.
+      clear H0.      
+      eexists; constructor; try (destruct S; simpl; apply* @Heap.binds_write_eq);
+      destruct x1; simpl; simpl in wf_state_prealloc_global_define_own_prop; simpl in wf_state_prealloc_global_get; simpl in wf_state_prealloc_global_get; simpl in wf_state_prealloc_global_get_own_prop; subst; auto.
+    (*l <> prealloc_global*)
+      inverts wf_state_prealloc_global. exists x1. inverts H1; constructor*.
+      destruct S. simpl. apply* @Heap.binds_write_neq.
+  (*wf_state_prealloc_native_error_proto*)
+    introv. apply M. inverts* HS. apply* wf_state_prealloc_native_error_proto.      
+  (*wf_state_wf_env_records*)
+    introv HL. apply* wf_env_record_state_extends. inverts HL; inverts HS; destruct S.
+    apply* wf_state_wf_env_records.
+  (*wf_state_env_loc_global_env_record*)
+    apply* M. inverts* HS.
+Qed.
+
+
 
 (*lemmas: the initial state and execution_ctx are well-formed*)
 
@@ -1446,6 +1517,9 @@ Proof.
   (*red_spec_object_has_prop*)
   wf_inverts3a. destruct B; subst. auto with wf_base.
 
+  (*red_spec_object_delete*)
+  wf_inverts3a.
+
   (*red_spec_object_default_value*)
   wf_impossible.
 
@@ -1512,6 +1586,20 @@ Proof.
   wf_inverts3a. inversion H3. inversion H5.
 
   wf_inverts3a. wf_out_change_state. apply* pr_red_expr. constructor*. apply* pr_red_expr. constructor*. auto with wf_base. subst. rconstructors*. auto with wf_base.
+
+  wf_inverts3a. auto with wf_base.
+
+  (*red_spec_object_has_prop (again)*)
+  wf_inverts3a. auto with wf_base.
+  
+  wf_inverts3a. rconstructors*.
+
+  (*red_spec_object_delete (again)*)
+  wf_inverts3a. auto with wf_base.
+
+  wf_inverts3a. rconstructors*.
+
+  wf_inverts3a. forwards M:object_rem_property_state_extends H0. forwards* MM:wf_object_rem_property H0. wf_out_change_state. rconstructors*.
 
   wf_inverts3a. auto with wf_base.
 
@@ -1608,6 +1696,8 @@ Proof.
   rconstructors*.
 
   rconstructors*.
+
+  wf_inverts3a.
 
   (*red_spec_record_implicit_this_value*)
   wf_impossible.
