@@ -957,11 +957,11 @@ Ltac find_in_heap :=
 
 
 Lemma wf_initial_objects : forall (str:strictness_flag),
+  wf_value state_initial str object_prealloc_global_proto ->
   wf_state_initial_wf_objects_aux state_initial str.
 Proof.
-  introv.
+  introv Hwf1.
   (*first show that some object_locs are well-formed*)
-  assert (Hwf1:wf_value state_initial str object_prealloc_global_proto). admit.
   assert (Hwf2:wf_value state_initial str prealloc_object_proto).
     constructor. unfolds. simpl. rewrite Heap.indom_equiv_binds.
     exists object_prealloc_object_proto.
@@ -989,12 +989,15 @@ Proof.
 Qed.
 
 
-Theorem wf_state_initial : wf_state state_initial.
+Theorem wf_state_initial :
+  (forall (str:strictness_flag), wf_value state_initial str object_prealloc_global_proto) ->
+  wf_state state_initial.
 Proof.
+  introv Hwf.
   constructor.
   (*wf_state_wf_objects*)
     introv Hb. inverts Hb.
-    forwards M:wf_initial_objects str.
+    forwards* M:wf_initial_objects str.
     (*unfold everything*)
     unfold state_initial in H. unfolds in H. simpl in H.
     unfolds object_heap_initial; unfolds object_heap_initial_function_objects;
@@ -2060,14 +2063,15 @@ Qed.
 
 (*state_initial because that's what red_javascript does*)
 Theorem pr_red_javascript : forall (p:prog) (str:strictness_flag) (o:out),
+  (forall str':strictness_flag, wf_value state_initial str' object_prealloc_global_proto) ->
   red_javascript p o ->
   wf_prog state_initial str p ->
   wf_out state_initial (prog_intro_strictness p) o.
 Proof.
-  introv Hred Hp. inverts Hred.
+  introv Hwf Hred Hp. inverts Hred.
   eapply pr_red_prog. eauto.
   (*wf_state_initial*)
-    apply wf_state_initial.
+    apply* wf_state_initial.
   (*wf_execution_ctx_initial*)
     rewrite add_infos_prog_false.
     apply wf_execution_ctx_initial.
@@ -2078,7 +2082,7 @@ Proof.
         rewrite add_infos_prog_false in H2.
         apply H2.
       (*wf_state_initial*)
-        apply wf_state_initial.
+        apply* wf_state_initial.
       (*wf_execution_ctx_initial*)
         apply wf_execution_ctx_initial.
       (*wf_ext_expr*)
