@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export JsPrettyInterm JsInit JsPrettyRules1.
+Require Export JsPrettyInterm JsInit JsPrettyRules1 JsSyntaxInfos.
 
 (*definition of state_extends*)
 
@@ -49,6 +49,15 @@ Qed.
 Inductive state_of_out : out -> state -> Prop  := 
   | state_of_out_ter : forall (S:state) (R:res),
       state_of_out (out_ter S R) S.
+
+
+(*needed to write the lemma wf_add_infos_ostat*)
+Definition add_infos_ostat (str:strictness_flag) (labs:label_set) (ot:option stat):= 
+  match ot with
+    | Some smth => Some (add_infos_stat str labs smth)
+    | None => None
+  end.
+
 
 
 (*well-formedness for binary operators*)
@@ -140,24 +149,17 @@ Inductive wf_stat (S:state) (str:strictness_flag) : stat -> Prop :=
   | wf_stat_label : forall (s:string) (t:stat),
       wf_stat S str t ->
       wf_stat S str (stat_label s t)
-  | wf_stat_block_nil :(*not elegant :( but I need this for the recursion in wf_stat_state_extends*)
-      wf_stat S str (stat_block nil)
-  | wf_stat_block_cons : forall (t:stat) (lt:list stat),
-      wf_stat S str t ->
-      wf_stat S str (stat_block lt) ->
-      wf_stat S str (stat_block (lt&t))
+  | wf_stat_block : forall (lt:list stat),
+      wf_liststat S str lt ->
+      wf_stat S str (stat_block lt)
   | wf_stat_var_decl : forall (l:list (string*option expr)),
       Forall (wf_var_decl S str) l ->
       wf_stat S str (stat_var_decl l)
-  | wf_stat_if_none : forall (e:expr) (t:stat),
+  | wf_stat_if : forall (e:expr) (t:stat) (ot:option stat),
       wf_expr S str e ->
       wf_stat S str t ->
-      wf_stat S str (stat_if e t None)
-  | wf_stat_if_some : forall (e:expr) (t t':stat),
-      wf_expr S str e ->
-      wf_stat S str t ->
-      wf_stat S str t' ->
-      wf_stat S str (stat_if e t (Some t'))
+      wf_ostat S str ot ->
+      wf_stat S str (stat_if e t ot)
   | wf_stat_do_while : forall (ls:label_set) (t:stat) (e:expr),
       wf_stat S str t ->
       wf_expr S str e ->
@@ -180,22 +182,11 @@ Inductive wf_stat (S:state) (str:strictness_flag) : stat -> Prop :=
       wf_stat S str (stat_break lab)
   | wf_stat_continue : forall (lab:label),
       wf_stat S str (stat_continue lab)
-  | wf_stat_try : forall (t:stat),
+  | wf_stat_try : forall (t:stat) (ost:option (string*stat)) (ot:option stat),
       wf_stat S str t ->
-      wf_stat S str (stat_try t None None)
-  | wf_stat_trycatch : forall (t1 t2 :stat) (s:string),
-      wf_stat S str t1 ->
-      wf_stat S str t2 ->
-      wf_stat S str (stat_try t1 (Some (s,t2)) None)
-  | wf_stat_tryfinally : forall (t1 t2:stat),
-      wf_stat S str t1 ->
-      wf_stat S str t2 ->
-      wf_stat S str (stat_try t1 None (Some t2))
-  | wf_stat_trycatchfinally : forall (t1 t2 t3:stat) (s:string),
-      wf_stat S str t1 ->
-      wf_stat S str t2 ->
-      wf_stat S str t3 ->
-      wf_stat S str (stat_try t1 (Some (s,t2)) (Some t3))
+      wf_ostat S str ot ->
+      wf_ostringstat S str ost ->
+      wf_stat S str (stat_try t ost ot)
   | wf_stat_for : forall (labs:label_set) (oe1 oe2 oe3:option expr) (t:stat),
       wf_oexpr S str oe1 ->
       wf_oexpr S str oe2 ->
@@ -207,21 +198,53 @@ Inductive wf_stat (S:state) (str:strictness_flag) : stat -> Prop :=
       wf_oexpr S str oe1 ->
       wf_oexpr S str oe2 ->
       wf_stat S str t ->
-      wf_stat S str (stat_for_var labs l oe1 oe2 t).
+      wf_stat S str (stat_for_var labs l oe1 oe2 t)
+  | wf_stat_switch : forall (labs:label_set) (e:expr) (sb:switchbody),
+      wf_expr S str e ->
+      wf_switchbody S str sb ->
+      wf_stat S str (stat_switch labs e sb)
 
+with wf_switchbody (S:state) (str:strictness_flag) : switchbody -> Prop :=
+  | wf_switchbody_nodefault : forall (lsc:list switchclause),
+      wf_listswitchclause S str lsc ->
+      wf_switchbody S str (switchbody_nodefault lsc)
+  | wf_switchbody_withdefault : forall (lsc lsc':list switchclause) (lt:list stat),
+      wf_listswitchclause S str lsc ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc' ->
+      wf_switchbody S str (switchbody_withdefault lsc lt lsc')
 
-Inductive wf_ostat (S:state) (str:strictness_flag) : (option stat) -> Prop :=
+with wf_switchclause (S:state) (str:strictness_flag) : switchclause -> Prop :=
+  | wf_switchclause_intro : forall (e:expr) (lt:list stat),
+      wf_expr S str e ->
+      wf_liststat S str lt ->
+      wf_switchclause S str (switchclause_intro e lt)
+
+with wf_ostat (S:state) (str:strictness_flag) : (option stat) -> Prop :=
   | wf_ostat_none : wf_ostat S str None
   | wf_ostat_some : forall (t:stat),
       wf_stat S str t ->
-      wf_ostat S str (Some t).
+      wf_ostat S str (Some t)
 
-
-Inductive wf_ostringstat (S:state) (str:strictness_flag) : (option (string * stat)) -> Prop :=
+with wf_ostringstat (S:state) (str:strictness_flag) : (option (string * stat)) -> Prop :=
   | wf_ostringstat_none : wf_ostringstat S str None
   | wf_ostringstat_some : forall (s:string) (t:stat),
       wf_stat S str t ->
-      wf_ostringstat S str (Some (s,t)).
+      wf_ostringstat S str (Some (s,t))
+
+with wf_liststat (S:state) (str:strictness_flag) : list stat -> Prop :=
+  | wf_liststat_nil : wf_liststat S str nil
+  | wf_liststat_cons : forall (t:stat) (lt:list stat),
+      wf_stat S str t ->
+      wf_liststat S str lt ->
+      wf_liststat S str (t :: lt)
+
+with wf_listswitchclause (S:state) (str:strictness_flag) : list switchclause -> Prop :=
+  | wf_listswitchclause_nil : wf_listswitchclause S str nil
+  | wf_listswitchclause_cons : forall (sc:switchclause) (lsc:list switchclause),
+      wf_switchclause S str sc ->
+      wf_listswitchclause S str lsc ->
+      wf_listswitchclause S str (sc :: lsc).
 
 
 
@@ -704,6 +727,137 @@ Inductive wf_ext_stat (S:state) (str:strictness_flag) : ext_stat -> Prop :=
       wf_oexpr S str oe2 ->
       wf_stat S str t ->
       wf_ext_stat S str (stat_for_var_1 o labs oe1 oe2 t)
+  (*stat_try*)
+  | wf_stat_switch_1 : forall (y:specret) (labs:label_set) (sb:switchbody),
+      wf_specret S str y ->
+      wf_switchbody S str sb ->
+      wf_ext_stat S str (stat_switch_1 y labs sb)
+  | wf_stat_switch_2 : forall (o:out) (labs:label_set),
+      wf_out S str o ->
+      wf_ext_stat S str (stat_switch_2 o labs)
+  | wf_stat_switch_nodefault_1 : forall (v:value) (rv:resvalue) (lsc:list switchclause),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_nodefault_1 v rv lsc)
+  | wf_stat_switch_nodefault_2 : forall (y:specret) (v:value) (rv:resvalue) (lt:list stat) (lsc:list switchclause),
+      wf_specret S str y ->
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_nodefault_2 y v rv lt lsc)
+  | wf_stat_switch_nodefault_3 : forall (b:bool) (v:value) (rv:resvalue) (lt:list stat) (lsc:list switchclause),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_nodefault_3 b v rv lt lsc)
+  | wf_stat_switch_nodefault_4 : forall (o:out) (lsc:list switchclause),
+      wf_out S str o ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_nodefault_4 o lsc)
+  | wf_stat_switch_nodefault_5 : forall (rv:resvalue) (lsc:list switchclause),
+      wf_resvalue S str rv ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_nodefault_5 rv lsc)
+  | wf_stat_switch_nodefault_6 : forall (rv:resvalue) (o:out) (lsc:list switchclause),
+      wf_resvalue S str rv ->
+      wf_out S str o ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_nodefault_6 rv o lsc)
+  | wf_stat_switch_default_1 : forall (v:value) (rv:resvalue) (lsc lsc':list switchclause) (lt:list stat),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_listswitchclause S str lsc' ->
+      wf_ext_stat S str (stat_switch_default_1 v rv lsc lt lsc')
+  | wf_stat_switch_default_A_1 : forall (b:bool) (v:value) (rv:resvalue) (lsc lsc':list switchclause) (lt:list stat),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_listswitchclause S str lsc ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc' ->
+      wf_ext_stat S str (stat_switch_default_A_1 b v rv lsc lt lsc')
+  | wf_stat_switch_default_A_2 : forall (y:specret) (v:value) (rv:resvalue) (lt lt':list stat) (lsc lsc':list switchclause),
+      wf_specret S str y ->
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_liststat S str lt' ->
+      wf_listswitchclause S str lsc' ->
+      wf_ext_stat S str (stat_switch_default_A_2 y v rv lt lsc lt' lsc')
+  | wf_stat_switch_default_A_3 : forall (b:bool) (v:value) (rv:resvalue) (lt lt':list stat) (lsc lsc':list switchclause),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_liststat S str lt' ->
+      wf_listswitchclause S str lsc' ->
+      wf_ext_stat S str (stat_switch_default_A_3 b v rv lt lsc lt' lsc')
+  | wf_stat_switch_default_A_4 : forall (rv:resvalue) (v:value) (lt lt':list stat) (lsc lsc':list switchclause),
+      wf_resvalue S str rv ->
+      wf_value S str v ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_liststat S str lt' ->
+      wf_listswitchclause S str lsc' ->
+      wf_ext_stat S str (stat_switch_default_A_4 rv v lt lsc lt' lsc')
+  | wf_stat_switch_default_A_5 : forall (rv:resvalue) (o:out) (v:value) (lsc lsc':list switchclause) (lt:list stat),
+      wf_resvalue S str rv ->
+      wf_out S str o ->
+      wf_value S str v ->
+      wf_listswitchclause S str lsc ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc' ->
+      wf_ext_stat S str (stat_switch_default_A_5 rv o v lsc lt lsc')
+  | wf_stat_switch_default_B_1 : forall (v:value) (rv:resvalue) (lt:list stat) (lsc:list switchclause),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_B_1 v rv lt lsc)
+  | wf_stat_switch_default_B_2 : forall (y:specret) (v:value) (rv:resvalue) (lt lt':list stat) (lsc:list switchclause),
+      wf_specret S str y ->
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_liststat S str lt' ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_B_2 y v rv lt lt' lsc)
+  | wf_stat_switch_default_B_3 : forall (b:bool) (v:value) (rv:resvalue) (lt lt':list stat) (lsc:list switchclause),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_liststat S str lt' ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_B_3 b v rv lt lt' lsc)
+  | wf_stat_switch_default_B_4 : forall (o:out) (lt:list stat) (lsc:list switchclause),
+      wf_out S str o ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_B_4 o lt lsc)
+  | wf_stat_switch_default_5 : forall (v:value) (rv:resvalue) (lt:list stat) (lsc:list switchclause),
+      wf_value S str v ->
+      wf_resvalue S str rv ->
+      wf_liststat S str lt ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_5 v rv lt lsc)
+  | wf_stat_switch_default_6 : forall (o:out) (lsc:list switchclause),
+      wf_out S str o ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_6 o lsc)
+  | wf_stat_switch_default_7 : forall (rv:resvalue) (lsc:list switchclause),
+      wf_resvalue S str rv ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_7 rv lsc)
+  | wf_stat_switch_default_8 : forall (rv:resvalue) (o:out) (lsc:list switchclause),
+      wf_resvalue S str rv ->
+      wf_out S str o ->
+      wf_listswitchclause S str lsc ->
+      wf_ext_stat S str (stat_switch_default_8 rv o lsc)
   (*stat_with*)
   | wf_stat_with_1 : forall (t:stat) (y:specret),
       wf_stat S str t ->

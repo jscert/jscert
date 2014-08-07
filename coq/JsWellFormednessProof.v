@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export JsWellFormednessDef JsSyntaxInfos.
+Require Export JsWellFormednessDef.
 
 Ltac auto_star ::= auto_star_default.
 
@@ -28,15 +28,40 @@ Proof.
   introv H. induction H; constructor*.
 Qed.
 
-  
-Lemma wf_add_infos_stat : forall (S:state) (str:strictness_flag) (ls:label_set) (t:stat),
+
+Definition add_infos_switchclause (str:strictness_flag) (sc:switchclause) := 
+  match sc with
+    | switchclause_intro e l => switchclause_intro (add_infos_exp str e) (List.map (add_infos_stat str label_set_empty) l)
+  end.
+
+
+Lemma wf_add_infos_stat : forall (S:state) (str:strictness_flag) (labs:label_set) (t:stat),
   wf_stat S str t ->
-  wf_stat S str (add_infos_stat str ls t).
+  wf_stat S str (add_infos_stat str labs t)
+
+with wf_add_infos_switchbody : forall (S:state) (str:strictness_flag) (sb:switchbody),
+  wf_switchbody S str sb ->
+  wf_switchbody S str (add_infos_switchbody str sb)
+
+with wf_add_infos_switchclause : forall (S:state) (str:strictness_flag) (sc:switchclause),
+  wf_switchclause S str sc ->
+  wf_switchclause S str (add_infos_switchclause str sc)
+
+with wf_add_infos_ostat : forall (S:state) (str:strictness_flag) (labs:label_set) (ot:option stat),
+  wf_ostat S str ot ->
+  wf_ostat S str (add_infos_ostat str labs ot)
+
+with wf_add_infos_liststat : forall (S:state) (str:strictness_flag) (labs:label_set) (lt:list stat),
+  wf_liststat S str lt ->
+  wf_liststat S str (List.map (add_infos_stat str labs) lt)
+
+with wf_add_infos_listswitchclause : forall (S:state) (str:strictness_flag) (lsc:list switchclause),
+  wf_listswitchclause S str lsc ->
+  wf_listswitchclause S str (List.map (add_infos_switchclause str) lsc).
+
 Proof.
-  introv Ht. generalize dependent ls. induction Ht; introv; simple*; try constructor*;try solve [inverts* H; inverts* H0; inverts* H1; constructor*; try apply* wf_add_infos_exp]; try apply* wf_add_infos_exp.
-  (*stat_block*)
-    rewrite listmap_liblistmap. rewrite map_app. constructor*.
-    rewrite <- listmap_liblistmap. forwards* M:IHHt2 label_set_empty.
+(*proof of wf_add_infos_stat*)
+  introv Ht. destruct Ht; simpl; try constructor*;try solve [inverts H; inverts* H0; inverts H1; constructor*; try apply* wf_add_infos_exp]; try apply* wf_add_infos_exp.
   (*stat_var_decl*)
     induction l; simpl; constructor*.
     inverts H. apply IHl in H3. clear IHl.
@@ -49,8 +74,24 @@ Proof.
     inverts H.
     simpl. constructor*.
     inverts* H4. constructor*. apply* wf_add_infos_exp.
+
+(*proof of wf_add_infos_switchbody*)
+  introv Hsb. destruct Hsb; simpl; constructor; try apply* wf_add_infos_listswitchclause. apply* wf_add_infos_liststat.
+
+(*proof of wf_add_infos_switchclause*)
+  introv Hsc. destruct Hsc. constructor. apply* wf_add_infos_exp. apply* wf_add_infos_liststat.
+
+(*proof of wf_add_infos_ostat*)
+  introv Hot. destruct Hot; constructor. apply* wf_add_infos_stat.
+
+(*proof of wf_add_infos_liststat*)
+  introv Hlt. destruct Hlt; simpl; constructor. apply* wf_add_infos_stat. apply* wf_add_infos_liststat.
+
+(*proof of wf_add_infos_listswitchclause*)
+  introv Hlsc. destruct Hlsc; simpl; constructor. apply* wf_add_infos_switchclause. apply* wf_add_infos_listswitchclause.
+
 Qed.
-    
+
 
 Lemma wf_add_infos_prog_strictness_false : forall (S:state) (str:strictness_flag) (p:prog),
   wf_prog S str p ->
@@ -133,33 +174,79 @@ Qed.
 Lemma wf_stat_state_extends : forall (S S':state) (str:strictness_flag) (t:stat),
   state_extends S' S ->
   wf_stat S str t ->
-  wf_stat S' str t.
+  wf_stat S' str t
+
+with wf_switchbody_state_extends : forall (S S':state) (str:strictness_flag) (sb:switchbody),
+  state_extends S' S ->
+  wf_switchbody S str sb ->
+  wf_switchbody S' str sb
+
+with wf_switchclause_state_extends : forall (S S':state) (str:strictness_flag) (sc:switchclause),
+  state_extends S' S ->
+  wf_switchclause S str sc ->
+  wf_switchclause S' str sc
+
+with wf_ostat_state_extends : forall (S S':state) (str:strictness_flag) (ot:option stat),
+  state_extends S' S ->
+  wf_ostat S str ot ->
+  wf_ostat S' str ot
+
+with wf_ostringstat_state_extends : forall (S S':state) (str:strictness_flag) (ost:option (string*stat)),
+  state_extends S' S ->
+  wf_ostringstat S str ost ->
+  wf_ostringstat S' str ost
+
+with wf_liststat_state_extends : forall (S S':state) (str:strictness_flag) (lt:list stat),
+  state_extends S' S ->
+  wf_liststat S str lt ->
+  wf_liststat S' str lt
+
+with wf_listswitchclause_state_extends : forall (S S':state) (str:strictness_flag) (lsc:list switchclause),
+  state_extends S' S ->
+  wf_listswitchclause S str lsc ->
+  wf_listswitchclause S' str lsc.
 Proof.
-  introv Hext HS. induction HS; constructor*; try solve [inverts* H; try constructor*; try apply* wf_expr_state_extends]; try apply* wf_expr_state_extends.
+(*proof of wf_stat_state_extends*)
+  introv Hext HS.
+  clear wf_switchclause_state_extends wf_listswitchclause_state_extends. 
+  destruct HS; constructor*; try solve [inverts* H; try constructor*; try apply* wf_expr_state_extends]; try apply* wf_expr_state_extends.
   induction l; constructor; inverts H; try eapply wf_var_decl_state_extends; eauto.
   inverts* H0; constructor*; apply* wf_expr_state_extends.
   inverts* H1; constructor*; apply* wf_expr_state_extends.
   apply* Forall_weaken. introv HH; apply* wf_var_decl_state_extends.
     inverts* H0; constructor*; apply* wf_expr_state_extends.
     inverts* H1; constructor*; apply* wf_expr_state_extends.
-Qed.
 
+(*proof of wf_switchbody_state_extends*)
+  introv Hext HS.
+  clear wf_stat_state_extends wf_switchclause_state_extends wf_ostat_state_extends wf_ostringstat_state_extends. 
+  destruct HS; constructor*.
 
-Lemma wf_ostat_state_extends : forall (S S':state) (str:strictness_flag) (ot:option stat),
-  state_extends S' S ->
-  wf_ostat S str ot ->
-  wf_ostat S' str ot.
-Proof.
-  introv Hext HS. inverts HS; constructor*; eapply wf_stat_state_extends; eauto.
-Qed.
+(*proof of wf_switchclause_state_extends*)
+  introv Hext HS.
+  clear wf_stat_state_extends wf_switchbody_state_extends wf_switchclause_state_extends wf_ostat_state_extends wf_ostringstat_state_extends.
+  destruct HS; constructor*.
+  apply* wf_expr_state_extends.
 
+(*proof of wf_ostat_state_extends*)
+  introv Hext HS.
+  clear wf_switchbody_state_extends wf_switchclause_state_extends wf_ostat_state_extends wf_ostringstat_state_extends wf_liststat_state_extends wf_listswitchclause_state_extends.
+  destruct HS; constructor*; eapply wf_stat_state_extends; eauto.
 
-Lemma wf_ostringstat_state_extends : forall (S S':state) (str:strictness_flag) (ost:option (string*stat)),
-  state_extends S' S ->
-  wf_ostringstat S str ost ->
-  wf_ostringstat S' str ost.
-Proof.
-  introv Hext HS. inverts HS; constructor*; eapply wf_stat_state_extends; eauto.
+(*proof of wf_ostringstat_state_extends*)
+  introv Hext HS.
+  clear wf_switchbody_state_extends wf_switchclause_state_extends wf_ostat_state_extends wf_ostringstat_state_extends wf_liststat_state_extends wf_listswitchclause_state_extends.
+  destruct HS; constructor*; eapply wf_stat_state_extends; eauto.
+
+(*proof of wf_liststat_state_extends*)
+  introv Hext HS.
+  clear wf_switchbody_state_extends wf_switchclause_state_extends wf_ostat_state_extends wf_ostringstat_state_extends wf_listswitchclause_state_extends.
+  destruct HS; constructor*.
+
+(*proof of wf_listswitchclause_state_extends*)
+  introv Hext HS.
+  clear wf_stat_state_extends wf_switchbody_state_extends wf_ostat_state_extends wf_ostringstat_state_extends wf_liststat_state_extends.
+  destruct HS; constructor*.
 Qed.
 
 
@@ -1130,11 +1217,15 @@ Ltac wf_state_extends :=
     | [H:state_extends ?S ?S', H':wf_env_loc ?S' ?str ?C |- wf_env_loc ?S ?str ?C] => forwards M: wf_env_loc_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_lexical_env ?S' ?str ?C |- wf_lexical_env ?S ?str ?C] => forwards M: wf_lexical_env_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_stat ?S' ?str ?t |- wf_stat ?S ?str ?t] => forwards M: wf_stat_state_extends H H'; assumption
+    | [H:state_extends ?S ?S', H':wf_switchbody ?S' ?str ?sb |- wf_switchbody ?S ?str ?sb] => forwards M: wf_switchbody_state_extends H H'; assumption
+    | [H:state_extends ?S ?S', H':wf_switchclause ?S' ?str ?sc |- wf_switchclause ?S ?str ?sc] => forwards M: wf_switchclause_state_extends H H'; assumption
+    | [H:state_extends ?S ?S', H':wf_liststat ?S' ?str ?lt |- wf_liststat ?S ?str ?lt] => forwards M: wf_liststat_state_extends H H'; assumption
+    | [H:state_extends ?S ?S', H':wf_listswitchclause ?S' ?str ?lsc |- wf_listswitchclause ?S ?str ?lsc] => forwards M: wf_listswitchclause_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_oexpr ?S' ?str ?oe |- wf_oexpr ?S ?str ?oe] => forwards M: wf_oexpr_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_ostat ?S' ?str ?ot |- wf_ostat ?S ?str ?ot] => forwards M: wf_ostat_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_ostringstat ?S' ?str ?ost |- wf_ostringstat ?S ?str ?ost] => forwards M: wf_ostringstat_state_extends H H'; assumption
     | [H:state_extends ?S ?S', H':wf_res ?S' ?str ?R |- wf_res ?S ?str ?R] => forwards M: wf_res_state_extends H H'; assumption
-
+                                                                                                                       
   end.
 
 
@@ -1880,6 +1971,21 @@ Ltac wf_inverts_stat :=
     | [H:wf_stat _ _ _ |-_] => inverts H
   end.
 
+Ltac wf_inverts_stat_aux :=
+  match goal with
+    | [H:wf_switchbody _ _ (switchbody_nodefault _) |-_] => inverts H
+    | [H:wf_switchbody _ _ (switchbody_withdefault _ _ _) |-_] => inverts H
+    | [H:wf_switchclause _ _ (switchclause_intro _ _) |-_] => inverts H
+    | [H:wf_ostat _ _ None |-_] => clear H
+    | [H:wf_ostat _ _ (Some _) |-_] => inverts H
+    | [H:wf_ostringstat _ _ None |-_] => clear H
+    | [H:wf_ostringstat _ _ (Some _) |-_] => inverts H
+    | [H:wf_liststat _ _ nil |-_] => clear H
+    | [H:wf_liststat _ _ (List.cons _ _) |-_] => inverts H
+    | [H:wf_listswitchclause _ _ nil |-_] => clear H
+    | [H:wf_listswitchclause _ _ (List.cons _ _) |-_] => inverts H
+  end.
+
 
 (*lemmas used in the proof of pr_red_stat*)
 Lemma lexical_env_alloc_state_extends : forall (S S':state) (lex lex':lexical_env) (E:env_record),
@@ -1944,7 +2050,7 @@ Ltac appredspec :=
 
 Hint Resolve pr_red_spec : wf_base.
 Hint Extern 1 => appredspec : wf_base.
-
+Hint Extern 0 => wf_inverts_stat_aux : wf_base.
 
 
 Theorem pr_red_stat : forall (S:state) (C:execution_ctx) (et:ext_stat) (o:out) (str:strictness_flag),
@@ -1954,11 +2060,13 @@ Theorem pr_red_stat : forall (S:state) (C:execution_ctx) (et:ext_stat) (o:out) (
   wf_ext_stat S str et ->
   wf_out S str o.
 Proof.
-  introv Hred. induction Hred; introv HS HC Het;  try solve [apply* wf_out_of_ext_stat]; try solve [wf_inverts_stat; auto with wf_base | wf_inverts_stat; wf_inverts_stat; auto with wf_base].
+  introv Hred. induction Hred; introv HS HC Het;  try solve [apply* wf_out_of_ext_stat]; try solve [wf_inverts_stat; repeat wf_inverts_stat_aux; solve [auto with wf_base | wf_inverts_stat; auto with wf_base ]].
 
   (*red_stat_block*)
-  wf_inverts_stat. wf_inverts_stat. exfalso; apply* nil_eq_last_inv. apply last_eq_last_inv in H. inverts H.
-  apply* IHHred2.
+  wf_inverts_stat. wf_inverts_stat.
+  assert (M:wf_stat S str t). clear Hred1 Hred2 IHHred1 IHHred2 HS HC. induction ts; inverts* H1.
+  assert (MM:wf_liststat S str ts). clear Hred1 Hred2 IHHred1 IHHred2 HS HC M. induction ts; inverts* H1. constructor*.
+  auto with wf_base.
 
   wf_inverts_stat. wf_inverts3a. wf_out_change_state. constructor*. subst.
     destruct R; destruct res_value; simpl; unfolds res_overwrite_value_if_empty; cases_if; simpl; auto. inverts H7;  constructor*.
@@ -1985,6 +2093,9 @@ Proof.
   wf_inverts_stat. wf_inverts3a. wf_out_change_state.
   apply* IHHred. constructor*. apply* pr_red_expr. rconstructors*.
 
+  (*red_stat_if*)
+  wf_inverts_stat. wf_inverts_stat. apply* IHHred. inverts* H6; constructor*; auto with wf_base.
+
   (*red_stat_do_while*)
   wf_inverts_stat. wf_inverts3a. subst. cases_if; auto with wf_base. wf_out_change_state. apply* IHHred. constructor*. destruct R; inverts* H5.
 
@@ -2002,6 +2113,25 @@ Proof.
   forwards* M2: wf_lexical_env_alloc S str lex. subst; inverts* HC. constructor*. inverts* M2.
   wf_out_change_state. wf_out_change_state. apply* IHHred. subst*. destruct C; constructor*; simpl. inverts* HC. apply wf_lexical_env_state_extends with S; auto. inverts* HC. apply wf_value_state_extends with S; auto.
   constructor*. apply wf_stat_state_extends with S; auto.
+
+  (*red_stat_switch*)
+  wf_inverts_stat. repeat wf_inverts_stat_aux. wf_inverts3a. wf_out_change_state. auto with wf_base.
+
+  wf_inverts_stat. repeat wf_inverts_stat_aux. wf_inverts3a. wf_out_change_state. auto with wf_base.
+
+  wf_inverts_stat. subst. wf_inverts3a. auto with wf_base.
+
+  wf_inverts_stat. wf_inverts3a. destruct R. cases_if; subst; auto with wf_base.
+
+  wf_inverts_stat. wf_inverts3a. subst. constructor*. apply* wf_res_overwrite_value_if_empty.
+
+  wf_inverts_stat. wf_inverts3a. cases_if; subst; auto with wf_base.
+
+  wf_inverts_stat. wf_inverts3a. constructor*. apply* wf_res_overwrite_value_if_empty.
+
+  wf_inverts_stat. wf_inverts3a. cases_if; subst; auto with wf_base.
+
+  wf_inverts_stat. wf_inverts3a. constructor*. apply* wf_res_overwrite_value_if_empty.
 
   (*red_stat_label*)
   wf_inverts_stat. subst. wf_inverts3a. auto with wf_base.
