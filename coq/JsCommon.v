@@ -671,8 +671,8 @@ Definition attributes_change_enumerable_on_non_configurable A Desc : Prop := (* 
 Definition attributes_change_data_on_non_configurable Ad Desc : Prop := (* 8.12.9 step 10.a *)
      attributes_configurable Ad = false
   /\ attributes_data_writable Ad = false
-  /\ (   descriptor_writable Desc = Some true
-      /\ descriptor_value_not_same Ad Desc).
+  /\ (   (descriptor_writable Desc = Some true)
+      \/ (descriptor_value_not_same Ad Desc)).
 
 Definition attributes_change_accessor_on_non_configurable Aa Desc : Prop := (* 8.12.9 step 11.a *)
      attributes_configurable Aa = false
