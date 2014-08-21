@@ -99,7 +99,7 @@ Inductive wf_obinary_op : option binary_op -> Prop :=
 
 
 (*well-formedness for programs*)
-(*the state and the strictness flag are currently unused but may be needed later*)
+(*the strictness flag is currently unused but may be needed later*)
 
 Inductive wf_expr (S:state) (str:strictness_flag) : expr -> Prop :=
   | wf_expr_this : wf_expr S str expr_this
@@ -280,7 +280,6 @@ Inductive wf_ovalue (S:state) (str:strictness_flag) : option value -> Prop :=
 
 
 (*well-formedness for env_records*)
-
 Definition wf_decl_env_record (S:state) (str:strictness_flag) (env:decl_env_record) : Prop :=
   forall (s:string) (m:mutability) (v:value),
     decl_env_record_binds env s m v ->
@@ -324,10 +323,6 @@ Inductive wf_attributes (S:state) (str:strictness_flag) : attributes -> Prop :=
   | wf_attributes_data_of : forall (v:value) (b1 b2 b3:bool),
       wf_value S str v ->
       wf_attributes S str (attributes_data_of (attributes_data_intro v b1 b2 b3)).
-(*  | wf_attributes_accessor_of : forall (v v':value) (b b':bool),
-      wf_value S str v ->
-      wf_value S str v' ->
-      wf_attributes S str (attributes_accessor_of (attributes_accessor_intro v v' b b')).*)
 
 
 Inductive wf_oattributes (S:state) (str:strictness_flag) : option attributes -> Prop :=
@@ -400,16 +395,15 @@ Inductive wf_lexical_env (S:state) (str:strictness_flag) : lexical_env -> Prop :
       wf_lexical_env S str lex ->
       wf_lexical_env S str (L::lex).
 
+(*this predicate is no longer used*)
 Definition only_global_scope (C:execution_ctx) :=
-  execution_ctx_lexical_env C = (env_loc_global_env_record::nil). (*maybe too strict*)
+  execution_ctx_lexical_env C = (env_loc_global_env_record::nil).
 
 
 Record wf_execution_ctx (S:state) (str:strictness_flag) (C:execution_ctx) := wf_execution_ctx_intro {
   wf_execution_ctx_wf_lexical_env : wf_lexical_env S str (execution_ctx_lexical_env C);
   wf_execution_ctx_wf_variable_env : wf_lexical_env S str (execution_ctx_variable_env C); 
   wf_execution_ctx_this_binding : wf_value S str (execution_ctx_this_binding C)}.
-  (*wf_execution_ctx_only_global_scope : only_global_scope C}.*)
-
 
 
 
@@ -450,14 +444,13 @@ Inductive wf_restype : restype -> Prop :=
 
 
 Inductive wf_res (S:state) (str:strictness_flag) : res -> Prop :=
-  | wf_res_intro : forall (rt:restype) (rv:resvalue) (lab:label), (*not sure about the label and the type*)
+  | wf_res_intro : forall (rt:restype) (rv:resvalue) (lab:label),
       wf_restype rt ->
       wf_resvalue S str rv ->
       wf_res S str (res_intro rt rv lab).
 
 
 Inductive wf_out (S:state) (str:strictness_flag) : out -> Prop :=
-(*  | wf_out_div : wf_out S str out_div*) (*shouldn't happen actually*)
   | wf_out_ter : forall (S':state) (R:res),
       wf_state S' ->
       state_extends S' S ->
@@ -1096,7 +1089,7 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_env_loc S str L ->
       wf_ext_expr S str (spec_binding_inst_function_decls nil L nil str' b)
   (*spec_binding_inst*)
-  | wf_spec_binding_inst : forall (p:prog), (*probably too strict, but I needed this*)
+  | wf_spec_binding_inst : forall (p:prog),
       wf_prog S str p ->
       wf_ext_expr S str (spec_binding_inst codetype_global None p nil)
   | wf_spec_binding_inst_1 : forall (p:prog) (L:env_loc),
@@ -1395,11 +1388,6 @@ Inductive wf_ext_expr (S:state) (str:strictness_flag) : ext_expr -> Prop :=
       wf_attributes S str A ->
       wf_descriptor S str Desc ->
       wf_ext_expr S str (spec_object_define_own_prop_5 l x A Desc b)
-(*  | wf_spec_object_define_own_prop_6a : forall (l:object_loc) (x:prop_name) (A:attributes) (Desc:descriptor) (b:bool),
-      wf_object_loc S str l ->
-      wf_attributes S str A ->
-      wf_descriptor S str Desc ->
-      wf_ext_expr S str (spec_object_define_own_prop_6a l x A Desc b)*)
   | wf_spec_object_define_own_prop_6b : forall (l:object_loc) (x:prop_name) (A:attributes) (Desc:descriptor) (b:bool),
       wf_object_loc S str l ->
       wf_attributes S str A ->

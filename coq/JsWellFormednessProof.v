@@ -12,15 +12,6 @@ Tactic Notation "rconstructors" "*" := repeat (constructors; auto_star).
 
 (*lemmas about add_info_prog and prog_intro_strictness*)
 
-Lemma listmap_liblistmap : forall {X Y:Type} (l:list X) (f:X->Y),
-  List.map f l = LibList.map f l.
-Proof.
-  introv.
-  induction l; auto.
-  rewrite map_cons. rewrite <- IHl. reflexivity.
-Qed.
-
-
 Lemma wf_add_infos_exp : forall (S:state) (str:strictness_flag) (e:expr),
   wf_expr S str e ->
   wf_expr S str (add_infos_exp str e).
@@ -143,7 +134,6 @@ Qed.
 
 (*lemmas : if S' extends S and X is wf in S, it is in S' too*)
 (* for X=expr, stat, prog... *)
-
 
 Lemma wf_expr_state_extends : forall (S S':state) (str:strictness_flag) (e:expr),
   state_extends S' S ->
@@ -399,7 +389,7 @@ Qed.
 
 
 Lemma wf_out_state_extends : forall (S S':state) (str:strictness_flag) (o:out),
-  state_extends S S' ->(*it's a trap!*)
+  state_extends S S' ->(*S and S' are switched*)
   wf_out S str o ->
   wf_out S' str o.
 Proof.
@@ -409,7 +399,7 @@ Qed.
 
 
 Lemma wf_specret_state_extends : forall (S S':state) (str:strictness_flag) (s:specret),
-  state_extends S S' ->(*it's a trap!*)
+  state_extends S S' ->(*S and S' are switched*)
   wf_specret S str s ->
   wf_specret S' str s.
 Proof.
@@ -421,7 +411,7 @@ Qed.
 
 
 
-(*lemmas: if x of type x is well-formed then out_of_X x is well-formed too*)
+(*lemmas: if x of type X is well-formed then out_of_X x is well-formed too*)
 
 Lemma wf_out_of_specret_lem :  forall (S:state) (str:strictness_flag) (s:specret) (o:out),
   out_of_specret s = Some o ->
@@ -432,7 +422,8 @@ Proof.
 Qed.
 
 
-(*tactic to apply wf_out_of_specret_X*)
+(*tactic to apply wf_out_of_specret_lem*)
+(*it was useful when specret was polymorphic and there were several wf_out_of_specret_X*)
 Ltac wf_out_of_specret :=
   match goal with
     | [ H:wf_specret ?S ?str ?s, H':out_of_specret ?s = Some ?o|- wf_out ?S ?str ?o ] =>
@@ -482,7 +473,6 @@ Qed.
 
 (*other lemmas*)
 
-(*only true for now*)
 (*i use this to remove the funcdecl case in the proof of pr_red_prog*)
 Lemma wf_prog_funcdecl_nil : forall (S:state) (str:strictness_flag) (p:prog),
   wf_prog S str p ->
@@ -529,6 +519,7 @@ Ltac wf_out_extends :=
 
 
 
+(*needed in some proofs*)
 Lemma eq_env_loc_dec : forall (L L':env_loc),
   {L = L'} + {L <> L'}.
 Proof.
@@ -610,7 +601,7 @@ Qed.
 
 
 
-(*important lemmas*)
+(*important low-level lemmas*)
 
 Lemma wf_env_record_write : forall (str:strictness_flag) (S S':state) (E:env_record) (L:env_loc),
   wf_state S ->
@@ -898,25 +889,6 @@ Proof.
   apply object_write_state_extends.
 Qed.
 
-(*
-Lemma wf_object_write : forall (S:state) (str:strictness_flag) (l:object_loc) (O:object),
-  wf_state S ->
-  wf_object S str O ->
-  wf_state (object_write S l O).
-Proof.
-  introv HS HO. forwards M:object_write_state_extends S O l. constructor*.
-  (*wf_state_wf_objects*)
-    introv Hl. apply* wf_object_state_extends. apply wf_object_str with str. inverts Hl. apply object_binds_write_inv in H. inverts H; inverts* H0.
-    (*x <> l*)
-      inverts HS. apply* wf_state_wf_objects.
-  (*wf_state_prealloc_global*)
-    inverts HS. inverts wf_state_prealloc_global. exists x. inverts H.
-    constructor*.
-    
-  (*wf_state_prealloc_native_error_proto*)
-  (*wf_state_wf_env_records*)
-  (*wf_state_env_loc_global_env_record*)
-*)
 
 Lemma wf_object_rem_property : forall (S S':state) (l:object_loc) (x:prop_name),
   wf_state S ->
@@ -1964,7 +1936,8 @@ Hint Resolve pr_red_expr : core.
 Hint Resolve pr_red_spec : wf_base.
 Hint Resolve pr_red_expr : wf_base.
 
-(*tactic used in the proof of pr_red_stat*)
+
+(*tactics used in the proof of pr_red_stat*)
 Ltac wf_inverts_stat :=
   match goal with
     | [H:wf_ext_stat _ _ _ |-_] => inverts H
@@ -1985,6 +1958,16 @@ Ltac wf_inverts_stat_aux :=
     | [H:wf_listswitchclause _ _ nil |-_] => clear H
     | [H:wf_listswitchclause _ _ (List.cons _ _) |-_] => inverts H
   end.
+
+Ltac appredspec :=
+  match goal with
+    | [H:red_spec _ _ _ ?s |- wf_specret _ _ ?s] => forwards*: pr_red_spec H; auto
+  end.
+
+
+Hint Resolve pr_red_spec : wf_base.
+Hint Extern 1 => appredspec : wf_base.
+Hint Extern 0 => wf_inverts_stat_aux : wf_base.
 
 
 (*lemmas used in the proof of pr_red_stat*)
@@ -2042,15 +2025,6 @@ Proof.
 Qed.
 
 
-Ltac appredspec :=
-  match goal with
-    | [H:red_spec _ _ _ ?s |- wf_specret _ _ ?s] => forwards*: pr_red_spec H; auto
-  end.
-
-
-Hint Resolve pr_red_spec : wf_base.
-Hint Extern 1 => appredspec : wf_base.
-Hint Extern 0 => wf_inverts_stat_aux : wf_base.
 
 
 Theorem pr_red_stat : forall (S:state) (C:execution_ctx) (et:ext_stat) (o:out) (str:strictness_flag),
