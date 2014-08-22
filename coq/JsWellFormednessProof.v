@@ -9,6 +9,31 @@ Tactic Notation "rconstructors" := repeat constructors.
 Tactic Notation "rconstructors" "*" := repeat (constructors; auto_star).
 
 
+(*lemma: the empty heap does not contain anything*)
+Lemma heap_empty_binds_false : forall {X Y:Type} (x:X) (y:Y),
+  Heap.binds Heap.empty x y ->
+  False.
+Proof.
+  introv Hb.
+  assert (M: exists (y':Y), Heap.binds Heap.empty x y'); [exists* y|].
+  rewrite <- Heap.indom_equiv_binds in M. unfolds in M. rewrite Heap.dom_empty in M.
+  inverts M.
+Qed.  
+
+
+(*tactic to find something in a heap*)
+Ltac find_in_heap :=
+  match goal with
+    | [|-Heap.binds _ _ _] => let h := fresh in
+      repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h]))
+    | [|-exists _, Heap.binds _ _ _] => eexists;
+      (let h := fresh in
+        repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h])))
+    | [|-Heap.indom _ _] => rewrite Heap.indom_equiv_binds; eexists;
+      (let h := fresh in
+        repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h])))
+  end.
+
 
 (*lemmas about add_info_prog and prog_intro_strictness*)
 
@@ -927,6 +952,62 @@ Qed.
 
 
 
+(*low-level lemmas used in the proof of pr_red_stat*)
+Lemma lexical_env_alloc_state_extends : forall (S S':state) (lex lex':lexical_env) (E:env_record),
+  (lex',S') = lexical_env_alloc S lex E ->
+  state_extends S' S.
+Proof.
+  introv HH. unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
+  unfolds. split. simpl. apply* @heap_extends_refl.
+  simpl. apply* @heap_write_extends. apply* eq_env_loc_dec.
+Qed.
+
+
+Lemma wf_lexical_env_alloc : forall (S S':state) (str:strictness_flag) (lex lex':lexical_env) (E:env_record),
+  wf_state S ->
+  wf_lexical_env S str lex ->
+  wf_env_record S str E ->
+  (lex',S') = lexical_env_alloc S lex E ->
+  wf_state S' /\ wf_lexical_env S' str lex'.
+Proof.
+  introv HS Hl HE HH.
+  forwards* M:lexical_env_alloc_state_extends. split.
+  (*wf_state*)
+    unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
+    inverts HS. constructor*.
+    (*wf_state_wf_objects*)
+      introv EE. unfolds object_binds. clear wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. simpl in EE; simpl in wf_state_wf_objects.
+      forwards* MM: wf_object_state_extends str0 obj M.
+    (*wf_state_prealloc_global*)
+      clear wf_state_wf_objects wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. inverts wf_state_prealloc_global. exists* x.
+    (*wf_state_wf_env_records*)
+      clear wf_state_wf_objects wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_env_loc_global_env_record Hl.
+      introv Hb. inverts Hb. unfolds in H. simpl in H. apply Heap.binds_write_inv in H. inverts H. inverts H0. 
+      clear wf_state_wf_env_records. inverts HE.
+        constructor; unfolds wf_decl_env_record. introv Hb. forwards* MM:H Hb. inverts* MM.
+        constructor; unfolds wf_object_loc. unfolds* object_indom.
+      inverts H0. eapply wf_env_record_state_extends; eauto.
+    (*wf_state_env_loc_global_env_record*)
+      simpl. simpl in wf_state_env_loc_global_env_record. unfolds Heap.indom.
+      rewrite Heap.dom_write. apply* in_union_get_1.
+  (*wf_lexical_env*)
+    unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
+    constructor*. constructor*. simpl. find_in_heap.
+    eapply wf_lexical_env_state_extends; eauto.
+Qed.
+
+
+Lemma wf_execution_ctx_with_lex : forall (S:state) (str:strictness_flag) (C:execution_ctx) (lex:lexical_env),
+  wf_execution_ctx S str C ->
+  wf_lexical_env S str lex ->
+  wf_execution_ctx S str (execution_ctx_with_lex C lex).
+Proof.
+  introv HC Hlex. destruct C. inverts HC.
+  simpl in wf_execution_ctx_wf_lexical_env; simpl in wf_execution_ctx_this_binding. unfolds execution_ctx_with_lex. constructor*.
+Qed.
+
+
+
 (*lemmas: the initial state and execution_ctx are well-formed*)
 
 (*record: the objects in the initial state are well-formed*)
@@ -987,32 +1068,6 @@ Record wf_state_initial_wf_objects_aux (S:state) (str:strictness_flag):=
    wf_initial_number_proto_value_of_function_object : wf_object S str number_proto_value_of_function_object;
    wf_initial_error_proto_to_string_function_object : wf_object S str error_proto_to_string_function_object}.
 
-
-
-
-Lemma heap_empty_binds_false : forall {X Y:Type} (x:X) (y:Y),
-  Heap.binds Heap.empty x y ->
-  False.
-Proof.
-  introv Hb.
-  assert (M: exists (y':Y), Heap.binds Heap.empty x y'); [exists* y|].
-  rewrite <- Heap.indom_equiv_binds in M. unfolds in M. rewrite Heap.dom_empty in M.
-  inverts M.
-Qed.  
-
-
-(*tactic to find something in a heap*)
-Ltac find_in_heap :=
-  match goal with
-    | [|-Heap.binds _ _ _] => let h := fresh in
-      repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h]))
-    | [|-exists _, Heap.binds _ _ _] => eexists;
-      (let h := fresh in
-        repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h])))
-    | [|-Heap.indom _ _] => rewrite Heap.indom_equiv_binds; eexists;
-      (let h := fresh in
-        repeat (try (apply Heap.binds_write_eq; reflexivity); (apply Heap.binds_write_neq; [|introv h; inverts h])))
-  end.
 
 
 Lemma wf_initial_objects : forall (str:strictness_flag),
@@ -1227,7 +1282,7 @@ Hint Extern 0 => appred : wf_base.
 Hint Constructors Forall wf_expr wf_prog wf_stat wf_var_decl wf_ext_expr wf_ext_stat wf_ext_prog state_of_out wf_ext_spec wf_res wf_full_descriptor wf_specret wf_specval : wf_base.
 
 
-(*Theorems: wf is preserved by reduction*)
+(*Theorems: well-formedness is preserved by reduction for ext_expr and ext_spec*)
 
 Theorem pr_red_spec : forall (S:state) (C:execution_ctx) (str:strictness_flag) (es:ext_spec) (s:specret),
   wf_state S ->
@@ -1970,63 +2025,8 @@ Hint Extern 1 => appredspec : wf_base.
 Hint Extern 0 => wf_inverts_stat_aux : wf_base.
 
 
-(*lemmas used in the proof of pr_red_stat*)
-Lemma lexical_env_alloc_state_extends : forall (S S':state) (lex lex':lexical_env) (E:env_record),
-  (lex',S') = lexical_env_alloc S lex E ->
-  state_extends S' S.
-Proof.
-  introv HH. unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
-  unfolds. split. simpl. apply* @heap_extends_refl.
-  simpl. apply* @heap_write_extends. apply* eq_env_loc_dec.
-Qed.
 
-
-Lemma wf_lexical_env_alloc : forall (S S':state) (str:strictness_flag) (lex lex':lexical_env) (E:env_record),
-  wf_state S ->
-  wf_lexical_env S str lex ->
-  wf_env_record S str E ->
-  (lex',S') = lexical_env_alloc S lex E ->
-  wf_state S' /\ wf_lexical_env S' str lex'.
-Proof.
-  introv HS Hl HE HH.
-  forwards* M:lexical_env_alloc_state_extends. split.
-  (*wf_state*)
-    unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
-    inverts HS. constructor*.
-    (*wf_state_wf_objects*)
-      introv EE. unfolds object_binds. clear wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. simpl in EE; simpl in wf_state_wf_objects.
-      forwards* MM: wf_object_state_extends str0 obj M.
-    (*wf_state_prealloc_global*)
-      clear wf_state_wf_objects wf_state_prealloc_native_error_proto wf_state_wf_env_records wf_state_env_loc_global_env_record Hl. inverts wf_state_prealloc_global. exists* x.
-    (*wf_state_wf_env_records*)
-      clear wf_state_wf_objects wf_state_prealloc_global wf_state_prealloc_native_error_proto wf_state_env_loc_global_env_record Hl.
-      introv Hb. inverts Hb. unfolds in H. simpl in H. apply Heap.binds_write_inv in H. inverts H. inverts H0. 
-      clear wf_state_wf_env_records. inverts HE.
-        constructor; unfolds wf_decl_env_record. introv Hb. forwards* MM:H Hb. inverts* MM.
-        constructor; unfolds wf_object_loc. unfolds* object_indom.
-      inverts H0. eapply wf_env_record_state_extends; eauto.
-    (*wf_state_env_loc_global_env_record*)
-      simpl. simpl in wf_state_env_loc_global_env_record. unfolds Heap.indom.
-      rewrite Heap.dom_write. apply* in_union_get_1.
-  (*wf_lexical_env*)
-    unfolds lexical_env_alloc. unfolds env_record_alloc. destruct S. destruct state_fresh_locations. inverts HH.
-    constructor*. constructor*. simpl. find_in_heap.
-    eapply wf_lexical_env_state_extends; eauto.
-Qed.
-
-
-Lemma wf_execution_ctx_with_lex : forall (S:state) (str:strictness_flag) (C:execution_ctx) (lex:lexical_env),
-  wf_execution_ctx S str C ->
-  wf_lexical_env S str lex ->
-  wf_execution_ctx S str (execution_ctx_with_lex C lex).
-Proof.
-  introv HC Hlex. destruct C. inverts HC.
-  simpl in wf_execution_ctx_wf_lexical_env; simpl in wf_execution_ctx_this_binding. unfolds execution_ctx_with_lex. constructor*.
-Qed.
-
-
-
-
+(*Theorem: well-formedness is preserved by reduction for ext_stat*)
 Theorem pr_red_stat : forall (S:state) (C:execution_ctx) (et:ext_stat) (o:out) (str:strictness_flag),
   red_stat S C et o ->
   wf_state S ->
@@ -2123,6 +2123,8 @@ Qed.
 
 
 
+
+(*Theorem: well-formedness is preserved by reduction for ext_prog*)
 Theorem pr_red_prog : forall (S:state) (C:execution_ctx) (ep:ext_prog) (o:out) (str:strictness_flag),
 
   red_prog S C ep o ->
@@ -2165,7 +2167,9 @@ Qed.
 
 
 
-(*state_initial because that's what red_javascript does*)
+
+(*Theorem: well-formedness is preserved by reduction for programs*)
+(*(with respect to state_initial, because that's what red_javascript does)*)
 Theorem pr_red_javascript : forall (p:prog) (str:strictness_flag) (o:out),
   (forall str':strictness_flag, wf_value state_initial str' object_prealloc_global_proto) ->
   red_javascript p o ->
