@@ -192,14 +192,17 @@ and exp_to_stat exp : JsSyntax.stat =
       | If (e1, e2, None) -> JsSyntax.Coq_stat_if (exp_to_exp e1, f e2, None)
       | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | For (e1, e2, e3, e4) ->
-          (match e1.exp_stx with
-          | VarDec vs ->
+        let fop expr = begin match expr with
+                         | None -> None
+                         | Some(real_e) -> Some (exp_to_exp real_e) end in
+          (match e1 with
+          | Some ({exp_offset; exp_stx = (VarDec vs); exp_annot}) ->
                 JsSyntax.Coq_stat_for_var ([], (map (fun (v, e) ->
                     string_to_coq v, match e with None -> None
                         | Some e -> Some (exp_to_exp e)) vs),
-                    Some (exp_to_exp e2), Some (exp_to_exp e3), f e4)
+                    fop e2, fop e3, f e4)
           | _ ->
-                  JsSyntax.Coq_stat_for ([], Some (exp_to_exp e1), Some (exp_to_exp e2), Some (exp_to_exp e3), f e4))
+                  JsSyntax.Coq_stat_for ([], fop e1, fop e2, fop e3, f e4))
       | Switch (e1, e2s) -> 
         let (firstpart, defaultcase, secondpart) = List.fold_left (fun (fi, de, se) el -> (
           if de = None then
