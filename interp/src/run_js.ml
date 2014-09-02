@@ -177,7 +177,7 @@ let _ =
     print_string
       ("\nTranslation of Javascript syntax does not support `" ^ s ^ "' yet.") ;
     exit 2
-  | Xml.File_not_found file ->
+  | Parser.ParserFailure file ->
     print_string ("\nParsing problem with the file `" ^ file ^ "'.") ;
     exit_if_test ()
 
