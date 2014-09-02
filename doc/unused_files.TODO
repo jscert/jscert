@@ -1,0 +1,18 @@
+# Junk?
+coq/bin.v
+
+# Here for safe keeping?
+coq/Int32.v
+
+# Junk?
+coq/JsExtraction.v
+
+# Unused, but proofs?
+coq/JsHeapAux.v
+coq/JsScopes.v
+coq/JsSemanticsAux.v
+
+# Duplicates Wellformedness?
+coq/JsWf.v
+coq/JsWfAux.v
+
