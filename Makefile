@@ -12,8 +12,8 @@
 # Default paths for TLC and COQBIN, etc are as follows:
 
 COQBIN=
-TLC=tlc
-FLOCQ=flocq
+TLC=lib/tlc
+FLOCQ=lib/flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
 # Define FAST to be non empty for compiling Coq proofs faster
@@ -128,10 +128,9 @@ tags: $(JS_SRC)
 init:
 	bash -c "mkdir interp/src/extract" || true
 	git submodule init; git submodule update
-	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk tlc
-	tar -xzf flocq-2.1.0.tar.gz
-	mv flocq-2.1.0 flocq
-	# chmod +x interp/run.py -- no longer necessarry
+	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk lib/tlc
+	tar -xzf lib/flocq-2.1.0.tar.gz
+	mv flocq-2.1.0 lib/flocq
 
 # alternative: pull git from svn
 #	git clone https://gforge.inria.fr/git/flocq/flocq.git flocq
@@ -143,35 +142,44 @@ init:
 
 # Compile coqj : converts a .v file into a shallow .v file (without proofs)
 
-coqj: coqj.mll
-	ocamllex coqj.mll
-	ocamlopt -o coqj coqj.ml
-
+#coqj: coqj.mll
+#	ocamllex coqj.mll
+#	ocamlopt -o coqj coqj.ml
+#
 # Fast compilation of files in $(FAST_SRC)
 
-define FAST_RULE
+#define FAST_RULE
 
-$(1).vo: .depend coqj
-	@mkdir -p _shallow/$(dir $1)
-	./coqj $(1).v > _shallow/$(1).v
-	$(COQC) -dont-load-proofs -I coq -I $(TLC) _shallow/$(1).v
-	mv _shallow/$(1).vo $(1).vo
+#$(1).vo: .depend coqj
+#	@mkdir -p _shallow/$(dir $1)
+#	./coqj $(1).v > _shallow/$(1).v
+#	$(COQC) -dont-load-proofs -I coq -I $(TLC) _shallow/$(1).v
+#	mv _shallow/$(1).vo $(1).vo
 
-endef
+#endef
 
-$(foreach filebase,$(FAST_SRC:.v=),$(eval $(call FAST_RULE,$(filebase))))
+#$(foreach filebase,$(FAST_SRC:.v=),$(eval $(call FAST_RULE,$(filebase))))
 
 # "make nofast" : Compilation mode to force the verification of all files
 
-nofast: $(FAST_VO:.vo=_full.vo)
+#nofast: $(FAST_VO:.vo=_full.vo)
 
-%_full.vo : %.v .depend
-	echo $*
-	cp $*.v $*_full.v
-	$(COQC) -dont-load-proofs -I coq -I $(TLC) $*_full.v
-	rm $*_full.v
+#%_full.vo : %.v .depend
+#	echo $*
+#	cp $*.v $*_full.v
+#	$(COQC) -dont-load-proofs -I coq -I $(TLC) $*_full.v
+#	rm $*_full.v
 
+#######
+# Coq Compilation
+#######
+%.v.d: %.v
+	$(COQDEP) $< > $@
 
+include $(JS_SRC:.v=.v.d)
+
+%.vo:
+	$(COQC) -dont-load-proofs $<
 
 #######################################################
 #######################################################
@@ -185,9 +193,6 @@ REFGETVALUE2=$(shell cat interp/src/insert/ref_get_value2)
 RUNOBJECTMETHOD=$(shell cat interp/src/insert/run_object_method)
 RUNOBJECTHEAP=$(shell cat interp/src/insert/run_object_heap_set_extensible)
 ENVGETIDENTIFIER=$(shell cat interp/src/insert/lexical_env_get_identifier_ref)
-
-.v.vo : .depend
-	$(COQC) -dont-load-proofs -I coq -I $(TLC) $<
 
 coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	$(COQC) -I coq -I $(TLC) $< # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
