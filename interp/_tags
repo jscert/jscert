@@ -1,0 +1,2 @@
+# Only enable bisect logging for the interpreter toplevel
+"src/extract/JsInterpreterBisect.ml": syntax(camlp4o)
