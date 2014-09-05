@@ -1,2 +1,5 @@
 # Only enable bisect logging for the interpreter toplevel
 "src/extract/JsInterpreterBisect.ml": syntax(camlp4o)
+
+# ppx path is relative to _build directory
+"src/extract/JsInterpreterTrace.ml": ppx(../tracer/annotml/ppx_lines.native)

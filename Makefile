@@ -97,14 +97,6 @@ endif
 
 FAST_VO=$(FAST_SRC:.v=.vo)
 
-
-#######################################################
-# EXTENSIONS
-
-.PHONY: all report depend clean tlc flocq lib \
-        coq extract_interpreter interpreter
-.SUFFIXES: .v .vo
-
 #######################################################
 # MAIN TARGETS
 
@@ -121,12 +113,16 @@ report:
 tags: $(JS_SRC)
 	./gentags.sh
 
+.PHONY: all debug report init tlc flocq lib \
+        coq extract_interpreter interpreter \
+        local clean clean_all \
+        run_tests run_tests_spidermonkey run_tests_lambdaS5 \
+        run_tests_nodejs
 
 #######################################################
 # EXTERNAL LIBRARIES: TLC and Flocq
 
 init:
-	bash -c "mkdir interp/src/extract" || true
 	git submodule init; git submodule update
 	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk lib/tlc
 	tar -xzf lib/flocq-2.1.0.tar.gz
@@ -157,7 +153,7 @@ coq: $(JS_VO)
 # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
 coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
 	$(COQC) $<
-	mkdir -p interp/src/extract
+	-mkdir -p interp/src/extract
 	-rm -f interp/src/extract/.patched
 	mv *.ml interp/src/extract
 	mv *.mli interp/src/extract
@@ -196,35 +192,15 @@ OCAMLBUILD=ocamlbuild
 OCAMLBUILDFLAGS=-verbose 1 -use-ocamlfind -pkg xml-light -lib unix -Is src,parser/src,src/extract
 
 interp/run_js.native: extract_interpreter
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib str run_js.native
+	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib str $(@F)
 
 interp/run_js.byte: extract_interpreter
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib str run_js.byte
+	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib str $(@F)
 
 interp/%: interp/%.native
 	ln -s $(<F) $@
 
 interpreter: interp/run_js
-
-#######################################################
-# JSRef Bisect Mode
-
-interp/src/extract/JsInterpreterBisect.ml: interp/src/extract/JsInterpreter.ml extract_interpreter
-	perl -pe 's/ impossible/ (*BISECT-IGNORE*) impossible/g' $< > $@
-
-interp/src/extract/JsInterpreterBisect.mli: interp/src/extract/JsInterpreter.mli
-	cp $< $@
-
-interp/src/run_jsbisect.ml: interp/src/run_js.ml
-	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./' $< > $@
-
-# Special flags to compile JsInterpreterBisect.ml are stored in interp/_tags which is read by ocamlbuild
-interp/run_jsbisect.native: interp/src/run_jsbisect.ml \
-                            interp/src/extract/JsInterpreterBisect.ml \
-                            interp/src/extract/JsInterpreterBisect.mli
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib bisect -pkg bisect run_jsbisect.native
-
-# interp/run_jsbisect is an implicit rule
 
 #######################################################
 # Interpreter run helpers
@@ -242,64 +218,49 @@ run_tests_nodejs:
 	./runtests.py --nodejs --interp_path $(NODEJS)
 
 #######################################################
-# Tracing version of the interpreter
+# JSRef Bisect Mode
 
-tracer/annotml/ppx_lines.native: tracer/annotml/ppx_lines.ml
-	cd tracer/annotml; ocamlfind ocamlopt -c -package compiler-libs.common -o ppx_lines.cmx ppx_lines.ml
-	cd tracer/annotml; ocamlfind ocamlopt -linkpkg -package compiler-libs.common ppx_lines.cmx -o ppx_lines.native
+interp/src/extract/JsInterpreterBisect.ml: interp/src/extract/JsInterpreter.ml extract_interpreter
+	perl -pe 's/ impossible/ (*BISECT-IGNORE*) impossible/g' $< > $@
 
-interp/src/extract/JsInterpreterTrace.cmx: ${basicfiles} interp/src/extract/JsInterpreter.ml tracer/annotml/ppx_lines.native
-	cp interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreterTrace.ml
-	$(OCAMLOPT) -ppx tracer/annotml/ppx_lines.native -c -I interp/src -I interp/src/extract -I tracer/annotml -o $@ interp/src/extract/JsInterpreterTrace.ml
+interp/src/run_jsbisect.ml: interp/src/run_js.ml
+	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./' $< > $@
 
-interp/src/run_jstrace.ml: interp/src/run_js.ml
-	cp $< $@
-	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./' $@ > $@.bak
-	mv $@.bak $@
+# Special flags to compile JsInterpreterBisect.ml are stored in interp/_tags which is read by ocamlbuild
+interp/run_jsbisect.native: interp/src/run_jsbisect.ml \
+                            interp/src/extract/JsInterpreterBisect.ml
+	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib bisect -pkg bisect $(@F)
 
-interp/src/run_jstrace.cmx: interp/src/run_jstrace.ml interp/src/extract/JsInterpreterTrace.cmx
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
-
-tracer/annotml/myPrint.cmx: tracer/annotml/myPrint.ml
-	$(OCAMLOPT) -c -o $@ $<
-
-interp/run_jstrace: ${basicfiles} tracer/annotml/myPrint.cmx interp/src/extract/JsInterpreterTrace.cmx interp/src/run_jstrace.cmx
-	ocamlfind $(OCAMLOPT) $(PARSER_INC) -o interp/run_jstrace xml-light.cmxa unix.cmxa str.cmxa $^
-
+# interp/run_jsbisect is an implicit rule
 
 #######################################################
-# DEPENDENCIES
+# Tracing version of the interpreter
 
-# TODO: split the dependencies between the coq files and the caml files
+interp/tracer/annotml/ppx_lines.native:
+	$(MAKE) -C interp/tracer/annotml ppx_lines.native
 
-# DEPS=$(JS_SRC) $(TLC_SRC) $(FLOCQ_SRC)
+interp/src/extract/JsInterpreterTrace.ml: interp/src/extract/JsInterpreter.ml extract_interpreter
+	cp $< $@
 
-# depend: .depend
+interp/src/run_jstrace.ml: interp/src/run_js.ml
+	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./' $< > $@
 
-# ifeq ($(KEEP_DEPENDS),1)
-# else
-# .depend : $(DEPS) Makefile
-# 	$(COQDEP) $(DEPS) > .depend
-# 	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
-# endif
+# Special flags to compile JsInterpreterTrace.ml are stored in interp/_tags which is read by ocamlbuild
+interp/run_jstrace.native: interp/src/run_jstrace.ml interp/src/extract/JsInterpreterTrace.ml interp/tracer/annotml/ppx_lines.native
+	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -I tracer/annotml -lib str $(@F)
 
-# ifeq ($(findstring $(MAKECMDGOALS),init depend clean clean_all),)
-# include .depend
-# endif
-
+# interp/run_jstrace is an implicit rule
 
 #######################################################
 # CLEAN
 
-clean_cm:
-	-rm -f tracer/annotml/*.{cmi,cmx,cmo}
-
-clean: clean_cm
-	-rm -f coq/*.{vo,glob,ml,mli,cmi,cmx,d}
-	-rm -f .ocamldep
+clean:
+	-rm -f coq/*.{vo,glob,d}
 	-rm -rf interp/src/extract
 	-rm -f interp/run_js interp/run_jsbisect interp/run_jsbisect.ml
 	cd interp && $(OCAMLBUILD) -quiet -clean
+	-rm -f interp/run_jstrace interp/run_jstrace.ml
+	$(MAKE) -C interp/tracer/annotml clean
 
 clean_all: clean
 	find . -iname "*.vo" -exec rm {} \;
@@ -351,9 +312,9 @@ local:
 #######################################################
 #######################################################
 
-ifneq ($(MAKECMDGOALS),clean)
+
+ifeq ($(findstring $(MAKECMDGOALS),init depend clean clean_all),)
 -include $(JS_SRC:.v=.v.d)
 -include $(TLC_SRC:.v=.v.d)
 -include $(FLOCQ_SRC:.v=.v.d)
--include .ocamldep
 endif
