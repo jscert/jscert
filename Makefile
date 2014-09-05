@@ -48,8 +48,9 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
 COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
-OCAMLOPT=ocamlopt
-OCAMLC=ocamlc
+
+OCAMLBUILD=ocamlbuild
+OCAMLBUILDFLAGS=-verbose 1 -use-ocamlfind
 
 #######################################################
 # MAIN SOURCE FILES
@@ -100,7 +101,8 @@ FAST_VO=$(FAST_SRC:.v=.vo)
 #######################################################
 # MAIN TARGETS
 
-all: coq interpreter tags
+default: coq interpreter tags
+all: default interp/run_jsbisect interp/run_jstrace
 
 debug:
 	make -f Makefile.debug
@@ -113,9 +115,9 @@ report:
 tags: $(JS_SRC)
 	./gentags.sh
 
-.PHONY: all debug report init tlc flocq lib \
+.PHONY: all default debug report init tlc flocq lib \
         coq extract_interpreter interpreter \
-        local clean clean_all nofast \
+        local clean clean_interp clean_all nofast \
         run_tests run_tests_spidermonkey run_tests_lambdaS5 \
         run_tests_nodejs
 
@@ -215,17 +217,14 @@ interp/src/extract/.patched: interp/src/extract/JsInterpreter.ml.patched
 
 extract_interpreter: interp/src/extract/.patched
 
-OCAMLBUILD=ocamlbuild
-OCAMLBUILDFLAGS=-verbose 1 -use-ocamlfind -pkg xml-light -lib unix -Is src,parser/src,src/extract
+OCAMLINC=-Is src,parser/src,src/extract,tracer/annotml
 
-interp/run_js.native: extract_interpreter
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib str $(@F)
-
-interp/run_js.byte: extract_interpreter
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib str $(@F)
+# interp/_tags contains OCaml-specific build rules for all interpreter variants
+interp/%.native interp/%.byte: extract_interpreter
+	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) $(OCAMLINC) $(@F)
 
 interp/%: interp/%.native
-	ln -s $(<F) $@
+	ln -fs $(<F) $@
 
 interpreter: interp/run_js
 
@@ -253,10 +252,8 @@ interp/src/extract/JsInterpreterBisect.ml: interp/src/extract/JsInterpreter.ml e
 interp/src/run_jsbisect.ml: interp/src/run_js.ml
 	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./' $< > $@
 
-# Special flags to compile JsInterpreterBisect.ml are stored in interp/_tags which is read by ocamlbuild
 interp/run_jsbisect.native: interp/src/run_jsbisect.ml \
                             interp/src/extract/JsInterpreterBisect.ml
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -lib bisect -pkg bisect $(@F)
 
 # interp/run_jsbisect is an implicit rule
 
@@ -272,22 +269,22 @@ interp/src/extract/JsInterpreterTrace.ml: interp/src/extract/JsInterpreter.ml ex
 interp/src/run_jstrace.ml: interp/src/run_js.ml
 	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./' $< > $@
 
-# Special flags to compile JsInterpreterTrace.ml are stored in interp/_tags which is read by ocamlbuild
 interp/run_jstrace.native: interp/src/run_jstrace.ml interp/src/extract/JsInterpreterTrace.ml interp/tracer/annotml/ppx_lines.native
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) -I tracer/annotml -lib str $(@F)
 
 # interp/run_jstrace is an implicit rule
 
 #######################################################
 # CLEAN
 
-clean:
-	-rm -f coq/*.{vo,glob,d}
-	-rm -rf interp/src/extract
+clean_interp:
 	-rm -f interp/run_js interp/run_jsbisect interp/run_jsbisect.ml
 	cd interp && $(OCAMLBUILD) -quiet -clean
 	-rm -f interp/run_jstrace interp/run_jstrace.ml
 	$(MAKE) -C interp/tracer/annotml clean
+
+clean: clean_interp
+	-rm -f coq/*.{vo,glob,d}
+	-rm -rf interp/src/extract
 
 clean_all: clean
 	find . -iname "*.vo" -exec rm {} \;

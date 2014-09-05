@@ -1,3 +1,7 @@
+true: package(xml-light), use_unix, use_str
+
+<**/*[bB]isect*>: package(bisect), -use_str
+
 # Only enable bisect logging for the interpreter toplevel
 "src/extract/JsInterpreterBisect.ml": syntax(camlp4o)
 
