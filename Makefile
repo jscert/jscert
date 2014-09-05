@@ -115,7 +115,7 @@ tags: $(JS_SRC)
 
 .PHONY: all debug report init tlc flocq lib \
         coq extract_interpreter interpreter \
-        local clean clean_all \
+        local clean clean_all nofast \
         run_tests run_tests_spidermonkey run_tests_lambdaS5 \
         run_tests_nodejs
 
@@ -143,6 +143,33 @@ flocq: $(FLOCQ_VO)
 
 %.vo:
 	$(COQC) -dont-load-proofs $<
+
+#######################################################
+# FAST COMPILATION TOOL: coqj
+
+# Compile coqj : converts a .v file into a shallow .v file (without proofs)
+tools/coqj/coqj:
+	$(MAKE) -C tools/coqj coqj
+
+# Fast compilation of files in $(FAST_SRC)
+define FAST_RULE
+$(1).vo: tools/coqj/coqj
+	@mkdir -p _shallow/$(dir $1)
+	tools/coqj/coqj $(1).v > _shallow/$(1).v
+	$(COQC) -dont-load-proofs -I coq -I $(TLC) _shallow/$(1).v
+	mv _shallow/$(1).vo $(1).vo
+endef
+
+$(foreach filebase,$(FAST_SRC:.v=),$(eval $(call FAST_RULE,$(filebase))))
+
+# "make nofast" : Compilation mode to force the verification of all files
+nofast: $(FAST_VO:.vo=_full.vo)
+
+%_full.vo : %.v
+	echo $*
+	cp $*.v $*_full.v
+	$(COQC) -dont-load-proofs -I coq -I $(TLC) $*_full.v
+	rm $*_full.v
 
 #######################################################
 # JSCert Specific Rules
@@ -274,40 +301,6 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
-
-#######################################################
-# FAST COMPILATION TOOL: coqj
-
-
-# Compile coqj : converts a .v file into a shallow .v file (without proofs)
-
-#coqj: coqj.mll
-#	ocamllex coqj.mll
-#	ocamlopt -o coqj coqj.ml
-#
-# Fast compilation of files in $(FAST_SRC)
-
-#define FAST_RULE
-
-#$(1).vo: .depend coqj
-#	@mkdir -p _shallow/$(dir $1)
-#	./coqj $(1).v > _shallow/$(1).v
-#	$(COQC) -dont-load-proofs -I coq -I $(TLC) _shallow/$(1).v
-#	mv _shallow/$(1).vo $(1).vo
-
-#endef
-
-#$(foreach filebase,$(FAST_SRC:.v=),$(eval $(call FAST_RULE,$(filebase))))
-
-# "make nofast" : Compilation mode to force the verification of all files
-
-#nofast: $(FAST_VO:.vo=_full.vo)
-
-#%_full.vo : %.v .depend
-#	echo $*
-#	cp $*.v $*_full.v
-#	$(COQC) -dont-load-proofs -I coq -I $(TLC) $*_full.v
-#	rm $*_full.v
 
 #######################################################
 #######################################################
