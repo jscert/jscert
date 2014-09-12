@@ -1,9 +1,13 @@
 true: package(xml-light), use_unix, use_str
 
+# Source directories to use
+<src> or <parser/src> or <src/extract> or <tracer/annotml>: include
+
 <**/*[bB]isect*>: package(bisect), -use_str
 
 # Only enable bisect logging for the interpreter toplevel
 "src/extract/JsInterpreterBisect.ml": syntax(camlp4o)
 
 # ppx path is relative to _build directory
+# ppx warnings can be ignored on ocaml versions <4.02
 "src/extract/JsInterpreterTrace.ml": ppx(../tracer/annotml/ppx_lines.native)

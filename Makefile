@@ -50,7 +50,6 @@ COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 
 OCAMLBUILD=ocamlbuild
-OCAMLBUILDFLAGS=-verbose 1 -use-ocamlfind
 
 #######################################################
 # MAIN SOURCE FILES
@@ -217,12 +216,11 @@ interp/src/extract/.patched: interp/src/extract/JsInterpreter.ml.patched
 
 extract_interpreter: interp/src/extract/.patched
 
-OCAMLINC=-Is src,parser/src,src/extract,tracer/annotml
-
 # interp/_tags contains OCaml-specific build rules for all interpreter variants
 interp/%.native interp/%.byte: extract_interpreter
-	cd interp && $(OCAMLBUILD) $(OCAMLBUILDFLAGS) $(OCAMLINC) $(@F)
+	cd interp && $(OCAMLBUILD) -use-ocamlfind -cflags "-w -20" $(@F)
 
+.PRECIOUS: interp/%.native
 interp/%: interp/%.native
 	ln -fs $(<F) $@
 
