@@ -51,7 +51,7 @@ apt-get install opam
       Once you have opam, you can install OCaml and Coq:
 
 #+begin_src sh
-opam switch 4.02.0
+opam switch 4.01.0
 opam install coq
 opam install ocamlfind ;
 opam install xml-light
