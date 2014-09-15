@@ -101,6 +101,7 @@ FAST_VO=$(FAST_SRC:.v=.vo)
 # MAIN TARGETS
 
 default: coq interpreter tags
+
 all: default interp/run_jsbisect interp/run_jstrace
 
 debug:
@@ -217,7 +218,7 @@ interp/src/extract/.patched: interp/src/extract/JsInterpreter.ml.patched
 extract_interpreter: interp/src/extract/.patched
 
 # interp/_tags contains OCaml-specific build rules for all interpreter variants
-interp/%.native interp/%.byte: extract_interpreter
+interp/%.native interp/%.byte: extract_interpreter interp/src/%.ml
 	cd interp && $(OCAMLBUILD) -use-ocamlfind -cflags "-w -20" $(@F)
 
 .PRECIOUS: interp/%.native
@@ -275,14 +276,15 @@ interp/run_jstrace.native: interp/src/run_jstrace.ml interp/src/extract/JsInterp
 # CLEAN
 
 clean_interp:
-	-rm -f interp/run_js interp/run_jsbisect interp/run_jsbisect.ml
+	-rm -f coq/JsInterpreterExtraction.vo
+	-rm -rf interp/src/extract
+	-rm -f interp/run_js interp/run_jsbisect interp/src/run_jsbisect.ml
 	cd interp && $(OCAMLBUILD) -quiet -clean
-	-rm -f interp/run_jstrace interp/run_jstrace.ml
+	-rm -f interp/run_jstrace interp/src/run_jstrace.ml
 	$(MAKE) -C interp/tracer/annotml clean
 
 clean: clean_interp
 	-rm -f coq/*.{vo,glob,d}
-	-rm -rf interp/src/extract
 
 clean_all: clean
 	find . -iname "*.vo" -exec rm {} \;
@@ -301,7 +303,7 @@ local:
 #######################################################
 
 
-ifeq ($(findstring $(MAKECMDGOALS),init depend clean clean_all),)
+ifeq ($(filter init clean%,$(MAKECMDGOALS)),)
 -include $(JS_SRC:.v=.v.d)
 -include $(TLC_SRC:.v=.v.d)
 -include $(FLOCQ_SRC:.v=.v.d)
