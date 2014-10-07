@@ -32,7 +32,7 @@ Extract Inductive positive => float
   "(fun p -> 2. *. p)"
   "1." ]
 "(fun f2p1 f2p f1 p ->
-if p <= 1. then f1 () else if mod_float p 2. = 0. then f2p (p /. 2.) else f2p1 (p /. 2.))".
+if p <= 1. then f1 () else if mod_float p 2. = 0. then f2p (floor (p /. 2.)) else f2p1 (floor (p /. 2.)))".
 
 Extract Inductive Z => float [ "0." "" "(~-.)" ]
 "(fun f0 fp fn z -> if z=0. then f0 () else if z>0. then fp z else fn (~-. z))".
