@@ -51,10 +51,9 @@ apt-get install opam
       Once you have opam, you can install OCaml and Coq:
 
 #+begin_src sh
+opam init
 opam switch 4.01.0
-opam install coq
-opam install ocamlfind ;
-opam install xml-light
+make install_depend
 #+end_src
 
       Now you can build JSCert:

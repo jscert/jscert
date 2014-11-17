@@ -1,0 +1,28 @@
+language: c    # Not really, but close enough
+
+env:
+  - PPA=ocaml41
+# Not yet backported successfully
+# - PPA=ocaml42
+
+before_install:
+  # Use an ubuntu ppa coq build to speed things up
+  - sudo add-apt-repository -y ppa:grand-edgemaster/coq-$PPA
+  - sudo add-apt-repository -y ppa:avsm/$PPA+opam12
+  - sudo apt-get update
+
+install:
+  - sudo apt-get install opam ocaml-native-compilers coq
+  - opam init -y
+  - eval `opam config env`
+  - opam install -y xml-light ocamlfind
+  - make init
+
+script:
+  - make
+
+notifications:
+  email: false
+  irc: "ircs://irc.elvum.net:6697#jscert"
+
+
