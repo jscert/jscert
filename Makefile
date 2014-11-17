@@ -148,9 +148,8 @@ flocq: $(FLOCQ_VO)
 %.v.d: %.v
 	$(COQDEP) $< > $@
 
-# This rule really does work, the prequisites are filled in by dependency generation
 # If this rule fails for some reason, try `make clean_all && make`
-%.vo:
+%.vo: %.v
 	$(COQC) -dont-load-proofs $<
 
 #######################################################
