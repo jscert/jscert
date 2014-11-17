@@ -119,7 +119,12 @@ tags: $(JS_SRC)
         coq extract_interpreter interpreter \
         local clean clean_interp clean_all nofast \
         run_tests run_tests_spidermonkey run_tests_lambdaS5 \
-        run_tests_nodejs
+        run_tests_nodejs intall_depend
+
+#######################################################
+# EXTERNAL OCAML DEPENDENCIES
+install_depend:
+	opam install coq xml-light ocamlfind
 
 #######################################################
 # EXTERNAL LIBRARIES: TLC and Flocq
@@ -143,6 +148,8 @@ flocq: $(FLOCQ_VO)
 %.v.d: %.v
 	$(COQDEP) $< > $@
 
+# This rule really does work, the prequisites are filled in by dependency generation
+# If this rule fails for some reason, try `make clean_all && make`
 %.vo:
 	$(COQC) -dont-load-proofs $<
 
