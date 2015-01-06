@@ -15,7 +15,6 @@ install:
   - sudo apt-get install opam ocaml-native-compilers coq
   - opam init -y
   - eval `opam config env`
-  - make install_depend
   - make install_optional_depend
   - make init
 

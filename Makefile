@@ -123,9 +123,11 @@ tags: $(JS_SRC)
 # EXTERNAL OCAML DEPENDENCIES
 .PHONY: install_depend install_optional_depend
 install_depend:
-	opam install -y coq xml-light ocamlfind yojson
+	# Install coq if required
+	if ! which $(COQBIN)coqc; then opam install -y coq; fi
+	opam install -y xml-light ocamlfind yojson
 
-install_optional_depend:
+install_optional_depend: install_depend
 	opam install -y js_of_ocaml bisect
 
 #######################################################
