@@ -1,1 +1,1 @@
-((coq-mode . ((coq-load-path . ("../tlc" ("../flocq/src" "Flocq")))))))
+((coq-mode . ((coq-load-path . ("../lib/tlc" ("../lib/flocq/src" "Flocq")))))))
