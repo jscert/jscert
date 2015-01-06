@@ -315,7 +315,7 @@ local:
 #######################################################
 
 
-ifeq ($(filter init clean% install_depend,$(MAKECMDGOALS)),)
+ifeq ($(filter init clean% install% all,$(MAKECMDGOALS)),)
 -include $(JS_SRC:.v=.v.d)
 -include $(TLC_SRC:.v=.v.d)
 -include $(FLOCQ_SRC:.v=.v.d)

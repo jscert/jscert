@@ -10,13 +10,13 @@ before_install:
   - sudo add-apt-repository -y ppa:grand-edgemaster/coq-$PPA
   - sudo add-apt-repository -y ppa:avsm/$PPA+opam12
   - sudo apt-get update
+  - make init
 
 install:
-  - sudo apt-get install opam ocaml-native-compilers coq
+  - sudo apt-get install opam ocaml-native-compilers coq camlp4-extra
   - opam init -y
   - eval `opam config env`
   - make install_optional_depend
-  - make init
 
 script:
   - make
