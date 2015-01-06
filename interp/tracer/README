@@ -1,7 +1,7 @@
 To compile the tracer code, you need to do the following.
 
 - switch to ocaml 4.02
-  opam switch 4.02.0
+  opam switch 4.02.1
   eval `opam config env`
 - build the tracer
   make interp/run_jstrace
@@ -19,7 +19,3 @@ environment.
 
 You can then open the file navig.html in tracer and follow the
 instructions there.
-
-Note:
-As of 12 Sep 2014, Coq is not installable through opam using ocaml version 4.02.0
-Coq should be installed some other way before switching ocaml version.
