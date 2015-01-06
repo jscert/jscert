@@ -15,14 +15,10 @@ install:
   - sudo apt-get install opam ocaml-native-compilers coq
   - opam init -y
   - eval `opam config env`
-  - opam install -y xml-light ocamlfind
+  - make install_depend
+  - make install_optional_depend
   - make init
 
 script:
   - make
-
-notifications:
-  email: false
-  irc: "ircs://irc.elvum.net:6697#jscert"
-
 

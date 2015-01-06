@@ -117,14 +117,16 @@ tags: $(JS_SRC)
 
 .PHONY: all default debug report init tlc flocq lib \
         coq extract_interpreter interpreter \
-        local clean clean_interp clean_all nofast \
-        run_tests run_tests_spidermonkey run_tests_lambdaS5 \
-        run_tests_nodejs install_depend
+        local nofast
 
 #######################################################
 # EXTERNAL OCAML DEPENDENCIES
+.PHONY: install_depend install_optional_depend
 install_depend:
-	opam install -y coq xml-light ocamlfind
+	opam install -y coq xml-light ocamlfind yojson
+
+install_optional_depend:
+	opam install -y js_of_ocaml bisect
 
 #######################################################
 # EXTERNAL LIBRARIES: TLC and Flocq
@@ -234,21 +236,6 @@ interp/%: interp/%.native
 interpreter: interp/run_js
 
 #######################################################
-# Interpreter run helpers
-
-run_tests: interpreter
-	./runtests.py --no_parasite
-
-run_tests_spidermonkey:
-	./runtests.py --spidermonkey --interp_path $(SPIDERMONKEY)
-
-run_tests_lambdaS5:
-	./runtests.py --lambdaS5 --interp_path $(LAMBDAS5)
-
-run_tests_nodejs:
-	./runtests.py --nodejs --interp_path $(NODEJS)
-
-#######################################################
 # JSRef Bisect Mode
 
 interp/src/extract/JsInterpreterBisect.ml: interp/src/extract/JsInterpreter.ml extract_interpreter
@@ -279,7 +266,24 @@ interp/run_jstrace.native: interp/src/run_jstrace.ml interp/src/extract/JsInterp
 # interp/run_jstrace is an implicit rule
 
 #######################################################
+# Interpreter run helpers
+.PHONY: run_tests run_tests_spidermonkey run_tests_lambdaS5 run_tests_nodejs
+
+run_tests: interpreter
+	./runtests.py --no_parasite
+
+run_tests_spidermonkey:
+	./runtests.py --spidermonkey --interp_path $(SPIDERMONKEY)
+
+run_tests_lambdaS5:
+	./runtests.py --lambdaS5 --interp_path $(LAMBDAS5)
+
+run_tests_nodejs:
+	./runtests.py --nodejs --interp_path $(NODEJS)
+
+#######################################################
 # CLEAN
+.PHONY: clean clean_interp clean_all
 
 clean_interp:
 	-rm -f coq/JsInterpreterExtraction.vo
