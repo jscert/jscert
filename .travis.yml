@@ -2,8 +2,7 @@ language: c    # Not really, but close enough
 
 env:
   - PPA=ocaml41
-# Not yet backported successfully
-# - PPA=ocaml42
+  - PPA=ocaml42
 
 before_install:
   # Use an ubuntu ppa coq build to speed things up
