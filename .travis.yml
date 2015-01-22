@@ -25,6 +25,7 @@ before_install:
 install:
   - sudo apt-get install -y coq ocaml-compiler-libs ocaml-interp ocaml-base-nox ocaml-base ocaml ocaml-nox ocaml-native-compilers camlp4 camlp4-extra opam
   - opam init -a
+  - opam update -u
   - eval `opam config env`
   - make install_optional_depend
 
