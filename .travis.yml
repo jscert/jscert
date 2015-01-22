@@ -12,8 +12,8 @@ env:
 cache:
   apt: true
   directories:
-    - .opam41
-    - .opam42
+    - ~/.opam41
+    - ~/.opam42
 
 before_install:
   # Use an ubuntu ppa coq build to speed things up
