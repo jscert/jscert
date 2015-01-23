@@ -293,9 +293,10 @@ run_tests_nodejs:
 clean_interp:
 	-rm -f coq/JsInterpreterExtraction.vo
 	-rm -rf interp/src/extract
-	-rm -f interp/run_js interp/run_jsbisect interp/src/run_jsbisect.ml
-	cd interp && $(OCAMLBUILD) -quiet -clean
+	-rm -f interp/run_js interp/top
+	-rm -f interp/run_jsbisect interp/src/run_jsbisect.ml
 	-rm -f interp/run_jstrace interp/src/run_jstrace.ml
+	cd interp && $(OCAMLBUILD) -quiet -clean
 	$(MAKE) -C interp/tracer/annotml clean
 
 clean: clean_interp
