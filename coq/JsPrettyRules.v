@@ -2074,13 +2074,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_set_mutable_binding_1 L x v str E) o ->
       red_expr S C (spec_env_record_set_mutable_binding L x v str) o
 
-  | red_spec_env_record_set_mutable_binding_1_decl : forall v_old mu S C L x v str Ed K o,
+  | red_spec_env_record_set_mutable_binding_1_decl_mutable : forall v_old mu S C L x v str Ed K o,
       decl_env_record_binds Ed x mu v_old ->
-      K = (If mutability_is_mutable mu
-            then (let S' := env_record_write_decl_env S L x mu v in
-                  spec_returns (out_void S'))
-            else (spec_error_or_void str native_error_type)) ->
-      red_expr S C K o ->
+      mutability_is_mutable mu ->
+      red_expr S C spec_returns (out_void (env_record_write_decl_env S L x mu v)) o ->
+      red_expr S C (spec_env_record_set_mutable_binding_1 L x v str (env_record_decl Ed)) o
+
+  | red_spec_env_record_set_mutable_binding_1_decl_non_mutable : forall v_old mu S C L x v str Ed K o,
+      decl_env_record_binds Ed x mu v_old ->
+      ~ mutability_is_mutable mu ->
+      red_expr S C (spec_error_or_void str native_error_type) o ->
       red_expr S C (spec_env_record_set_mutable_binding_1 L x v str (env_record_decl Ed)) o
 
   | red_spec_env_record_set_mutable_binding_1_object : forall S C L x v str l pt o,
@@ -2094,12 +2097,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_get_binding_value_1 L x str E) o ->
       red_expr S C (spec_env_record_get_binding_value L x str) o
 
-  | red_spec_env_record_get_binding_value_1_decl : forall mu v S C L x str Ed K o,
+  | red_spec_env_record_get_binding_value_1_decl_uninitialized : forall mu v S C L x str Ed K o,
       decl_env_record_binds Ed x mu v ->
-      K = (If mu = mutability_uninitialized_immutable
-              then (spec_error_or_cst str native_error_ref undef)
-              else spec_returns (out_ter S v)) ->
-      red_expr S C K o ->
+      mu = mutability_uninitialized_immutable ->
+      red_expr S C (spec_error_or_cst str native_error_ref undef) o ->
+      red_expr S C (spec_env_record_get_binding_value_1 L x str (env_record_decl Ed)) o
+
+  | red_spec_env_record_get_binding_value_1_decl_initialized : forall mu v S C L x str Ed K o,
+      decl_env_record_binds Ed x mu v ->
+      mu <> mutability_uninitialized_immutable ->
+      red_expr S C (spec_returns (out_ter S v)) o ->
       red_expr S C (spec_env_record_get_binding_value_1 L x str (env_record_decl Ed)) o
 
   | red_spec_env_record_get_binding_value_1_object : forall o1 S C L x str l pt o,
