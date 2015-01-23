@@ -269,7 +269,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_do_while_6 labs t1 e2 rv) o ->
       red_stat S C (stat_do_while_5 labs t1 e2 rv R) o
 
-  | red_stat_do_while_6 : forall S0 S C labs t1 e2 rv y1 o,
+  | red_stat_do_while_6 : forall S C labs t1 e2 rv y1 o,
       red_spec S C (spec_expr_get_value_conv spec_to_boolean e2) y1 ->
       red_stat S C (stat_do_while_7 labs t1 e2 rv y1) o ->
       red_stat S C (stat_do_while_6 labs t1 e2 rv) o
@@ -400,10 +400,10 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       res_type R = restype_break /\ res_label_in R labs ->
       red_stat S C (stat_for_6 labs rv eo2 eo3 t R) (out_ter S rv)
 
-  | red_stat_for_6_not_break : forall S0 S C labs rv R eo2 eo3 t o, (* Step 3d *)
+  | red_stat_for_6_not_break : forall S C labs rv R eo2 eo3 t o, (* Step 3d *)
       res_type R <> restype_break \/ ~ res_label_in R labs ->
-      red_stat S0 C (stat_for_7 labs rv eo2 eo3 t R) o ->
-      red_stat S0 C (stat_for_6 labs rv eo2 eo3 t R) o
+      red_stat S C (stat_for_7 labs rv eo2 eo3 t R) o ->
+      red_stat S C (stat_for_6 labs rv eo2 eo3 t R) o
 
   | red_stat_for_7_abort : forall S C labs rv R eo2 eo3 t, (* Step 3e and 3ei *)
       res_type R <> restype_normal ->
@@ -424,7 +424,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_for_9 labs rv eo2 e3 y1 t) o ->
       red_stat S C (stat_for_8 labs rv eo2 (Some e3) t) o
 
-  | red_stat_for_9 : forall S0 S C labs rv v eo2 e3 t o o1, (* Step 3fii *)
+  | red_stat_for_9 : forall S0 S C labs rv v eo2 e3 t o, (* Step 3fii *)
       red_stat S C (stat_for_2 labs rv eo2 (Some e3) t) o ->
       red_stat S0 C (stat_for_9 labs rv eo2 e3 (vret S v) t) o
 
@@ -564,7 +564,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_B_1 vi rv ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 false vi rv nil ts1 scs2) o
 
-  | red_stat_switch_default_A_1_cons_true : forall S C e o o1 vi rv ts ts1 scs scs2,
+  | red_stat_switch_default_A_1_cons_true : forall S C e o vi rv ts ts1 scs scs2,
       red_stat S C (stat_switch_default_A_4 rv vi ts scs ts1 scs2) o ->
       red_stat S C (stat_switch_default_A_1 true vi rv ((switchclause_intro e ts)::scs) ts1 scs2) o
 
@@ -596,7 +596,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S C (stat_switch_default_A_1 true vi rv' scs ts1 scs2) o ->
       red_stat S0 C (stat_switch_default_A_5 rv0 (out_ter S rv) vi scs ts1 scs2) o
 
-  | red_stat_switch_default_A_5_abrupt : forall S S0 C vi rv R scs scs2 ts1 o, (* TODO:  Reread this rule! *)
+  | red_stat_switch_default_A_5_abrupt : forall S S0 C vi rv R scs scs2 ts1, (* TODO:  Reread this rule! *)
       ~ res_is_normal R ->
       res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       red_stat S0 C (stat_switch_default_A_5 rv (out_ter S R) vi scs ts1 scs2) (out_ter S (res_overwrite_value_if_empty rv R))
@@ -1086,7 +1086,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ref_is_unresolvable r ->
       red_expr S0 C (expr_typeof_1 (out_ter S r)) (out_ter S "undefined")
 
-  | red_expr_typeof_1_ref_resolvable : forall S0 S C r o1 y1 o,
+  | red_expr_typeof_1_ref_resolvable : forall S0 S C r y1 o,
       ~ (ref_is_unresolvable r) ->
       red_spec S C (spec_get_value r) y1 ->
       red_expr S C (expr_typeof_2 y1) o ->
@@ -1345,7 +1345,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_lazy_op_1 b_ret y1 e2) o ->
       red_expr S C (expr_binary_op e1 op e2) o
 
-  | red_expr_lazy_op_1 : forall S0 S C b_ret e1 e2 v1 v o2 o1 o,
+  | red_expr_lazy_op_1 : forall S0 S C b_ret e2 v1 o1 o,
       red_expr S C (spec_to_boolean v1) o1 ->
       red_expr S C (expr_lazy_op_2 b_ret v1 o1 e2) o ->
       red_expr S0 C (expr_lazy_op_1 b_ret (ret S v1) e2) o
@@ -1689,7 +1689,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_can_put_5 l y1) o ->
       red_expr S C (spec_object_can_put_4 l x lproto) o
 
-  | red_spec_object_can_put_5_undef : forall S0 S C l x b, (* Step 6 *)
+  | red_spec_object_can_put_5_undef : forall S0 S C l b, (* Step 6 *)
       object_extensible S l b ->
       red_expr S0 C (spec_object_can_put_5 l (dret S full_descriptor_undef)) (out_ter S b)
 
@@ -1697,7 +1697,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       b = (If attributes_accessor_set Aa = undef then false else true) ->
       red_expr S0 C (spec_object_can_put_5 l (dret S (attributes_accessor_of Aa))) (out_ter S b)
 
-  | red_spec_object_can_put_5_data : forall S0 S C l x Ad bext o, (* Step 8 *)
+  | red_spec_object_can_put_5_data : forall S0 S C l Ad bext o, (* Step 8 *)
       object_extensible S l bext ->
       red_expr S C (spec_object_can_put_6 Ad bext) o ->
       red_expr S0 C (spec_object_can_put_5 l (dret S (attributes_data_of Ad))) o
@@ -2074,13 +2074,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_set_mutable_binding_1 L x v str E) o ->
       red_expr S C (spec_env_record_set_mutable_binding L x v str) o
 
-  | red_spec_env_record_set_mutable_binding_1_decl_mutable : forall v_old mu S C L x v str Ed K o,
+  | red_spec_env_record_set_mutable_binding_1_decl_mutable : forall v_old mu S C L x v str Ed o,
       decl_env_record_binds Ed x mu v_old ->
       mutability_is_mutable mu ->
       red_expr S C spec_returns (out_void (env_record_write_decl_env S L x mu v)) o ->
       red_expr S C (spec_env_record_set_mutable_binding_1 L x v str (env_record_decl Ed)) o
 
-  | red_spec_env_record_set_mutable_binding_1_decl_non_mutable : forall v_old mu S C L x v str Ed K o,
+  | red_spec_env_record_set_mutable_binding_1_decl_non_mutable : forall v_old mu S C L x v str Ed o,
       decl_env_record_binds Ed x mu v_old ->
       ~ mutability_is_mutable mu ->
       red_expr S C (spec_error_or_void str native_error_type) o ->
@@ -2097,13 +2097,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_env_record_get_binding_value_1 L x str E) o ->
       red_expr S C (spec_env_record_get_binding_value L x str) o
 
-  | red_spec_env_record_get_binding_value_1_decl_uninitialized : forall mu v S C L x str Ed K o,
+  | red_spec_env_record_get_binding_value_1_decl_uninitialized : forall mu v S C L x str Ed o,
       decl_env_record_binds Ed x mu v ->
       mu = mutability_uninitialized_immutable ->
       red_expr S C (spec_error_or_cst str native_error_ref undef) o ->
       red_expr S C (spec_env_record_get_binding_value_1 L x str (env_record_decl Ed)) o
 
-  | red_spec_env_record_get_binding_value_1_decl_initialized : forall mu v S C L x str Ed K o,
+  | red_spec_env_record_get_binding_value_1_decl_initialized : forall mu v S C L x str Ed o,
       decl_env_record_binds Ed x mu v ->
       mu <> mutability_uninitialized_immutable ->
       red_expr S C (spec_returns (out_ter S v)) o ->
@@ -2275,11 +2275,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_formal_params_2 args L x xs str v o1) o ->
       red_expr S0 C (spec_binding_inst_formal_params_1 args L x xs str v (out_ter S false)) o
 
-  | red_spec_binding_inst_formal_params_2 : forall S0 S C args L x xs str v o o1, (* Step 4d iv join *)
+  | red_spec_binding_inst_formal_params_2 : forall S0 S C args L x xs str v o, (* Step 4d iv join *)
       red_expr S C (spec_binding_inst_formal_params_3 args L x xs str v) o ->
       red_expr S0 C (spec_binding_inst_formal_params_2 args L x xs str v (out_void S)) o
 
-  | red_spec_binding_inst_formal_params_1_declared : forall o1 S0 S C args L x xs str v o, (* Step 4d iv else *)
+  | red_spec_binding_inst_formal_params_1_declared : forall S0 S C args L x xs str v o, (* Step 4d iv else *)
       red_expr S C (spec_binding_inst_formal_params_3 args L x xs str v) o ->
       red_expr S0 C (spec_binding_inst_formal_params_1 args L x xs str v (out_ter S true)) o
 
@@ -2288,7 +2288,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_formal_params_4 args L xs str o1) o ->
       red_expr S C (spec_binding_inst_formal_params_3 args L x xs str v) o
 
-  | red_spec_binding_inst_formal_params_4 : forall S0 S C args L xs str o1 o, (* Step 4d loop *)
+  | red_spec_binding_inst_formal_params_4 : forall S0 S C args L xs str o, (* Step 4d loop *)
       red_expr S C (spec_binding_inst_formal_params args L xs str) o ->
       red_expr S0 C (spec_binding_inst_formal_params_4 args L xs str (out_void S)) o
 
@@ -2342,7 +2342,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_binding_inst_function_decls_3a args fd fds str fo bconfig A) o
 
-  | red_spec_binding_inst_function_decls_3a_no_error : forall S C args fd fds str fo A bconfig o1 o, (* Step 5e iv else *)
+  | red_spec_binding_inst_function_decls_3a_no_error : forall S C args fd fds str fo A bconfig o, (* Step 5e iv else *)
       ~ (descriptor_is_accessor A \/ attributes_writable A = false \/ attributes_enumerable A = false) ->
       red_expr S C (spec_binding_inst_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
       red_expr S C (spec_binding_inst_function_decls_3a args fd fds str fo bconfig A) o
@@ -2357,7 +2357,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_function_decls_6 args L fds str bconfig o1) o ->
       red_expr S C (spec_binding_inst_function_decls_5 args L fd fds str fo bconfig) o
 
-  | red_spec_binding_inst_function_decls_6 : forall o1 L S0 S C args fds str bconfig o, (* Step 5 loop *)
+  | red_spec_binding_inst_function_decls_6 : forall L S0 S C args fds str bconfig o, (* Step 5 loop *)
       red_expr S C (spec_binding_inst_function_decls args L fds str bconfig) o ->
       red_expr S0 C (spec_binding_inst_function_decls_6 args L fds str bconfig (out_void S)) o
 
@@ -2379,11 +2379,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_arg_obj_2 code L largs o1) o ->
       red_expr S0 C (spec_binding_inst_arg_obj_1 code L true (out_ter S largs)) o
 
-  | red_spec_binding_inst_arg_obj_2 : forall o1 L S0 S C code largs o, (* Step 7b ii *)
+  | red_spec_binding_inst_arg_obj_2 : forall L S0 S C code largs o, (* Step 7b ii *)
       red_expr S C (spec_env_record_initialize_immutable_binding L "arguments" (value_object largs)) o ->
       red_expr S0 C (spec_binding_inst_arg_obj_2 code L largs (out_void S)) o
 
-  | red_spec_binding_inst_arg_obj_1_not_strict : forall o1 L S0 S C code largs o, (* Step 7c *)
+  | red_spec_binding_inst_arg_obj_1_not_strict : forall L S0 S C code largs o, (* Step 7c *)
       red_expr S C (spec_env_record_create_set_mutable_binding L "arguments" None largs false) o ->
       red_expr S0 C (spec_binding_inst_arg_obj_1 code L false (out_ter S largs)) o
 
@@ -2498,7 +2498,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      red_expr S C (spec_args_obj_get_1 vthis l x lmap y) o ->
      red_expr S C (spec_object_get_1 builtin_get_args_obj vthis l x) o
 
-  | red_spec_object_get_args_obj_1_undef : forall o1 S0 S C vthis l x lmap o, (* Step 3 *)
+  | red_spec_object_get_args_obj_1_undef : forall S0 S C vthis l x lmap o, (* Step 3 *)
      (* Steps 3 a - c are identical to the steps of 15.3.5.4. *)
      red_expr S0 C (spec_object_get_1 builtin_get_function vthis l x) o ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap (ret S0 full_descriptor_undef)) o
@@ -2537,11 +2537,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_args_obj_define_own_prop_3 l x Desc throw lmap o1) o ->
       red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap (full_descriptor_some A) (out_ter S' true)) o
 
-  | red_spec_object_define_own_prop_args_obj_3 : forall v o1 S C l x Desc throw lmap A S' o, (* Step 5 b i join *)
+  | red_spec_object_define_own_prop_args_obj_3 : forall S C l x Desc throw lmap S' o, (* Step 5 b i join *)
       red_expr S' C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o ->
       red_expr S C (spec_args_obj_define_own_prop_3 l x Desc throw lmap (out_void S')) o
 
-  | red_spec_object_define_own_prop_args_obj_2_true_not_acc_none : forall o1 S C l x Desc throw lmap A S' o, (* Step 5 b i else join *)
+  | red_spec_object_define_own_prop_args_obj_2_true_not_acc_none : forall S C l x Desc throw lmap A S' o, (* Step 5 b i else join *)
       ~ (descriptor_is_accessor Desc) ->
       descriptor_value Desc = None ->
       red_expr S' C (spec_args_obj_define_own_prop_4 l x Desc throw lmap) o ->
@@ -2725,7 +2725,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_creating_function_object_proto_2 l lproto o1) o ->
       red_expr S0 C (spec_creating_function_object_proto_1 l (out_ter S lproto)) o
 
-   | red_spec_creating_function_object_proto_2 : forall S0 S C l lproto b o1 o, (* Step 18 *)
+   | red_spec_creating_function_object_proto_2 : forall S0 S C l lproto b o, (* Step 18 *)
       let A := attributes_data_intro (value_object lproto) true false false in
       red_expr S C (spec_object_define_own_prop l "prototype" A false) o ->
       red_expr S0 C (spec_creating_function_object_proto_2 l lproto (out_ter S b)) o
@@ -2778,7 +2778,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_default l this args) o ->
       red_expr S C (spec_call_1 call_default l this args) o
 
-  | red_spec_call_default : forall S C l this args o1 o, (* Step 1, Step 3 implicit *)
+  | red_spec_call_default : forall S C l this args o, (* Step 1, Step 3 implicit *)
       red_expr S C (spec_entering_func_code l this args (spec_call_default_1 l)) o ->
       red_expr S C (spec_call_default l this args) o
 
@@ -2793,7 +2793,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_default_3 o1) o ->
       red_expr S C (spec_call_default_2 (Some bd)) o
 
-  | red_spec_call_default_2_empty_body : forall S C l bdo o, (* Step 2, empty code *)
+  | red_spec_call_default_2_empty_body : forall S C bdo o, (* Step 2, empty code *)
       (match bdo with | None => True | Some bd => funcbody_empty bd end) ->
       red_expr S C (spec_call_default_3 (out_ter S (res_normal undef))) o ->
       red_expr S C (spec_call_default_2 bdo) o
@@ -3020,7 +3020,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Object.getPrototypeOf (returns value)  (15.2.3.2) *)
 
-  | red_spec_call_object_get_proto_of : forall S C v r vthis args o,
+  | red_spec_call_object_get_proto_of : forall S C v vthis args o,
       arguments_from args (v::nil) ->
       red_expr S C (spec_call_object_get_proto_of_1 v) o ->
       red_expr S C (spec_call_prealloc prealloc_object_get_proto_of vthis args) o
@@ -3071,7 +3071,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_call_object_create_1 vo vp) o
 
-  | red_spec_call_object_object_create_1_object : forall S C l vo vp o o1, (* step 2 *)
+  | red_spec_call_object_object_create_1_object : forall S C vo vp o o1, (* step 2 *)
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
       red_expr S C (spec_call_object_create_2 o1 vo vp) o ->
       red_expr S C (spec_call_object_create_1 vo vp) o
@@ -3138,7 +3138,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_2 o1 l) o ->
       red_expr S C (spec_call_object_define_props_1 l vp) o
 
-  | red_spec_call_object_object_define_props_2 : forall S0 S C l lp xs o o1, (* step 3 and 4 *)
+  | red_spec_call_object_object_define_props_2 : forall S0 S C l lp xs o, (* step 3 and 4 *)
       object_properties_enumerable_keys_as_list S lp xs ->
       red_expr S C (spec_call_object_define_props_3 l lp xs nil) o ->
       red_expr S0 C (spec_call_object_define_props_2 (out_ter S lp) l) o
@@ -3157,7 +3157,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_5 l lp x xs Descs y) o1 ->
       red_expr S0 C (spec_call_object_define_props_4 (out_ter S v) l lp x xs Descs) o
 
-  | red_spec_call_object_define_props_5 : forall S S0 C A l lp o o1 x xs Descs, (* step 5.c *)
+  | red_spec_call_object_define_props_5 : forall S S0 C A l lp o x xs Descs, (* step 5.c *)
       red_expr S C (spec_call_object_define_props_3 l lp xs (Descs++(x,A)::nil)) o ->
       red_expr S0 C (spec_call_object_define_props_5 l lp x xs Descs (ret S A)) o
 
@@ -3185,7 +3185,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_call_object_seal_1 v) o
 
-  | red_spec_call_object_seal_1_object : forall S C l xs x o, (* Step 2 *)
+  | red_spec_call_object_seal_1_object : forall S C l xs o, (* Step 2 *)
       object_properties_keys_as_list S l xs ->
       red_expr S C (spec_call_object_seal_2 l xs) o ->
       red_expr S C (spec_call_object_seal_1 l) o
@@ -3221,7 +3221,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_call_object_freeze_1 v) o
 
-  | red_spec_call_object_freeze_1_object : forall S C l xs x o, (* Step 2 *)
+  | red_spec_call_object_freeze_1_object : forall S C l xs o, (* Step 2 *)
       object_properties_keys_as_list S l xs ->
       red_expr S C (spec_call_object_freeze_2 l xs) o ->
       red_expr S C (spec_call_object_freeze_1 l) o
@@ -3242,17 +3242,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_freeze_4 l x xs A') o ->
       red_expr S C (spec_call_object_freeze_3 l x xs (ret (T:=full_descriptor) S0 A)) o
 
-  | red_spec_call_object_freeze_4 : forall S C Desc A A' xs l x o1 o, (* Steps 2.c and 2.d *)
+  | red_spec_call_object_freeze_4 : forall S C A A' xs l x o1 o, (* Steps 2.c and 2.d *)
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
       red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A') throw_true) o1 ->
       red_expr S C (spec_call_object_freeze_5 l xs o1) o ->
       red_expr S C (spec_call_object_freeze_4 l x xs A) o
 
-  | red_spec_call_object_freeze_5 : forall S0 S C xs l x b o, (* Step 2, loop *)
+  | red_spec_call_object_freeze_5 : forall S0 S C xs l b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_freeze_2 l xs) o ->
       red_expr S0 C (spec_call_object_freeze_5 l xs (out_ter S b)) o
 
-  | red_spec_call_object_freeze_2_nil : forall S S' C l b x o, (* Steps 4 and 5 *)
+  | red_spec_call_object_freeze_2_nil : forall S S' C l, (* Steps 4 and 5 *)
       object_heap_set_extensible false S l S' ->
       red_expr S C (spec_call_object_freeze_2 l nil) (out_ter S' l)
 
@@ -3286,7 +3286,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_call_object_is_sealed_1 v) o
 
-  | red_spec_call_object_is_sealed_1_object : forall S C l xs x o, (* Step 2 *)
+  | red_spec_call_object_is_sealed_1_object : forall S C l xs o, (* Step 2 *)
       object_properties_keys_as_list S l xs ->
       red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
       red_expr S C (spec_call_object_is_sealed_1 l) o
@@ -3296,16 +3296,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_sealed_3 l xs y) o ->
       red_expr S C (spec_call_object_is_sealed_2 l (x::xs)) o
 
-  | red_spec_call_object_is_sealed_3_prop_configurable : forall S0 S C A xs l x o, (* Step 2.b, true *)
+  | red_spec_call_object_is_sealed_3_prop_configurable : forall S0 S C A xs l, (* Step 2.b, true *)
       attributes_configurable A = true ->
       red_expr S C (spec_call_object_is_sealed_3 l xs (ret (T:=full_descriptor) S0 A)) (out_ter S false)
 
-  | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S0 S C A xs l x o, (* Step 2.b, false *)
+  | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S0 S C A xs l o, (* Step 2.b, false *)
       attributes_configurable A = false ->
       red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
       red_expr S C (spec_call_object_is_sealed_3 l xs (ret (T:=full_descriptor) S0 A)) o
 
-  | red_spec_call_object_is_sealed_2_nil : forall S C l b x o, (* Step 3-4 *)
+  | red_spec_call_object_is_sealed_2_nil : forall S C l b, (* Step 3-4 *)
       object_extensible S l b ->
       red_expr S C (spec_call_object_is_sealed_2 l nil) (out_ter S (negb b))
 
@@ -3321,7 +3321,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_call_object_is_frozen_1 v) o
 
-  | red_spec_call_object_is_frozen_1_object : forall S C l xs x o, (* Step 2 *)
+  | red_spec_call_object_is_frozen_1_object : forall S C l xs o, (* Step 2 *)
       object_properties_keys_as_list S l xs ->
       red_expr S C (spec_call_object_is_frozen_2 l xs) o ->
       red_expr S C (spec_call_object_is_frozen_1 l) o
@@ -3331,35 +3331,35 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_is_frozen_3 l xs y) o ->
       red_expr S C (spec_call_object_is_frozen_2 l (x::xs)) o
 
-  | red_spec_call_object_is_frozen_3_desc_is_data : forall S0 S C A xs l x o, (* Step 2.b, true *)
+  | red_spec_call_object_is_frozen_3_desc_is_data : forall S0 S C A xs l o, (* Step 2.b, true *)
       attributes_is_data A = true ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
       red_expr S C (spec_call_object_is_frozen_3 l xs (ret (T:=full_descriptor) S0 A)) o
 
-  | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S0 S C A xs l x o, (* Step 2.b, false *)
+  | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S0 S C A xs l o, (* Step 2.b, false *)
       attributes_is_data A = false ->
       red_expr S C (spec_call_object_is_frozen_5 l xs A) o ->
       red_expr S C (spec_call_object_is_frozen_3 l xs (ret (T:=full_descriptor) S0 A)) o
 
-  | red_spec_call_object_is_frozen_4_prop_is_writable: forall S C A xs l x o, (* Step 2.b.i, true *)
+  | red_spec_call_object_is_frozen_4_prop_is_writable: forall S C A xs l, (* Step 2.b.i, true *)
       attributes_writable A = true ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) (out_ter S false)
 
-  | red_spec_call_object_is_frozen_4_prop_is_not_writable: forall S C A xs l x o, (* Step 2.b.i, false *)
+  | red_spec_call_object_is_frozen_4_prop_is_not_writable: forall S C A xs l o, (* Step 2.b.i, false *)
       attributes_writable A = false ->
       red_expr S C (spec_call_object_is_frozen_5 l xs A) o ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o
 
-  | red_spec_call_object_is_frozen_5_prop_configurable : forall S C A xs l x o, (* Step 2.c, true *)
+  | red_spec_call_object_is_frozen_5_prop_configurable : forall S C A xs l, (* Step 2.c, true *)
       attributes_configurable A = true ->
       red_expr S C (spec_call_object_is_frozen_5 l xs A) (out_ter S false)
 
-  | red_spec_call_object_is_frozen_5_prop_not_configurable : forall S C A xs l x o,  (* Step 2.c, false*)
+  | red_spec_call_object_is_frozen_5_prop_not_configurable : forall S C A xs l o,  (* Step 2.c, false*)
       attributes_configurable A = false ->
       red_expr S C (spec_call_object_is_frozen_2 l xs) o ->
       red_expr S C (spec_call_object_is_frozen_5 l xs A) o
 
-  | red_spec_call_object_is_frozen_2_nil : forall S C l b x o, (* Steps 3-4 *)
+  | red_spec_call_object_is_frozen_2_nil : forall S C l b, (* Steps 3-4 *)
       object_extensible S l b ->
       red_expr S C (spec_call_object_is_frozen_2 l nil) (out_ter S (negb b))
 
@@ -3468,7 +3468,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_proto_is_prototype_of_4_equal : forall S C lthis, (* Step 3.c *)
       red_expr S C (spec_call_object_proto_is_prototype_of_2_4 lthis lthis) (out_ter S true)
 
-  | red_spec_call_object_proto_is_prototype_of_4_not_equal : forall S C l lthis lproto o, (* Look back to step 3 *)
+  | red_spec_call_object_proto_is_prototype_of_4_not_equal : forall S C lthis lproto o, (* Look back to step 3 *)
       (* Note: we implicitly enforce the fact that a proto can only be a location or null *)
       lproto <> lthis ->
       red_expr S C (spec_call_object_proto_is_prototype_of_2_3 lthis lproto) o ->
@@ -3592,18 +3592,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_call_array_new_2 l args 0) o ->
       red_expr S C (spec_call_array_new_1 args) o
 
-  | red_spec_call_array_new_2_nonempty: forall S S' C O l A v vs ilen o,
+  | red_spec_call_array_new_2_nonempty: forall S S' C l v vs ilen o,
       object_set_property S l (JsNumber.to_string (JsNumber.of_int ilen)) (attributes_data_intro v true true true) S' ->
       red_expr S' C (spec_call_array_new_2 l vs (ilen + 1)) o ->
       red_expr S C (spec_call_array_new_2 l (v::vs) ilen) o
 
-  | red_spec_call_array_new_2_empty: forall S S' C O l ilen o,
+  | red_spec_call_array_new_2_empty: forall S S' C l ilen,
       object_set_property S l "length" (attributes_data_intro (JsNumber.of_int ilen) true true true) S' ->
       red_expr S C (spec_call_array_new_2 l nil ilen) (out_ter S' l)
 
   (** Array.prototype.pop() (returns value)  (15.4.4.6) *)
 
-  | red_spec_call_array_proto_pop : forall S C vthis l o o1 args, (* 1 *)
+  | red_spec_call_array_proto_pop : forall S C vthis o o1 args, (* 1 *)
       red_expr S C (spec_to_object vthis) o1 ->
       red_expr S C (spec_call_array_proto_pop_1 o1) o ->
       red_expr S C (spec_call_prealloc prealloc_array_proto_pop vthis args) o
@@ -3622,7 +3622,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_array_proto_pop_3_empty_1 l) o ->
       red_expr S0 C (spec_call_array_proto_pop_3 l (ret S (0 : int))) o
 
-  | red_spec_call_array_proto_pop_3_empty_1 : forall S0 S C l o o1, (* 4a *)
+  | red_spec_call_array_proto_pop_3_empty_1 : forall S C l o o1, (* 4a *)
       red_expr S C (spec_object_put l "length" 0 throw_true) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_empty_2 o1) o ->
       red_expr S C (spec_call_array_proto_pop_3_empty_1 l) o
@@ -3635,12 +3635,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_array_proto_pop_3_nonempty_1 l lenuint32) o ->
       red_expr S0 C (spec_call_array_proto_pop_3 l (ret S lenuint32)) o
 
-  | red_spec_call_array_proto_pop_3_nonempty_1 : forall S0 S C l lenuint32 o o1, (* 5a *)
+  | red_spec_call_array_proto_pop_3_nonempty_1 : forall S C l lenuint32 o o1, (* 5a *)
       red_expr S C (spec_to_string (lenuint32 - 1)) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_2 l o1) o ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_1 l lenuint32) o
 
-  | red_spec_call_array_proto_pop_3_nonempty_2 : forall S0 S C l vindx (velem : value) o o1, (* 5b *)
+  | red_spec_call_array_proto_pop_3_nonempty_2 : forall S0 S C l vindx (velem : value) o o1, (* 5b *) (* Shouldn't this [velem] be used? :\ *)
       red_expr S C (spec_object_get l vindx) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_3 l vindx o1) o ->
       red_expr S0 C (spec_call_array_proto_pop_3_nonempty_2 l (out_ter S vindx)) o
@@ -3660,7 +3660,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Array.prototype.push() (returns value)  (15.4.4.7) *)
 
-  | red_spec_call_array_proto_push : forall S0 S C vthis args o o1, (* 1 *)
+  | red_spec_call_array_proto_push : forall S C vthis args o o1, (* 1 *)
       red_expr S C (spec_to_object vthis) o1 ->
       red_expr S C (spec_call_array_proto_push_1 o1 args) o ->
       red_expr S C (spec_call_prealloc prealloc_array_proto_push vthis args) o
@@ -3932,7 +3932,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** new Error(value)  (returns object_loc)  (15.11.2.1) *)
 
-  | red_spec_construct_error : forall S C v o o1 args,
+  | red_spec_construct_error : forall S C v o args,
       arguments_from args (v::nil) ->
       red_expr S C (spec_build_error prealloc_error_proto v) o ->
       red_expr S C (spec_construct_prealloc prealloc_error args) o
@@ -3943,7 +3943,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Error.prototype.toString()  (15.11.4.4) *)
 
-  | red_spec_call_error_proto_to_string : forall S C args vthis o1 o, (* step 1 *)
+  | red_spec_call_error_proto_to_string : forall S C args vthis o, (* step 1 *)
       red_expr S C (spec_call_error_proto_to_string_1 vthis) o ->
       red_expr S C (spec_call_prealloc prealloc_error_proto_to_string vthis args) o
 
@@ -3992,7 +3992,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_error_proto_to_string_6 l sname o1) o ->
       red_expr S0 C (spec_call_error_proto_to_string_5 l sname (out_ter S v)) o
 
-  | red_spec_call_error_proto_to_string_6 : forall S0 S C l sname smsg s o, (* steps 8,9,10 *)
+  | red_spec_call_error_proto_to_string_6 : forall S0 S C l sname smsg s, (* steps 8,9,10 *)
       s = (If sname = "" then smsg else If smsg = "" then sname
            else (string_concat (string_concat sname ": ") smsg)) ->
       red_expr S0 C (spec_call_error_proto_to_string_6 l sname (out_ter S smsg)) (out_ter S s)
@@ -4010,7 +4010,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** new NativeError(value)  (returns object_loc)  (15.11.2.1) *)
 
-  | red_spec_construct_native_error : forall S C v o o1 ne args,
+  | red_spec_construct_native_error : forall S C v o ne args,
       arguments_from args (v::nil) ->
       red_expr S C (spec_build_error (prealloc_native_error_proto ne) v) o ->
       red_expr S C (spec_construct_prealloc (prealloc_native_error ne) args) o
@@ -4108,7 +4108,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_error_spec native_error_type) y ->
       red_spec S C (spec_to_descriptor v) y
 
-  | red_spec_to_descriptor_object : forall S C l xs x Desc (y:specret descriptor), (* Step 2 *)
+  | red_spec_to_descriptor_object : forall S C l Desc (y:specret descriptor), (* Step 2 *)
       Desc = descriptor_intro_empty ->
       red_spec S C (spec_to_descriptor_1a l Desc) y ->
       red_spec S C (spec_to_descriptor l) y
@@ -4127,7 +4127,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_1c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_1b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_1c : forall S0 S C o1 l v b Desc Desc' (y:specret descriptor), (* step 3b *)
+  | red_spec_to_descriptor_1c : forall S0 S C l v b Desc Desc' (y:specret descriptor), (* step 3b *)
       b = (convert_value_to_boolean v) ->
       Desc' = descriptor_with_enumerable Desc (Some b) ->
       red_spec S C (spec_to_descriptor_2a l Desc') y ->
@@ -4147,7 +4147,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_2c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_2b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_2c : forall S0 S C o1 l v b Desc Desc' (y:specret descriptor), (* step 4b *)
+  | red_spec_to_descriptor_2c : forall S0 S C l v b Desc Desc' (y:specret descriptor), (* step 4b *)
       b = (convert_value_to_boolean v) ->
       Desc' = descriptor_with_configurable Desc (Some b) ->
       red_spec S C (spec_to_descriptor_3a l Desc') y ->
@@ -4167,7 +4167,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_3c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_3b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_3c : forall S0 S C o1 l v Desc Desc' (y:specret descriptor), (* step 5b *)
+  | red_spec_to_descriptor_3c : forall S0 S C l v Desc Desc' (y:specret descriptor), (* step 5b *)
       Desc' = descriptor_with_value Desc (Some v) ->
       red_spec S C (spec_to_descriptor_4a l Desc') y ->
       red_spec S0 C (spec_to_descriptor_3c (out_ter S v) l Desc) y
@@ -4186,7 +4186,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_4c o1 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_4b (out_ter S true) l Desc) y
 
-  | red_spec_to_descriptor_4c : forall S0 S C o1 l v b Desc Desc' (y:specret descriptor), (* step 6b *)
+  | red_spec_to_descriptor_4c : forall S0 S C l v b Desc Desc' (y:specret descriptor), (* step 6b *)
       b = (convert_value_to_boolean v) ->
       Desc' = descriptor_with_writable Desc (Some b) ->
       red_spec S C (spec_to_descriptor_5a l Desc') y ->
@@ -4197,7 +4197,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_5b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_5a l Desc) y
 
-  | red_spec_to_descriptor_5b_false : forall S0 S C o1 l Desc (y:specret descriptor), (* step 7, neg *)
+  | red_spec_to_descriptor_5b_false : forall S0 S C l Desc (y:specret descriptor), (* step 7, neg *)
       red_spec S C (spec_to_descriptor_6a l Desc) y ->
       red_spec S0 C (spec_to_descriptor_5b (out_ter S false) l Desc) y
 
@@ -4222,7 +4222,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_to_descriptor_6b o1 l Desc) y ->
       red_spec S C (spec_to_descriptor_6a l Desc) y
 
-  | red_spec_to_descriptor_6b_false : forall S0 S C o1 l Desc (y:specret descriptor), (* step 8, neg *)
+  | red_spec_to_descriptor_6b_false : forall S0 S C l Desc (y:specret descriptor), (* step 8, neg *)
       red_spec S C (spec_to_descriptor_7 l Desc) y ->
       red_spec S0 C (spec_to_descriptor_6b (out_ter S false) l Desc) y
 
@@ -4247,7 +4247,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_error_spec native_error_type) y ->
       red_spec S C (spec_to_descriptor_7 l Desc) y
 
-  | red_spec_to_descriptor_7_ok : forall S C o l Desc, (* step 10 *)
+  | red_spec_to_descriptor_7_ok : forall S C l Desc, (* step 10 *)
       ~ descriptor_inconsistent Desc ->
       red_spec S C (spec_to_descriptor_7 l Desc) (ret S Desc)
 
@@ -4331,7 +4331,7 @@ with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> P
       red_spec S C (spec_string_get_own_prop_4 x s) y ->
       red_spec S0 C (spec_string_get_own_prop_3 l x (out_ter S x)) y
 
-  | red_spec_object_get_own_prop_string_4 : forall S C l x s y1 (y:specret full_descriptor), (* Step 5 *)
+  | red_spec_object_get_own_prop_string_4 : forall S C x s y1 (y:specret full_descriptor), (* Step 5 *)
       red_spec S C (spec_to_int32 x) y1 ->
       red_spec S C (spec_string_get_own_prop_5 s y1) y ->
       red_spec S C (spec_string_get_own_prop_4 x s) y
