@@ -2077,7 +2077,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_env_record_set_mutable_binding_1_decl_mutable : forall v_old mu S C L x v str Ed o,
       decl_env_record_binds Ed x mu v_old ->
       mutability_is_mutable mu ->
-      red_expr S C spec_returns (out_void (env_record_write_decl_env S L x mu v)) o ->
+      red_expr S C (spec_returns (out_void (env_record_write_decl_env S L x mu v))) o ->
       red_expr S C (spec_env_record_set_mutable_binding_1 L x v str (env_record_decl Ed)) o
 
   | red_spec_env_record_set_mutable_binding_1_decl_non_mutable : forall v_old mu S C L x v str Ed o,

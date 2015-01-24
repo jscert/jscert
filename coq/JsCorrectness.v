@@ -1576,9 +1576,11 @@ Proof.
   run_simpl. forwards B: @pick_option_correct (rm E).
   applys~ red_spec_env_record_get_binding_value B. destruct x.
    run_simpl. rewrite <- Heap.binds_equiv_read_option in E. destruct x as [mu v].
-    applys~ red_spec_env_record_get_binding_value_1_decl E. do 2 cases_if.
-     apply~ out_error_or_cst_correct.
-     run_inv. apply~ red_spec_returns.
+    cases_if.
+     applys~ red_spec_env_record_get_binding_value_1_decl_uninitialized E.
+      apply~ out_error_or_cst_correct.
+     applys~ red_spec_env_record_get_binding_value_1_decl_initialized E.
+      run_inv. apply~ red_spec_returns.
    run red_spec_env_record_get_binding_value_1_object using object_has_prop_correct.
     cases_if; run_inv.
      apply~ red_spec_env_record_get_binding_value_obj_2_true.
@@ -1680,11 +1682,11 @@ Proof.
   run_simpl. forwards B: @pick_option_correct (rm E).
   applys~ red_spec_env_record_set_mutable_binding B. destruct x0.
    run_simpl. rewrite <- Heap.binds_equiv_read_option in E. destruct x0 as [mu ?].
-    applys~ red_spec_env_record_set_mutable_binding_1_decl E.
-    unfold mutability_is_mutable. cases_if in HR as D; run_inv;
-      rewrite decide_def in D; repeat cases_if.
-     apply~ red_spec_returns.
-     apply~ out_error_or_void_correct.
+    cases_if; run_inv.
+     applys~ red_spec_env_record_set_mutable_binding_1_decl_mutable E.
+      apply~ red_spec_returns.
+     applys~ red_spec_env_record_set_mutable_binding_1_decl_non_mutable E.
+      apply~ out_error_or_void_correct.
    apply~ red_spec_env_record_set_mutable_binding_1_object.
     applys~ object_put_correct HR.
 Qed.
