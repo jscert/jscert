@@ -12,12 +12,15 @@
 # Default paths for TLC and COQBIN, etc are as follows:
 
 COQBIN=
-TLC=tlc
-FLOCQ=flocq
+TLC=lib/tlc
+FLOCQ=lib/flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
 # Define FAST to be non empty for compiling Coq proofs faster
 FAST=
+
+# Use bash as the default shell
+SHELL=/bin/bash
 
 LAMBDAS5=~/Documents/data/LambdaS5/tests/s5
 SPIDERMONKEY=~/Mozilla/Central/Central/js/src/build_release/js
@@ -45,8 +48,8 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
 COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
-OCAMLOPT=ocamlopt
-OCAMLC=ocamlc
+
+OCAMLBUILD=ocamlbuild
 
 #######################################################
 # MAIN SOURCE FILES
@@ -94,17 +97,12 @@ endif
 
 FAST_VO=$(FAST_SRC:.v=.vo)
 
-
-#######################################################
-# EXTENSIONS
-
-.PHONY: all report depend clean
-.SUFFIXES: .v .vo
-
 #######################################################
 # MAIN TARGETS
 
-all: $(JS_VO) interpreter tags
+default: coq interpreter tags
+
+all: default interp/run_jsbisect interp/run_jstrace
 
 debug:
 	make -f Makefile.debug
@@ -114,99 +112,167 @@ report:
 	firefox report/index.html || open report/index.html
 	rm bisect*.out
 
-tlc: $(TLC_VO)
-
-flocq: $(FLOCQ_VO)
-
 tags: $(JS_SRC)
 	./gentags.sh
 
+.PHONY: all default debug report init tlc flocq lib \
+        local nofast
+
+#######################################################
+# EXTERNAL OCAML DEPENDENCIES
+.PHONY: install_depend install_optional_depend
+install_depend:
+	# Install coq if required
+	if ! which $(COQBIN)coqc; then opam install -y coq; fi
+	opam install -y xml-light ocamlfind yojson
+
+install_optional_depend: install_depend
+	opam install -y js_of_ocaml bisect lwt
 
 #######################################################
 # EXTERNAL LIBRARIES: TLC and Flocq
 
 init:
-	bash -c "mkdir interp/src/extract" || true
 	git submodule init; git submodule update
-	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk tlc
-	tar -xzf flocq-2.1.0.tar.gz
-	mv flocq-2.1.0 flocq
-	# chmod +x interp/run.py -- no longer necessarry
-
+	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk lib/tlc
+	tar -xzf lib/flocq-2.1.0.tar.gz
+	mv flocq-2.1.0 lib/flocq
 # alternative: pull git from svn
 #	git clone https://gforge.inria.fr/git/flocq/flocq.git flocq
 
+lib: tlc flocq
+
+tlc: $(TLC_VO)
+
+flocq: $(FLOCQ_VO)
+
+#######################################################
+# Coq Compilation Implicit Rules
+%.v.d: %.v
+	$(COQDEP) $< > $@
+
+# If this rule fails for some reason, try `make clean_all && make`
+%.vo: %.v
+	$(COQC) -dont-load-proofs $<
 
 #######################################################
 # FAST COMPILATION TOOL: coqj
 
-
 # Compile coqj : converts a .v file into a shallow .v file (without proofs)
-
-coqj: coqj.mll
-	ocamllex coqj.mll
-	ocamlopt -o coqj coqj.ml
+tools/coqj/coqj:
+	$(MAKE) -C tools/coqj coqj
 
 # Fast compilation of files in $(FAST_SRC)
-
 define FAST_RULE
-
-$(1).vo: .depend coqj
+$(1).vo: tools/coqj/coqj
 	@mkdir -p _shallow/$(dir $1)
-	./coqj $(1).v > _shallow/$(1).v
+	tools/coqj/coqj $(1).v > _shallow/$(1).v
 	$(COQC) -dont-load-proofs -I coq -I $(TLC) _shallow/$(1).v
 	mv _shallow/$(1).vo $(1).vo
-
 endef
 
 $(foreach filebase,$(FAST_SRC:.v=),$(eval $(call FAST_RULE,$(filebase))))
 
 # "make nofast" : Compilation mode to force the verification of all files
-
 nofast: $(FAST_VO:.vo=_full.vo)
 
-%_full.vo : %.v .depend
+%_full.vo : %.v
 	echo $*
 	cp $*.v $*_full.v
 	$(COQC) -dont-load-proofs -I coq -I $(TLC) $*_full.v
 	rm $*_full.v
 
+#######################################################
+# JSCert Specific Rules
+.PHONY: coq
 
+coq: $(JS_VO)
+
+# Interpreter extraction spits out lots of *.ml,mli files
+# The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
+coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
+	$(COQC) $<
+	-mkdir -p interp/src/extract
+	-rm -f interp/src/extract/.patched
+	mv *.ml interp/src/extract
+	mv *.mli interp/src/extract
 
 #######################################################
-#######################################################
+# JsRef Interpreter Rules
+.PHONY: extract_interpreter interpreter
 
+# ; forces rule to be run, generates everything under extract dir
+interp/src/extract/%: coq/JsInterpreterExtraction.vo ;
 
-#######################################################
-# SED INSERTION
-
+# Insert more useful error messages into Interpreter
 REFGETVALUE=$(shell cat interp/src/insert/ref_get_value)
 REFGETVALUE2=$(shell cat interp/src/insert/ref_get_value2)
 RUNOBJECTMETHOD=$(shell cat interp/src/insert/run_object_method)
 RUNOBJECTHEAP=$(shell cat interp/src/insert/run_object_heap_set_extensible)
 ENVGETIDENTIFIER=$(shell cat interp/src/insert/lexical_env_get_identifier_ref)
 
-.v.vo : .depend
-	$(COQC) -dont-load-proofs -I coq -I $(TLC) $<
+interp/src/extract/JsInterpreter.ml.patched: interp/src/extract/JsInterpreter.ml
+	@echo \# Inserting useful error messages into $<
+	@perl -i -pe 's|res_res \(run_error s Coq_native_error_ref\)|$(REFGETVALUE)|' $<
+	@perl -i -pe 's/\(\*\* val run_object_heap_set_extensible :/$(RUNOBJECTMETHOD)/' $<
+	@perl -i -pe 's/type runs_type =/$(RUNOBJECTHEAP)/' $<
+	@perl -i -pe 's/    result_val s \(ref_create_value \(Coq_value_prim Coq_prim_undef\) x0 str\)/$(ENVGETIDENTIFIER)/' $<
+	@perl -i -pe 's|\(\*\* val run_expr_get_value :|$(REFGETVALUE2)|' $<
+	touch $@
 
-coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
-	$(COQC) -I coq -I $(TLC) $< # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
-	mv *.ml interp/src/extract/
-	mv *.mli interp/src/extract/
-	cp interp/src/extract/JsInterpreter.mli interp/src/extract/JsInterpreterBisect.mli
-	perl -pe 's|res_res \(run_error s Coq_native_error_ref\)|$(REFGETVALUE)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
-	perl -pe 's/\(\*\* val run_object_heap_set_extensible :/$(RUNOBJECTMETHOD)/' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
-	perl -pe 's/type runs_type =/$(RUNOBJECTHEAP)/' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
-	perl -pe 's/    result_val s \(ref_create_value \(Coq_value_prim Coq_prim_undef\) x0 str\)/$(ENVGETIDENTIFIER)/' interp/src/extract/JsInterpreter.ml.bak > interp/src/extract/JsInterpreter.ml
-	perl -pe 's|\(\*\* val run_expr_get_value :|$(REFGETVALUE2)|' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreter.ml.bak
-	mv interp/src/extract/JsInterpreter.ml.bak interp/src/extract/JsInterpreter.ml
-	perl -pe 's/ impossible/ (*BISECT-IGNORE*) impossible/g' interp/src/extract/JsInterpreter.ml > interp/src/extract/JsInterpreterBisect.ml
-	# As there is a second generation f dependancies, you may need to re-call `make' another time to get full compilation working.
-	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
+# Sentinel file to check all interpreter source files have been patched
+# Should depend on each individual file patched sentinel
+# (Can also add rules to patch all files)
+interp/src/extract/.patched: interp/src/extract/JsInterpreter.ml.patched
+	touch $@
 
+extract_interpreter: interp/src/extract/.patched
+
+# .ml executables may be placed in a number of locations, tell make where to search for them
+vpath %.ml interp/src interp/top_level
+
+# interp/_tags contains OCaml-specific build rules for all interpreter variants
+interp/%.native interp/%.byte: extract_interpreter %.ml
+	cd interp && $(OCAMLBUILD) -use-ocamlfind -cflags "-w -20" $(@F)
+
+.PRECIOUS: interp/%.native
+interp/%: interp/%.native
+	ln -fs $(<F) $@
+
+interpreter: interp/run_js interp/top
 
 #######################################################
-# INTERPRETER
+# JSRef Bisect Mode
+
+interp/src/extract/JsInterpreterBisect.ml: interp/src/extract/JsInterpreter.ml extract_interpreter
+	perl -pe 's/ impossible/ (*BISECT-IGNORE*) impossible/g' $< > $@
+
+interp/src/run_jsbisect.ml: interp/src/run_js.ml
+	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./' $< > $@
+
+interp/run_jsbisect.native: interp/src/extract/JsInterpreterBisect.ml
+
+# interp/run_jsbisect is an implicit rule
+
+#######################################################
+# Tracing version of the interpreter
+
+interp/tracer/annotml/ppx_lines.native:
+	$(MAKE) -C interp/tracer/annotml ppx_lines.native
+
+interp/src/extract/JsInterpreterTrace.ml: interp/src/extract/JsInterpreter.ml extract_interpreter
+	cp $< $@
+
+interp/src/run_jstrace.ml: interp/src/run_js.ml
+	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./' $< > $@
+
+interp/run_jstrace.native: interp/src/extract/JsInterpreterTrace.ml interp/tracer/annotml/ppx_lines.native
+
+# interp/run_jstrace is an implicit rule
+
+#######################################################
+# Interpreter run helpers
+.PHONY: run_tests run_tests_spidermonkey run_tests_lambdaS5 run_tests_nodejs
 
 run_tests: interpreter
 	./runtests.py --no_parasite
@@ -220,177 +286,26 @@ run_tests_lambdaS5:
 run_tests_nodejs:
 	./runtests.py --nodejs --interp_path $(NODEJS)
 
-interpreter: interp/run_js
-
-interp/src/extract/%.ml: coq/JsInterpreterExtraction.vo
-	# The following line are here only temporary.  It just replaces all [Coq_result_stuck] generated by Coq by an [assert false], which is much easier to use for debuging purpose. -- Martin.
-	perl -pe 's/\([^|][^ ]\)Coq_result_stuck/\1assert false/g' $@ > $@.bak
-	mv $@.bak $@
-
-interp/src/extract/%.mli: coq/JsInterpreterExtraction.vo
-
-PARSER_INC=-I $(shell ocamlfind query xml-light) -I interp/src -I interp/src/extract
-
-interp/src/parser_syntax.cmx: interp/parser/src/parser_syntax.ml
-	$(OCAMLOPT) -c -o $@ $<
-
-interp/src/parser_syntax.cmo: interp/parser/src/parser_syntax.ml
-	$(OCAMLC) -c -o $@ $<
-
-interp/src/pretty_print.cmx: interp/parser/src/pretty_print.ml interp/src/parser_syntax.cmx
-	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
-
-interp/src/pretty_print.cmo: interp/parser/src/pretty_print.ml interp/src/parser_syntax.cmo
-	$(OCAMLC) $(PARSER_INC) -c -o $@ $<
-
-interp/src/parser.cmx: interp/parser/src/parser.ml interp/src/parser_syntax.cmx
-	$(OCAMLOPT) $(PARSER_INC) -c -o $@ str.cmxa $<
-
-interp/src/parser.cmo: interp/parser/src/parser.ml interp/src/parser_syntax.cmo
-	$(OCAMLC) $(PARSER_INC) -c -o $@ str.cma $<
-
-interp/src/parser_main.cmx: interp/parser/src/parser_main.ml interp/src/parser_main.cmi interp/src/parser.cmx interp/src/pretty_print.cmx
-	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
-
-interp/src/parser_main.cmo: interp/parser/src/parser_main.ml interp/src/parser_main.cmi interp/src/parser.cmo interp/src/pretty_print.cmo
-	$(OCAMLC) $(PARSER_INC) -c -o $@ $<
-
-interp/src/parser_main.cmi: interp/src/parser_main.mli
-	$(OCAMLOPT) $(PARSER_INC) -c -o $@ $<
-
-interp/src/extract/JsInterpreterBisect.cmx:
-	ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.mli
-	ocamlfind ocamlopt -package bisect -syntax camlp4o -c -w -20 -I interp/src -I interp/src/extract interp/src/extract/JsInterpreterBisect.ml
-
-interp/src/extract/%.cmi: interp/src/extract/%.mli
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/extract/%.cmx: interp/src/extract/%.ml interp/src/extract/%.cmi
-	$(OCAMLOPT) -c -w -20 -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/extract/%.cmo: interp/src/extract/%.ml interp/src/extract/%.cmi
-	$(OCAMLC) -c -w -20 -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/translate_syntax.cmi: interp/src/translate_syntax.mli interp/src/extract/JsSyntax.cmi
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/translate_syntax.cmx: interp/src/translate_syntax.ml interp/src/translate_syntax.cmi interp/src/extract/JsSyntax.cmx
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/translate_syntax.cmo: interp/src/translate_syntax.ml interp/src/translate_syntax.cmi interp/src/extract/JsSyntax.cmo
-	$(OCAMLC) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/prheap.cmi: interp/src/prheap.mli interp/src/extract/JsSyntax.cmi
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/prheap.cmx: interp/src/prheap.ml interp/src/extract/JsSyntax.cmx interp/src/prheap.cmi
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/prheap.cmo: interp/src/prheap.ml interp/src/extract/JsSyntax.cmo interp/src/prheap.cmi
-	$(OCAMLC) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/print_syntax.cmx: interp/src/print_syntax.ml interp/src/extract/JsSyntax.cmx
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -o $@ $<
-
-interp/src/run_js.cmx: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmx
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
-
-interp/src/run_js.cmo: interp/src/run_js.ml interp/src/extract/JsInterpreter.cmo
-	$(OCAMLC) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
-
-interp/src/run_jsbisect.ml: interp/src/run_js.ml
-	cp $< $@
-	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./' $@ > $@.bak
-	mv $@.bak $@
-
-interp/src/run_jsbisect.cmx: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmx
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
-
-interp/src/run_jsbisect.cmo: interp/src/run_jsbisect.ml interp/src/extract/JsInterpreterBisect.cmo
-	$(OCAMLC) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
-
-mlfiles = ${shell ls interp/src/extract/*.ml interp/src/*.ml interp/parser/src/*.ml | perl -pe 's|interp/src/prtest.ml||'}
-mlfilessorted = ${shell ocamldep -I interp/src/extract -sort ${mlfiles}}
-mlfilessortedwithparsermoved = ${shell echo ${mlfilessorted} | perl -pe 's|parser/src|src|g'}
-mlfilestransformed = ${mlfilessortedwithparsermoved:.ml=.cmx}
-mlfilesbyte = ${mlfilessortedwithparsermoved:.ml=.cmo}
-basicfiles=${shell echo ${mlfilestransformed} | perl -pe 's|interp/src/extract/JsInterpreterTrace.cmx||' | perl -pe 's|interp/src/run_jstrace.cmx||' | perl -pe 's|interp/src/extract/JsInterpreter.cmx||' | perl -pe 's|interp/src/run_js.cmx||' | perl -pe 's|interp/src/extract/JsInterpreterBisect.cmx||' | perl -pe 's|interp/src/run_jsbisect.cmx||'}
-basicbytefiles=${shell echo ${mlfilesbyte} | perl -pe 's|interp/src/extract/JsInterpreterTrace.cmx||' | perl -pe 's|interp/src/run_jstrace.cmx||' | perl -pe 's|interp/src/extract/JsInterpreter.cmx||' | perl -pe 's|interp/src/run_js.cmx||' | perl -pe 's|interp/src/extract/JsInterpreterBisect.cmx||' | perl -pe 's|interp/src/run_jsbisect.cmx||'}
-
-interp/run_js: ${basicfiles} interp/src/extract/JsInterpreter.cmx interp/src/run_js.cmx
-	$(OCAMLOPT) $(PARSER_INC) -o interp/run_js xml-light.cmxa unix.cmxa str.cmxa $^
-
-interp/run_js.byte: ${basicbytefiles} interp/src/extract/JsInterpreter.cmo interp/src/run_js.cmo
-	$(OCAMLC) $(PARSER_INC) -o interp/run_js.byte xml-light.cma unix.cma str.cma $^
-
-interp/run_jsbisect: ${basicfiles} interp/src/extract/JsInterpreterBisect.cmx interp/src/run_jsbisect.cmx
-	ocamlfind $(OCAMLOPT) -package bisect $(PARSER_INC) -o interp/run_jsbisect xml-light.cmxa unix.cmxa str.cmxa bisect.cmxa $^
-
-
-#######################################################
-# Tracing version of the interpreter
-
-tracer/annotml/ppx_lines.native: tracer/annotml/ppx_lines.ml
-	cd tracer/annotml; ocamlfind ocamlopt -c -package compiler-libs.common -o ppx_lines.cmx ppx_lines.ml
-	cd tracer/annotml; ocamlfind ocamlopt -linkpkg -package compiler-libs.common ppx_lines.cmx -o ppx_lines.native
-
-interp/src/extract/JsInterpreterTrace.cmx: ${basicfiles} interp/src/extract/JsInterpreter.ml tracer/annotml/ppx_lines.native
-	cp interp/src/extract/JsInterpreter.ml interp/src/extract/JsInterpreterTrace.ml
-	$(OCAMLOPT) -ppx tracer/annotml/ppx_lines.native -c -I interp/src -I interp/src/extract -I tracer/annotml -o $@ interp/src/extract/JsInterpreterTrace.ml
-
-interp/src/run_jstrace.ml: interp/src/run_js.ml
-	cp $< $@
-	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./' $@ > $@.bak
-	mv $@.bak $@
-
-interp/src/run_jstrace.cmx: interp/src/run_jstrace.ml interp/src/extract/JsInterpreterTrace.cmx
-	$(OCAMLOPT) -c -I interp/src -I interp/src/extract -I $(shell ocamlfind query xml-light) -o $@ $<
-
-tracer/annotml/myPrint.cmx: tracer/annotml/myPrint.ml
-	$(OCAMLOPT) -c -o $@ $<
-
-interp/run_jstrace: ${basicfiles} tracer/annotml/myPrint.cmx interp/src/extract/JsInterpreterTrace.cmx interp/src/run_jstrace.cmx
-	ocamlfind $(OCAMLOPT) $(PARSER_INC) -o interp/run_jstrace xml-light.cmxa unix.cmxa str.cmxa $^
-
-
-#######################################################
-# DEPENDENCIES
-
-# TODO: split the dependencies between the coq files and the caml files
-
-DEPS=$(JS_SRC) $(TLC_SRC) $(FLOCQ_SRC)
-
-depend: .depend
-
-ifeq ($(KEEP_DEPENDS),1)
-else
-.depend : $(DEPS) Makefile
-	$(COQDEP) $(DEPS) > .depend
-	ocamldep -I interp/src/extract/ interp/src/extract/*.ml{,i} >> .depend
-endif
-
-ifeq ($(findstring $(MAKECMDGOALS),init depend clean clean_all),)
-include .depend
-endif
-
-
 #######################################################
 # CLEAN
+.PHONY: clean clean_interp clean_all
 
-clean_cm:
-	bash -c "rm -f interp/src/*.{cmi,cmx,cmo}" || echo ok
-	bash -c "rm -f interp/src/extract/*.{cmi,cmx,cmo}" || echo ok
-	bash -c "rm -f tracer/annotml/*.{cmi,cmx,cmo}" || echo ok
+clean_interp:
+	-rm -f coq/JsInterpreterExtraction.vo
+	-rm -rf interp/src/extract
+	-rm -f interp/run_js interp/top
+	-rm -f interp/run_jsbisect interp/src/run_jsbisect.ml
+	-rm -f interp/run_jstrace interp/src/run_jstrace.ml
+	cd interp && $(OCAMLBUILD) -quiet -clean
+	$(MAKE) -C interp/tracer/annotml clean
 
-clean: clean_cm
-	bash -c "rm -f coq/*.{vo,deps,dot,glob,ml,mli,cmi,cmx}" || echo ok
-	bash -c "rm -f .depend" || echo ok
-	bash -c "rm -f interp/src/extract/*.{ml,mli}" || echo ok
-	bash -c "rm -f interp/run_js interp/run_jsbisect interp/run_jsbisect.ml" || echo ok
+clean: clean_interp
+	-rm -f coq/*.{vo,glob,d}
 
 clean_all: clean
 	find . -iname "*.vo" -exec rm {} \;
 	find . -iname "*.glob" -exec rm {} \;
+	find . -iname "*.d" -exec rm {} \;
 
 
 #######################################################
@@ -399,3 +314,13 @@ clean_all: clean
 local:
 	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
+
+#######################################################
+#######################################################
+
+
+ifeq ($(filter init clean% install%,$(MAKECMDGOALS)),)
+-include $(JS_SRC:.v=.v.d)
+-include $(TLC_SRC:.v=.v.d)
+-include $(FLOCQ_SRC:.v=.v.d)
+endif

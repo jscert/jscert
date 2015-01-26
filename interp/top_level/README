@@ -2,9 +2,9 @@
 Installation and launching:
 ---------------------------
 
-- opam install lwt
-- make
+The toplevel is built during a standard make. The binary is placed in /interp.
 
+From the /interp directory,
 - [ledit] ./top
 
 
@@ -30,5 +30,5 @@ Note: all directives start with a # (sharp) symbol.
 #unstep: step-by-step mode disable
 
 
-/!\ : Relative addresses are used by the program and the makefile. Be cautious
+/!\ : Relative addresses are used by the program. Be cautious
 if you want to move files.
