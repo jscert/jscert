@@ -2704,7 +2704,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S' C (spec_create_arguments_object_4 l o1) o ->
       red_expr S C (spec_create_arguments_object_3 l vthrower A (out_ter S' b)) o
 
-   | red_spec_create_arguments_object_4 : forall S C l S' b l, (* Step 15 *)
+   | red_spec_create_arguments_object_4 : forall S C l S' b, (* Step 15 *)
       red_expr S C (spec_create_arguments_object_4 l (out_ter S' b)) (out_ter S' l)
 
 
