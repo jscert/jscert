@@ -1,7 +1,5 @@
 lib/flocq
 lib/tlc
-flocq
-tlc
 settings.sh
 
 *.d
