@@ -667,7 +667,7 @@ Coercion resvalue_ref : ref >-> resvalue.
 
 (** Representation of a result as a triple *)
 
-Inductive res := res_intro {
+Record res := res_intro {
   res_type : restype;
   res_value : resvalue;
   res_label : label }.
