@@ -159,6 +159,15 @@ Our development is described in details [[http://jscert.org/dvpt.html][on this p
     which are as they are to speed up our regular working build
     process.
 
+    It is possible to run a build with proofs enabled using the "proof"
+    Makefile target. Beware that it will patch the coq sourcefiles as
+    described above, so it is strongly recommended to only do this with
+    a clean repository checkout.
+
+#+begin_src sh
+make proof
+#+end_src
+
 **** Can I trust the parser?
 
      We do not attempt to specify a JavaScript parser as a part of the

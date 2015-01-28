@@ -190,7 +190,7 @@ coq: $(JS_VO)
 
 patch_proof:
 	@echo -e "\e[1;41;5mWARNING! WARNING!\e[0m This command modifies files in coq/"
-	./runcheck.py patch
+	tools/runcheck.py patch
 
 proof: COQFLAGS=
 proof: patch_proof coq
