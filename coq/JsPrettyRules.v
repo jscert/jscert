@@ -2239,7 +2239,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_entering_func_code_3 lf args strictness_false bd lthis K) o ->
       red_expr S C (spec_entering_func_code_1 lf args bd lthis strictness_false K) o
 
-  | red_spec_entering_func_code_3 : forall lex' S' C' o1 S C lf args str bd vthis lex  K o, (* Steps 5 through 9 *)
+  | red_spec_entering_func_code_3 : forall lex' S' C' o1 S C lf args str bd vthis lex K o, (* Steps 5 through 9 *)
       object_method object_scope_ S lf (Some lex) ->
       (lex', S') = lexical_env_alloc_decl S lex ->
       C' = execution_ctx_intro_same lex' vthis str ->
