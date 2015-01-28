@@ -83,12 +83,8 @@ def start(args):
                 f.write(rev)
                 logger.info('Stashed working tree and index in {0}.'.format(rev))
 
-            transform = admitted_faster_to_qed
-            if args.all:
-                transform = admitted_to_qed
-            logger.info('Start transforming coq source.')
-            transform_all(transform)
-            logger.info('Done transforming coq source.')
+            patch(args)
+
     except OSError as err:
         if err.errno == errno.EEXIST:
             logger.error('Could not create lock. '
@@ -106,14 +102,19 @@ def start(args):
     # Unleash the roosters
     kontinue(None)
 
+def patch(args):
+    transform = admitted_faster_to_qed
+    if args.all:
+        transform = admitted_to_qed
+    logger.info('Start transforming coq source.')
+    transform_all(transform)
+    logger.info('Done transforming coq source.')
+
 def kontinue(args):
     try:
         with os.fdopen(os.open(LOCKFILE, os.O_RDWR)):
-            logger.info('Running first make pass')
-            subprocess.check_call('echo "First make pass:" > ' + LOGFILE, shell=True)
-            subprocess.call('make >> ' + LOGFILE, shell=True) #The first make may fail!
-            logger.info('Running second make pass')
-            subprocess.check_call('echo "Second make pass:" >> ' + LOGFILE, shell=True)
+            logger.info('Running make')
+            subprocess.check_call('echo "make :" >> ' + LOGFILE, shell=True)
             subprocess.check_call('make >> ' + LOGFILE, shell=True)
             logger.info('make done')
     except OSError:
@@ -147,6 +148,7 @@ def reset(args):
         os.remove(LOCKFILE)
         logger.info('Removed lock')
 
+
 def main():
     import doctest
     doctest.testmod()
@@ -162,20 +164,20 @@ def main():
                 1. start: Save the current git working tree (tracked files \
                 only) and index. Replace instances of "Admitted. (* faster \
                 *)" with "Qed.". If successful, GOTO 2.
-                2. continue: Run two passes of make on the sources. If \
+                2. continue: Run make on the sources. If \
                 successful, GOTO 3. If this fails, you can either make manual \
                 adjustments and call "runcheck.py continue" or get back \
                 to the old state by manually calling "runcheck.py reset".
                 3. reset: Reset the working tree and index back to their
                 previous state.''')
 
-    subparsers = parser.add_subparsers()
-    parser_start = subparsers.add_parser('start',
-                                         help='start the check')
-    parser_start.add_argument('--all', '-a',
+    parser.add_argument('--all', '-a',
                               action='store_true',
                               help='process all instances of "Admitted.", not'
                               'just "Admitted. (* faster *) and its likes.')
+    subparsers = parser.add_subparsers()
+    parser_start = subparsers.add_parser('start',
+                                         help='start the check')
     parser_start.set_defaults(func=start)
     parser_continue = subparsers.add_parser('continue',
                                             help='continue an interrupted check')
@@ -183,6 +185,9 @@ def main():
     parser_reset = subparsers.add_parser('reset',
                                          help='reset to pre-check state')
     parser_reset.set_defaults(func=reset)
+    parser_reset = subparsers.add_parser('patch',
+                                         help='just patch the coq source')
+    parser_reset.set_defaults(func=patch)
 
     args = parser.parse_args()
     args.func(args)

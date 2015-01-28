@@ -7,6 +7,7 @@ env:
     - PPA=ocaml41 OPAMROOT=~/.opam41
     - PPA=ocaml42 OPAMROOT=~/.opam42
     - PPA=ocaml42 OPAMROOT=~/.opam42 MAKETARGET=all
+    - PPA=ocaml42 OPAMROOT=~/.opam42 MAKETARGET=proof
 
 # Caching is only enabled for private builds
 cache:

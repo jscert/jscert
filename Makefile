@@ -45,9 +45,10 @@ FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
 
 #######################################################
 
-INCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
-COQC=$(COQBIN)coqc $(INCLUDES)
-COQDEP=$(COQBIN)coqdep $(INCLUDES)
+COQINCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
+COQC=$(COQBIN)coqc
+COQDEP=$(COQBIN)coqdep
+COQFLAGS=-dont-load-proofs
 
 OCAMLBUILD=ocamlbuild
 OCAMLBUILDFLAGS=-cflags "-w -20"
@@ -122,7 +123,7 @@ tags: $(JS_SRC)
 .PHONY: install_depend install_optional_depend
 install_depend:
 	# Install coq if required
-	if ! which $(COQBIN)coqc; then opam install -y coq; fi
+	if ! which $(COQC); then opam install -y coq; fi
 	opam install -y xml-light ocamlfind yojson
 
 install_optional_depend: install_depend
@@ -148,11 +149,11 @@ flocq: $(FLOCQ_VO)
 #######################################################
 # Coq Compilation Implicit Rules
 %.v.d: %.v
-	$(COQDEP) $< > $@
+	$(COQDEP) $(COQINCLUDES) $< > $@
 
 # If this rule fails for some reason, try `make clean_all && make`
 %.vo: %.v
-	$(COQC) -dont-load-proofs $<
+	$(COQC) $(COQFLAGS) $(COQINCLUDES) $<
 
 #######################################################
 # FAST COMPILATION TOOL: coqj
@@ -183,14 +184,21 @@ nofast: $(FAST_VO:.vo=_full.vo)
 
 #######################################################
 # JSCert Specific Rules
-.PHONY: coq
+.PHONY: coq proof
 
 coq: $(JS_VO)
+
+patch_proof:
+	@echo -e "\e[1;41;5mWARNING! WARNING!\e[0m This command modifies files in coq/"
+	./runcheck.py patch
+
+proof: COQFLAGS=
+proof: patch_proof coq
 
 # Interpreter extraction spits out lots of *.ml,mli files
 # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
 coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
-	$(COQC) $<
+	$(COQC) $(COQFLAGS) $(COQINCLUDES) $<
 	-mkdir -p interp/src/extract
 	-rm -f interp/src/extract/.patched
 	mv *.ml interp/src/extract
