@@ -50,11 +50,10 @@ COQC=$(COQBIN)coqc $(INCLUDES)
 COQDEP=$(COQBIN)coqdep $(INCLUDES)
 
 OCAMLBUILD=ocamlbuild
+OCAMLBUILDFLAGS=-cflags "-w -20"
 
 #######################################################
 # MAIN SOURCE FILES
-
-# TODO: rename coq into jscoq
 
 JS_SRC=\
 	coq/Shared.v \
@@ -104,8 +103,8 @@ default: coq interpreter tags
 
 all: default interp/run_jsbisect interp/run_jstrace
 
-debug:
-	make -f Makefile.debug
+debug: OCAMLBUILDFLAGS+=-tag debug
+debug: default
 
 report:
 	bisect-report -html report bisect*.out
@@ -233,7 +232,7 @@ vpath %.ml interp/src interp/top_level
 
 # interp/_tags contains OCaml-specific build rules for all interpreter variants
 interp/%.native interp/%.byte: extract_interpreter %.ml
-	cd interp && $(OCAMLBUILD) -use-ocamlfind -cflags "-w -20" $(@F)
+	cd interp && $(OCAMLBUILD) -use-ocamlfind $(OCAMLBUILDFLAGS) $(@F)
 
 .PRECIOUS: interp/%.native
 interp/%: interp/%.native
