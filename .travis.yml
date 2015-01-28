@@ -32,3 +32,5 @@ install:
 script:
   - make $MAKETARGET
 
+notifications:
+  webhooks:  http://146.169.46.217:55678/travis-ci
