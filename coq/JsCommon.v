@@ -936,7 +936,7 @@ Definition execution_ctx_intro_same X lthis strict :=
 Definition execution_ctx_with_lex C lex :=
   match C with execution_ctx_intro x1 x2 x3 x4 =>
     execution_ctx_intro lex x2 x3 x4 end.
-    
+
 (** A smart constructor for modifying the lexical environment
     and variable environment are the same *)
 
@@ -1112,7 +1112,7 @@ Definition prepost_unary_op op :=
 
 Definition regular_unary_op op :=
   match op with
-  | unary_op_typeof
+  | unary_op_typeof => False
   | unary_op_delete => False
   | _ => ~ prepost_unary_op op
   end.
@@ -1170,7 +1170,7 @@ Inductive lazy_op : binary_op -> bool -> Prop :=
 
 Definition regular_binary_op op :=
   match op with
-  | binary_op_and
+  | binary_op_and => False
   | binary_op_or => False
   | _ => True
   end.
