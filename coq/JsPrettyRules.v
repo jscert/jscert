@@ -60,13 +60,6 @@ Implicit Type sc : switchclause.
 
 
 (**************************************************************)
-(** Shorthand **)
-
-Definition vret := ret (T:=value).
-Definition dret := ret (T:=full_descriptor).
-
-
-(**************************************************************)
 (** ** Reduction rules for global code (10.4.1) *)
 
 Inductive red_javascript : prog -> out -> Prop :=
@@ -105,7 +98,7 @@ with red_prog : state -> execution_ctx -> ext_prog -> out -> Prop :=
   | red_prog_cons : forall S C str el els o1 o,
       red_prog S C (prog_intro str els) o1 -> (* This use of [prog_intro] as an intermediate form is not really nice... there should be an additionnal intermediate form there.  Furthermore, what's the use of this [str] here? *)
       red_prog S C (prog_1 o1 el) o ->
-      red_prog S C (prog_intro str (els++(el::nil))) o
+      red_prog S C (prog_intro str (els & el)) o
 
   | red_prog_1_funcdecl : forall S0 S C rv name args bd,
       red_prog S0 C (prog_1 (out_ter S rv) (element_func_decl name args bd)) (out_ter S rv)
