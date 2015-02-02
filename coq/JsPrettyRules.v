@@ -3150,18 +3150,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_props_5 l lp x xs Descs y) o1 ->
       red_expr S0 C (spec_call_object_define_props_4 (out_ter S v) l lp x xs Descs) o
 
-  | red_spec_call_object_define_props_5 : forall S S0 C A l lp o x xs Descs, (* step 5.c *)
-      red_expr S C (spec_call_object_define_props_3 l lp xs (Descs++(x,A)::nil)) o ->
-      red_expr S0 C (spec_call_object_define_props_5 l lp x xs Descs (ret S A)) o
+  | red_spec_call_object_define_props_5 : forall S S0 C A l lp o x xs xAs, (* step 5.c *)
+      red_expr S C (spec_call_object_define_props_3 l lp xs (xAs++(x,A)::nil)) o ->
+      red_expr S0 C (spec_call_object_define_props_5 l lp x xs xAs (ret S A)) o
 
-  | red_spec_call_object_define_props_6_cons : forall S C l x A Descs o1 o , (* step 6 *)
+  | red_spec_call_object_define_props_6_cons : forall S C l x A xAs o1 o , (* step 6 *)
      red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A) throw_true) o1 ->
-     red_expr S C (spec_call_object_define_props_7 o1 l Descs) o ->
-     red_expr S C (spec_call_object_define_props_6 l ((x,A)::Descs)) o
+     red_expr S C (spec_call_object_define_props_7 o1 l xAs) o ->
+     red_expr S C (spec_call_object_define_props_6 l ((x,A)::xAs)) o
 
-  | red_spec_call_object_define_props_7 : forall S0 S C l Descs b o, (* step 6 (end loop) *)
-     red_expr S C (spec_call_object_define_props_6 l Descs) o ->
-     red_expr S0 C (spec_call_object_define_props_7 (out_ter S b) l Descs) o
+  | red_spec_call_object_define_props_7 : forall S0 S C l xAs b o, (* step 6 (end loop) *)
+     red_expr S C (spec_call_object_define_props_6 l xAs) o ->
+     red_expr S0 C (spec_call_object_define_props_7 (out_ter S b) l xAs) o
 
   | red_spec_call_object_define_props_6_nil : forall S C l, (* step 7 *)
       red_expr S C (spec_call_object_define_props_6 l nil) (out_ter S l)
