@@ -1,7 +1,7 @@
 module Environment =
 struct
   
-  Parser_main.js_to_xml_parser := "../interp/parser/lib/js_parser.jar";;
+  Parser_main.js_to_xml_parser := "parser/lib/js_parser.jar";;
   
   let (get, set, up) =
     let compt = ref 0 in
@@ -21,7 +21,7 @@ struct
   let init () = {
     runs_type = JsInterpreter.runs max_int;
     state = JsInit.state_initial;
-    context = JsPreliminary.execution_ctx_initial false;
+    context = JsCommon.execution_ctx_initial false;
     prog = "";
     file = false;
     step = false
@@ -97,7 +97,7 @@ struct
   let translate_string str = Translate_syntax.coq_syntax_from_string str;;
 
   let launch runs state ctx prog =
-    JsInterpreter.if_void
+    JsInterpreterMonads.if_void
       (JsInterpreter.execution_ctx_binding_inst runs state ctx JsSyntax.Coq_codetype_global None prog [])
       (fun s' -> runs.JsInterpreter.runs_type_prog s' ctx prog)
   
@@ -148,18 +148,18 @@ let print res =
 
 let display env = try 
     (match env#eval with
-     | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
+     | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
        env#clear, "**Impossible**"
-     | JsInterpreter.Coq_result_some (JsSyntax.Coq_specret_out o) ->
+     | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_out o) ->
        begin match o with
          | JsSyntax.Coq_out_div ->  env#clear, "Diverge"
          | JsSyntax.Coq_out_ter (state, res) -> 
            (*print_endline (Prheap.prstate false state);*)
            env#update state, print res
        end
-     | JsInterpreter.Coq_result_not_yet_implemented -> env#clear, "Not yet implemented"
-     | JsInterpreter.Coq_result_impossible ->  env#clear, "Impossible"
-     | JsInterpreter.Coq_result_bottom bot ->  env#next bot)
+     | JsInterpreterMonads.Coq_result_not_yet_implemented -> env#clear, "Not yet implemented"
+     | JsInterpreterMonads.Coq_result_impossible ->  env#clear, "Impossible"
+     | JsInterpreterMonads.Coq_result_bottom bot ->  env#next bot)
   with
   | Xml.File_not_found s -> env#clear, "Xml: File not found..."
   | Parser.InvalidArgument -> env#clear, "Parser: Invalid Argument...";;

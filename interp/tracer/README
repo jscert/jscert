@@ -1,13 +1,8 @@
 To compile the tracer code, you need to do the following.
 
-- make sure everything is compiled (run make)
 - switch to ocaml 4.02
-  opam switch 4.02.0+trunk
+  opam switch 4.02.1
   eval `opam config env`
-- create a settings.sh file with this inside
-  KEEP_DEPENDS=1
-- delete the compiled caml files
-  make clean_cm
 - build the tracer
   make interp/run_jstrace
 
