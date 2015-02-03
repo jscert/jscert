@@ -63,8 +63,8 @@ JS_SRC=\
 	coq/JsSyntaxAux.v \
 	coq/JsSyntaxInfos.v \
 	coq/JsCommon.v \
-	coq/JsCommonAux.v \
 	coq/JsPreliminary.v \
+	coq/JsCommonAux.v \
 	coq/JsInit.v \
 	coq/JsInterpreterMonads.v \
 	coq/JsInterpreter.v \

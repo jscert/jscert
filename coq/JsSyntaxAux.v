@@ -263,76 +263,12 @@ Definition prealloc_compare bl1 bl2 :=
   | _,_ => false
   end.
 
-(* This is ugly but if I put a ';' after the destruct x everything is too slow *)
-
 Global Instance prealloc_comparable : Comparable prealloc.
 Proof.
   applys (comparable_beq prealloc_compare). intros x y.
-  destruct x.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct m; destruct m0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-Admitted. (*faster*)
+  (* This shall take a long, like some tens of seconds. *)
+  destruct x; destruct y; simpls; iff; tryfalse; auto~; rew_refl in *; congruence.
+Qed.
 
 
 (**************************************************************)
@@ -734,7 +670,7 @@ Proof.
   applys (comparable_beq binary_op_compare). intros x y.
   destruct x; destruct y; simpl; rew_refl; iff;
    tryfalse; auto; try congruence.
-Admitted. (*faster*)
+Qed.
 
 
 (**************************************************************)
