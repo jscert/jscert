@@ -763,6 +763,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_expr_identifier_1 : forall S0 S C r,
       red_expr S0 C (expr_identifier_1 (ret S r)) (out_ter S r)
 
+    (* TODO: Are there no rules for [spec_identifier_resolution]? :-\ *)
+
   (** Literal (11.1.3) *)
 
   | red_expr_literal : forall S C i v,
@@ -4013,7 +4015,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 (**************************************************************)
 (** ** Reduction rules for specification functions *)
 
-with red_spec : forall {T}, state -> execution_ctx -> ext_spec -> specret T -> Prop :=
+with red_spec : forall {T : Type}, state -> execution_ctx -> ext_spec -> specret T -> Prop :=
 
   (** Abort rule for specification functions *)
 
