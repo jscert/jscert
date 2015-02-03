@@ -720,7 +720,7 @@ Implicit Arguments specret_out [[T]].
 
 (** [ret S a] is a shorthand for [specret_val S a] *)
 
-Definition ret T S (a:T) := specret_val S a.
+Definition ret {T} S (a:T) := specret_val S a.
 Implicit Arguments ret [[T]].
 
 (** [ret_void S] is a shorthand for [specret_val S tt],

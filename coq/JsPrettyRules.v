@@ -1662,11 +1662,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_object_can_put_2_accessor : forall S0 S C l x Aa b, (* Steps 2 and 2.a *)
       b = (If attributes_accessor_set Aa = undef then false else true) ->
-      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_accessor_of Aa))) (out_ter S0 b)
+      red_expr S C (spec_object_can_put_2 l x (dret S0 (attributes_accessor_of Aa))) (out_ter S0 b)
 
   | red_spec_object_can_put_2_data : forall S0 S C l x Ad b, (* Step 2.b *)
       b = attributes_data_writable Ad ->
-      red_expr S C (spec_object_can_put_2 l x (ret (T:=full_descriptor) S0 (attributes_data_of Ad))) (out_ter S0 b)
+      red_expr S C (spec_object_can_put_2 l x (dret S0 (attributes_data_of Ad))) (out_ter S0 b)
 
   | red_spec_object_can_put_2_undef : forall S0 S C l x o lproto, (* Step 3 *)
       object_proto S l lproto ->
@@ -1723,11 +1723,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       Desc = descriptor_intro (Some v) None None None None None ->
       red_expr S C (spec_object_define_own_prop l x Desc throw) o1 ->
       red_expr S C (spec_object_put_5 o1) o ->
-      red_expr S0 C (spec_object_put_3 lthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
+      red_expr S0 C (spec_object_put_3 lthis l x v throw (dret S (attributes_data_of Ad))) o
 
   | red_spec_object_put_3_data_prim : forall S0 S C (wthis:prim) l x v throw Ad o, (* Step 3, for prim values *)
       red_expr S C (spec_error_or_void throw native_error_type) o ->
-      red_expr S0 C (spec_object_put_3 wthis l x v throw (ret (T:=full_descriptor) S (attributes_data_of Ad))) o
+      red_expr S0 C (spec_object_put_3 wthis l x v throw (dret S (attributes_data_of Ad))) o
 
   | red_spec_object_put_3_not_data : forall S0 S C vthis l x v throw Aa y1 o D, (* Step 4 *)
       (D = full_descriptor_undef) \/ (D = (attributes_accessor_of Aa)) ->
@@ -3192,7 +3192,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
       red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A') throw_true) o1 ->
       red_expr S C (spec_call_object_seal_4 l xs o1) o ->
-      red_expr S C (spec_call_object_seal_3 l x xs (ret (T:=full_descriptor) S0 A)) (out_ter S false)
+      red_expr S C (spec_call_object_seal_3 l x xs (dret S0 A)) (out_ter S false)
 
   | red_spec_call_object_seal_4 : forall S0 S C l xs b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_seal_2 l xs) o ->
@@ -3233,7 +3233,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
           | attributes_accessor_of Aa => attributes_accessor_of Aa
           end ->
       red_expr S C (spec_call_object_freeze_4 l x xs A') o ->
-      red_expr S C (spec_call_object_freeze_3 l x xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_freeze_3 l x xs (dret S0 A)) o
 
   | red_spec_call_object_freeze_4 : forall S C A A' xs l x o1 o, (* Steps 2.c and 2.d *)
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
@@ -3291,12 +3291,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_is_sealed_3_prop_configurable : forall S0 S C A xs l, (* Step 2.b, true *)
       attributes_configurable A = true ->
-      red_expr S C (spec_call_object_is_sealed_3 l xs (ret (T:=full_descriptor) S0 A)) (out_ter S false)
+      red_expr S C (spec_call_object_is_sealed_3 l xs (dret S0 A)) (out_ter S false)
 
   | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S0 S C A xs l o, (* Step 2.b, false *)
       attributes_configurable A = false ->
       red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
-      red_expr S C (spec_call_object_is_sealed_3 l xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_is_sealed_3 l xs (dret S0 A)) o
 
   | red_spec_call_object_is_sealed_2_nil : forall S C l b, (* Step 3-4 *)
       object_extensible S l b ->
@@ -3327,12 +3327,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_frozen_3_desc_is_data : forall S0 S C A xs l o, (* Step 2.b, true *)
       attributes_is_data A = true ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
-      red_expr S C (spec_call_object_is_frozen_3 l xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_is_frozen_3 l xs (dret S0 A)) o
 
   | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S0 S C A xs l o, (* Step 2.b, false *)
       attributes_is_data A = false ->
       red_expr S C (spec_call_object_is_frozen_5 l xs A) o ->
-      red_expr S C (spec_call_object_is_frozen_3 l xs (ret (T:=full_descriptor) S0 A)) o
+      red_expr S C (spec_call_object_is_frozen_3 l xs (dret S0 A)) o
 
   | red_spec_call_object_is_frozen_4_prop_is_writable: forall S C A xs l, (* Step 2.b.i, true *)
       attributes_writable A = true ->
@@ -3428,7 +3428,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_proto_has_own_prop_3 (ret S' full_descriptor_undef)) (out_ter S' false)
 
   | red_spec_call_object_proto_has_own_prop_3_not_undef : forall S S' C A, (* Step 5 *)
-      red_expr S C (spec_call_object_proto_has_own_prop_3 (ret (T := full_descriptor) S' A)) (out_ter S' true)
+      red_expr S C (spec_call_object_proto_has_own_prop_3 (dret S' A)) (out_ter S' true)
 
    (** Object.prototype.isPrototypeOf() (returns bool)  (15.2.4.6) *)
 
@@ -3490,11 +3490,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_proto_prop_is_enumerable_3 (out_ter S' l) x) o
 
   | red_spec_call_object_proto_prop_is_enumerable_4_undef : forall S0 S C,
-      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 full_descriptor_undef)) (out_ter S0 false)
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (dret S0 full_descriptor_undef)) (out_ter S0 false)
 
   | red_spec_call_object_proto_prop_is_enumerable_4_not_undef : forall S0 S C A b,
       b = attributes_enumerable A ->
-      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (ret (T:=full_descriptor) S0 A)) (out_ter S0 b)
+      red_expr S C (spec_call_object_proto_prop_is_enumerable_4 (dret S0 A)) (out_ter S0 b)
 
   (*------------------------------------------------------------*)
   (** ** Function builtin functions *)
