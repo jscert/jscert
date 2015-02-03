@@ -168,12 +168,10 @@ Extract Constant JsNumber.uint32_right_shift =>
 
 Extract Constant int_of_char => "(fun c -> float_of_int (int_of_char c))".
 
-Extract Constant prealloc_comparable => "(=)".
-Extract Constant ascii_compare => "(=)".
+Extract Constant ascii_comparable => "(=)".
 Extract Constant lt_int_decidable => "(<)".
 Extract Constant le_int_decidable => "(<=)".
 Extract Constant ge_nat_decidable => "(>=)".
-Extract Constant binary_op_comparable => "(=)".
 
 (* TODO ARTHUR:  This TLC lemma does not extract to something computable... whereas it should! *)
 Extract Constant prop_eq_decidable => "(=)".

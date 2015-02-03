@@ -63,8 +63,8 @@ JS_SRC=\
 	coq/JsSyntaxAux.v \
 	coq/JsSyntaxInfos.v \
 	coq/JsCommon.v \
-	coq/JsCommonAux.v \
 	coq/JsPreliminary.v \
+	coq/JsCommonAux.v \
 	coq/JsInit.v \
 	coq/JsInterpreterMonads.v \
 	coq/JsInterpreter.v \
@@ -198,7 +198,7 @@ proof: patch_proof coq
 # Interpreter extraction spits out lots of *.ml,mli files
 # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
 coq/JsInterpreterExtraction.vo: coq/JsInterpreterExtraction.v
-	$(COQC) $(COQFLAGS) $(COQINCLUDES) $<
+	$(COQC) $(subst -dont-load-proofs,,$(COQFLAGS)) $(COQINCLUDES) $<
 	-mkdir -p interp/src/extract
 	-rm -f interp/src/extract/.patched
 	mv *.ml interp/src/extract
