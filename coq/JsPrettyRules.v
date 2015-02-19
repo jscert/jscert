@@ -3633,7 +3633,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_array_proto_pop_3_nonempty_2 l o1) o ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_1 l lenuint32) o
 
-  | red_spec_call_array_proto_pop_3_nonempty_2 : forall S0 S C l vindx (velem : value) o o1, (* 5b *) (* Shouldn't this [velem] be used? :\ *)
+  | red_spec_call_array_proto_pop_3_nonempty_2 : forall S0 S C l vindx o o1, (* 5b *)
       red_expr S C (spec_object_get l vindx) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_3 l vindx o1) o ->
       red_expr S0 C (spec_call_array_proto_pop_3_nonempty_2 l (out_ter S vindx)) o

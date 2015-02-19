@@ -209,7 +209,7 @@ Extract Constant parse_pickable => "(fun s ->
     with
     (* | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *) *)
     | Parser.ParserFailure _
-    | Parser.InvalidArgument _ ->
+    | Parser.InvalidArgument ->
       prerr_string (""Warning:  Parser error on eval.  Input string:  \"""" ^ str ^ ""\""\n"");
       None
   )".
