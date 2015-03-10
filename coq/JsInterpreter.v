@@ -2262,6 +2262,98 @@ Fixpoint push runs S C l args ilen {struct args} : result :=
         push runs S C l vs (ilen + 1)))
   end.
 
+Fixpoint run_object_is_sealed runs S C l xs : result :=
+   match xs with
+   | nil =>
+     if_some (run_object_method object_extensible_ S l) (fun ext =>
+       res_ter S (neg ext))
+   | x :: xs' =>
+     if_spec (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
+       match D with
+       | full_descriptor_some A =>
+         if attributes_configurable A then
+           res_ter S false
+         else run_object_is_sealed runs S C l xs'
+       | full_descriptor_undef =>
+         impossible_with_heap_because S0 "[run_object_is_sealed]:  Undefined descriptor found in a place where it shouldn't."
+       end)
+   end.
+
+Fixpoint run_object_seal runs S C l xs {struct xs} : result :=
+  match xs with
+  | nil =>
+    if_some (run_object_heap_set_extensible false S l) (fun S =>
+      res_ter S l)
+  | x :: xs' =>
+    if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
+      match D with
+      | full_descriptor_some A =>
+        let A' :=
+          if attributes_configurable A then
+            let Desc :=
+              descriptor_intro None None None None None (Some false)
+            in attributes_update A Desc
+          else A
+        in if_bool (object_define_own_prop runs S C l x A' true) (fun S _ =>
+          run_object_seal runs S C l xs')
+      | full_descriptor_undef =>
+        impossible_with_heap_because S "[run_object_seal]:  Undefined descriptor found in a place where it shouldn't."
+      end)
+  end.
+
+Fixpoint run_object_freeze runs S C l xs {struct xs} : result :=
+  match xs with
+  | nil =>
+    if_some (run_object_heap_set_extensible false S l) (fun S =>
+      res_ter S l)
+  | x :: xs' =>
+    if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
+      match D with
+      | full_descriptor_some A =>
+        let A' :=
+          ifb attributes_is_data A /\ attributes_writable A then
+            let Desc :=
+              descriptor_intro None (Some false) None None None None
+            in attributes_update A Desc
+          else A
+        in let A'' :=
+          if attributes_configurable A' then
+            let Desc :=
+              descriptor_intro None None None None None (Some false)
+            in attributes_update A' Desc
+          else A'
+        in if_bool (object_define_own_prop runs S C l x A'' true) (fun S _ =>
+          run_object_freeze runs S C l xs')
+      | full_descriptor_undef =>
+        impossible_with_heap_because S "[run_object_freeze]:  Undefined descriptor found in a place where it shouldn't."
+      end)
+  end.
+
+
+Fixpoint run_object_is_frozen runs S C l xs : result :=
+  match xs with
+  | nil =>
+    if_some (run_object_method object_extensible_ S l) (fun ext =>
+      res_ter S (neg ext))
+  | x :: xs' =>
+    if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
+      'let check_configurable := fun A =>
+        if attributes_configurable A then
+          res_ter S false
+        else run_object_is_frozen runs S C l xs'
+      in match D with
+      | attributes_data_of Ad =>
+        if attributes_writable Ad then
+          res_ter S false
+        else check_configurable Ad
+      | attributes_accessor_of Aa =>
+        check_configurable Aa
+      | full_descriptor_undef =>
+        impossible_with_heap_because S "[run_object_is_frozen]:  Undefined descriptor found in a place where it shouldn't."
+      end)
+  end.
+
+
 Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   match B with
 
@@ -2308,28 +2400,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     'let v := get_arg 0 args in
     match v with
     | value_object l =>
-      if_some (pick_option (object_properties_keys_as_list S l)) (
-        (fix object_seal S0 xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
-              res_ter S1 l)
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
-              match D with
-              | full_descriptor_some A =>
-                let A' :=
-                  if attributes_configurable A then
-                    let Desc :=
-                      descriptor_intro None None None None None (Some false)
-                    in attributes_update A Desc
-                  else A
-                in if_bool (object_define_own_prop runs S1 C l x A' true) (fun S2 _ =>
-                  object_seal S2 xs')
-              | full_descriptor_undef =>
-                impossible_with_heap_because S1 "[run_call_prealloc], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) S)
+      if_some (pick_option (object_properties_keys_as_list S l))
+        (run_object_seal runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 
@@ -2338,22 +2410,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l))
-        (fix object_is_sealed xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_method object_extensible_ S l) (fun ext =>
-              res_ter S (neg ext))
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
-              match D with
-              | full_descriptor_some A =>
-                if attributes_configurable A then
-                  res_ter S false
-                else object_is_sealed xs'
-              | full_descriptor_undef =>
-                impossible_with_heap_because S0 "[run_call_prealloc], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end)
+        (run_object_is_sealed runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 
@@ -2361,34 +2418,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     'let v := get_arg 0 args in
     match v with
     | value_object l =>
-      if_some (pick_option (object_properties_keys_as_list S l)) (
-        (fix object_freeze S0 xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
-              res_ter S1 l)
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
-              match D with
-              | full_descriptor_some A =>
-                let A' :=
-                  ifb attributes_is_data A /\ attributes_writable A then
-                    let Desc :=
-                      descriptor_intro None (Some false) None None None None
-                    in attributes_update A Desc
-                  else A
-                in let A'' :=
-                  if attributes_configurable A' then
-                    let Desc :=
-                      descriptor_intro None None None None None (Some false)
-                    in attributes_update A' Desc
-                  else A'
-                in if_bool (object_define_own_prop runs S1 C l x A'' true) (fun S2 _ =>
-                  object_freeze S2 xs')
-              | full_descriptor_undef =>
-                impossible_with_heap_because S1 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) S)
+      if_some (pick_option (object_properties_keys_as_list S l))
+        (run_object_freeze runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 
@@ -2398,28 +2429,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l))
-        (fix object_is_frozen xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_method object_extensible_ S l) (fun ext =>
-              res_ter S (neg ext))
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
-              'let check_configurable := fun A =>
-                if attributes_configurable A then
-                  res_ter S0 false
-                else object_is_frozen xs'
-              in match D with
-              | attributes_data_of Ad =>
-                if attributes_writable Ad then
-                  res_ter S0 false
-                else check_configurable Ad
-              | attributes_accessor_of Aa =>
-                check_configurable Aa
-              | full_descriptor_undef =>
-                impossible_with_heap_because S0 "[run_call_prealloc], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end)
+        (run_object_is_frozen runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 

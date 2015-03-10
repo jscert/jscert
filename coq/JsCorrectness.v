@@ -3387,6 +3387,55 @@ Proof.
   skip. (* TODO! *)
 Qed.
 
+Lemma run_object_freeze_correct : forall runs S C l xs o,
+  runs_type_correct runs ->
+  run_object_freeze runs S C l xs = result_some (specret_out o) ->
+  red_expr S C (spec_call_object_freeze_2 l xs) o.
+Proof.
+  introv IH HR. gen S. induction xs; introv HR; unfolds in HR.
+   run. apply~ red_spec_call_object_freeze_2_nil.
+    apply~ run_object_heap_set_extensible_correct.
+   run red_spec_call_object_freeze_2_cons.
+    skip. (* TODO *)
+Qed.
+
+Lemma run_object_is_sealed_correct : forall runs S C l xs o,
+  runs_type_correct runs ->
+  run_object_is_sealed runs S C l xs = result_some (specret_out o) ->
+  red_expr S C (spec_call_object_is_sealed_2 l xs) o.
+Proof.
+  introv IH HR. gen S. induction xs; introv HR; unfolds in HR.
+   run. apply~ red_spec_call_object_is_sealed_2_nil.
+    apply~ run_object_method_correct.
+   run red_spec_call_object_is_sealed_2_cons.
+    skip. (* TODO *)
+Qed.
+
+Lemma run_object_is_frozen_correct : forall runs S C l xs o,
+  runs_type_correct runs ->
+  run_object_is_frozen runs S C l xs = result_some (specret_out o) ->
+  red_expr S C (spec_call_object_is_frozen_2 l xs) o.
+Proof.
+  introv IH HR. gen S. induction xs; introv HR; unfolds in HR.
+   run. apply~ red_spec_call_object_is_frozen_2_nil.
+    apply~ run_object_method_correct.
+   run red_spec_call_object_is_frozen_2_cons.
+    skip. (* TODO *)
+Qed.
+
+Lemma run_object_seal_correct : forall runs S C l xs o,
+  runs_type_correct runs ->
+  run_object_seal runs S C l xs = result_some (specret_out o) ->
+  red_expr S C (spec_call_object_seal_2 l xs) o.
+Proof.
+  introv IH HR. gen S. induction xs; introv HR; unfolds in HR.
+   run. apply~ red_spec_call_object_seal_2_nil.
+    apply~ run_object_heap_set_extensible_correct.
+   run red_spec_call_object_seal_2_cons.
+    skip. (* TODO *)
+Qed.
+
+
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
   run_call_prealloc runs S C B vthis args = o ->
@@ -3453,7 +3502,15 @@ Proof.
   (* prealloc_object_define_props *)
   discriminate.
   (* prealloc_object_seal *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_seal.
+    apply* get_arg_correct_0.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_seal_1_not_object.
+     destruct p; discriminate.
+    apply* run_error_correct.
+   run. forwards~ B: @pick_option_correct E.
+    applys~ red_spec_call_object_seal_1_object B.
+    applys~ run_object_seal_correct HR.
   (* prealloc_object_freeze *)
   let_name. apply~ red_spec_call_object_freeze.
     apply* get_arg_correct_0.
@@ -3463,7 +3520,7 @@ Proof.
     apply* run_error_correct.
    run. forwards~ B: @pick_option_correct E.
     applys~ red_spec_call_object_freeze_1_object B.
-    skip. (* TODO: Put this [fix] in a definition, and [def_correct] lemma. *)
+    applys~ run_object_freeze_correct HR.
   (* prealloc_object_prevent_extensions *)
   let_name. apply~ red_spec_call_object_prevent_extensions.
     apply* get_arg_correct_0.
@@ -3472,11 +3529,27 @@ Proof.
      destruct p; discriminate.
     apply* run_error_correct.
    run. forwards~ B: @pick_option_correct E.
-   applys~ red_spec_call_object_prevent_extensions_object B.
+    applys~ red_spec_call_object_prevent_extensions_object B.
   (* prealloc_object_is_sealed *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_is_sealed.
+    apply* get_arg_correct_0.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_is_sealed_1_not_object.
+     destruct p; discriminate.
+    apply* run_error_correct.
+   run. forwards~ B: @pick_option_correct E.
+    applys~ red_spec_call_object_is_sealed_1_object B.
+    applys~ run_object_is_sealed_correct HR.
   (* prealloc_object_is_frozen *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_is_frozen.
+    apply* get_arg_correct_0.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_is_frozen_1_not_object.
+     destruct p; discriminate.
+    apply* run_error_correct.
+   run. forwards~ B: @pick_option_correct E.
+    applys~ red_spec_call_object_is_frozen_1_object B.
+    applys~ run_object_is_frozen_correct HR.
   (* prealloc_object_is_extensible *)
   let_name. apply~ red_spec_call_object_is_extensible.
     apply* get_arg_correct_0.

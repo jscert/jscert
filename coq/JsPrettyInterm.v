@@ -79,12 +79,12 @@ Inductive ext_expr :=
   | expr_access_3 : value -> out -> value -> ext_expr
   | expr_access_4 : value -> out -> ext_expr
 
-  | expr_new_1 : (specret value) -> list expr -> ext_expr (* The arguments too. *)
-  | expr_new_2 : value -> (specret (list value)) -> ext_expr (* The call has been executed. *)
+  | expr_new_1 : specret value -> list expr -> ext_expr (* The arguments too. *)
+  | expr_new_2 : value -> specret (list value) -> ext_expr (* The call has been executed. *)
 
   | expr_call_1 : out -> bool -> list expr -> ext_expr
-  | expr_call_2 : res -> bool -> list expr -> (specret value) -> ext_expr (* The function has been evaluated. *)
-  | expr_call_3 : res -> value -> bool -> (specret (list value)) -> ext_expr (* The arguments have been executed. *)
+  | expr_call_2 : res -> bool -> list expr -> specret value -> ext_expr (* The function has been evaluated. *)
+  | expr_call_3 : res -> value -> bool -> specret (list value) -> ext_expr (* The arguments have been executed. *)
   | expr_call_4 : res -> object_loc -> bool -> list value -> ext_expr
   | expr_call_5 : object_loc -> bool -> list value -> out -> ext_expr (* The call has been executed. *)
 
@@ -97,9 +97,9 @@ Inductive ext_expr :=
   | expr_delete_3 : ref -> out -> ext_expr
   | expr_delete_4 : ref -> env_loc -> ext_expr
   | expr_typeof_1 : out -> ext_expr
-  | expr_typeof_2 : (specret value) -> ext_expr
+  | expr_typeof_2 : specret value -> ext_expr
   | expr_prepost_1 : unary_op -> out -> ext_expr
-  | expr_prepost_2 : unary_op -> res -> (specret value) -> ext_expr
+  | expr_prepost_2 : unary_op -> res -> specret value -> ext_expr
   | expr_prepost_3 : unary_op -> res -> out -> ext_expr
   | expr_prepost_4 : value -> out -> ext_expr
   | expr_unary_op_neg_1 : out -> ext_expr
@@ -431,32 +431,32 @@ Inductive ext_expr :=
 
   | spec_call_object_seal_1 : value -> ext_expr
   | spec_call_object_seal_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_seal_3 : object_loc -> prop_name -> list prop_name -> specret full_descriptor -> ext_expr
   | spec_call_object_seal_4 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_sealed_1 : value -> ext_expr
   | spec_call_object_is_sealed_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_is_sealed_3 : object_loc -> list prop_name -> specret full_descriptor -> ext_expr
 
   | spec_call_object_freeze_1 : value -> ext_expr
   | spec_call_object_freeze_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_freeze_3 : object_loc -> prop_name -> list prop_name -> specret full_descriptor -> ext_expr
   | spec_call_object_freeze_4 : object_loc -> prop_name -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_freeze_5 : object_loc -> list prop_name -> out -> ext_expr
 
   | spec_call_object_is_frozen_1 : value -> ext_expr
   | spec_call_object_is_frozen_2 : object_loc -> list prop_name -> ext_expr
-  | spec_call_object_is_frozen_3 : object_loc -> list prop_name -> (specret full_descriptor) -> ext_expr
+  | spec_call_object_is_frozen_3 : object_loc -> list prop_name -> specret full_descriptor -> ext_expr
   | spec_call_object_is_frozen_4 : object_loc -> list prop_name -> full_descriptor -> ext_expr
   | spec_call_object_is_frozen_5 : object_loc -> list prop_name -> full_descriptor -> ext_expr
 
 
   | spec_call_object_prevent_extensions_1 : value -> ext_expr
 
-  | spec_call_object_define_prop_1: value -> value -> value -> ext_expr
-  | spec_call_object_define_prop_2: object_loc -> out -> value -> ext_expr
-  | spec_call_object_define_prop_3: object_loc -> string -> specret descriptor -> ext_expr
-  | spec_call_object_define_prop_4: object_loc -> out -> ext_expr
+  | spec_call_object_define_prop_1 : value -> value -> value -> ext_expr
+  | spec_call_object_define_prop_2 : object_loc -> out -> value -> ext_expr
+  | spec_call_object_define_prop_3 : object_loc -> string -> specret descriptor -> ext_expr
+  | spec_call_object_define_prop_4 : object_loc -> out -> ext_expr
 
   | spec_call_object_get_own_prop_descriptor_1: value -> value -> ext_expr
   | spec_call_object_get_own_prop_descriptor_2: object_loc -> out -> ext_expr
@@ -477,14 +477,14 @@ Inductive ext_expr :=
   | spec_call_object_proto_prop_is_enumerable_1 : value -> value -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_2 : value -> out -> ext_expr
   | spec_call_object_proto_prop_is_enumerable_3 : out -> string -> ext_expr
-  | spec_call_object_proto_prop_is_enumerable_4 : (specret full_descriptor) -> ext_expr
+  | spec_call_object_proto_prop_is_enumerable_4 : specret full_descriptor -> ext_expr
 
   | spec_call_array_new_1 : list value -> ext_expr
   | spec_call_array_new_2 : object_loc -> list value -> int -> ext_expr
 
   | spec_call_array_proto_pop_1 : out -> ext_expr
   | spec_call_array_proto_pop_2 : object_loc -> out -> ext_expr
-  | spec_call_array_proto_pop_3 : object_loc -> (specret int) -> ext_expr
+  | spec_call_array_proto_pop_3 : object_loc -> specret int -> ext_expr
   | spec_call_array_proto_pop_3_empty_1 : object_loc -> ext_expr
   | spec_call_array_proto_pop_3_empty_2 : out -> ext_expr
   | spec_call_array_proto_pop_3_nonempty_1 : object_loc -> int -> ext_expr
@@ -1111,22 +1111,22 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_call_object_seal_1 _ => None
   | spec_call_object_seal_2 _ _ => None
-  | spec_call_object_seal_3 _ _ _ _ => None
+  | spec_call_object_seal_3 _ _ _ y => out_of_specret y
   | spec_call_object_seal_4 _ _ o => Some o
 
   | spec_call_object_is_sealed_1 _ => None
   | spec_call_object_is_sealed_2 _ _ => None
-  | spec_call_object_is_sealed_3 _ _ _ => None
+  | spec_call_object_is_sealed_3 _ _ y => out_of_specret y
 
   | spec_call_object_freeze_1 _ => None
   | spec_call_object_freeze_2 _ _ => None
-  | spec_call_object_freeze_3 _ _ _ _ => None
+  | spec_call_object_freeze_3 _ _ _ y => out_of_specret y
   | spec_call_object_freeze_4 _ _ _ _ => None
   | spec_call_object_freeze_5 _ _ o => Some o
 
   | spec_call_object_is_frozen_1 _ => None
   | spec_call_object_is_frozen_2 _ _ => None
-  | spec_call_object_is_frozen_3 _ _ _ => None
+  | spec_call_object_is_frozen_3 _ _ y => out_of_specret y
   | spec_call_object_is_frozen_4 _ _ _ => None
   | spec_call_object_is_frozen_5 _ _ _ => None
 
@@ -1156,7 +1156,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_proto_prop_is_enumerable_1 _ _ => None
   | spec_call_object_proto_prop_is_enumerable_2 _ o => Some o
   | spec_call_object_proto_prop_is_enumerable_3 o _ => Some o
-  | spec_call_object_proto_prop_is_enumerable_4 _ => None
+  | spec_call_object_proto_prop_is_enumerable_4 y => out_of_specret y
 
   | spec_call_array_new_1 _ => None
   | spec_call_array_new_2 _ _ _ => None
