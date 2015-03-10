@@ -3863,7 +3863,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_error : forall S C ne o1 o,
       red_expr S C (spec_build_error (prealloc_native_error_proto ne) undef) o1 ->
-      (* LATER: I'm not sure, but shalln't this [prealloc_native_error_proto] be a [prealloc_native_error]? -- Martin *)
+      (* LATER: I'm not sure, but shall this [prealloc_native_error_proto] be a [prealloc_native_error] instead? -- Martin *)
       red_expr S C (spec_error_1 o1) o ->
       red_expr S C (spec_error ne) o
 

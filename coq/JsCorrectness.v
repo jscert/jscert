@@ -3449,15 +3449,37 @@ Proof.
   (* prealloc_object_seal *)
   skip. (* LATER *)
   (* prealloc_object_freeze *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_freeze.
+    apply* get_arg_correct_0.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_freeze_1_not_object.
+     destruct p; discriminate.
+    apply* run_error_correct.
+   run. forwards~ B: @pick_option_correct E.
+    applys~ red_spec_call_object_freeze_1_object B.
+    skip. (* TODO: Put this [fix] in a definition, and [def_correct] lemma. *)
   (* prealloc_object_prevent_extensions *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_prevent_extensions.
+    apply* get_arg_correct_0.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_prevent_extensions_not_object.
+     destruct p; discriminate.
+    apply* run_error_correct.
+   run. forwards~ B: @pick_option_correct E.
+   applys~ red_spec_call_object_prevent_extensions_object B.
   (* prealloc_object_is_sealed *)
   skip. (* LATER *)
   (* prealloc_object_is_frozen *)
   skip. (* LATER *)
   (* prealloc_object_is_extensible *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_is_extensible.
+    apply* get_arg_correct_0.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_is_extensible_1_not_object.
+     destruct p; discriminate.
+    apply* run_error_correct.
+   run. apply~ red_spec_call_object_is_extensible_1_object.
+    apply~ run_object_method_correct.
   (* prealloc_object_keys *)
   discriminate.
   (* prealloc_object_keys_call *)
@@ -3601,15 +3623,14 @@ Proof.
   discriminate.
   (* prealloc_error *)
   let_name. apply~ red_spec_call_error.
-   apply~ get_arg_correct_0.
-  (* apply~ builtin_error_correct. *)
-  skip. (* LATER *)
+    apply~ get_arg_correct_0.
+  substs. apply* build_error_correct.
   (* prealloc_error_proto *)
   discriminate.
   (* prealloc_native_error *)
   discriminate.
   (* prealloc_native_error_proto *)
-  skip. (* LATER *)
+  skip. (* FIXME: We need the rules here! *)
   (* prealloc_error_proto_to_string *)
   discriminate.
   (* prealloc_throw_type_error *)
