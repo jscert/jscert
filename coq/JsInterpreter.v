@@ -2268,14 +2268,14 @@ Fixpoint run_object_is_sealed runs S C l xs : result :=
      if_some (run_object_method object_extensible_ S l) (fun ext =>
        res_ter S (neg ext))
    | x :: xs' =>
-     if_spec (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
+     if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
        match D with
        | full_descriptor_some A =>
          if attributes_configurable A then
            res_ter S false
          else run_object_is_sealed runs S C l xs'
        | full_descriptor_undef =>
-         impossible_with_heap_because S0 "[run_object_is_sealed]:  Undefined descriptor found in a place where it shouldn't."
+         impossible_with_heap_because S "[run_object_is_sealed]:  Undefined descriptor found in a place where it shouldn't."
        end)
    end.
 

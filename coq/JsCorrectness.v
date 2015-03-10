@@ -3527,7 +3527,12 @@ Proof.
    run. apply~ red_spec_call_object_freeze_2_nil.
     apply~ run_object_heap_set_extensible_correct.
    run red_spec_call_object_freeze_2_cons.
-    skip. (* LATER *)
+    destruct a0 as [|A]; tryfalse.
+    applys~ red_spec_call_object_freeze_3.
+    run red_spec_call_object_freeze_4.
+     clear. rew_refl. destruct A as [()|()]; simpls; repeat cases_if;
+       simpls; fold_bool; rew_refl in *; intuit; tryfalse; repeat (fequals); tryfalse*.
+     applys~ red_spec_call_object_freeze_5.
 Qed.
 
 Lemma run_object_is_sealed_correct : forall runs S C l xs o,
@@ -3539,7 +3544,9 @@ Proof.
    run. apply~ red_spec_call_object_is_sealed_2_nil.
     apply~ run_object_method_correct.
    run red_spec_call_object_is_sealed_2_cons.
-    skip. (* LATER *)
+    destruct a0 as [|A]; tryfalse. cases_if as CF.
+     inverts HR. applys~ red_spec_call_object_is_sealed_3_prop_configurable.
+     applys~ red_spec_call_object_is_sealed_3_prop_not_configurable.
 Qed.
 
 Lemma run_object_is_frozen_correct : forall runs S C l xs o,
@@ -3547,11 +3554,21 @@ Lemma run_object_is_frozen_correct : forall runs S C l xs o,
   run_object_is_frozen runs S C l xs = result_some (specret_out o) ->
   red_expr S C (spec_call_object_is_frozen_2 l xs) o.
 Proof.
-  introv IH HR. gen S. induction xs; introv HR; unfolds in HR.
+  introv IH HR. gen S o. induction xs; introv HR; unfolds in HR.
    run. apply~ red_spec_call_object_is_frozen_2_nil.
     apply~ run_object_method_correct.
-   run red_spec_call_object_is_frozen_2_cons.
-    skip. (* LATER *)
+   run red_spec_call_object_is_frozen_2_cons. let_name.
+   asserts CC: (forall A o, check_configurable A = result_some (specret_out o) ->
+       red_expr S1 C (spec_call_object_is_frozen_5 l xs A) o).
+     rewrite EQcheck_configurable. clear - IHxs. introv HR. cases_if as AC.
+      inverts HR. apply~ red_spec_call_object_is_frozen_5_prop_configurable.
+      apply~ red_spec_call_object_is_frozen_5_prop_not_configurable.
+    clear EQcheck_configurable. destruct a0 as [|[Ad|Aa]].
+     discriminate.
+     apply red_spec_call_object_is_frozen_3_desc_is_data; simpls~. cases_if as W.
+      inverts HR. applys~ red_spec_call_object_is_frozen_4_prop_is_writable.
+      apply~ red_spec_call_object_is_frozen_4_prop_is_not_writable.
+      apply~ red_spec_call_object_is_frozen_3_desc_is_not_data.
 Qed.
 
 Lemma run_object_seal_correct : forall runs S C l xs o,
@@ -3559,11 +3576,14 @@ Lemma run_object_seal_correct : forall runs S C l xs o,
   run_object_seal runs S C l xs = result_some (specret_out o) ->
   red_expr S C (spec_call_object_seal_2 l xs) o.
 Proof.
-  introv IH HR. gen S. induction xs; introv HR; unfolds in HR.
+  introv IH HR. gen o S. induction xs; introv HR; unfolds in HR.
    run. apply~ red_spec_call_object_seal_2_nil.
     apply~ run_object_heap_set_extensible_correct.
    run red_spec_call_object_seal_2_cons.
-    skip. (* LATER *)
+    destruct a0 as [|A]; tryfalse.
+    run red_spec_call_object_seal_3.
+      clear. repeat cases_if~. destruct~ A as [()|()].
+    applys~ red_spec_call_object_seal_4.
 Qed.
 
 
