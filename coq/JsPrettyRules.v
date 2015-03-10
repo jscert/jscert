@@ -805,9 +805,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_3_get l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_get bd) pds) o
 
-  | red_expr_object_3_get : forall S S0 C A l x v pds o,
-      A = attributes_accessor_intro v undef true true ->
-      red_expr S C (expr_object_4 l x A pds) o ->
+  | red_expr_object_3_get : forall S S0 C Desc l x v pds o,
+      (* We are not really consistant whether [undefined] in the Ecma specification means [None] or [undef] (LATER). *)
+      (* A = attributes_accessor_intro v undef true true -> *)
+      Desc = descriptor_intro None None (Some v) None (Some true) (Some true) ->
+      red_expr S C (expr_object_4 l x Desc pds) o ->
       red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
 
   | red_expr_object_2_set : forall S C l x pds o o1 bd args,
@@ -815,15 +817,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_3_set l x o1 pds) o ->
       red_expr S C (expr_object_2 l x (propbody_set args bd) pds) o
 
-  | red_expr_object_3_set : forall S S0 C A l x v pds o,
-      A = attributes_accessor_intro undef v true true ->
-      red_expr S C (expr_object_4 l x A pds) o ->
+  | red_expr_object_3_set : forall S S0 C Desc l x v pds o,
+      (* We are not really consistant whether [undefined] in the Ecma specification means [None] or [undef] (LATER). *)
+      (* A = attributes_accessor_intro undef v true true -> *)
+      Desc = descriptor_intro None None None (Some v) (Some true) (Some true) ->
+      red_expr S C (expr_object_4 l x Desc pds) o ->
       red_expr S0 C (expr_object_3_set l x (out_ter S v) pds) o
 
-  | red_expr_object_4 : forall S C A l x pds o o1,
-      red_expr S C (spec_object_define_own_prop l x A false) o1 ->
+  | red_expr_object_4 : forall S C Desc l x pds o o1,
+      red_expr S C (spec_object_define_own_prop l x Desc false) o1 ->
       red_expr S C (expr_object_5 l pds o1) o ->
-      red_expr S C (expr_object_4 l x A pds) o
+      red_expr S C (expr_object_4 l x Desc pds) o
 
   | red_expr_object_5 : forall S S0 C rv l pds o,
       red_expr S C (expr_object_1 l pds) o ->
@@ -3188,13 +3192,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_seal_3 l x xs y) o ->
       red_expr S C (spec_call_object_seal_2 l (x::xs)) o
 
-(* This rule is not in pretty-big-step! Please update it.
   | red_spec_call_object_seal_3 : forall S0 S C l xs x A A' o1 o, (* Step 2.b and 2.c *)
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
       red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A') throw_true) o1 ->
       red_expr S C (spec_call_object_seal_4 l xs o1) o ->
-      red_expr S0 C (spec_call_object_seal_3 l x xs (dret S A)) (out_ter S false)
-*)
+      red_expr S0 C (spec_call_object_seal_3 l x xs (dret S A)) o
 
   | red_spec_call_object_seal_4 : forall S0 S C l xs b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_seal_2 l xs) o ->

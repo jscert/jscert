@@ -67,7 +67,7 @@ Inductive ext_expr :=
   | expr_object_3_val : object_loc -> string -> specret value -> propdefs -> ext_expr
   | expr_object_3_get : object_loc -> string -> out -> propdefs -> ext_expr
   | expr_object_3_set : object_loc -> string -> out -> propdefs -> ext_expr
-  | expr_object_4 : object_loc -> string -> attributes -> propdefs -> ext_expr
+  | expr_object_4 : object_loc -> string -> descriptor -> propdefs -> ext_expr
   | expr_object_5 : object_loc -> propdefs -> out -> ext_expr
 
   | expr_function_1 : string -> list string -> funcbody -> env_loc -> lexical_env -> out -> ext_expr

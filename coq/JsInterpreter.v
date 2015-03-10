@@ -1654,22 +1654,22 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
     'let x := string_of_propname pn in
-    'let follows := fun S1 A =>
-      if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
+    'let follows := fun S1 Desc =>
+      if_success (object_define_own_prop runs S1 C l x Desc false) (fun S2 rv =>
         init_object runs S2 C l pds') in
     match pb with
     | propbody_val e0 =>
       if_spec (run_expr_get_value runs S C e0) (fun S1 v0 =>
-        let A := attributes_data_intro v0 true true true in
-        follows S1 A)
+        let Desc := descriptor_intro (Some v0) (Some true) None None (Some true) (Some true) in
+        follows S1 Desc)
     | propbody_get bd =>
       if_value (create_new_function_in runs S C nil bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro v0 undef true true in
-        follows S1 A)
+        let Desc := descriptor_intro None None (Some v0) None (Some true) (Some true) in
+        follows S1 Desc)
     | propbody_set args bd =>
       if_value (create_new_function_in runs S C args bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro undef v0 true true in
-        follows S1 A)
+        let Desc := descriptor_intro None None None (Some v0) (Some true) (Some true) in
+        follows S1 Desc)
     end
   end.
 
@@ -2275,6 +2275,14 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     if_number (to_number runs S C v) (fun S0 n =>
       res_ter S0 (neg
         (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
+
+  | prealloc_object =>
+    'let value := get_arg 0 args in
+    match value with
+    | prim_null
+    | prim_undef => run_construct_prealloc runs S C B args
+    | _ => to_object S value
+    end
 
   | prealloc_object_get_proto_of =>
     'let v := get_arg 0 args in

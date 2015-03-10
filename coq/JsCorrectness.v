@@ -2752,8 +2752,8 @@ Proof.
   introv IH. gen S. induction pds as [|(pn&pb) pds]; introv HR.
   simpls. run_inv. applys red_expr_object_1_nil.
   simpls. let_name. let_name.
-  asserts follows_correct: (forall S A, follows S A = res_out o ->
-      red_expr S C (expr_object_4 l x A pds) o).
+  asserts follows_correct: (forall S Desc, follows S Desc = res_out o ->
+      red_expr S C (expr_object_4 l x Desc pds) o).
     subst follows. clear HR. introv HR.
     run red_expr_object_4 using object_define_own_prop_correct.
      applys* red_expr_object_5.
@@ -3373,11 +3373,17 @@ Proof.
       applys* red_spec_entering_func_code_1_object.
 Admitted. (* faster *)
 
-Lemma run_to_descriptor_correct : forall runs S C attr y,
+Lemma run_to_descriptor_correct : forall runs S C v y,
   runs_type_correct runs ->
-  run_to_descriptor runs S C attr = result_some y ->
-  red_spec S C (spec_to_descriptor attr) y.
+  run_to_descriptor runs S C v = result_some y ->
+  red_spec S C (spec_to_descriptor v) y.
 Proof.
+  introv IH HR. unfolds in HR.
+  destruct v as [p|l].
+   apply~ red_spec_to_descriptor_not_object.
+    (* apply~ run_error_correct.
+    destruct p; discriminate. *)
+   skip. (* Is it [spec_error_spec] or [spec_error]? *)
   skip. (* TODO! *)
 Qed.
 
@@ -3407,7 +3413,7 @@ Proof.
   (* prealloc_global_parse_int *)
   discriminate.
   (* prealloc_object *)
-  discriminate.
+  let_name. skip. (* TODO *)
   (* prealloc_object_get_proto_of *)
   let_name. apply~ red_spec_call_object_get_proto_of.
     substs. apply* get_arg_correct_0.
