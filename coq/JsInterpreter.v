@@ -452,7 +452,11 @@ Definition prim_new_object S w : result :=
       'let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
       'let O :=  object_with_primitive_value O1 s in
       let '(l, S1) := object_alloc S O in
-      out_ter S1 l
+      (* This is probably not correct. *)
+      if_some (pick_option (object_set_property S1 l "length" (attributes_data_intro_constant (String.length s)))) (fun S' => 
+        res_ter S' l) 
+      (* While the spec never explicitly says to do this, it specifies that it is the case immediately after creation *)
+
   | _ =>
     impossible_with_heap_because S "[prim_new_object] received an null or undef."
   end.
@@ -1792,7 +1796,8 @@ Definition entering_eval_code runs S C direct bd K : result :=
 Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with
   | prim_string s =>
-    match pick (parse s) with
+    'let str := is_direct_call && execution_ctx_strict C in
+    match pick_option (parse s str) with
     | None =>
       run_error S native_error_syntax
     | Some p =>
@@ -2272,7 +2277,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
   | prealloc_object_get_proto_of =>
-    match get_arg 0 args with
+    'let v := get_arg 0 args in
+    match v with
     | value_object l =>
       if_some (run_object_method object_proto_ S l) (fun proto =>
         res_ter S proto)
@@ -2281,7 +2287,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_get_own_prop_descriptor =>
-    match get_arg 0 args with
+    'let v := get_arg 0 args in
+    match v with
     | value_object l =>
       if_string (to_string runs S C (get_arg 1 args)) (fun S1 x =>
       if_spec (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
@@ -2290,7 +2297,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_seal =>
-    match get_arg 0 args with
+    'let v := get_arg 0 args in
+    match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l)) (
         (fix object_seal S0 xs : result :=

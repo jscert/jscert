@@ -1428,8 +1428,8 @@ Proof.
     clear EQdef.
   run.
   applys* red_spec_object_define_own_prop.
-  applys* run_object_method_correct. clear E.
-  destruct x0. (* LTAC ARTHUR:  This [x0] wasn't properly named. *)
+    applys* run_object_method_correct.
+  clear E. destruct x0. (* LTAC ARTHUR:  This [x0] wasn't properly named. *)
     (* default *)
     applys* Def.
     (* arguments object *)
@@ -1463,15 +1463,17 @@ Admitted. (* faster *)
 Lemma prim_new_object_correct : forall S C w o,
   prim_new_object S w = o ->
   red_expr S C (spec_prim_new_object w) o.
-Proof. introv H. destruct w; tryfalse;
+Proof.
+ introv H. destruct w; tryfalse;
  unfolds in H;  repeat let_simpl;
  match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end;
  destruct X as (l&S');
  inversion H.
  applys* red_spec_prim_new_object_bool.
  applys* red_spec_prim_new_object_number.
- applys* red_spec_prim_new_object_string.
-Qed.
+ run_simpl. applys* red_spec_prim_new_object_string.
+  rewrite <- EQX. fequals. skip. (* FIXME: Problem here! The interpreter is not following the rules! *)
+Admitted. (* faster *)
 
 Lemma run_error_correct_2 : forall T S (ne : native_error) o C,
   run_error S ne = (res_out o : specres T) -> red_expr S C (spec_error ne) o.
@@ -2588,18 +2590,21 @@ Proof.
    [| run_inv; applys* red_spec_call_global_eval_1_not_string; simpl; congruence].
   destruct p; run_inv;
      try (applys* red_spec_call_global_eval_1_not_string; simpl; congruence).
-  forwards* H: (pick_spec (P:=parse s)). applys parse_exists.
-  destruct (pick (parse s)).
-  applys* red_spec_call_global_eval_1_string_parse (rm H).
-  applys* entering_eval_code_correct (rm HR). clear S C o.
-  introv HR. run red_spec_call_global_eval_2.
-  sets_eq RT: (res_type R). destruct RT; tryfalse.
-    run. cases (res_value R); tryfalse; run_inv.
+  let_name. destruct (pick_option (parse s str)) eqn:P.
+   forwards B: @pick_option_correct (rm P).
+    applys* red_spec_call_global_eval_1_string_parse.
+    applys* entering_eval_code_correct (rm HR).
+    clear - IH. introv HR. run red_spec_call_global_eval_2.
+    sets_eq RT: (res_type R). destruct RT; tryfalse.
+     run. cases (res_value R); tryfalse; run_inv.
       applys* red_spec_call_global_eval_3_normal_empty.
       destruct R. simpls. subst.
        applys* red_spec_call_global_eval_3_normal_value.
-    run_inv. applys* red_spec_call_global_eval_3_throw.
-  applys* red_spec_call_global_eval_1_string_not_parse.
+     run_inv. applys* red_spec_call_global_eval_3_throw.
+   applys red_spec_call_global_eval_1_string_not_parse.
+    introv Pa. forwards (?&Par): @pick_option_defined (ex_intro _ p Pa).
+     rewrite Par in P. false.
+    applys run_error_correct HR.
 Admitted. (*faster*)
 
 Lemma run_list_expr_correct : forall runs S C es y,
@@ -2755,12 +2760,12 @@ Proof.
     clear EQfollows.
   applys* red_expr_object_1_cons x.
   destruct pb.
-  run red_expr_object_2_val.
-   applys* red_expr_object_3_val.
-    run red_expr_object_2_get using create_new_function_in_correct.
-     applys* red_expr_object_3_get.
-    run red_expr_object_2_set using create_new_function_in_correct.
-     applys* red_expr_object_3_set.
+   run red_expr_object_2_val.
+    applys* red_expr_object_3_val.
+   run red_expr_object_2_get using create_new_function_in_correct.
+    applys* red_expr_object_3_get.
+   run red_expr_object_2_set using create_new_function_in_correct.
+    applys* red_expr_object_3_set.
 Qed.
 
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
@@ -3380,9 +3385,15 @@ Proof.
   (* prealloc_global_eval *)
   discriminate.
   (* prealloc_global_is_finite *)
-  skip. (* LATER *)
+  run red_spec_call_global_is_finite.
+    apply~ get_arg_correct_0.
+  applys red_spec_call_global_is_finite_1.
+  cases_if; fold_bool; rew_refl~.
   (* prealloc_global_is_nan *)
-  skip. (* LATER *)
+  run red_spec_call_global_is_nan.
+    apply~ get_arg_correct_0.
+  applys red_spec_call_global_is_nan_1.
+  cases_if; fold_bool; rew_refl~.
   (* prealloc_global_parse_float *)
   discriminate.
   (* prealloc_global_parse_int *)
