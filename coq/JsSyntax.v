@@ -258,6 +258,7 @@ Inductive prealloc :=
   | prealloc_function_proto
   | prealloc_function_proto_to_string
   | prealloc_function_proto_apply
+  | prealloc_function_proto_call
   | prealloc_function_proto_bind (* LATER: support this and others *)
   | prealloc_bool
   | prealloc_bool_proto

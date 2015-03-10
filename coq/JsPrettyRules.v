@@ -3239,7 +3239,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
           | attributes_accessor_of Aa => attributes_accessor_of Aa
           end ->
       red_expr S C (spec_call_object_freeze_4 l x xs A') o ->
-      red_expr S C (spec_call_object_freeze_3 l x xs (dret S0 A)) o
+      red_expr S0 C (spec_call_object_freeze_3 l x xs (dret S A)) o
 
   | red_spec_call_object_freeze_4 : forall S C A A' xs l x o1 o, (* Steps 2.c and 2.d *)
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
@@ -3302,7 +3302,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S0 S C A xs l o, (* Step 2.b, false *)
       attributes_configurable A = false ->
       red_expr S C (spec_call_object_is_sealed_2 l xs) o ->
-      red_expr S C (spec_call_object_is_sealed_3 l xs (dret S0 A)) o
+      red_expr S0 C (spec_call_object_is_sealed_3 l xs (dret S A)) o
 
   | red_spec_call_object_is_sealed_2_nil : forall S C l b, (* Step 3-4 *)
       object_extensible S l b ->
@@ -3333,12 +3333,12 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_object_is_frozen_3_desc_is_data : forall S0 S C A xs l o, (* Step 2.b, true *)
       attributes_is_data A = true ->
       red_expr S C (spec_call_object_is_frozen_4 l xs A) o ->
-      red_expr S C (spec_call_object_is_frozen_3 l xs (dret S0 A)) o
+      red_expr S0 C (spec_call_object_is_frozen_3 l xs (dret S A)) o
 
   | red_spec_call_object_is_frozen_3_desc_is_not_data : forall S0 S C A xs l o, (* Step 2.b, false *)
       attributes_is_data A = false ->
       red_expr S C (spec_call_object_is_frozen_5 l xs A) o ->
-      red_expr S C (spec_call_object_is_frozen_3 l xs (dret S0 A)) o
+      red_expr S0 C (spec_call_object_is_frozen_3 l xs (dret S A)) o
 
   | red_spec_call_object_is_frozen_4_prop_is_writable: forall S C A xs l, (* Step 2.b.i, true *)
       attributes_writable A = true ->

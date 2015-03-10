@@ -2237,7 +2237,138 @@ Lemma run_construct_prealloc_correct : forall runs S C B args o,
   runs_type_correct runs ->
   run_construct_prealloc runs S C B args = o ->
   red_expr S C (spec_construct_prealloc B args) o.
-Admitted. (* Part of libraries, will do afterwards *)
+Proof.
+  introv IH HR. unfolds in HR.
+  destruct B.
+  (* prealloc_global *)
+  discriminate.
+  (* prealloc_global_eval *)
+  discriminate.
+  (* prealloc_global_is_finite *)
+  discriminate.
+  (* prealloc_global_is_nan *)
+  discriminate.
+  (* prealloc_global_parse_float *)
+  discriminate.
+  (* prealloc_global_parse_int *)
+  discriminate.
+  (* prealloc_object *)
+  let_name. skip. (* TODO *)
+  (* prealloc_object_get_proto_of *)
+  discriminate.
+  (* prealloc_object_get_own_prop_descriptor *)
+  discriminate.
+  (* prealloc_object_get_own_prop_name *)
+  discriminate.
+  (* prealloc_object_create *)
+  discriminate.
+  (* prealloc_object_define_prop *)
+  discriminate.
+  (* prealloc_object_define_props *)
+  discriminate.
+  (* prealloc_object_seal *)
+  discriminate.
+  (* prealloc_object_freeze *)
+  discriminate.
+  (* prealloc_object_prevent_extensions *)
+  discriminate.
+  (* prealloc_object_is_sealed *)
+  discriminate.
+  (* prealloc_object_is_frozen *)
+  discriminate.
+  (* prealloc_object_is_extensible *)
+  discriminate.
+  (* prealloc_object_keys *)
+  discriminate.
+  (* prealloc_object_keys_call *)
+  discriminate.
+  (* prealloc_object_proto *)
+  discriminate.
+  (* prealloc_object_proto_to_string *)
+  discriminate.
+  (* prealloc_object_proto_value_of *)
+  discriminate.
+  (* prealloc_object_proto_has_own_prop *)
+  discriminate.
+  (* prealloc_object_proto_is_prototype_of *)
+  discriminate.
+  (* prealloc_object_proto_prop_is_enumerable *)
+  discriminate.
+  (* prealloc_function *)
+  discriminate. (* LATER *)
+  (* prealloc_function_proto *)
+  discriminate.
+  (* prealloc_function_proto_to_string *)
+  discriminate.
+  (* prealloc_function_proto_apply *)
+  discriminate.
+  (* prealloc_function_proto_call *)
+  discriminate.
+  (* prealloc_function_proto_bind *)
+  discriminate.
+  (* prealloc_bool *)
+  skip. (* TODO *)
+  (* prealloc_bool_proto *)
+  discriminate.
+  (* prealloc_bool_proto_to_string *)
+  discriminate.
+  (* prealloc_bool_proto_value_of *)
+  discriminate.
+  (* prealloc_number *)
+  skip. (* TODO *)
+  (* prealloc_number_proto *)
+  discriminate.
+  (* prealloc_number_proto_to_string *)
+  discriminate.
+  (* prealloc_number_proto_value_of *)
+  discriminate.
+  (* prealloc_number_proto_to_fixed *)
+  discriminate.
+  (* prealloc_number_proto_to_exponential *)
+  discriminate.
+  (* prealloc_number_proto_to_precision *)
+  discriminate.
+  (* prealloc_array *)
+  skip. (* LATER? Conrad*)
+  (* prealloc_array_is_array *)
+  discriminate.
+  (* prealloc_array_proto *)
+  discriminate.
+  (* prealloc_array_proto_to_string *)
+  discriminate.
+  (* prealloc_array_proto_pop *)
+  discriminate.
+  (* prealloc_array_proto_push *)
+  discriminate.
+  (* prealloc_string *)
+  skip. (* LATER *)
+  (* prealloc_string_proto *)
+  discriminate.
+  (* prealloc_string_proto_to_string *)
+  discriminate.
+  (* prealloc_string_proto_value_of *)
+  discriminate.
+  (* prealloc_string_proto_char_at *)
+  discriminate.
+  (* prealloc_string_proto_char_code_at *)
+  discriminate.
+  (* prealloc_math *)
+  discriminate.
+  (* prealloc_mathop *)
+  discriminate.
+  (* prealloc_error *)
+  skip. (* TODO *)
+  (* prealloc_error_proto *)
+  discriminate.
+  (* prealloc_native_error *)
+  skip. (* TODO *)
+  (* prealloc_native_error_proto *)
+  skip. (* TODO *)
+  (* prealloc_error_proto_to_string *)
+  discriminate.
+  (* prealloc_throw_type_error *)
+  discriminate.
+Admitted. (*faster*)
 
 Lemma run_construct_default_correct : forall runs S C l args o,
   runs_type_correct runs ->
@@ -3396,7 +3527,7 @@ Proof.
    run. apply~ red_spec_call_object_freeze_2_nil.
     apply~ run_object_heap_set_extensible_correct.
    run red_spec_call_object_freeze_2_cons.
-    skip. (* TODO *)
+    skip. (* LATER *)
 Qed.
 
 Lemma run_object_is_sealed_correct : forall runs S C l xs o,
@@ -3408,7 +3539,7 @@ Proof.
    run. apply~ red_spec_call_object_is_sealed_2_nil.
     apply~ run_object_method_correct.
    run red_spec_call_object_is_sealed_2_cons.
-    skip. (* TODO *)
+    skip. (* LATER *)
 Qed.
 
 Lemma run_object_is_frozen_correct : forall runs S C l xs o,
@@ -3420,7 +3551,7 @@ Proof.
    run. apply~ red_spec_call_object_is_frozen_2_nil.
     apply~ run_object_method_correct.
    run red_spec_call_object_is_frozen_2_cons.
-    skip. (* TODO *)
+    skip. (* LATER *)
 Qed.
 
 Lemma run_object_seal_correct : forall runs S C l xs o,
@@ -3432,7 +3563,7 @@ Proof.
    run. apply~ red_spec_call_object_seal_2_nil.
     apply~ run_object_heap_set_extensible_correct.
    run red_spec_call_object_seal_2_cons.
-    skip. (* TODO *)
+    skip. (* LATER *)
 Qed.
 
 
@@ -3589,6 +3720,8 @@ Proof.
   (* prealloc_function_proto_to_string *)
   discriminate.
   (* prealloc_function_proto_apply *)
+  discriminate.
+  (* prealloc_function_proto_call *)
   discriminate.
   (* prealloc_function_proto_bind *)
   discriminate.

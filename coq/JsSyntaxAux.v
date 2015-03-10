@@ -228,6 +228,7 @@ Definition prealloc_compare bl1 bl2 :=
   | prealloc_function_proto, prealloc_function_proto => true
   | prealloc_function_proto_to_string, prealloc_function_proto_to_string => true
   | prealloc_function_proto_apply, prealloc_function_proto_apply => true
+  | prealloc_function_proto_call, prealloc_function_proto_call => true
   | prealloc_function_proto_bind, prealloc_function_proto_bind => true
   | prealloc_bool, prealloc_bool => true
   | prealloc_bool_proto, prealloc_bool_proto => true
