@@ -59,6 +59,7 @@ Implicit Type sc : switchclause.
 (*Implicit Type scs : list switchclause.*)
 
 
+
 (**************************************************************)
 (** ** Reduction rules for global code (10.4.1) *)
 
@@ -1450,6 +1451,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       let O2 := object_new prealloc_string_proto "String" in
       let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
       let O := object_with_primitive_value O1 s in
+      (* TODO: We should do something about the "length" property. *)
       (l, S') = object_alloc S O ->
       red_expr S C (spec_prim_new_object (prim_string s)) (out_ter S' l)
 
@@ -3712,6 +3714,39 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (*------------------------------------------------------------*)
   (** ** String builtin functions *)
+
+  (** new String ([value]) (returns object)  (15.5.2.1) *)
+
+  | red_spec_construct_string_non_empty : forall S C v args o,
+      args <> nil ->
+      arguments_from args (v::nil) ->
+      red_expr S C (spec_construct_string_1 v) o ->
+      red_expr S C (spec_construct_prealloc prealloc_string args) o
+
+  | red_spec_construct_string_empty : forall S C v o,
+      red_expr S C (spec_construct_string_2 (out_ter S "")) o ->
+      red_expr S C (spec_construct_prealloc prealloc_string nil) o
+
+  | red_spec_construct_string_1 : forall S C v o' o,
+      red_expr S C (spec_to_string v) o' ->
+      red_expr S C (spec_construct_string_2 o') o ->
+      red_expr S C (spec_construct_string_1 v) o
+
+  | red_spec_construct_string_2 : forall S0 S S' C l s P A O,
+      (* We demand that this object has the properties required by 15.5.2.1. *)
+      (* We also require the "length" property because of 15.5.5.1. *)
+      (* We also require the [GetOwnProperty] property because of 15.5.5.2. *)
+      object_proto_ O = prealloc_string_proto ->
+      object_class_ O = "String" ->
+      object_extensible_ O = true ->
+      object_prim_value_ O = Some (s : value) ->
+      object_get_own_prop_ O = builtin_get_own_prop_string ->
+      P = object_properties_ O ->
+      Heap.binds P "length" A ->
+      A = attributes_data_intro_constant (String.length s) ->
+      (l, S') = object_alloc S O ->
+      red_expr S0 C (spec_construct_string_2 (out_ter S s)) (out_ter S' l)
+
 
   (** String.prototype.toString() (returns string)  (15.5.4.2) *)
 
