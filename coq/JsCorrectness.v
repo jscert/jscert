@@ -3373,6 +3373,14 @@ Proof.
       applys* red_spec_entering_func_code_1_object.
 Admitted. (* faster *)
 
+Lemma run_to_descriptor_correct : forall runs S C attr y,
+  runs_type_correct runs ->
+  run_to_descriptor runs S C attr = result_some y ->
+  red_spec S C (spec_to_descriptor attr) y.
+Proof.
+  skip. (* TODO! *)
+Qed.
+
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
   run_call_prealloc runs S C B vthis args = o ->
@@ -3385,13 +3393,13 @@ Proof.
   (* prealloc_global_eval *)
   discriminate.
   (* prealloc_global_is_finite *)
-  run red_spec_call_global_is_finite.
-    apply~ get_arg_correct_0.
+  let_name. run red_spec_call_global_is_finite.
+    substs. apply~ get_arg_correct_0.
   applys red_spec_call_global_is_finite_1.
   cases_if; fold_bool; rew_refl~.
   (* prealloc_global_is_nan *)
-  run red_spec_call_global_is_nan.
-    apply~ get_arg_correct_0.
+  let_name. run red_spec_call_global_is_nan.
+    substs. apply~ get_arg_correct_0.
   applys red_spec_call_global_is_nan_1.
   cases_if; fold_bool; rew_refl~.
   (* prealloc_global_parse_float *)
@@ -3401,15 +3409,41 @@ Proof.
   (* prealloc_object *)
   discriminate.
   (* prealloc_object_get_proto_of *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_get_proto_of.
+    substs. apply* get_arg_correct_0.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_get_proto_of_1_not_object.
+    apply* run_error_correct.
+   run. apply~ red_spec_call_object_get_proto_of_1_object.
+    apply* run_object_method_correct.
   (* prealloc_object_get_own_prop_descriptor *)
-  skip. (* LATER *)
+  let_name. apply~ red_spec_call_object_get_own_prop_descriptor.
+    apply* get_arg_correct_1.
+  rewrite <- EQv in *. destruct v.
+   apply red_spec_call_object_get_own_prop_descriptor_1_not_object.
+     destruct p; discriminate.
+    apply* run_error_correct.
+   run red_spec_call_object_get_own_prop_descriptor_1_object.
+    run red_spec_call_object_get_own_prop_descriptor_2.
+    apply* from_prop_descriptor_correct.
   (* prealloc_object_get_own_prop_name *)
   discriminate.
   (* prealloc_object_create *)
   discriminate.
   (* prealloc_object_define_prop *)
-  discriminate.
+  let_name. let_name. let_name.
+  apply~ red_spec_call_object_object_define_prop.
+    apply* get_arg_correct_2.
+  rewrite <- EQo0 in *. rewrite <- EQp in *. rewrite <- EQattr in *.
+  destruct o0.
+   apply red_spec_call_object_object_define_prop_1_not_object.
+     destruct p0; discriminate.
+    apply* run_error_correct.
+   run red_spec_call_object_object_define_prop_1_object.
+    run red_spec_call_object_object_define_prop_2.
+      apply* run_to_descriptor_correct.
+    run red_spec_call_object_object_define_prop_3.
+    apply* red_spec_call_object_object_define_prop_4.
   (* prealloc_object_define_props *)
   discriminate.
   (* prealloc_object_seal *)
@@ -3436,8 +3470,8 @@ Proof.
   apply~ red_spec_call_object_proto_value_of.
   apply~ to_object_correct.
   (* prealloc_object_proto_has_own_prop *)
-  run red_spec_call_object_proto_has_own_prop.
-    apply~ get_arg_correct_0.
+  let_name. run red_spec_call_object_proto_has_own_prop.
+    substs. apply~ get_arg_correct_0.
   run red_spec_call_object_proto_has_own_prop_1 using to_object_correct.
   run red_spec_call_object_proto_has_own_prop_2.
   destruct a. (* LTAC ARTHUR *)

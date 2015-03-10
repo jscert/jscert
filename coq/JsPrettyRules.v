@@ -168,12 +168,12 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_var_decl_1 (out_ter S rv) ds) o
 
   | red_stat_var_decl_item_none : forall S C x,
-      red_stat S C (stat_var_decl_item (x,None)) (out_ter S x)
+      red_stat S C (stat_var_decl_item (x, None)) (out_ter S x)
 
   | red_stat_var_decl_item_some : forall S C x e y1 o,
       red_spec S C (spec_identifier_resolution C x) y1 ->
       red_stat S C (stat_var_decl_item_1 x y1 e) o ->
-      red_stat S C (stat_var_decl_item (x,Some e)) o
+      red_stat S C (stat_var_decl_item (x, Some e)) o
 
   | red_stat_var_decl_item_1 : forall S S0 C x e r y1 o,
       red_spec S C (spec_expr_get_value e) y1 ->
@@ -3101,18 +3101,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_define_prop_2 l o1 va) o ->
       red_expr S C (spec_call_object_define_prop_1 l vx va) o
 
-  | red_spec_call_object_object_define_prop_2 : forall S C l x va o (y: specret descriptor), (* step 3 *)
+  | red_spec_call_object_object_define_prop_2 : forall S S0 C l x va o (y: specret descriptor), (* step 3 *)
       red_spec S C (spec_to_descriptor va) y ->
       red_expr S C (spec_call_object_define_prop_3 l x y) o ->
-      red_expr S C (spec_call_object_define_prop_2 l (out_ter S x) va) o
+      red_expr S0 C (spec_call_object_define_prop_2 l (out_ter S x) va) o
 
   | red_spec_call_object_object_define_prop_3 : forall S S0 C l s Desc o1 o, (* step 4 *)
       red_expr S C (spec_object_define_own_prop l s Desc throw_true) o1 ->
       red_expr S C (spec_call_object_define_prop_4 l o1) o ->
       red_expr S0 C (spec_call_object_define_prop_3 l s (ret S Desc)) o
 
-  | red_spec_call_object_object_define_prop_4 : forall S0 S C l, (* Step 5 *)
-      red_expr S0 C (spec_call_object_define_prop_4 l (out_void S)) (out_ter S l)
+  | red_spec_call_object_object_define_prop_4 : forall S S0 C l b, (* Step 5 *)
+      red_expr S0 C (spec_call_object_define_prop_4 l (out_ter S b)) (out_ter S l)
 
   (** Object.defineProperties (returns object) (15.2.3.7) *)
 
@@ -3188,11 +3188,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_object_seal_3 l x xs y) o ->
       red_expr S C (spec_call_object_seal_2 l (x::xs)) o
 
+(* This rule is not in pretty-big-step! Please update it.
   | red_spec_call_object_seal_3 : forall S0 S C l xs x A A' o1 o, (* Step 2.b and 2.c *)
       A' = (If attributes_configurable A then (attributes_with_configurable A false) else A) ->
       red_expr S C (spec_object_define_own_prop l x (descriptor_of_attributes A') throw_true) o1 ->
       red_expr S C (spec_call_object_seal_4 l xs o1) o ->
-      red_expr S C (spec_call_object_seal_3 l x xs (dret S0 A)) (out_ter S false)
+      red_expr S0 C (spec_call_object_seal_3 l x xs (dret S A)) (out_ter S false)
+*)
 
   | red_spec_call_object_seal_4 : forall S0 S C l xs b o, (* Step 2, loop *)
       red_expr S C (spec_call_object_seal_2 l xs) o ->
@@ -3291,7 +3293,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_is_sealed_3_prop_configurable : forall S0 S C A xs l, (* Step 2.b, true *)
       attributes_configurable A = true ->
-      red_expr S C (spec_call_object_is_sealed_3 l xs (dret S0 A)) (out_ter S false)
+      red_expr S0 C (spec_call_object_is_sealed_3 l xs (dret S A)) (out_ter S false)
 
   | red_spec_call_object_is_sealed_3_prop_not_configurable : forall S0 S C A xs l o, (* Step 2.b, false *)
       attributes_configurable A = false ->
@@ -3764,11 +3766,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_construct_bool_1 o1) o ->
       red_expr S C (spec_construct_prealloc prealloc_bool args) o
 
-   | red_spec_construct_bool_1 : forall O l b S' S C,
+   | red_spec_construct_bool_1 : forall O l b S' S S0 C,
       let O1 := object_new prealloc_bool_proto "Boolean" in
       let O := object_with_primitive_value O1 b in
       (l, S') = object_alloc S O ->
-      red_expr S C (spec_construct_bool_1 (out_ter S b)) (out_ter S' l)
+      red_expr S0 C (spec_construct_bool_1 (out_ter S b)) (out_ter S' l)
 
   (*------------------------------------------------------------*)
   (** ** Boolean prototype builtin functions *)

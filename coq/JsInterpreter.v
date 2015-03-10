@@ -2249,7 +2249,7 @@ Definition run_prog runs S C p : result :=
 
 (**************************************************************)
 
-Fixpoint push runs S C l args ilen: result :=
+Fixpoint push runs S C l args ilen {struct args} : result :=
   (* Corresponds to the construction [spec_call_array_proto_push_3] of the specification. *)
   'let vlen := JsNumber.of_int ilen
   in match args with
@@ -2266,12 +2266,12 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   match B with
 
   | prealloc_global_is_nan =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_number (to_number runs S C v) (fun S0 n =>
       res_ter S0 (decide (n = JsNumber.nan)))
 
   | prealloc_global_is_finite =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_number (to_number runs S C v) (fun S0 n =>
       res_ter S0 (neg
         (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
@@ -2291,8 +2291,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     match v with
     | value_object l =>
       if_string (to_string runs S C (get_arg 1 args)) (fun S1 x =>
-      if_spec (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
-      from_prop_descriptor runs S2 C D))
+        if_spec (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
+          from_prop_descriptor runs S2 C D))
     | value_prim _ => run_error S native_error_type
     end
 
@@ -2326,7 +2326,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_is_sealed =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l))
@@ -2350,7 +2350,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_freeze =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l)) (
@@ -2386,7 +2386,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
 
 
   | prealloc_object_is_frozen =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l))
@@ -2416,7 +2416,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_is_extensible =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (run_object_method object_extensible_ S l) (res_ter S)
@@ -2424,7 +2424,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_prevent_extensions =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (pick_option (object_binds S l)) (fun O =>
@@ -2432,6 +2432,19 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         let S' := object_write S l O1 in
         res_ter S' l)
     | value_prim _ => run_error S native_error_type
+    end
+
+  | prealloc_object_define_prop =>
+    'let o := get_arg 0 args in
+    'let p := get_arg 1 args in
+    'let attr := get_arg 2 args in
+    match o with
+    | value_prim _ => run_error S native_error_type
+    | value_object l =>
+      if_string (to_string runs S C p) (fun S1 name =>
+        if_spec (run_to_descriptor runs S1 C attr) (fun S2 desc =>
+          if_bool (object_define_own_prop runs S2 C l name desc true) (fun S3 _ =>
+            res_ter S3 l)))
     end
 
   | prealloc_object_proto_to_string =>
@@ -2448,8 +2461,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     to_object S vthis
 
   | prealloc_object_proto_is_prototype_of =>
-    let v := get_arg 0 args in
-    match v with
+    'let v := get_arg 0 args in
+    match v return result with
     | value_prim _ =>
       out_ter S false
     | value_object l =>
@@ -2458,7 +2471,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_proto_prop_is_enumerable =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
       if_object (to_object S1 vthis) (fun S2 l =>
         if_spec (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
@@ -2470,7 +2483,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
           end)))
 
   | prealloc_object_proto_has_own_prop =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
       if_object (to_object S1 vthis) (fun S2 l =>
         if_spec (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
@@ -2498,7 +2511,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_bool =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     out_ter S (convert_value_to_boolean v)
 
   | prealloc_bool_proto_to_string =>

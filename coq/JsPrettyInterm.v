@@ -938,7 +938,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_env_record_implicit_this_value _ => None
   | spec_env_record_implicit_this_value_1 _ _ => None
 
-  | spec_from_descriptor _ => None
+  | spec_from_descriptor y => out_of_specret y
   | spec_from_descriptor_1 _ o => Some o
   | spec_from_descriptor_2 _ _ o => Some o
   | spec_from_descriptor_3 _ _ o => Some o
@@ -1132,7 +1132,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
 
   | spec_call_object_define_prop_1 _ _ _ => None
   | spec_call_object_define_prop_2 _ o _ => Some o
-  | spec_call_object_define_prop_3 _ _ _ => None
+  | spec_call_object_define_prop_3 _ _ y => out_of_specret y
   | spec_call_object_define_prop_4 _ o => Some o
 
   | spec_call_object_get_own_prop_descriptor_1 _ _ => None
