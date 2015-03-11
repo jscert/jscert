@@ -12,7 +12,7 @@
 # Default paths for TLC and COQBIN, etc are as follows:
 
 COQBIN=
-TLC=lib/tlc
+TLC=lib/tlc/src
 FLOCQ=lib/flocq
 FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
@@ -134,7 +134,6 @@ install_optional_depend: install_depend
 
 init:
 	git submodule init; git submodule update
-	svn checkout svn://scm.gforge.inria.fr/svn/tlc/trunk lib/tlc
 	tar -xzf lib/flocq-2.1.0.tar.gz
 	mv flocq-2.1.0 lib/flocq
 # alternative: pull git from svn
