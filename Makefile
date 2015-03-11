@@ -220,11 +220,11 @@ ENVGETIDENTIFIER=$(shell cat interp/src/insert/lexical_env_get_identifier_ref)
 
 interp/src/extract/JsInterpreter.ml.patched: interp/src/extract/JsInterpreter.ml
 	@echo \# Inserting useful error messages into $<
-	@perl -i -pe 's|res_res \(run_error s Coq_native_error_ref\)|$(REFGETVALUE)|' $<
-	@perl -i -pe 's/\(\*\* val run_object_heap_set_extensible :/$(RUNOBJECTMETHOD)/' $<
-	@perl -i -pe 's/type runs_type =/$(RUNOBJECTHEAP)/' $<
-	@perl -i -pe 's/    result_val s \(ref_create_value \(Coq_value_prim Coq_prim_undef\) x0 str\)/$(ENVGETIDENTIFIER)/' $<
-	@perl -i -pe 's|\(\*\* val run_expr_get_value :|$(REFGETVALUE2)|' $<
+	@perl -i -pe 's|res_res \(run_error s Coq_native_error_ref\)|$(REFGETVALUE)|g' $<
+	@perl -i -pe 's/\(\*\* val run_object_heap_set_extensible :/$(RUNOBJECTMETHOD)/g' $<
+	@perl -i -pe 's/type runs_type =/$(RUNOBJECTHEAP)/g' $<
+	@perl -i -pe 's/    result_val s \(ref_create_value \(Coq_value_prim Coq_prim_undef\) x0 str\)/$(ENVGETIDENTIFIER)/g' $<
+	@perl -i -pe 's|\(\*\* val run_expr_get_value :|$(REFGETVALUE2)|g' $<
 	touch $@
 
 # Sentinel file to check all interpreter source files have been patched
@@ -255,7 +255,7 @@ interp/src/extract/JsInterpreterBisect.ml: interp/src/extract/JsInterpreter.ml e
 	perl -pe 's/ impossible/ (*BISECT-IGNORE*) impossible/g' $< > $@
 
 interp/src/run_jsbisect.ml: interp/src/run_js.ml
-	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./' $< > $@
+	perl -pe 's/JsInterpreter\./JsInterpreterBisect\./g' $< > $@
 
 interp/run_jsbisect.native: interp/src/extract/JsInterpreterBisect.ml
 
@@ -271,7 +271,7 @@ interp/src/extract/JsInterpreterTrace.ml: interp/src/extract/JsInterpreter.ml ex
 	cp $< $@
 
 interp/src/run_jstrace.ml: interp/src/run_js.ml
-	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./' $< > $@
+	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./g' $< > $@
 
 interp/run_jstrace.native: interp/src/extract/JsInterpreterTrace.ml interp/tracer/annotml/ppx_lines.native
 
