@@ -4048,6 +4048,19 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_construct_prealloc (prealloc_native_error ne) args) o
 
 
+  (*------------------------------------------------------------*)
+  (** ** Implementation-defined locations (Section 2) **)
+
+  (** The effects of these locations are not specified. **)
+
+  | red_spec_construct_implementation  : forall S C B args o,
+      implementation_prealloc B ->
+      red_expr S C (spec_construct_prealloc B args) o
+
+  | red_spec_call_implementation  : forall S C B vthis args o,
+      implementation_prealloc B ->
+      red_expr S C (spec_call_prealloc B vthis args) o
+
 
 (**************************************************************)
 (** ** Reduction rules for specification functions *)

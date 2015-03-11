@@ -1505,6 +1505,22 @@ Inductive make_delete_event : state -> object_loc -> prop_name -> event -> Prop 
 
 
 (**************************************************************)
+(** ** Implementation Defined Object *)
+
+(** As stated in Section 2 of the ECMAScript specification, an
+  implementation can provide additionnal properties not described in
+  the specification. **)
+
+(** As we are only describing the core of JavaScrip here, this
+  inductive shall be empty.  But one can found in the other branches
+  of this developpment some examples of non-empty instantiation of
+  this predicate. **)
+
+Inductive implementation_prealloc : prealloc -> Prop :=
+  .
+
+
+(**************************************************************)
 (** Shorthand **)
 
 Definition vret : state -> value -> specret value := ret (T:=value).
