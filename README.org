@@ -27,6 +27,8 @@
     - Python
     - Haskell
     - SqlLite
+    
+    Note: JSCert is not fully supported on 32-bit Linux platforms due to floating point extended precision problems.
 
 **** Basic Install
       First, get java. On Ubuntu, this looks something like this:
