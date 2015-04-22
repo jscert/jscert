@@ -1376,7 +1376,7 @@ Inductive abort : out -> Prop :=
   | abort_div :
       abort out_div
   | abort_not_normal : forall S R,
-      ~ res_is_normal R ->
+      abrupt_res R ->
       abort (out_ter S R).
 
 (** Definition of the behaviors caught by an exception handler,
@@ -1411,15 +1411,15 @@ Inductive abort_intercepted_stat : ext_stat -> Prop :=
       res_label_in R labs ->  
       abort_intercepted_stat (stat_switch_2 (out_ter S R) labs)
   | abort_intercepted_stat_switch_nodefault_6 : forall S rv R scs,
-      ~ res_is_normal R ->
+      abrupt_res R ->
       res_type R <> restype_throw -> 
       abort_intercepted_stat (stat_switch_nodefault_6 rv (out_ter S R) scs)
   | abort_intercepted_stat_switch_default_8 : forall S rv R scs,
-      ~ res_is_normal R ->
+      abrupt_res R ->
       res_type R <> restype_throw ->
       abort_intercepted_stat (stat_switch_default_8 rv (out_ter S R) scs)
   | abort_intercepted_stat_switch_default_A_5 : forall S rv R vi scs ts1 scs2,
-      ~ res_is_normal R ->
+      abrupt_res R ->
       res_type R <> restype_throw ->
       abort_intercepted_stat (stat_switch_default_A_5 rv (out_ter S R) vi scs ts1 scs2)
    | abort_intercepted_stat_for_6 : forall S0 S C labs rv R eo2 eo3 t,

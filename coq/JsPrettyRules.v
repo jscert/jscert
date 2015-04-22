@@ -539,7 +539,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_switch_nodefault_6 rv (out_ter S R) scs) o
 
   | red_stat_switch_nodefault_6_abrupt : forall S S0 C R R' scs rv,
-      ~ res_is_normal R ->
+      abrupt_res R ->
       res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       R' = (res_overwrite_value_if_empty rv R) ->
       red_stat S0 C (stat_switch_nodefault_6 rv (out_ter S R) scs) (out_ter S R')
@@ -591,7 +591,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_switch_default_A_5 rv0 (out_ter S rv) vi scs ts1 scs2) o
 
   | red_stat_switch_default_A_5_abrupt : forall S S0 C vi rv R scs scs2 ts1, (* TODO:  Reread this rule! *)
-      ~ res_is_normal R ->
+      abrupt_res R ->
       res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       red_stat S0 C (stat_switch_default_A_5 rv (out_ter S R) vi scs ts1 scs2) (out_ter S (res_overwrite_value_if_empty rv R))
 
@@ -651,7 +651,7 @@ with red_stat : state -> execution_ctx -> ext_stat -> out -> Prop :=
       red_stat S0 C (stat_switch_default_8 rv0 (out_ter S rv) scs) o
 
   | red_stat_switch_default_8_abrupt : forall S S0 C R scs rv,
-      ~ res_is_normal R ->
+      abrupt_res R ->
       res_type R <> restype_throw -> (* TODO:  Added, but please reread, and eventually change [abort_intercepted_stat] to match this. *)
       red_stat S0 C (stat_switch_default_8 rv (out_ter S R) scs) (out_ter S (res_overwrite_value_if_empty rv R))
 
