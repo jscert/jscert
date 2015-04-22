@@ -28,6 +28,15 @@ function fnGlobalObject() {
     return this
 }
 
+// Used to test if argument is a function
+// taken from test262/harness/fnExists.js
+function fnExists(/*arguments*/) {
+    for (var i = 0; i < arguments.length; i++) {
+        if (typeof (arguments[i]) !== "function") return false;
+    }
+    return true;
+}
+
 // This could be used to print ...
 function $PRINT(s){ }
 
