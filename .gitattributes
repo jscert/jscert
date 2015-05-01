@@ -3,3 +3,5 @@
 /tests/sputnik/** linguist-vendored
 /tests/test262/** linguist-vendored
 /bisect_reports/** linguist-vendored
+**/codemirror/lib/** linguist-vendored
+**/jquery*.js linguist-vendored
