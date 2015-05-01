@@ -2,4 +2,4 @@
 /tests/SpiderMonkey/** linguist-vendored
 /tests/sputnik/** linguist-vendored
 /tests/test262/** linguist-vendored
-/bisect-reports/** linguist-vendored
+/bisect_reports/** linguist-vendored
