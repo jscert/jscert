@@ -58,8 +58,6 @@ Implicit Type sb : switchbody.
 Implicit Type sc : switchclause.
 (*Implicit Type scs : list switchclause.*)
 
-
-
 (**************************************************************)
 (** ** Reduction rules for global code (10.4.1) *)
 
@@ -770,27 +768,116 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       v = convert_literal_to_prim i ->
       red_expr S C (expr_literal i) (out_ter S v)
 
-  (** Array initializer : LATER (11.1.4) *)
+  (* _ARRAYS_ : Array initializer (11.1.4) *)
+
+  (* We allocate the new array and pass it on *)
+  | red_expr_array : forall S C oes o1 o,
+      red_expr S C (spec_construct_prealloc prealloc_array nil) o1 ->
+      red_expr S C (expr_array_0 o1 oes) o ->
+      red_expr S C (expr_array oes) o
+
+  (* We only accept terminating executions *)
+  | red_expr_array_0 : forall S' S C l oes o,
+      red_expr S  C (expr_array_1 l oes) o ->
+      red_expr S' C (expr_array_0 (out_ter S l) oes) o
+ 
+  (* Detecting the optional elision at the end *)
+  | red_expr_array_1 : forall S C l oes o ElementList Elision ElisionLength,
+      (oes = LibList.append ElementList Elision) ->
+      (ElementList = nil \/ exists e oes', ElementList = oes' & (Some e)) ->
+      (Forall (= None) Elision) ->
+      (ElisionLength = length Elision) ->
+        red_expr S C (expr_array_2 l ElementList ElisionLength) o ->
+        red_expr S C (expr_array_1 l oes) o
+
+  (* Evaluating the element list and adding the length *)
+  | red_expr_array_2 : forall S C l elst elgth o1 o,
+      red_expr S C (expr_array_3 l elst) o1 ->
+      red_expr S C (expr_array_add_length l elgth o1) o ->
+      red_expr S C (expr_array_2 l elst elgth) o
+
+  (* Evaluating the element list after removing the trailing elision  *)
+
+  (* First case : nothing left *)
+  | red_expr_array_3_nil : forall S C l,
+      red_expr S C (expr_array_3 l nil) (out_ter S l)
+
+  (* Second case : leading elision *)
+  | red_expr_array_3_none : forall S C l oes o o1 Elision ElementList ElisionLength,
+      (None :: oes = LibList.append Elision ElementList) ->
+      (ElementList = nil \/ exists e oes', ElementList = Some e :: oes') ->
+      (Forall (= None) Elision) ->
+      (ElisionLength = length Elision) ->
+        red_expr S C (expr_array_3 l ElementList) o1 ->
+        red_expr S C (expr_array_add_length l ElisionLength o1) o ->
+        red_expr S C (expr_array_3 l (None :: oes)) o
+
+  (* Third case : leading assignment *)
+  | red_expr_array_3_some : forall S C l o oes e,
+      red_expr S C (expr_array_3 l oes) o ->
+      red_expr S C (expr_array_3 l (Some e :: oes)) o
+
+
+
+  (* Adding the length *)
+
+  (* Get the length *)
+  | red_expr_array_add_length : forall S S' C l o elgth,
+      red_expr S C (expr_array_add_length_0 l elgth) o ->
+      red_expr S' C (expr_array_add_length l elgth (out_ter S l)) o
+
+  | red_expr_array_add_length_0 : forall S C l o1 o elgth,
+      red_expr S C (spec_object_get l "length") o1 ->
+      red_expr S C (expr_array_add_length_1 l elgth o1) o ->
+      red_expr S C (expr_array_add_length_0 l elgth) o
+
+  (* Convert it to an uint32 *)
+  | red_expr_array_add_length_1 : forall S' S C l vlen y o elgth,
+      red_spec S  C (spec_to_uint32 vlen) y ->
+      red_expr S  C (expr_array_add_length_2 l y elgth) o ->
+      red_expr S' C (expr_array_add_length_1 l elgth (out_ter S vlen)) o
+
+  (* Add the elision *)
+  | red_expr_array_add_length_2 : forall S' S C l lenuint32 o elgth,
+      red_expr S  C (expr_array_add_length_3 l (JsNumber.of_int (lenuint32 + elgth))) o ->
+      red_expr S' C (expr_array_add_length_2 l (ret S lenuint32) elgth) o
+
+  (* Set the length *)
+  | red_expr_array_add_length_3 : forall S C l vlen o o1,
+      red_expr S C (spec_object_put l "length" vlen throw_true) o1 ->
+      red_expr S C (expr_array_add_length_4 l o1) o ->
+      red_expr S C (expr_array_add_length_3 l vlen) o
+
+  (* Return the object *)
+  | red_expr_array_add_length_4 : forall S' S C l R, 
+      red_expr S' C (expr_array_add_length_4 l (out_ter S R)) (out_ter S l)
+
+
 
   (** Object initializer (11.1.5) *)
 
+  (* We allocate the new object and pass it on *)
   | red_expr_object : forall S C pds o1 o,
       red_expr S C (spec_construct_prealloc prealloc_object nil) o1 ->
       red_expr S C (expr_object_0 o1 pds) o ->
       red_expr S C (expr_object pds) o
 
+  (* We only accept terminating executions *)
   | red_expr_object_0 : forall S0 S C l pds o,
       red_expr S C (expr_object_1 l pds) o ->
       red_expr S0 C (expr_object_0 (out_ter S l) pds) o
 
+  (* Empty object *)
   | red_expr_object_1_nil : forall S C l,
       red_expr S C (expr_object_1 l nil) (out_ter S l)
 
+  (* Step 1 : PNAVL non-empty *)
   | red_expr_object_1_cons : forall S C x l pn pb pds o,
       x = string_of_propname pn ->
       red_expr S C (expr_object_2 l x pb pds) o ->
       red_expr S C (expr_object_1 l ((pn,pb)::pds)) o
 
+  (* Step 2 : Property Assignment *)
   | red_expr_object_2_val : forall S C e l x pds y1 o,
       red_spec S C (spec_expr_get_value e) y1 ->
       red_expr S C (expr_object_3_val l x y1 pds) o ->
@@ -801,6 +888,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_4 l x A pds) o ->
       red_expr S0 C (expr_object_3_val l x (ret S v) pds) o
 
+  (* Step 2 : Get *)
   | red_expr_object_2_get : forall S C bd l x o o1 pds,
       red_expr S C (spec_create_new_function_in C nil bd) o1 ->
       red_expr S C (expr_object_3_get l x o1 pds) o ->
@@ -813,6 +901,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (expr_object_4 l x Desc pds) o ->
       red_expr S0 C (expr_object_3_get l x (out_ter S v) pds) o
 
+  (* Step 3 : Set *)
   | red_expr_object_2_set : forall S C l x pds o o1 bd args,
       red_expr S C (spec_create_new_function_in C args bd) o1 ->
       red_expr S C (expr_object_3_set l x o1 pds) o ->

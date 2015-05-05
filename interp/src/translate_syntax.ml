@@ -112,7 +112,11 @@ let rec exp_to_exp exp : JsSyntax.expr =
               | _ -> raise Parser.InvalidArgument
             end) 
         ) xs)
-      | Array _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      (* _ARRAYS_ : Parsing array arguments *)
+      | Array oes -> JsSyntax.Coq_expr_array (map (fun oe -> begin match oe with
+                                                               | None   -> None
+                                                               | Some e -> Some (f e)
+                                                              end) oes)
       | ConditionalOp (e1, e2, e3) -> JsSyntax.Coq_expr_conditional (f e1, f e2, f e3)
 
       (*Statements*)

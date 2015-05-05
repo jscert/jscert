@@ -1673,6 +1673,54 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
     end
   end.
 
+Require Program.Wf.
+
+Program Fixpoint array_element_list runs S C l (oes : list (option expr)) {measure (length oes)} : result := 
+   match oes with
+    | nil => out_ter S l
+    | None :: oes' =>   
+        'let ElisionLength := elision_head_count  oes in
+           if_object (array_element_list runs S C l (elision_head_remove oes)) (fun S l => 
+             if_value (run_object_get runs S C l "length") (fun S vlen =>
+               if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+                 if_not_throw (object_put runs S C l "length" (JsNumber.of_int (ilen + ElisionLength)) throw_true) (fun S _ => 
+                    out_ter S l))))  
+
+    | Some e :: oes' => array_element_list runs S C l oes'
+   end.
+
+Lemma array_element_list_eq : forall runs S C l oes, 
+  array_element_list runs S C l oes =
+  match oes with
+   | nil => out_ter S l
+   | None :: oes' =>   
+       'let ElisionLength := elision_head_count oes in
+          if_object (array_element_list runs S C l (elision_head_remove oes)) (fun S l => 
+            if_value (run_object_get runs S C l "length") (fun S vlen =>
+              if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+                if_not_throw (object_put runs S C l "length" (JsNumber.of_int (ilen + ElisionLength)) throw_true) (fun S _ => 
+                   out_ter S l))))  
+
+   | Some e :: oes' => array_element_list runs S C l oes'
+  end.
+Proof.
+  introv. unfold array_element_list at 1. unfold array_element_list_func. 
+  rewrite Wf.Fix_eq. 
+    + induction oes; try (destruct a); simpls~. 
+    + intros. destruct x as (runs' & S' & C' & l' & oes'); simpl.
+      destruct oes'; simpls~.
+      destruct o; simpls~. rewrite~ H.
+Admitted. (* Faster *)
+
+Definition init_array runs S C l (oes : list (option expr)) : result :=
+  'let ElementList   := elision_tail_remove oes in
+  'let ElisionLength := elision_tail_count  oes in
+   if_object (array_element_list runs S C l ElementList) (fun S l => 
+     if_value (run_object_get runs S C l "length") (fun S vlen =>
+       if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+           if_not_throw (object_put runs S C l "length" (JsNumber.of_int (ilen + ElisionLength)) throw_true) (fun S _ => 
+             out_ter S l)))).     
+
 Definition run_var_decl_item runs S C x eo : result :=
   match eo with
     | None => out_ter S x
@@ -2129,6 +2177,11 @@ Definition run_expr runs S C e : result :=
   | expr_object pds =>
     if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 l =>
       init_object runs S1 C l pds)
+
+  (* _ARRAYS_ : Initalization *)
+  | expr_array oes => 
+    if_object (run_construct_prealloc runs S C prealloc_array nil) (fun S1 l =>
+      init_array runs S1 C l oes)
 
   | expr_member e1 f =>
     runs_type_expr runs S C (expr_access e1 (expr_literal (literal_string f)))

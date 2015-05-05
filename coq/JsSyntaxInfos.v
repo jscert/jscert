@@ -30,6 +30,13 @@ Fixpoint add_infos_exp str e :=
      | expr_identifier _
      | expr_literal _
      | expr_object _ => e
+
+     (* _ARRAYS_ : Propagation into every element of the list *)
+     | expr_array oes => expr_array (List.map (fun oe => match oe with
+                                                          | None => None
+                                                          | Some e => Some (f e)
+                                                         end) oes)
+
      | expr_function so ss fb => expr_function so ss (add_infos_funcbody str fb)
      | expr_access e1 e2 => expr_access (f e1) (f e2)
      | expr_member e s => expr_member (f e) s

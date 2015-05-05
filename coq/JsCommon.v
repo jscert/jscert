@@ -1223,6 +1223,131 @@ Definition is_syntactic_eval e :=
   | _ => false
   end.
 
+(*
+ *
+ * Auxiliary functions for detecting elision in arrays 
+ * 
+ *)
+
+Fixpoint list_repeat {T : Type} (t : T) (n : nat) :=
+match n with
+ | 0 => nil
+ | S n => t :: (list_repeat t n)
+end.
+
+Lemma list_repeat_none_forall : forall T (n : nat), Forall (= None) (list_repeat (@None T) n).
+Proof.
+  inductions n; simpls*. 
+  apply Forall_nil. applys~ Forall_cons.  
+Qed.
+
+Lemma list_repeat_none_rev : forall T (n : nat), 
+  list_repeat (@None T) n & None = None :: list_repeat None n.
+Proof.
+  inductions n; simpls*.
+  rewrite app_cons. rewrite~ IHn.
+Qed.
+
+Fixpoint elision_head_count {T : Type} (ol : list (option T)) :=
+match ol with
+ | None :: ol' => S (elision_head_count ol')
+ | _ => 0
+end.
+
+Fixpoint elision_head_remove {T : Type} (ol : list (option T)) :=
+match ol with
+ | None :: ol' => elision_head_remove ol'
+ | _ => ol
+end.
+
+Definition elision_tail_count {T : Type} (ol : list (option T)) :=
+  elision_head_count (rev ol).
+
+Definition elision_tail_remove {T : Type} (ol : list (option T)) :=
+  rev (elision_head_remove (rev ol)).
+
+Lemma elision_head_remove_length_lt : forall {T : Type} (oes : list (option T)),
+  length (elision_head_remove (None :: oes)) < length (None :: oes).
+Proof.
+  induction oes. rew_length; nat_math.
+  destruct a; simpls; rew_length in *; nat_math.
+Qed.
+
+Lemma elision_head_remove_length_lt_nat : forall {T : Type} (oes : list (option T)),
+  (length (elision_head_remove (None :: oes)) < length (None :: oes))%nat.
+Proof.
+  induction oes. rew_length; nat_math.
+  destruct a; simpls; rew_length in *; nat_math.
+Qed.
+
+Hint Resolve elision_head_remove_length_lt
+             elision_head_remove_length_lt_nat.
+
+Lemma elision_tail_decomposition : forall {T : Type} (l : list (option T)), 
+  l = (elision_tail_remove l ++ list_repeat None (elision_tail_count l))%list.
+Proof.
+  introv. unfold elision_tail_remove. unfold elision_tail_count.
+  rewrite <- rev_rev at 1. remember (rev l) as l'; clear dependent l.
+  induction l' using (measure_induction length). destruct l' as [ | a l]. simpls*.
+  destruct a; simpls*. rewrite~ app_nil_r.
+  rewrite rev_cons. rewrite H; [ | rew_length; nat_math].
+  rewrite app_assoc. rewrite~ list_repeat_none_rev. 
+Qed.
+
+Lemma elision_tail_head : forall {T : Type} (l : list (option T)),
+  elision_tail_remove l = nil \/ (exists e oes', elision_tail_remove l = oes' & Some e).
+Proof.
+  introv. unfold elision_tail_remove. 
+  remember (rev l) as l'; clear dependent l.
+  cut (elision_head_remove l' = nil \/
+      (exists e oes', elision_head_remove l' = Some e :: oes')).
+    introv H; inversion_clear H as [ | (e & oes' & Heq)]; [left | right].
+    apply nil_eq_rev_inv. rewrite~ rev_rev.
+    exists e (rev oes'); rewrite Heq. rewrite~ rev_cons.
+    inductions l'. simpls*. destruct a; simpls*.  
+Qed.
+
+Lemma elision_tail_tail : forall {T : Type} (l : list (option T)), 
+ elision_tail_count l = length (list_repeat (@None T) (elision_tail_count l)).
+Proof.
+  introv. unfold elision_tail_count.
+  remember (rev l) as l'; clear dependent l.
+  inductions l'. simpls*.
+  destruct a; simpls*.
+  rewrite IHl' at 1. rew_length; nat_math.
+Qed.
+
+Lemma elision_head_decomposition : forall {T : Type} (l : list (option T)), 
+  l = (list_repeat None (elision_head_count l) ++ elision_head_remove l)%list.
+Proof.
+  introv. induction l using (measure_induction length). destruct l as [ | a l]. simpls*.
+  destruct a; simpls*. rewrite app_cons. fequals. 
+  apply H. rew_length; nat_math.
+Qed.
+
+Lemma elision_head_tail : forall {T : Type} (l : list (option T)),
+  elision_head_remove l = nil \/ (exists e oes', elision_head_remove l = Some e :: oes').
+Proof.
+  introv. inductions l. simpls*. destruct a; simpls*.  
+Qed.
+
+Lemma elision_head_head : forall {T : Type} (l : list (option T)), 
+ elision_head_count l = length (list_repeat (@None T) (elision_head_count l)).
+Proof.
+  introv. inductions l. simpls*.
+  destruct a; simpls*.
+  rewrite IHl at 1. rew_length; nat_math.
+Qed.
+
+Hint Resolve list_repeat_none_forall 
+             elision_head_remove_length_lt
+             elision_head_decomposition
+             elision_head_head
+             elision_head_tail
+             elision_tail_decomposition 
+             elision_tail_head 
+             elision_tail_tail.
+
 (** Axiomatized parsing relation for eval *)
 
 (* LATER: There are actually two passes of parsing.  One that performs

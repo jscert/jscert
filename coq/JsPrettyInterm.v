@@ -70,6 +70,27 @@ Inductive ext_expr :=
   | expr_object_4 : object_loc -> string -> descriptor -> propdefs -> ext_expr
   | expr_object_5 : object_loc -> propdefs -> out -> ext_expr
 
+
+
+
+
+  (* _ARRAYS_ : support for array intermediate forms *)
+  | expr_array_0 : out -> list (option expr) -> ext_expr
+  | expr_array_1 : object_loc -> list (option expr) -> ext_expr
+  | expr_array_2 : object_loc -> list (option expr) -> int -> ext_expr
+  | expr_array_3 : object_loc -> list (option expr) -> ext_expr
+
+  | expr_array_add_length   : object_loc -> int -> out -> ext_expr
+  | expr_array_add_length_0 : object_loc -> int -> ext_expr
+  | expr_array_add_length_1 : object_loc -> int -> out -> ext_expr
+  | expr_array_add_length_2 : object_loc -> specret int -> int -> ext_expr
+  | expr_array_add_length_3 : object_loc -> value -> ext_expr
+  | expr_array_add_length_4 : object_loc -> out -> ext_expr
+
+
+
+
+
   | expr_function_1 : string -> list string -> funcbody -> env_loc -> lexical_env -> out -> ext_expr
   | expr_function_2 : string -> env_loc -> out -> ext_expr
   | expr_function_3 : object_loc -> out -> ext_expr
@@ -770,6 +791,26 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_object_3_set _ _ o _ => Some o
   | expr_object_4 _ _ _ _ => None
   | expr_object_5 _ _ o => Some o
+
+
+
+
+  (* _ARRAYS_ : support for array intermediate forms - CHECK!*)
+  | expr_array_0 o _ => Some o
+  | expr_array_1 _ _ => None
+  | expr_array_2 _ _ _ => None
+  | expr_array_3 _ _ => None
+
+  | expr_array_add_length   _ _ o => Some o
+  | expr_array_add_length_0 _ _ => None
+  | expr_array_add_length_1 _ _ o => Some o 
+  | expr_array_add_length_2 _ y _ => out_of_specret y
+  | expr_array_add_length_3 _ _ => None
+  | expr_array_add_length_4 _ o => Some o
+
+
+
+
 
   | expr_function_1 _ _ _ _ _ o => Some o
   | expr_function_2 _ _ o => Some o

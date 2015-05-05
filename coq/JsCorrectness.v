@@ -351,8 +351,31 @@ Proof.
   exists S. destruct R; tryfalse. auto.
 Admitted. (*faster*)
 
-(* TODO: misssing
-    if_not_throw *)
+(* if_not_throw *)
+
+Definition if_not_throw_post (K : _ -> _ -> result) o o1 :=
+  eqabort o1 o \/
+  (exists S R, o1 = out_ter S R /\
+     ((res_type R <> restype_throw /\ K S R = o) \/
+      (res_type R  = restype_throw /\ o = o1))).
+
+Hint Extern 1 (_ <> _ :> restype) => congruence.
+
+Lemma if_not_throw_out : forall W K o,
+  if_not_throw W K = o -> 
+  isout W (if_not_throw_post K o).
+Proof.
+  introv E. unfolds in E.
+  forwards~ (o1 & WE & P): if_ter_out (rm E).
+  exists o1. split~.
+  unfolds. unfolds in P.
+
+  inversion_clear P as [[? ?] | (S & R & ? & ?)]. branch~ 1.
+  splits~. substs~.
+  right. exists S R; splits~.
+  destruct (res_type R); try solve [left; splits~; discriminate].
+  right; splits~. subst. inverts~ H0.
+Qed.
 
 Definition if_any_or_throw_post (K1 K2 : _ -> _ -> result) o o1 :=
   (o1 = out_div /\ o = o1) \/
@@ -360,9 +383,6 @@ Definition if_any_or_throw_post (K1 K2 : _ -> _ -> result) o o1 :=
     (   (res_type R <> restype_throw /\ K1 S R = o)
      \/ (res_type R = restype_throw /\ exists (v : value), res_value R = v
            /\ res_label R = label_empty /\ K2 S v = o))). (* Didn't worked when writing [exists (v : value), R = res_throw v]. *)
-
-Hint Extern 1 (_ <> _ :> restype) => congruence.
-
 
 Lemma if_any_or_throw_out : forall W K1 K2 o,
   if_any_or_throw W K1 K2 = res_out o ->
@@ -716,6 +736,7 @@ Ltac run_select_ifres H :=
   | if_prim _ _ => constr:(if_prim_spec)
   | if_spec _ _ => constr:(if_spec_out)
   | if_void _ _ => constr:(if_void_out)
+  | if_not_throw _ _ => constr:(if_not_throw_out)
   | if_any_or_throw _ _ _ => constr:(if_any_or_throw_out)
   | if_success_or_return _ _ _ => constr:(if_success_or_return_out)
   | if_success_state _ _ _ => constr:(if_success_state_out)
@@ -884,6 +905,12 @@ Ltac run_post_core :=
   | H: if_void_post _ _ _ |- _ =>
     destruct H as [(Er&Ab)|(S&O1&H)];
     [ try abort | try subst_hyp O1 ]
+  | H: if_not_throw_post _ _ _ |- _ =>
+    let R := fresh "R" in
+    let N := fresh "N" in let v := fresh "v" in
+    let E := fresh "E" in let L := fresh "L" in
+    destruct H as [(Er & Ab) | (S & R & O1 & [(N & H) | (N & H)])];
+    [try abort | try subst_hyp O1 | try abort]
   | H: if_break_post _ _ _ |- _ =>
     let R := fresh "R" in let E := fresh "E" in
     let HT := fresh "HT" in
@@ -2899,6 +2926,74 @@ Proof.
     applys* red_expr_object_3_set.
 Qed.
 
+Lemma red_expr_array_add_length_object_loc_eq : forall S S' C l l' o el,
+  red_expr S C (expr_array_add_length l el o) (out_ter S' l') -> l = l'.
+Proof.
+  introv H; inverts H.
+
+  + inverts  H1. unfolds abrupt_res; simpls. false~ H3.
+  + inverts  H6. simpls; inverts H.
+    inverts  H5. inverts H0. unfolds abrupt_res. false~ H4.
+    inverts  H8. inverts H0. unfolds abrupt_res. false~ H4.
+    inverts  H6. inverts H0. unfolds abrupt_res. false~ H4.
+    inverts~ H8. inverts H0. unfolds abrupt_res. false~ H4.
+Admitted. (* Faster *)
+
+Lemma red_expr_array_3_object_loc_eq : forall S C l ElementList S' l',
+  red_expr S C (expr_array_3 l ElementList) (out_ter S' l') -> l = l'.
+Proof.
+  introv H; inductions H; auto.
+  eapply red_expr_array_add_length_object_loc_eq; eassumption.
+Admitted. (* Faster *)
+
+Lemma array_element_list_correct : forall runs S C l oes o,
+  runs_type_correct runs ->
+  array_element_list runs S C l oes = o ->
+  red_expr S C (expr_array_3 l oes) o.
+Proof.
+  introv IH HR. gen runs S C l o. 
+  induction oes using (measure_induction length); destruct oes; 
+  intros; rewrite array_element_list_eq in HR. 
+
+  + inverts HR. apply red_expr_array_3_nil.
+
+  + destruct o. 
+    - applys red_expr_array_3_some. specializes~ H HR. rew_length; nat_math.
+    - let_name. run red_expr_array_3_none; subst.
+      * instantiate (1 := elision_head_remove (None :: oes)). 
+        instantiate (1 := list_repeat None ElisionLength); auto.                    
+      * auto.
+      * auto.
+      * instantiate (1 := elision_head_count (None :: oes)); auto.
+      * eapply H; try eassumption; auto. 
+      * specializes~ H R1. apply red_expr_array_3_object_loc_eq in H. subst l0.
+        apply red_expr_array_add_length.  
+        run red_expr_array_add_length_0 using run_object_get_correct.
+        run red_expr_array_add_length_1. apply red_expr_array_add_length_2. 
+        run red_expr_array_add_length_3. apply red_expr_array_add_length_4.
+Qed.
+
+Lemma init_array_correct : forall runs S C l oes o,
+  runs_type_correct runs ->
+  init_array runs S C l oes = o ->
+  red_expr S C (expr_array_1 l oes) o.
+Proof.
+  introv IH HR. unfolds in HR. let_name. let_name. 
+  apply red_expr_array_1 with (ElementList := ElementList) 
+                              (Elision := list_repeat None ElisionLength) 
+                              (ElisionLength := ElisionLength); 
+    try solve [try rewrite my_Z_of_nat_def; substs~]. 
+  
+  run red_expr_array_2. 
+  eapply array_element_list_correct; eassumption.
+  apply array_element_list_correct in R1; auto. apply red_expr_array_3_object_loc_eq in R1. subst l0.
+    
+  apply red_expr_array_add_length.  
+    run red_expr_array_add_length_0 using run_object_get_correct.
+    run red_expr_array_add_length_1. apply red_expr_array_add_length_2. 
+    run red_expr_array_add_length_3. apply red_expr_array_add_length_4.
+Qed.
+
 Lemma lexical_env_get_identifier_ref_correct : forall runs S C lexs x str y,
   runs_type_correct runs ->
   lexical_env_get_identifier_ref runs S C lexs x str = result_some y ->
@@ -3013,7 +3108,7 @@ Lemma run_expr_correct : forall runs S C e o,
   red_expr S C (expr_basic e) o.
 Proof.
   introv IH R. unfolds in R.
-  destruct e as [ | | | pds | | |  | | | | | | ].
+  destruct e as [ | | | pds | oes | | |  | | | | | | ].
   (* this *)
   run_inv. apply~ red_expr_this.
   (* identifier *)
@@ -3025,6 +3120,12 @@ Proof.
   run red_expr_object using run_construct_prealloc_correct.
   applys red_expr_object_0.
   applys* init_object_correct.
+
+  (* _ARRAYS_ *)
+  run red_expr_array using run_construct_prealloc_correct.
+  applys red_expr_array_0.
+  applys* init_array_correct.
+
   (* function *)
   unfolds in R. destruct o0.
     let_name. destruct p as (lex'&S').

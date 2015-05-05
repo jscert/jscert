@@ -332,6 +332,7 @@ let dump_expr_step = function
   | Coq_expr_identifier _ -> "Expr_identifier"
   | Coq_expr_literal _ -> "Expr_literal"
   | Coq_expr_object _ -> "Expr_object"
+  | Coq_expr_array _ -> "Expr_array"
   | Coq_expr_function _ -> "Expr_function"
   | Coq_expr_access _ -> "Expr_access"
   | Coq_expr_member _ -> "Expr_member"

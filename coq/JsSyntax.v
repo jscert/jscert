@@ -121,6 +121,10 @@ Inductive expr :=
   | expr_identifier : string -> expr
   | expr_literal : literal -> expr
   | expr_object : list (propname * propbody) -> expr
+
+  (* _ARRAYS_ : support for processing arrays, based on parser_syntax.ml *)
+  | expr_array : list (option expr) -> expr
+
   | expr_function : option string -> list string -> funcbody -> expr
   | expr_access : expr -> expr -> expr
   | expr_member : expr -> string -> expr
