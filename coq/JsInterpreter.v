@@ -2699,20 +2699,15 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat := wrap run_stat;
       runs_type_prog := wrap run_prog;
       runs_type_call := wrap run_call;
-      runs_type_function_has_instance :=
-        wrap run_function_has_instance;
+      runs_type_function_has_instance := wrap run_function_has_instance;
       runs_type_stat_while := wrap run_stat_while;
       runs_type_stat_do_while := wrap run_stat_do_while;
       runs_type_stat_for_loop := wrap run_stat_for_loop;
       runs_type_object_delete := wrap object_delete;
-      runs_type_object_get_own_prop :=
-        wrap run_object_get_own_prop;
-      runs_type_object_get_prop :=
-        wrap run_object_get_prop;
-      runs_type_object_get :=
-        wrap run_object_get;
-      runs_type_object_proto_is_prototype_of :=
-        wrap object_proto_is_prototype_of;
+      runs_type_object_get_own_prop := wrap run_object_get_own_prop;
+      runs_type_object_get_prop := wrap run_object_get_prop;
+      runs_type_object_get := wrap run_object_get;
+      runs_type_object_proto_is_prototype_of := wrap object_proto_is_prototype_of;
       runs_type_object_put := wrap object_put;
       runs_type_equal := wrap run_equal;
       runs_type_to_integer := wrap to_integer;

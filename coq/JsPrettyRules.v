@@ -833,13 +833,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Convert it to an uint32 *)
   | red_expr_array_add_length_1 : forall S' S C l vlen y o elgth,
-      red_spec S  C (spec_to_uint32 vlen) y ->
+      red_spec S  C (spec_to_uint32 vlen) y -> (* Vacuous conversion, assumed to already be a number *)
       red_expr S  C (expr_array_add_length_2 l y elgth) o ->
       red_expr S' C (expr_array_add_length_1 l elgth (out_ter S vlen)) o
 
   (* Add the elision *)
   | red_expr_array_add_length_2 : forall S' S C l lenuint32 o elgth,
-      red_expr S  C (expr_array_add_length_3 l (JsNumber.of_int (lenuint32 + elgth))) o ->
+      red_expr S  C (expr_array_add_length_3 l (JsNumber.of_int (lenuint32 + elgth))) o -> (* One more step with spec_to_uint32 *)
       red_expr S' C (expr_array_add_length_2 l (ret S lenuint32) elgth) o
 
   (* Set the length *)
