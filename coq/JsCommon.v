@@ -106,34 +106,27 @@ Definition type_of v :=
   | value_object _ => type_object
   end.
 
-(** LATER: Definition of the "SameValue" algorithm, which appears to
-    be equivalent to logical equality. The spec states:
-
-    Definition value_same v1 v2 :=
-      let ty1 := type_of v1 in
-      let ty2 := type_of v2 in
-      ifb ty1 <> ty2 then False else
-      match ty1 with
-      | type_undef => True
-      | type_null => True
-      | type_number =>
-          ifb   v1 = (prim_number JsNumber.nan)
-             /\ v2 = (prim_number JsNumber.nan) then True
-          else ifb    v1 = (prim_number JsNumber.zero)
-                  /\ v2 = (prim_number JsNumber.neg_zero) then False
-          else ifb    v1 = (prim_number JsNumber.neg_zero)
-                  /\ v2 = (prim_number JsNumber.zero) then False
-          else (v1 = v2)
-      | type_string => (v1 = v2)
-      | type_bool => (v1 = v2)
-      | type_object => (v1 = v2)
-      end.
-
-    Which is equivalent to:
-*)
-(* LATER: problem of the several representations of NaN *)
-
-Definition same_value v1 v2 := (v1 = v2).
+(** Specification method SameValue used internally by [[DefineOwnProperty]] (9.12) *)
+Definition same_value v1 v2 :=
+  let ty1 := type_of v1 in
+  let ty2 := type_of v2 in
+  ifb ty1 <> ty2 then False else
+  match ty1 with
+  | type_undef => True
+  | type_null => True
+  | type_number =>
+      ifb   v1 = (prim_number JsNumber.nan)
+         /\ v2 = (prim_number JsNumber.nan) then True
+      else ifb    v1 = (prim_number JsNumber.zero)
+              /\ v2 = (prim_number JsNumber.neg_zero) then False
+      else ifb    v1 = (prim_number JsNumber.neg_zero)
+              /\ v2 = (prim_number JsNumber.zero) then False
+      else (v1 = v2)
+  | type_string => (v1 = v2)
+  | type_bool => (v1 = v2)
+  | type_object => (v1 = v2)
+  end.
+(* LATER: check problem of the several representations of NaN *)
 
 (**************************************************************)
 (** ** Operations on event lists *)
