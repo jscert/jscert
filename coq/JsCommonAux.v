@@ -62,9 +62,8 @@ Qed.
 Global Instance same_value_dec : forall v1 v2,
   Decidable (same_value v1 v2).
 Proof.
-  introv. unfold same_value. case_if.
-  apply prop_decidable.
-  apply prop_decidable.
+  introv. unfold same_value. case_if. typeclass.
+  destruct (type_of v1) eqn:H1; repeat cases_if; try typeclass.
 Qed.
 
 Lemma if_some_bool_then_same_self : forall bo,
