@@ -14,8 +14,8 @@ environment.
 
   cd tracer
   make generate.out
-  cd ..
-  tracer/generate.out trace.log tracer/trace.js interp/src/extract/JsInterpreterTrace.ml
+  cd ../..
+  interp/tracer/generate.out interp/tracer/trace.log interp/tracer/trace.js interp/src/extract/JsInterpreterTrace.ml
 
 You can then open the file navig.html in tracer and follow the
 instructions there.
