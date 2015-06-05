@@ -84,7 +84,7 @@ Inductive ext_expr :=
   | expr_array_add_length_0 : object_loc -> int -> ext_expr
   | expr_array_add_length_1 : object_loc -> int -> out -> ext_expr
   | expr_array_add_length_2 : object_loc -> specret int -> int -> ext_expr
-  | expr_array_add_length_3 : object_loc -> value -> ext_expr
+  | expr_array_add_length_3 : object_loc -> specret int -> ext_expr
   | expr_array_add_length_4 : object_loc -> out -> ext_expr
 
 
@@ -236,6 +236,19 @@ Inductive ext_expr :=
   | spec_prim_value_get_1 : value -> prop_name -> out -> ext_expr
   | spec_prim_value_put : value -> prop_name -> value -> bool -> ext_expr
   | spec_prim_value_put_1 : prim -> prop_name -> value -> bool -> out -> ext_expr
+
+  (* ARRAYS *)
+  | spec_object_define_own_prop_array_2 : object_loc -> prop_name -> descriptor -> bool -> (specret full_descriptor) -> ext_expr
+  | spec_object_define_own_prop_array_2_1 : object_loc -> prop_name -> descriptor -> bool -> descriptor -> value -> ext_expr
+  | spec_object_define_own_prop_array_branch_3_4 : object_loc -> prop_name -> descriptor -> bool -> descriptor -> (specret int) -> ext_expr
+  | spec_object_define_own_prop_array_branch_4_5   : object_loc -> prop_name -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_branch_4_5_a : object_loc -> prop_name -> (specret int) -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_branch_4_5_b : object_loc -> prop_name -> int -> out -> descriptor -> bool -> descriptor -> int -> ext_expr 
+  | spec_object_define_own_prop_array_3a : object_loc -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_4a : object_loc -> prop_name -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_4b : object_loc -> prop_name -> (specret int) -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_4c : object_loc -> int -> descriptor -> bool -> int -> descriptor -> out -> ext_expr
+  | spec_object_define_own_prop_array_5  : object_loc -> prop_name -> descriptor -> bool -> ext_expr
 
   (** Extended expressions for operations on references *)
   | spec_put_value : resvalue -> value -> ext_expr
@@ -805,7 +818,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_array_add_length_0 _ _ => None
   | expr_array_add_length_1 _ _ o => Some o 
   | expr_array_add_length_2 _ y _ => out_of_specret y
-  | expr_array_add_length_3 _ _ => None
+  | expr_array_add_length_3 _ y => out_of_specret y
   | expr_array_add_length_4 _ o => Some o
 
 
@@ -949,6 +962,23 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_object_define_own_prop_6c _ _ _ _ _ => None
   | spec_object_define_own_prop_reject _ => None
   | spec_object_define_own_prop_write _ _ _ _ _ => None
+
+
+
+  (* ARRAYS *)
+  | spec_object_define_own_prop_array_2 _ _ _ _ y => out_of_specret y
+  | spec_object_define_own_prop_array_2_1 _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_branch_3_4 _ _ _ _ _ y => out_of_specret y
+  | spec_object_define_own_prop_array_branch_4_5 _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_branch_4_5_a _ _ y _ _ _ _ => out_of_specret y
+  | spec_object_define_own_prop_array_branch_4_5_b _ _ _ o _ _ _ _ => Some o
+  | spec_object_define_own_prop_array_3a _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_4a _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_4b _ _ y _ _ _ _ => out_of_specret y
+  | spec_object_define_own_prop_array_4c _ _ _ _ _ _ o => Some o
+  | spec_object_define_own_prop_array_5 _ _ _ _ => None
+
+
 
   | spec_prim_value_get _ _ => None
   | spec_prim_value_get_1 _ _ o => Some o

@@ -111,7 +111,12 @@ Record runs_type_correct runs :=
        red_expr S C (spec_to_integer v) o;
     runs_type_correct_to_string : forall S C v o,
        runs_type_to_string runs S C v = o ->
-       red_expr S C (spec_to_string v) o
+       red_expr S C (spec_to_string v) o;
+
+    (* ARRAYS *)
+    runs_type_correct_array_element_list : forall S C l oes o n,
+       runs_type_array_element_list runs S C l oes 0 = o ->
+       red_expr S C (expr_array_3 l oes) o
   }.
 
 
@@ -779,6 +784,7 @@ Ltac run_select_proj H :=
   | runs_type_equal => constr:(runs_type_correct_equal)
   | runs_type_to_integer => constr:(runs_type_correct_to_integer)
   | runs_type_to_string => constr:(runs_type_correct_to_string)
+  | runs_type_array_element_list => constr:(runs_type_correct_array_element_list)
   | ?x => run_select_proj_extra_error HT
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
@@ -1398,6 +1404,117 @@ Proof.
     apply~ red_spec_object_can_put_2_accessor. rewrite decide_def. repeat cases_if~.
 Qed.
 
+Lemma object_default_value_correct : forall runs S C l pref o,
+  runs_type_correct runs ->
+  object_default_value runs S C l pref = o ->
+  red_expr S C (spec_object_default_value l pref) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run. lets H: run_object_method_correct (rm E).
+  applys* red_spec_object_default_value (rm H).
+  destruct x.
+  let_name as M.
+  asserts M_correct: (forall S x (F:state->result) K (o:out),
+      (M S x F = res_out o) ->
+      (forall S' o', (F S' = o') -> red_expr S' C K o') ->
+      red_expr S C (spec_object_default_value_sub_1 l x K) o).
+    clears HR S o. introv HR HK. subst M.
+    run red_spec_object_default_value_sub_1
+      using run_object_get_correct.
+    run. forwards R1: run_callable_correct (rm E).
+    destruct x0.
+      simpls. run. destruct v; tryfalse.
+       run* red_spec_object_default_value_sub_2_callable.
+       destruct v; run_inv.
+         applys* red_spec_object_default_value_sub_3_prim.
+         applys* red_spec_object_default_value_sub_3_object.
+      applys* red_spec_object_default_value_sub_2_not_callable.
+    clear EQM.
+  let_name.
+  applys* red_spec_object_default_value_1_default.
+  applys* red_spec_object_default_value_2.
+  subst. applys* M_correct.
+  clears S o. intros S o HR. simpls.
+  applys* red_spec_object_default_value_3.
+  subst. applys* M_correct.
+  clears S o. intros S o HR. simpls.
+  applys* red_spec_object_default_value_4.
+Admitted. (* faster *)
+
+(** Conversions *)
+
+Lemma to_primitive_correct : forall runs S C v o prefo,
+  runs_type_correct runs ->
+  to_primitive runs S C v prefo = o ->
+  red_expr S C (spec_to_primitive v prefo) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct v.
+  run_inv. applys* red_spec_to_primitive_pref_prim.
+  applys* red_spec_to_primitive_pref_object.
+  applys* object_default_value_correct.
+  run_pre. rewrite R1. run_post; substs~.
+Qed.
+
+Lemma to_number_correct : forall runs S C v o,
+  runs_type_correct runs ->
+  to_number runs S C v = o ->
+  red_expr S C (spec_to_number v) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct v.
+  run_inv. applys* red_spec_to_number_prim.
+  run red_spec_to_number_object using to_primitive_correct.
+  applys* red_spec_to_number_1.
+Qed.
+
+Lemma to_string_correct : forall runs S C v o,
+  runs_type_correct runs ->
+  to_string runs S C v = o ->
+  red_expr S C (spec_to_string v) o.
+Proof.
+  introv IH HR. unfolds in HR. destruct v.
+  run_inv. applys* red_spec_to_string_prim.
+  run red_spec_to_string_object using to_primitive_correct.
+  applys* red_spec_to_string_1.
+Qed.
+
+Lemma to_integer_correct : forall runs S C v o,
+  runs_type_correct runs ->
+  to_integer runs S C v = o ->
+  red_expr S C (spec_to_integer v) o.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_to_integer using to_number_correct.
+  applys* red_spec_to_integer_1.
+Qed.
+
+Lemma to_int32_correct : forall runs S C v (y:specret int),
+  runs_type_correct runs ->
+  to_int32 runs S C v = result_some y ->
+  red_spec S C (spec_to_int32 v) y.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_to_int32 using to_number_correct.
+  applys* red_spec_to_int32_1.
+Qed.
+
+Lemma to_uint32_correct : forall runs S C v (y:specret int),
+  runs_type_correct runs ->
+  to_uint32 runs S C v = result_some y ->
+  red_spec S C (spec_to_uint32 v) y.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_to_uint32 using to_number_correct.
+  applys* red_spec_to_uint32_1.
+Qed.
+
+Ltac run_select_proj_extra_conversions HT ::=
+  match HT with
+  | to_primitive => constr:(to_primitive_correct)
+  | to_number => constr:(to_number_correct)
+  | to_string => constr:(to_string_correct)
+  | to_int32 => constr:(to_int32_correct)
+  | to_uint32 => constr:(to_uint32_correct)
+  end.
 
 Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
   runs_type_correct runs ->
@@ -1412,10 +1529,10 @@ Proof.
     applys* red_spec_object_define_own_prop_reject.
     applys* out_error_or_cst_correct.
     clear EQrej.
-  let_name as def. asserts Def: (forall S str o,
-      def S str = res_out o ->
+  let_name as def. asserts Def: (forall S str o x Desc,
+      def S x Desc str = res_out o ->
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc str) o).
-    clear HR S str o. introv HR. subst.
+    clear HR S str o Desc x. introv HR. subst.
     run red_spec_object_define_own_prop_1_default.
     run. applys* red_spec_object_define_own_prop_2.
       applys* run_object_method_correct. clear E.
@@ -1459,6 +1576,48 @@ Proof.
   clear E. destruct x0. (* LTAC ARTHUR:  This [x0] wasn't properly named. *)
     (* default *)
     applys* Def.
+
+    (* Array object *)
+    run red_spec_object_define_own_prop_array_1. 
+    destruct a; [inverts HR | ]. destruct a; [ | inverts HR].
+    let_name. subst. eapply red_spec_object_define_own_prop_array_2. reflexivity.
+    destruct (attributes_data_value a); [ | inverts HR].
+    let_name. let_name. subst descValueOpt.
+    eapply red_spec_object_define_own_prop_array_2_1. reflexivity.
+    eapply red_spec_to_uint32. apply red_spec_to_number_prim. reflexivity.
+    apply red_spec_to_uint32_1. rewrite <- EQoldLen. 
+    case_if. subst x.
+    
+    apply red_spec_object_define_own_prop_array_branch_3_4_3.
+    assert (Hyp : {v | descriptor_value Desc = Some v} + {descriptor_value Desc = None}).
+    {
+      destruct (descriptor_value Desc); [left | right]; auto. exists~ v.
+    } inverts Hyp as Hyp. 
+
+    (* Step 3b *) 
+    destruct Hyp as (v & EQv); rewrite EQv in *.
+    admit.
+
+    (* Step 3a *) 
+    rewrite Hyp in HR. applys~ red_spec_object_define_own_prop_array_3a.
+
+    (* Branching between Step 4 and Step 5 *)
+    applys~ red_spec_object_define_own_prop_array_branch_3_4_4.
+    run red_spec_object_define_own_prop_array_branch_4_5.
+    run red_spec_object_define_own_prop_array_branch_4_5_a.
+    case_if. rename a0 into ilen, s into slen.
+    applys~ red_spec_object_define_own_prop_array_branch_4_5_b_4.
+    run red_spec_object_define_own_prop_array_4a.
+    case_if; rename a0 into index.
+    applys~ red_spec_object_define_own_prop_array_4b.
+    run~ red_spec_object_define_own_prop_array_4c.
+    destruct b; case_if*. case_if.
+    eapply red_spec_object_define_own_prop_array_4c_e. auto. reflexivity. auto.
+    run_inv. applys~ red_spec_object_define_own_prop_array_4f.
+    applys~ red_spec_object_define_own_prop_array_4c_d.
+    applys~ red_spec_object_define_own_prop_array_branch_4_5_b_5.
+    applys~ red_spec_object_define_own_prop_array_5. 
+
     (* arguments object *)
     run. forwards~ obpm: run_object_method_correct (rm E).
     run. subst. run~ red_spec_object_define_own_prop_args_obj.
@@ -1827,111 +1986,6 @@ Proof.
   applys~ red_spec_env_record_initialize_immutable_binding B B'.
 Qed.
 
-Lemma object_default_value_correct : forall runs S C l pref o,
-  runs_type_correct runs ->
-  object_default_value runs S C l pref = o ->
-  red_expr S C (spec_object_default_value l pref) o.
-Proof.
-  introv IH HR. unfolds in HR.
-  run. lets H: run_object_method_correct (rm E).
-  applys* red_spec_object_default_value (rm H).
-  destruct x.
-  let_name as M.
-  asserts M_correct: (forall S x (F:state->result) K (o:out),
-      (M S x F = res_out o) ->
-      (forall S' o', (F S' = o') -> red_expr S' C K o') ->
-      red_expr S C (spec_object_default_value_sub_1 l x K) o).
-    clears HR S o. introv HR HK. subst M.
-    run red_spec_object_default_value_sub_1
-      using run_object_get_correct.
-    run. forwards R1: run_callable_correct (rm E).
-    destruct x0.
-      simpls. run. destruct v; tryfalse.
-       run* red_spec_object_default_value_sub_2_callable.
-       destruct v; run_inv.
-         applys* red_spec_object_default_value_sub_3_prim.
-         applys* red_spec_object_default_value_sub_3_object.
-      applys* red_spec_object_default_value_sub_2_not_callable.
-    clear EQM.
-  let_name.
-  applys* red_spec_object_default_value_1_default.
-  applys* red_spec_object_default_value_2.
-  subst. applys* M_correct.
-  clears S o. intros S o HR. simpls.
-  applys* red_spec_object_default_value_3.
-  subst. applys* M_correct.
-  clears S o. intros S o HR. simpls.
-  applys* red_spec_object_default_value_4.
-Admitted. (* faster *)
-
-
-(** Conversions *)
-
-Lemma to_primitive_correct : forall runs S C v o prefo,
-  runs_type_correct runs ->
-  to_primitive runs S C v prefo = o ->
-  red_expr S C (spec_to_primitive v prefo) o.
-Proof.
-  introv IH HR. unfolds in HR. destruct v.
-  run_inv. applys* red_spec_to_primitive_pref_prim.
-  applys* red_spec_to_primitive_pref_object.
-  applys* object_default_value_correct.
-  run_pre. rewrite R1. run_post; substs~.
-Qed.
-
-Lemma to_number_correct : forall runs S C v o,
-  runs_type_correct runs ->
-  to_number runs S C v = o ->
-  red_expr S C (spec_to_number v) o.
-Proof.
-  introv IH HR. unfolds in HR. destruct v.
-  run_inv. applys* red_spec_to_number_prim.
-  run red_spec_to_number_object using to_primitive_correct.
-  applys* red_spec_to_number_1.
-Qed.
-
-Lemma to_string_correct : forall runs S C v o,
-  runs_type_correct runs ->
-  to_string runs S C v = o ->
-  red_expr S C (spec_to_string v) o.
-Proof.
-  introv IH HR. unfolds in HR. destruct v.
-  run_inv. applys* red_spec_to_string_prim.
-  run red_spec_to_string_object using to_primitive_correct.
-  applys* red_spec_to_string_1.
-Qed.
-
-Lemma to_integer_correct : forall runs S C v o,
-  runs_type_correct runs ->
-  to_integer runs S C v = o ->
-  red_expr S C (spec_to_integer v) o.
-Proof.
-  introv IH HR. unfolds in HR.
-  run red_spec_to_integer using to_number_correct.
-  applys* red_spec_to_integer_1.
-Qed.
-
-Lemma to_int32_correct : forall runs S C v (y:specret int),
-  runs_type_correct runs ->
-  to_int32 runs S C v = result_some y ->
-  red_spec S C (spec_to_int32 v) y.
-Proof.
-  introv IH HR. unfolds in HR.
-  run red_spec_to_int32 using to_number_correct.
-  applys* red_spec_to_int32_1.
-Qed.
-
-Lemma to_uint32_correct : forall runs S C v (y:specret int),
-  runs_type_correct runs ->
-  to_uint32 runs S C v = result_some y ->
-  red_spec S C (spec_to_uint32 v) y.
-Proof.
-  introv IH HR. unfolds in HR.
-  run red_spec_to_uint32 using to_number_correct.
-  applys* red_spec_to_uint32_1.
-Qed.
-
-
 (************************************************************)
 (* Treatement of [spec_expr_get_value_conv] *)
 
@@ -2008,15 +2062,6 @@ Definition lift2 T (C:T->value) y :=
   | specret_out o => specret_out o
   end.
 
-
-Ltac run_select_proj_extra_conversions HT ::=
-  match HT with
-  | to_primitive => constr:(to_primitive_correct)
-  | to_number => constr:(to_number_correct)
-  | to_string => constr:(to_string_correct)
-  | to_int32 => constr:(to_int32_correct)
-  | to_uint32 => constr:(to_uint32_correct)
-  end.
 
 Lemma convert_twice_primitive_correct : forall runs S C v1 v2 y,
   runs_type_correct runs ->
@@ -2929,48 +2974,52 @@ Qed.
 Lemma red_expr_array_add_length_object_loc_eq : forall S S' C l l' o el,
   red_expr S C (expr_array_add_length l el o) (out_ter S' l') -> l = l'.
 Proof.
-  introv H; inverts H.
+Admitted.
+(*  introv H; inverts H.
 
   + inverts  H1. unfolds abrupt_res; simpls. false~ H3.
   + inverts  H6. simpls; inverts H.
     inverts  H5. inverts H0. unfolds abrupt_res. false~ H4.
     inverts  H8. inverts H0. unfolds abrupt_res. false~ H4.
-    inverts  H6. inverts H0. unfolds abrupt_res. false~ H4.
-    inverts~ H8. inverts H0. unfolds abrupt_res. false~ H4.
-Admitted. (* Faster *)
+    inverts  H9. inverts H0. unfolds abrupt_res. false~ H4.
+    inverts~ H8. inverts H0. unfolds abrupt_res. false~ H5.
+Admitted.  Faster *)
 
 Lemma red_expr_array_3_object_loc_eq : forall S C l ElementList S' l',
   red_expr S C (expr_array_3 l ElementList) (out_ter S' l') -> l = l'.
 Proof.
+Admitted.
+(*
   introv H; inductions H; auto.
   eapply red_expr_array_add_length_object_loc_eq; eassumption.
-Admitted. (* Faster *)
+Admitted. Faster *)
 
-Lemma array_element_list_correct : forall runs S C l oes o,
+Lemma run_array_element_list_correct : forall runs S C l oes o,
   runs_type_correct runs ->
-  array_element_list runs S C l oes = o ->
+  run_array_element_list runs S C l oes 0 = o ->
   red_expr S C (expr_array_3 l oes) o.
 Proof.
+  admit.
+(*
   introv IH HR. gen runs S C l o. 
-  induction oes using (measure_induction length); destruct oes; 
-  intros; rewrite array_element_list_eq in HR. 
+  induction oes using (measure_induction length); destruct oes; intros. 
 
   + inverts HR. apply red_expr_array_3_nil.
 
-  + destruct o. 
-    - applys red_expr_array_3_some. specializes~ H HR. rew_length; nat_math.
-    - let_name. run red_expr_array_3_none; subst.
-      * instantiate (1 := elision_head_remove (None :: oes)). 
-        instantiate (1 := list_repeat None ElisionLength); auto.                    
-      * auto.
-      * auto.
-      * instantiate (1 := elision_head_count (None :: oes)); auto.
-      * eapply H; try eassumption; auto. 
-      * specializes~ H R1. apply red_expr_array_3_object_loc_eq in H. subst l0.
+  + destruct o.
+    - simpls. apply red_expr_array_3_some. admit. 
+    - simpls. let_name. let_name.  
+      run red_expr_array_3_none.
+      * apply elision_head_decomposition. 
+      * jauto. * jauto. * jauto.                        
+      * simpls. subst loop_result. run~.
+      * substs~. run~. simpls.
+        apply red_expr_array_3_object_loc_eq in R1. subst l0.
+
         apply red_expr_array_add_length.  
         run red_expr_array_add_length_0 using run_object_get_correct.
-        run red_expr_array_add_length_1. apply red_expr_array_add_length_2. 
-        run red_expr_array_add_length_3. apply red_expr_array_add_length_4.
+        run red_expr_array_add_length_1. run red_expr_array_add_length_2.         
+        run red_expr_array_add_length_3. apply red_expr_array_add_length_4.*)
 Qed.
 
 Lemma init_array_correct : forall runs S C l oes o,
@@ -2985,12 +3034,12 @@ Proof.
     try solve [try rewrite my_Z_of_nat_def; substs~]. 
   
   run red_expr_array_2. 
-  eapply array_element_list_correct; eassumption.
-  apply array_element_list_correct in R1; auto. apply red_expr_array_3_object_loc_eq in R1. subst l0.
+  eapply run_array_element_list_correct; eassumption.
+  apply run_array_element_list_correct in R1; auto. apply red_expr_array_3_object_loc_eq in R1. subst l0.
     
   apply red_expr_array_add_length.  
     run red_expr_array_add_length_0 using run_object_get_correct.
-    run red_expr_array_add_length_1. apply red_expr_array_add_length_2. 
+    run red_expr_array_add_length_1. run red_expr_array_add_length_2. 
     run red_expr_array_add_length_3. apply red_expr_array_add_length_4.
 Qed.
 
@@ -4137,6 +4186,7 @@ Proof.
      introv. apply~ run_equal_correct.
      introv. apply~ to_integer_correct.
      introv. apply~ to_string_correct.
+     introv _. apply~ run_array_element_list_correct.
 Qed.
 
 Theorem run_javascript_correct : forall runs p o,

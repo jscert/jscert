@@ -833,26 +833,25 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Convert it to an uint32 *)
   | red_expr_array_add_length_1 : forall S' S C l vlen y o elgth,
-      red_spec S  C (spec_to_uint32 vlen) y -> (* Vacuous conversion, assumed to already be a number *)
+      red_spec S  C (spec_to_uint32 vlen) y -> (* Vacuous conversion, assumed to already be a number... NOT TRUE! *)
       red_expr S  C (expr_array_add_length_2 l y elgth) o ->
       red_expr S' C (expr_array_add_length_1 l elgth (out_ter S vlen)) o
 
   (* Add the elision *)
-  | red_expr_array_add_length_2 : forall S' S C l lenuint32 o elgth,
-      red_expr S  C (expr_array_add_length_3 l (JsNumber.of_int (lenuint32 + elgth))) o -> (* One more step with spec_to_uint32 *)
+  | red_expr_array_add_length_2 : forall S' S C l y lenuint32 o elgth,
+      red_spec S  C (spec_to_uint32 (JsNumber.of_int (lenuint32 + elgth))) y ->
+      red_expr S  C (expr_array_add_length_3 l y) o -> 
       red_expr S' C (expr_array_add_length_2 l (ret S lenuint32) elgth) o
 
   (* Set the length *)
-  | red_expr_array_add_length_3 : forall S C l vlen o o1,
-      red_expr S C (spec_object_put l "length" vlen throw_true) o1 ->
-      red_expr S C (expr_array_add_length_4 l o1) o ->
-      red_expr S C (expr_array_add_length_3 l vlen) o
+  | red_expr_array_add_length_3 : forall S S' C l (vlen : int) o o1,
+      red_expr S  C (spec_object_put l "length" vlen throw_true) o1 ->
+      red_expr S  C (expr_array_add_length_4 l o1) o ->
+      red_expr S' C (expr_array_add_length_3 l (ret S vlen)) o
 
   (* Return the object *)
   | red_expr_array_add_length_4 : forall S' S C l R, 
       red_expr S' C (expr_array_add_length_4 l (out_ter S R)) (out_ter S l)
-
-
 
   (** Object initializer (11.1.5) *)
 
@@ -2045,6 +2044,126 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_define_own_prop_reject : forall S C throw o,
       red_expr S C (spec_error_or_cst throw native_error_type false) o ->
       red_expr S C (spec_object_define_own_prop_reject throw) o
+
+  
+
+
+
+
+
+
+
+
+
+  (** DefineOwnProperty for Arrays (15.4.5.1) *)
+  
+  (* Step 1 *)
+  | red_spec_object_define_own_prop_array_1 : forall S C l Desc x throw o (y : specret full_descriptor), 
+      red_spec S C (spec_object_get_own_prop l "length") y ->
+      red_expr S C (spec_object_define_own_prop_array_2 l x Desc throw y) o ->
+      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_array l x Desc throw) o
+    
+  (* Step 2 *)
+  | red_spec_object_define_own_prop_array_2 : forall S S' C l Desc x throw o Ad v,
+      v = attributes_data_value Ad ->
+      red_expr S' C (spec_object_define_own_prop_array_2_1 l x Desc throw Ad v) o ->
+      red_expr S  C (spec_object_define_own_prop_array_2 l x Desc throw (specret_val S' (full_descriptor_some (attributes_data_of Ad)))) o
+
+ (* Step 2 *)
+ | red_spec_object_define_own_prop_array_2_1 : forall S C l Desc x throw v w y o Ad,
+     v = value_prim w ->
+     red_spec S C (spec_to_uint32 v) y ->
+     red_expr S C (spec_object_define_own_prop_array_branch_3_4 l x Desc throw Ad y) o ->
+     red_expr S C (spec_object_define_own_prop_array_2_1 l x Desc throw Ad v) o
+
+ (* Branching between Step 3 and Step 4 *)
+ | red_spec_object_define_own_prop_array_branch_3_4_3 : forall S C l Desc throw (oldLen : int) o Ad,
+     red_expr S C (spec_object_define_own_prop_array_3a l Desc throw Ad oldLen) o ->
+     red_expr S C (spec_object_define_own_prop_array_branch_3_4 l "length" Desc throw Ad (ret S oldLen)) o
+
+ (* Branching between Step 3 and Step 4 *)
+ | red_spec_object_define_own_prop_array_branch_3_4_4 : forall S C l x Desc throw (oldLen : int) o Ad,
+   x <> "length" ->
+   red_expr S C (spec_object_define_own_prop_array_branch_4_5 l x Desc throw Ad oldLen) o ->
+   red_expr S C (spec_object_define_own_prop_array_branch_3_4 l x Desc throw Ad (ret S oldLen)) o
+
+ (* TODO : Branching between Step 4 and Step 5 *)
+ | red_spec_object_define_own_prop_array_branch_4_5 : forall S C l x Desc throw oldLen Ad o (y : specret int),
+     red_spec S C (spec_to_uint32 x) y ->
+     red_expr S C (spec_object_define_own_prop_array_branch_4_5_a l x y Desc throw Ad oldLen) o ->
+     red_expr S C (spec_object_define_own_prop_array_branch_4_5 l x Desc throw Ad oldLen) o
+
+ | red_spec_object_define_own_prop_array_branch_4_5_a : forall S S' C l x ilen o1 Desc throw oldLen Ad o, 
+     red_expr S' C (spec_to_string (JsNumber.of_int ilen)) o1 ->
+     red_expr S' C (spec_object_define_own_prop_array_branch_4_5_b l x ilen o1 Desc throw Ad oldLen) o ->
+     red_expr S C (spec_object_define_own_prop_array_branch_4_5_a l x (ret S' ilen) Desc throw Ad oldLen) o
+
+ | red_spec_object_define_own_prop_array_branch_4_5_b_4 : forall S S' C l x ilen slen Desc throw Ad oldLen o,
+     (x = slen /\ ilen <> 4294967295%Z) ->
+     red_expr S' C (spec_object_define_own_prop_array_4a l x Desc throw Ad oldLen) o ->
+     red_expr S C (spec_object_define_own_prop_array_branch_4_5_b l x ilen (out_ter S' slen) Desc throw Ad oldLen) o
+
+ | red_spec_object_define_own_prop_array_branch_4_5_b_5 : forall S S' C l x ilen slen Desc throw Ad oldLen o,
+     ~ (x = slen /\ ilen <> 4294967295%Z) ->
+     red_expr S' C (spec_object_define_own_prop_array_5 l x Desc throw) o ->
+     red_expr S C (spec_object_define_own_prop_array_branch_4_5_b l x ilen (out_ter S' slen) Desc throw Ad oldLen) o
+
+ (* TODO : Step 3 *)
+ | red_spec_object_define_own_prop_array_3a : forall S C l Desc throw oldLen o Ad o,
+     descriptor_value Desc = None ->
+     red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" Desc throw) o ->
+     red_expr S C (spec_object_define_own_prop_array_3a l Desc throw Ad oldLen) o
+
+ (* TODO : Step 4 *)
+ (* Step 4a *)
+ | red_spec_object_define_own_prop_array_4a : forall S C l x Desc throw Ad oldLen (y : specret int) o,
+     red_spec S C (spec_to_uint32 x) y ->
+     red_expr S C (spec_object_define_own_prop_array_4b l x y Desc throw Ad oldLen) o ->        
+     red_expr S C (spec_object_define_own_prop_array_4a l x Desc throw Ad oldLen) o
+
+ (* Step 4b *)
+ | red_spec_object_define_own_prop_array_4b : forall S S' C l x index Desc throw Ad oldLen o,
+     (oldLen <= index /\ ~ attributes_data_writable Ad) ->
+     red_expr S' C (spec_object_define_own_prop_reject throw) o ->
+     red_expr S C (spec_object_define_own_prop_array_4b l x (ret S' index) Desc throw Ad oldLen) o
+
+ (* Step 4c *)
+ | red_spec_object_define_own_prop_array_4c : forall S S' C l x index Desc throw Ad oldLen o1 o,
+     ~ (oldLen <= index /\ ~ attributes_data_writable Ad) ->                                                
+     red_expr S' C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc false) o1 ->
+     red_expr S' C (spec_object_define_own_prop_array_4c l index Desc throw oldLen Ad o1) o ->
+     red_expr S C (spec_object_define_own_prop_array_4b l x (ret S' index) Desc throw Ad oldLen) o
+
+ (* Branch to 4d *)
+ | red_spec_object_define_own_prop_array_4c_d : forall S S' C l index Desc throw oldLen Ad o,
+     red_expr S' C (spec_object_define_own_prop_reject throw) o ->
+     red_expr S C (spec_object_define_own_prop_array_4c l index Desc throw oldLen Ad (out_ter S' false)) o
+
+ (* Branch to 4e *)
+ | red_spec_object_define_own_prop_array_4c_e : forall S S' C l index Desc Desc' throw oldLen Ad o,
+     oldLen <= index ->
+     Desc' = descriptor_with_value Ad (Some (value_prim (JsNumber.of_int (index + 1)))) ->
+     red_expr S' C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" Desc' false) o ->
+     red_expr S C (spec_object_define_own_prop_array_4c l index Desc throw oldLen Ad (out_ter S' true)) o
+
+ (* Step 4f *)
+ | red_spec_object_define_own_prop_array_4f : forall S S' C l index Desc throw oldLen Ad,
+     ~ (oldLen <= index) ->
+     red_expr S C (spec_object_define_own_prop_array_4c l index Desc throw oldLen Ad (out_ter S' true)) (out_ter S' true)
+
+ (* Step 5 *) 
+ | red_spec_object_define_own_prop_array_5 : forall S C l x Desc throw o,
+     red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc throw) o ->
+     red_expr S C (spec_object_define_own_prop_array_5 l x Desc throw) o
+ 
+
+
+
+
+
+
+
+
 
 
   (*------------------------------------------------------------*)
@@ -3676,6 +3795,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_array_new_1 : forall S S' C args O l o,
       O = object_new prealloc_array_proto "Array" ->
+      object_define_own_prop_ O = builtin_define_own_prop_array ->
       (l, S') = object_alloc S O ->
       red_expr S' C (spec_call_array_new_2 l args 0) o ->
       red_expr S C (spec_call_array_new_1 args) o
