@@ -244,11 +244,26 @@ Inductive ext_expr :=
   | spec_object_define_own_prop_array_branch_4_5   : object_loc -> prop_name -> descriptor -> bool -> descriptor -> int -> ext_expr
   | spec_object_define_own_prop_array_branch_4_5_a : object_loc -> prop_name -> (specret int) -> descriptor -> bool -> descriptor -> int -> ext_expr
   | spec_object_define_own_prop_array_branch_4_5_b : object_loc -> prop_name -> int -> out -> descriptor -> bool -> descriptor -> int -> ext_expr 
-  | spec_object_define_own_prop_array_3a : object_loc -> descriptor -> bool -> descriptor -> int -> ext_expr
   | spec_object_define_own_prop_array_4a : object_loc -> prop_name -> descriptor -> bool -> descriptor -> int -> ext_expr
   | spec_object_define_own_prop_array_4b : object_loc -> prop_name -> (specret int) -> descriptor -> bool -> descriptor -> int -> ext_expr
   | spec_object_define_own_prop_array_4c : object_loc -> int -> descriptor -> bool -> int -> descriptor -> out -> ext_expr
   | spec_object_define_own_prop_array_5  : object_loc -> prop_name -> descriptor -> bool -> ext_expr
+  | spec_object_define_own_prop_array_3 : object_loc -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_3c : object_loc -> value -> (specret int) -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_3d_e : object_loc -> out -> int -> descriptor -> bool -> descriptor -> int -> ext_expr
+  | spec_object_define_own_prop_array_3f_g : object_loc -> int -> int -> descriptor -> bool -> descriptor -> ext_expr
+  | spec_object_define_own_prop_array_3h_i : object_loc -> int -> int -> descriptor -> bool -> descriptor -> ext_expr
+  | spec_object_define_own_prop_array_3j : object_loc -> int -> int -> descriptor -> bool -> bool -> descriptor -> ext_expr
+  | spec_object_define_own_prop_array_3k_l : object_loc -> out -> int -> int -> descriptor -> bool -> bool -> descriptor -> ext_expr
+  | spec_object_define_own_prop_array_3l : object_loc -> int -> int -> descriptor -> bool -> bool -> ext_expr
+  | spec_object_define_own_prop_array_3l_ii : object_loc -> int -> int -> descriptor -> bool -> bool -> ext_expr
+  | spec_object_define_own_prop_array_3l_ii_1 : object_loc -> int -> int -> descriptor -> bool -> bool -> out -> ext_expr
+  | spec_object_define_own_prop_array_3l_ii_2 : object_loc -> int -> int -> descriptor -> bool -> bool -> out -> ext_expr
+  | spec_object_define_own_prop_array_3l_iii_1 : object_loc -> int -> descriptor -> bool -> bool -> ext_expr
+  | spec_object_define_own_prop_array_3l_iii_2 : object_loc -> descriptor -> bool -> bool -> ext_expr
+  | spec_object_define_own_prop_array_3l_iii_3 : object_loc -> descriptor -> bool -> ext_expr
+  | spec_object_define_own_prop_array_3l_iii_4 : object_loc -> bool -> out -> ext_expr
+  | spec_object_define_own_prop_array_3m_n : object_loc -> bool -> ext_expr
 
   (** Extended expressions for operations on references *)
   | spec_put_value : resvalue -> value -> ext_expr
@@ -972,13 +987,26 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_object_define_own_prop_array_branch_4_5 _ _ _ _ _ _ => None
   | spec_object_define_own_prop_array_branch_4_5_a _ _ y _ _ _ _ => out_of_specret y
   | spec_object_define_own_prop_array_branch_4_5_b _ _ _ o _ _ _ _ => Some o
-  | spec_object_define_own_prop_array_3a _ _ _ _ _ => None
   | spec_object_define_own_prop_array_4a _ _ _ _ _ _ => None
   | spec_object_define_own_prop_array_4b _ _ y _ _ _ _ => out_of_specret y
   | spec_object_define_own_prop_array_4c _ _ _ _ _ _ o => Some o
   | spec_object_define_own_prop_array_5 _ _ _ _ => None
-
-
+  | spec_object_define_own_prop_array_3 _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_3c _ _ y _ _ _ _ => out_of_specret y
+  | spec_object_define_own_prop_array_3d_e _ o _ _ _ _ _ => Some o
+  | spec_object_define_own_prop_array_3f_g _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_3h_i _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_3j _ _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_3k_l _ o _ _ _ _ _ _ => Some o
+  | spec_object_define_own_prop_array_3l _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_3l_ii _ _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_3l_ii_1 _ _ _ _ _ _ o => Some o
+  | spec_object_define_own_prop_array_3l_ii_2 _ _ _ _ _ _ o => Some o
+  | spec_object_define_own_prop_array_3l_iii_1 _ _ _ _ _ => None
+  | spec_object_define_own_prop_array_3l_iii_2 _ _ _ _ => None
+  | spec_object_define_own_prop_array_3l_iii_3 _ _ _ => None
+  | spec_object_define_own_prop_array_3l_iii_4 _ _ o => Some o
+  | spec_object_define_own_prop_array_3m_n _ _ => None
 
   | spec_prim_value_get _ _ => None
   | spec_prim_value_get_1 _ _ o => Some o

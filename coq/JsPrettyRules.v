@@ -2078,7 +2078,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
  (* Branching between Step 3 and Step 4 *)
  | red_spec_object_define_own_prop_array_branch_3_4_3 : forall S C l Desc throw (oldLen : int) o Ad,
-     red_expr S C (spec_object_define_own_prop_array_3a l Desc throw Ad oldLen) o ->
+     red_expr S C (spec_object_define_own_prop_array_3 l Desc throw Ad oldLen) o ->
      red_expr S C (spec_object_define_own_prop_array_branch_3_4 l "length" Desc throw Ad (ret S oldLen)) o
 
  (* Branching between Step 3 and Step 4 *)
@@ -2108,13 +2108,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      red_expr S' C (spec_object_define_own_prop_array_5 l x Desc throw) o ->
      red_expr S C (spec_object_define_own_prop_array_branch_4_5_b l x ilen (out_ter S' slen) Desc throw Ad oldLen) o
 
- (* TODO : Step 3 *)
- | red_spec_object_define_own_prop_array_3a : forall S C l Desc throw oldLen o Ad o,
-     descriptor_value Desc = None ->
-     red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" Desc throw) o ->
-     red_expr S C (spec_object_define_own_prop_array_3a l Desc throw Ad oldLen) o
-
- (* TODO : Step 4 *)
  (* Step 4a *)
  | red_spec_object_define_own_prop_array_4a : forall S C l x Desc throw Ad oldLen (y : specret int) o,
      red_spec S C (spec_to_uint32 x) y ->
@@ -2156,8 +2149,153 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc throw) o ->
      red_expr S C (spec_object_define_own_prop_array_5 l x Desc throw) o
  
+  (* TODO : Step 3 *)
+ (* Step 3a *)
+ | red_spec_object_define_own_prop_array_3_3a : forall S C l Desc throw oldLen o Ad o,
+     descriptor_value Desc = None ->
+     red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" Desc throw) o ->
+     red_expr S C (spec_object_define_own_prop_array_3 l Desc throw Ad oldLen) o
 
+ (* Step 3c *)
+ | red_spec_object_define_own_prop_array_3_3c : forall S C l v (y : specret int) Desc throw Ad oldLen o,
+     descriptor_value Desc = Some v ->
+     red_spec S C (spec_to_uint32 v) y ->
+     red_expr S C (spec_object_define_own_prop_array_3c l v y Desc throw Ad oldLen) o ->        
+     red_expr S C (spec_object_define_own_prop_array_3 l Desc throw Ad oldLen) o
 
+  (* Step between 3c and 3d *)
+  | red_spec_object_define_own_prop_array_3c : forall S S' C l v ilen Desc throw Ad oldLen o o1,
+      red_expr S' C (spec_to_number v) o1 ->
+      red_expr S' C (spec_object_define_own_prop_array_3d_e l o1 ilen Desc throw Ad oldLen) o ->
+      red_expr S  C (spec_object_define_own_prop_array_3c l v (ret S' ilen) Desc throw Ad oldLen) o
+
+  (* Step 3d *)
+  | red_spec_object_define_own_prop_array_3d : forall S S' C l ilen nlen Desc throw Ad oldLen o,
+      JsNumber.of_int ilen <> nlen ->
+      red_expr S' C (spec_error native_error_range) o ->
+      red_expr S  C (spec_object_define_own_prop_array_3d_e l (out_ter S' nlen) ilen Desc throw Ad oldLen) o
+
+  (* Step 3e *)
+  | red_spec_object_define_own_prop_array_3e : forall S S' C l ilen nlen newLenDesc throw Ad oldLen Desc o,
+      JsNumber.of_int ilen = nlen ->
+      newLenDesc = descriptor_with_value Desc (Some (value_prim (prim_number (JsNumber.of_int ilen)))) ->
+      red_expr S' C (spec_object_define_own_prop_array_3f_g l ilen oldLen newLenDesc throw Ad) o ->
+      red_expr S  C (spec_object_define_own_prop_array_3d_e l (out_ter S' nlen) ilen Desc throw Ad oldLen) o
+ 
+  (* Step 3f *)
+  | red_spec_object_define_own_prop_array_3f : forall S C l oldLen newLen newLenDesc throw Ad o, 
+      oldLen <= newLen ->
+      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" newLenDesc throw) o ->
+      red_expr S C (spec_object_define_own_prop_array_3f_g l newLen oldLen newLenDesc throw Ad) o 
+
+  (* Step 3g *)
+  | red_spec_object_define_own_prop_array_3g : forall S C l newLen oldLen newLenDesc throw Ad o,
+      (~ attributes_data_writable Ad) ->
+      red_expr S C (spec_object_define_own_prop_reject throw) o ->
+      red_expr S C (spec_object_define_own_prop_array_3f_g l newLen oldLen newLenDesc throw Ad) o
+
+  (* Step 3g *)
+  | red_spec_object_define_own_prop_array_3g_to_h : forall S C l newLen oldLen newLenDesc throw Ad o,
+      (attributes_data_writable Ad) ->
+      red_expr S C (spec_object_define_own_prop_array_3h_i l newLen oldLen newLenDesc throw Ad) o ->
+      red_expr S C (spec_object_define_own_prop_array_3f_g l newLen oldLen newLenDesc throw Ad) o
+
+  (* Step 3h *)
+  | red_spec_object_define_own_prop_array_3h : forall S C l newLen oldLen newLenDesc throw Ad o,
+       (descriptor_writable newLenDesc = None \/ descriptor_writable newLenDesc = Some true) ->
+       red_expr S C (spec_object_define_own_prop_array_3j l newLen oldLen newLenDesc true throw Ad) o ->
+       red_expr S C (spec_object_define_own_prop_array_3h_i l newLen oldLen newLenDesc throw Ad) o
+
+  (* Step 3i *)
+  | red_spec_object_define_own_prop_array_3i : forall S C l newLen oldLen newLenDesc throw Ad o,
+      (descriptor_writable newLenDesc = Some false) ->
+      red_expr S C (spec_object_define_own_prop_array_3j l newLen oldLen (descriptor_with_writable newLenDesc (Some true)) false throw Ad) o ->
+      red_expr S C (spec_object_define_own_prop_array_3h_i l newLen oldLen newLenDesc throw Ad) o
+       
+  (* Step 3j *)
+  | red_spec_object_define_own_prop_array_3j : forall S C l newLen oldLen newLenDesc newWritable throw Ad o1 o,
+      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" newLenDesc throw) o1 ->
+      red_expr S C (spec_object_define_own_prop_array_3k_l l o1 newLen oldLen newLenDesc newWritable throw Ad) o ->
+      red_expr S C (spec_object_define_own_prop_array_3j l newLen oldLen newLenDesc newWritable throw Ad) o 
+
+  (* Step 3k  *)
+  | red_spec_object_define_own_prop_array_3k : forall S S' C l newLen oldLen newLenDesc newWritable throw Ad,
+      red_expr S C (spec_object_define_own_prop_array_3k_l l (out_ter S' false) newLen oldLen newLenDesc newWritable throw Ad) (out_ter S' false) 
+
+  (* Moving to step 3l *)
+  | red_spec_object_define_own_prop_array_to_3l : forall S S' C l newLen oldLen newLenDesc newWritable throw Ad o,
+      red_expr S' C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o ->
+      red_expr S C (spec_object_define_own_prop_array_3k_l l (out_ter S' true) newLen oldLen newLenDesc newWritable throw Ad) o
+
+  (* Step 3l condition true *)
+  | red_spec_object_define_own_prop_array_3l_condition_true : forall S C l newLen oldLen newLenDesc newWritable throw o,
+      newLen < oldLen ->
+      red_expr S C (spec_object_define_own_prop_array_3l_ii l newLen (oldLen - 1) newLenDesc newWritable throw) o ->
+      red_expr S C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o
+
+  (* Step 3l.ii *)
+  | red_spec_object_define_own_prop_array_3l_ii : forall S C l newLen oldLen newLenDesc newWritable throw o1 o,
+      red_expr S C (spec_to_string (value_prim (JsNumber.of_int oldLen))) o1 ->
+      red_expr S C (spec_object_define_own_prop_array_3l_ii_1 l newLen oldLen newLenDesc newWritable throw o1) o ->
+      red_expr S C (spec_object_define_own_prop_array_3l_ii l newLen oldLen newLenDesc newWritable throw) o
+
+  (* Step 3l.ii *)
+  | red_spec_object_define_own_prop_array_3l_ii_1 : forall S S' C l x newLen oldLen newLenDesc newWritable throw o1 o,
+      red_expr S' C (spec_object_delete l x false) o1 ->
+      red_expr S' C (spec_object_define_own_prop_array_3l_ii_2 l newLen oldLen newLenDesc newWritable throw o1) o ->
+      red_expr S C (spec_object_define_own_prop_array_3l_ii_1 l newLen oldLen newLenDesc newWritable throw (out_ter S' x)) o
+
+  (* Step 3l.ii - Deletion successful *)
+  | red_spec_object_define_own_prop_array_3l_ii_2 : forall S S' C l newLen oldLen newLenDesc newWritable throw o,
+      red_expr S' C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o -> 
+      red_expr S C (spec_object_define_own_prop_array_3l_ii_2 l newLen oldLen newLenDesc newWritable throw (out_ter S' true)) o
+
+  (* Step 3l.ii - Deletion unsuccessful *)
+  | red_spec_object_define_own_prop_array_3l_ii_2_3 : forall S S' C l newLen oldLen newLenDesc newWritable throw o,
+      red_expr S' C (spec_object_define_own_prop_array_3l_iii_1 l oldLen newLenDesc newWritable throw) o -> 
+      red_expr S C (spec_object_define_own_prop_array_3l_ii_2 l newLen oldLen newLenDesc newWritable throw (out_ter S' false)) o
+
+  (* Step 3l.iii.1 *)
+  | red_spec_object_define_own_prop_array_3l_iii_1 : forall S C l oldLen newLenDesc newLenDesc' newWritable throw o,
+      newLenDesc' = descriptor_with_value newLenDesc (Some (value_prim (prim_number (JsNumber.of_int (oldLen + 1))))) -> 
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_2 l newLenDesc' newWritable throw) o -> 
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_1 l oldLen newLenDesc newWritable throw) o
+
+  (* Step 3l.iii.2 *)
+  | red_spec_object_define_own_prop_array_3l_iii_2_false : forall S C l newLenDesc o throw,
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_3 l (descriptor_with_writable newLenDesc (Some false)) throw) o ->
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_2 l newLenDesc false throw) o
+
+  (* Step 3l.iii.2 *)
+  | red_spec_object_define_own_prop_array_3l_iii_2_true : forall S C l newLenDesc o throw,
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_3 l newLenDesc throw) o ->
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_2 l newLenDesc true throw) o
+
+  (* Step 3l.iii.3 *)
+  | red_spec_object_define_own_prop_array_3l_iii_3 : forall S C l newLenDesc o1 o throw,
+      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" newLenDesc false) o1 -> 
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_4 l throw o1) o ->
+      red_expr S C (spec_object_define_own_prop_array_3l_iii_3 l newLenDesc throw) o
+
+  (* Step 3l.iii.4 *)
+  | red_spec_object_define_own_prop_array_3l_iii_4 : forall S S' C l b throw o1 o,
+      red_expr S' C (spec_object_define_own_prop_reject throw) o ->
+      red_expr S  C (spec_object_define_own_prop_array_3l_iii_4 l throw (out_ter S' b)) o
+
+  (* Step 3l condition false *)
+  | red_spec_object_define_own_prop_array_3l_condition_false : forall S C l newLen oldLen newLenDesc newWritable throw o,
+      ~ (newLen < oldLen) ->
+      red_expr S C (spec_object_define_own_prop_array_3m_n l newWritable) o ->
+      red_expr S C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o
+
+  (* Step 3m *)
+  | red_spec_object_define_own_prop_array_3m : forall S C l o,
+      red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l "length" (descriptor_intro None (Some false) None None None None) false) o ->
+      red_expr S C (spec_object_define_own_prop_array_3m_n l false) o
+
+  (* Step 3n *)
+  | red_spec_object_define_own_prop_array_3n : forall S C l,
+      red_expr S C (spec_object_define_own_prop_array_3m_n l true) (out_ter S true)
 
 
 

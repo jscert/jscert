@@ -142,7 +142,8 @@ Record runs_type : Type := runs_type_intro {
     runs_type_to_string : state -> execution_ctx -> value -> result;
    
     (* ARRAYS *)
-    runs_type_array_element_list : state -> execution_ctx -> object_loc -> list (option expr) -> int -> result
+    runs_type_array_element_list : state -> execution_ctx -> object_loc -> list (option expr) -> int -> result;
+    runs_type_object_define_own_prop_array_loop : state -> execution_ctx -> object_loc -> int -> int -> descriptor -> bool -> bool -> (state -> prop_name -> descriptor -> strictness_flag -> specres nothing) -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -370,6 +371,31 @@ Fixpoint object_define_own_prop_array_loop runs S C l newLen oldOff newLenDesc (
            res_ter S true
   end.
 
+Definition run_object_define_own_prop_array_loop runs S C l (newLen oldLen : int) (newLenDesc : descriptor) (newWritable throw : bool) (def : state -> prop_name -> descriptor -> strictness_flag -> specres nothing) : result := 
+  ifb (newLen < oldLen) 
+    then 
+     'let oldLen' := oldLen - 1 in
+      if_string (to_string runs S C oldLen') (fun S slen =>
+        if_bool (runs_type_object_delete runs S C l slen false) (fun S deleteSucceeded =>
+          ifb (not deleteSucceeded) 
+            then
+              'let newLenDesc := descriptor_with_value newLenDesc (Some (value_prim (prim_number (JsNumber.of_int (oldLen' + 1))))) in
+              'let newLenDesc := (ifb (not newWritable) 
+                 then
+                   descriptor_with_writable newLenDesc (Some false)
+                 else
+                   newLenDesc) in
+                 if_bool (def S "length" newLenDesc false) (fun S _ =>
+                   out_error_or_cst S throw native_error_type false)
+            else
+              runs_type_object_define_own_prop_array_loop runs S C l newLen oldLen' newLenDesc newWritable throw def))
+
+    else (ifb (not newWritable) 
+         then
+           def S "length" (descriptor_intro None (Some false) None None None None) false
+         else
+           res_ter S true).
+
 Definition object_define_own_prop runs S C l x Desc throw : result :=
   'let reject := fun S throw =>
     out_error_or_cst S throw native_error_type false in
@@ -526,7 +552,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                               ifb (not succ) then
                                 res_ter S false
                               else
-                                object_define_own_prop_array_loop runs S C l newLen (Z.to_nat (oldLen - newLen)) newLenDesc newWritable default throw)))
+                                run_object_define_own_prop_array_loop runs S C l newLen oldLen newLenDesc newWritable throw default)))
                 end
               else
                 if_spec (to_uint32 runs S C x) (fun S ilen => 
@@ -2790,7 +2816,8 @@ Fixpoint runs max_step : runs_type :=
       runs_type_to_string := fun S _ _ => result_bottom S;
 
       (* ARRAYS *)
-      runs_type_array_element_list := fun S _ _ _ _ => result_bottom S
+      runs_type_array_element_list := fun S _ _ _ _ => result_bottom S;
+      runs_type_object_define_own_prop_array_loop := fun S _ _ _ _ _ _ _ _ => result_bottom S
     |}
   | S max_step' =>
     let wrap {A : Type} (f : runs_type -> state -> A) S : A :=
@@ -2816,7 +2843,8 @@ Fixpoint runs max_step : runs_type :=
       runs_type_to_string := wrap to_string;
 
       (* ARRAYS *)
-      runs_type_array_element_list := wrap run_array_element_list
+      runs_type_array_element_list := wrap run_array_element_list;
+      runs_type_object_define_own_prop_array_loop := wrap run_object_define_own_prop_array_loop
     |}
   end.
 

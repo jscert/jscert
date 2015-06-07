@@ -116,9 +116,17 @@ Record runs_type_correct runs :=
     (* ARRAYS *)
     runs_type_correct_array_element_list : forall S C l oes o n,
        runs_type_array_element_list runs S C l oes 0 = o ->
-       red_expr S C (expr_array_3 l oes) o
-  }.
+       red_expr S C (expr_array_3 l oes) o;
 
+    runs_type_correct_object_define_own_prop_array_loop : 
+      forall S C l newLen oldLen newLenDesc newWritable throw o 
+             (def : state -> prop_name -> descriptor -> strictness_flag -> specres nothing) 
+             (def_correct : forall S str o x Desc,
+                def S x Desc str = res_out o ->
+                red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc str) o),
+       runs_type_object_define_own_prop_array_loop runs S C l newLen oldLen newLenDesc newWritable throw def = o -> 
+       red_expr S C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o
+  }.
 
 
 (**************************************************************)
@@ -785,6 +793,7 @@ Ltac run_select_proj H :=
   | runs_type_to_integer => constr:(runs_type_correct_to_integer)
   | runs_type_to_string => constr:(runs_type_correct_to_string)
   | runs_type_array_element_list => constr:(runs_type_correct_array_element_list)
+  | runs_type_object_define_own_prop_array_loop => constr:(runs_type_correct_object_define_own_prop_array_loop)
   | ?x => run_select_proj_extra_error HT
   | ?x => run_select_proj_extra_ref HT
   | ?x => run_select_proj_extra_conversions HT
@@ -1246,7 +1255,11 @@ Lemma run_error_correct : forall T S ne o C,
   red_expr S C (spec_error ne) o.
 Proof. intros. applys* run_error_correct'. Qed.
 
-Hint Resolve run_error_correct.
+Lemma run_error_correct_2 : forall T S (ne : native_error) o C,
+  run_error S ne = (res_out o : specres T) -> red_expr S C (spec_error ne) o.
+Proof. intros. apply* run_error_correct. Qed.
+
+Hint Resolve run_error_correct run_error_correct_2.
 
 Ltac run_simpl_run_error H T K ::=
   match T with run_error _ _ =>
@@ -1516,6 +1529,52 @@ Ltac run_select_proj_extra_conversions HT ::=
   | to_uint32 => constr:(to_uint32_correct)
   end.
 
+Lemma run_object_define_own_prop_array_loop_correct :
+  forall runs S C l newLen oldLen newLenDesc newWritable throw o 
+             (def : state -> prop_name -> descriptor -> strictness_flag -> specres nothing) 
+             (def_correct : forall S str o x Desc,
+                def S x Desc str = res_out o ->
+                red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc str) o),
+    runs_type_correct runs ->
+    run_object_define_own_prop_array_loop runs S C l newLen oldLen newLenDesc newWritable throw def = o -> 
+    red_expr S C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o.
+Proof.
+  introv Hyp HR IH.
+  unfolds run_object_define_own_prop_array_loop.
+  cases_if*. let_name. 
+  applys~ red_spec_object_define_own_prop_array_3l_condition_true. 
+  rewrite <- EQoldLen'.
+  run~ red_spec_object_define_own_prop_array_3l_ii.
+  run~ red_spec_object_define_own_prop_array_3l_ii_1.
+  destruct b; cases_if*; clear n.
+  applys* red_spec_object_define_own_prop_array_3l_ii_2.
+  eapply runs_type_correct_object_define_own_prop_array_loop; eassumption.
+
+  applys* red_spec_object_define_own_prop_array_3l_ii_2_3. 
+  eapply red_spec_object_define_own_prop_array_3l_iii_1. reflexivity.
+  destruct newWritable; try solve [false].
+  let_name as newLenDesc''. rewrite <- EQnewLenDesc''. 
+  apply red_spec_object_define_own_prop_array_3l_iii_2_true.
+  let_name. cases_if*. subst newLenDesc0.
+  run~ red_spec_object_define_own_prop_array_3l_iii_3.
+  applys* red_spec_object_define_own_prop_array_3l_iii_4. 
+  applys* red_spec_object_define_own_prop_reject.
+  applys* out_error_or_cst_correct.
+  let_name as newLenDesc''. rewrite <- EQnewLenDesc''. 
+  apply red_spec_object_define_own_prop_array_3l_iii_2_false.
+  let_name. cases_if*. subst newLenDesc0.
+  run~ red_spec_object_define_own_prop_array_3l_iii_3.
+  applys* red_spec_object_define_own_prop_array_3l_iii_4. 
+  applys* red_spec_object_define_own_prop_reject.
+  applys* out_error_or_cst_correct.
+  
+  applys~ red_spec_object_define_own_prop_array_3l_condition_false.
+  destruct newWritable; cases_if*; clear n.
+  inverts IH. applys* red_spec_object_define_own_prop_array_3n.
+
+  applys* red_spec_object_define_own_prop_array_3m.
+Qed.
+
 Lemma object_define_own_prop_correct : forall runs S C l x Desc str o,
   runs_type_correct runs ->
   object_define_own_prop runs S C l x Desc str = o ->
@@ -1528,7 +1587,6 @@ Proof.
     clear HR S str o. introv HR. subst.
     applys* red_spec_object_define_own_prop_reject.
     applys* out_error_or_cst_correct.
-    clear EQrej.
   let_name as def. asserts Def: (forall S str o x Desc,
       def S x Desc str = res_out o ->
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc str) o).
@@ -1580,7 +1638,8 @@ Proof.
     (* Array object *)
     run red_spec_object_define_own_prop_array_1. 
     destruct a; [inverts HR | ]. destruct a; [ | inverts HR].
-    let_name. subst. eapply red_spec_object_define_own_prop_array_2. reflexivity.
+    let_name. subst oldLen. 
+    eapply red_spec_object_define_own_prop_array_2. reflexivity.
     destruct (attributes_data_value a); [ | inverts HR].
     let_name. let_name. subst descValueOpt.
     eapply red_spec_object_define_own_prop_array_2_1. reflexivity.
@@ -1596,10 +1655,38 @@ Proof.
 
     (* Step 3b *) 
     destruct Hyp as (v & EQv); rewrite EQv in *.
-    admit.
+    run~ red_spec_object_define_own_prop_array_3_3c; rename a0 into newLen.
+    run~ red_spec_object_define_own_prop_array_3c; rename m into newLenN.
+    case_if*. applys~ red_spec_object_define_own_prop_array_3d.
+    applys* run_error_correct. let_name.
+    applys~ red_spec_object_define_own_prop_array_3e.
+    clear dependent newLenN. case_if*.
+    subst; applys* red_spec_object_define_own_prop_array_3f.
+    case_if*. applys* red_spec_object_define_own_prop_array_3g.
+    applys~ red_spec_object_define_own_prop_array_3g_to_h.
+    rewrite <- EQnewLenDesc. let_name. let_name as newLenDesc'. 
+    cases_if*; lets HnW : n1; rewrite EQnewWritable in n1. 
+    apply red_spec_object_define_own_prop_array_3i.
+    destruct (descriptor_writable newLenDesc); jauto.
+    cases_if*. false~. clear n1 EQnewWritable. rewrite <- EQnewLenDesc'.
+    replace false with newWritable by (destruct newWritable; auto; false).
+    run* red_spec_object_define_own_prop_array_3j. destruct b; case_if*; clear n1.
+    apply red_spec_object_define_own_prop_array_to_3l.
+    applys* run_object_define_own_prop_array_loop_correct.
+    
+    inverts HR. apply red_spec_object_define_own_prop_array_3k.
+    apply red_spec_object_define_own_prop_array_3h.
+    destruct (descriptor_writable newLenDesc); jauto.
+    cases_if*. clear n1 EQnewWritable. subst newLenDesc'. 
+    replace true with newWritable by (destruct newWritable; auto; false).
+    run* red_spec_object_define_own_prop_array_3j. destruct b; case_if*; clear n1.
+    apply red_spec_object_define_own_prop_array_to_3l.
+    applys* run_object_define_own_prop_array_loop_correct.
 
+    inverts HR. applys* red_spec_object_define_own_prop_array_3k.
+    
     (* Step 3a *) 
-    rewrite Hyp in HR. applys~ red_spec_object_define_own_prop_array_3a.
+    rewrite Hyp in HR. applys~ red_spec_object_define_own_prop_array_3_3a.
 
     (* Branching between Step 4 and Step 5 *)
     applys~ red_spec_object_define_own_prop_array_branch_3_4_4.
@@ -1660,10 +1747,6 @@ Proof.
  run_simpl. applys* red_spec_prim_new_object_string.
   rewrite <- EQX. fequals. skip. (* FIXME: Problem here! The interpreter is not following the rules! *)
 Admitted. (* faster *)
-
-Lemma run_error_correct_2 : forall T S (ne : native_error) o C,
-  run_error S ne = (res_out o : specres T) -> red_expr S C (spec_error ne) o.
-Proof. intros. apply* run_error_correct. Qed.
 
 (* todo: move to the right place above here *)
 Lemma to_object_correct : forall S C v o,
@@ -4167,7 +4250,8 @@ Theorem runs_correct : forall num,
 Proof.
   induction num.
    constructors;
-     try (introv M; inverts M; introv P; inverts P).
+     try (introv M; inverts M; introv P; inverts P). 
+     introv Hyp M; inverts M. 
    constructors.
      introv. apply~ run_expr_correct.
      introv. apply~ run_stat_correct.
@@ -4187,6 +4271,7 @@ Proof.
      introv. apply~ to_integer_correct.
      introv. apply~ to_string_correct.
      introv _. apply~ run_array_element_list_correct.
+     introv Hyp. apply~ run_object_define_own_prop_array_loop_correct.
 Qed.
 
 Theorem run_javascript_correct : forall runs p o,
