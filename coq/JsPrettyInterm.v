@@ -78,7 +78,12 @@ Inductive ext_expr :=
   | expr_array_0 : out -> list (option expr) -> ext_expr
   | expr_array_1 : object_loc -> list (option expr) -> ext_expr
   | expr_array_2 : object_loc -> list (option expr) -> int -> ext_expr
-  | expr_array_3 : object_loc -> list (option expr) -> ext_expr
+  | expr_array_3 : object_loc -> list (option expr) -> int -> ext_expr
+  | expr_array_3_1 : object_loc -> specret value -> list (option expr) -> int -> ext_expr
+  | expr_array_3_2 : object_loc -> value -> out -> list (option expr) -> int -> ext_expr
+  | expr_array_3_3 : object_loc -> value -> specret int -> list (option expr) -> int -> ext_expr
+  | expr_array_3_4 : object_loc -> value -> out -> list (option expr) -> ext_expr
+  | expr_array_3_5 : object_loc -> out -> list (option expr) -> ext_expr
 
   | expr_array_add_length   : object_loc -> int -> out -> ext_expr
   | expr_array_add_length_0 : object_loc -> int -> ext_expr
@@ -827,7 +832,13 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | expr_array_0 o _ => Some o
   | expr_array_1 _ _ => None
   | expr_array_2 _ _ _ => None
-  | expr_array_3 _ _ => None
+  | expr_array_3 _ _ _ => None
+  | expr_array_3_1 _ y _ _ => out_of_specret y
+  | expr_array_3_2 _ _ o _ _ => Some o
+  | expr_array_3_3 _ _ y _ _ => out_of_specret y
+  | expr_array_3_4 _ _ o _ => Some o
+  | expr_array_3_5 _ o _ => Some o
+  
 
   | expr_array_add_length   _ _ o => Some o
   | expr_array_add_length_0 _ _ => None

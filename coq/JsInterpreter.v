@@ -1144,10 +1144,7 @@ Definition creating_function_object_proto runs S C l : result :=
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
   'let O := object_new prealloc_function_proto "Function" in
   'let O1 := object_with_get O builtin_get_function in
-  'let O2 := object_with_invokation O1
-    (Some construct_default)
-    (Some call_default)
-    (Some builtin_has_instance_function) in
+  'let O2 := object_with_invokation O1 (Some construct_default) (Some call_default) (Some builtin_has_instance_function) in
   'let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in
   'let p := object_alloc S O3 in (* LATER: ['let] on pairs *)
   let '(l, S1) := p in
@@ -1822,8 +1819,8 @@ Definition run_array_element_list runs S C l (oes : list (option expr)) (n : int
    match oes with
     | nil => out_ter S l
     | None :: oes' =>   
-        'let firstIndex := elision_head_count oes in
-           runs_type_array_element_list runs S C l (elision_head_remove oes) firstIndex  
+        'let firstIndex := elision_head_count (None :: oes') in
+           runs_type_array_element_list runs S C l (elision_head_remove (None :: oes')) firstIndex  
 
     | Some e :: oes' => 
         'let loop_result := fun S => runs_type_array_element_list runs S C l oes' 0 in
@@ -1843,7 +1840,7 @@ Definition init_array runs S C l (oes : list (option expr)) : result :=
      if_value (run_object_get runs S C l "length") (fun S vlen =>
        if_spec (to_uint32 runs S C vlen) (fun S ilen =>
          if_spec (to_uint32 runs S C (JsNumber.of_int (ilen + ElisionLength))) (fun S len =>
-           if_not_throw (object_put runs S C l "length" len throw_true) (fun S _ => 
+           if_not_throw (object_put runs S C l "length" len throw_false) (fun S _ => 
              out_ter S l))))).     
 
 Definition run_var_decl_item runs S C x eo : result :=

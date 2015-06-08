@@ -792,32 +792,59 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Evaluating the element list and adding the length *)
   | red_expr_array_2 : forall S C l elst elgth o1 o,
-      red_expr S C (expr_array_3 l elst) o1 ->
+      red_expr S C (expr_array_3 l elst 0) o1 ->
       red_expr S C (expr_array_add_length l elgth o1) o ->
       red_expr S C (expr_array_2 l elst elgth) o
 
   (* Evaluating the element list after removing the trailing elision  *)
 
   (* First case : nothing left *)
-  | red_expr_array_3_nil : forall S C l,
-      red_expr S C (expr_array_3 l nil) (out_ter S l)
+  | red_expr_array_3_nil : forall S C l (firstIndex : int),
+      red_expr S C (expr_array_3 l nil firstIndex) (out_ter S l)
 
   (* Second case : leading elision *)
-  | red_expr_array_3_none : forall S C l oes o o1 Elision ElementList ElisionLength,
+  | red_expr_array_3_none : forall S C l oes o Elision ElementList ElisionLength firstIndex,
       (None :: oes = LibList.append Elision ElementList) ->
       (ElementList = nil \/ exists e oes', ElementList = Some e :: oes') ->
       (Forall (= None) Elision) ->
       (ElisionLength = length Elision) ->
-        red_expr S C (expr_array_3 l ElementList) o1 ->
-        red_expr S C (expr_array_add_length l ElisionLength o1) o ->
-        red_expr S C (expr_array_3 l (None :: oes)) o
+        red_expr S C (expr_array_3 l ElementList ElisionLength) o ->
+        red_expr S C (expr_array_3 l (None :: oes) firstIndex) o
 
   (* Third case : leading assignment *)
-  | red_expr_array_3_some : forall S C l o oes e,
-      red_expr S C (expr_array_3 l oes) o ->
-      red_expr S C (expr_array_3 l (Some e :: oes)) o
+  | red_expr_array_3_some_val : forall S C l y o oes e firstIndex,
+      red_spec S C (spec_expr_get_value e) y ->
+      red_expr S C (expr_array_3_1 l y oes firstIndex) o ->
+      red_expr S C (expr_array_3 l (Some e :: oes) firstIndex) o
 
+  | red_expr_array_3_get_len : forall S S' C l v o1 o oes firstIndex,
+      red_expr S' C (spec_object_get l "length") o1 ->
+      red_expr S' C (expr_array_3_2 l v o1 oes firstIndex) o ->
+      red_expr S  C (expr_array_3_1 l (ret S' v) oes firstIndex) o
 
+  (* Convert it to an uint32 *)
+  | red_expr_array_3_convert_len : forall S' S C l vlen v y oes firstIndex o,
+      red_spec S' C (spec_to_uint32 vlen) y -> 
+      red_expr S' C (expr_array_3_3 l v y oes firstIndex) o ->
+      red_expr S  C (expr_array_3_2 l v (out_ter S' vlen) oes firstIndex) o
+
+  (* Add the elision *)
+  | red_expr_array_3_add_len : forall S' S C l v lenuint32 oes firstIndex o1 o,
+      red_expr S' C (spec_to_string (JsNumber.of_int (lenuint32 + firstIndex))) o1 ->
+      red_expr S' C (expr_array_3_4 l v o1 oes) o -> 
+      red_expr S  C (expr_array_3_3 l v (ret S' lenuint32) oes firstIndex) o
+
+  (* Define own property *)
+  | red_expr_array_3_def_own_prop : forall S S' C l v s oes o1 o Desc,
+      Desc = descriptor_intro_data v true true true ->
+      red_expr S' C (spec_object_define_own_prop l s Desc false) o1 ->
+      red_expr S' C (expr_array_3_5 l o1 oes) o -> 
+      red_expr S  C (expr_array_3_4 l v (out_ter S' s) oes) o
+
+  (* Recursive call *)
+  | red_expr_array_3_next : forall S S' C l oes o1 o b,
+      red_expr S' C (expr_array_3 l oes 0) o ->
+      red_expr S  C (expr_array_3_5 l (out_ter S' b) oes) o
 
   (* Adding the length *)
 
@@ -845,7 +872,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Set the length *)
   | red_expr_array_add_length_3 : forall S S' C l (vlen : int) o o1,
-      red_expr S  C (spec_object_put l "length" vlen throw_true) o1 ->
+      red_expr S  C (spec_object_put l "length" vlen throw_false) o1 ->
       red_expr S  C (expr_array_add_length_4 l o1) o ->
       red_expr S' C (expr_array_add_length_3 l (ret S vlen)) o
 

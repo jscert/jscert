@@ -114,9 +114,9 @@ Record runs_type_correct runs :=
        red_expr S C (spec_to_string v) o;
 
     (* ARRAYS *)
-    runs_type_correct_array_element_list : forall S C l oes o n,
-       runs_type_array_element_list runs S C l oes 0 = o ->
-       red_expr S C (expr_array_3 l oes) o;
+    runs_type_correct_array_element_list : forall S C l oes o k,
+       runs_type_array_element_list runs S C l oes k = o ->
+       red_expr S C (expr_array_3 l oes k) o;
 
     runs_type_correct_object_define_own_prop_array_loop : 
       forall S C l newLen oldLen newLenDesc newWritable throw o 
@@ -3054,55 +3054,60 @@ Proof.
     applys* red_expr_object_3_set.
 Qed.
 
-Lemma red_expr_array_add_length_object_loc_eq : forall S S' C l l' o el,
-  red_expr S C (expr_array_add_length l el o) (out_ter S' l') -> l = l'.
+Lemma red_expr_array_3_object_loc_eq : forall ElementList S S' C l l' k,
+  red_expr S C (expr_array_3 l ElementList k) (out_ter S' l') -> l = l'.
 Proof.
-Admitted.
-(*  introv H; inverts H.
-
-  + inverts  H1. unfolds abrupt_res; simpls. false~ H3.
-  + inverts  H6. simpls; inverts H.
-    inverts  H5. inverts H0. unfolds abrupt_res. false~ H4.
-    inverts  H8. inverts H0. unfolds abrupt_res. false~ H4.
-    inverts  H9. inverts H0. unfolds abrupt_res. false~ H4.
-    inverts~ H8. inverts H0. unfolds abrupt_res. false~ H5.
-Admitted.  Faster *)
-
-Lemma red_expr_array_3_object_loc_eq : forall S C l ElementList S' l',
-  red_expr S C (expr_array_3 l ElementList) (out_ter S' l') -> l = l'.
-Proof.
-Admitted.
 (*
-  introv H; inductions H; auto.
-  eapply red_expr_array_add_length_object_loc_eq; eassumption.
-Admitted. Faster *)
+  induction ElementList using (measure_induction length).
+  destruct ElementList; introv Hyp.
 
-Lemma run_array_element_list_correct : forall runs S C l oes o,
+  + inverts~ Hyp. inverts~ H0. 
+
+  + destruct o.
+    - inverts Hyp. inverts H0. 
+      inverts H8.  inverts H1. unfolds abrupt_res. false~ H4.
+      inverts H10. inverts H1. unfolds abrupt_res. false~ H4.
+      inverts H12. inverts H1. unfolds abrupt_res. false~ H4.
+      inverts H13. inverts H1. unfolds abrupt_res. false~ H4.
+      inverts H14. inverts H1. unfolds abrupt_res. false~ H4.
+      specializes~ H H6. rew_length; nat_math.
+
+    - inverts Hyp. inverts H0.
+      specializes~ H H10. 
+      inverts H4.
+      * rew_length; nat_math.
+      * destruct H as (e & oes' & Heq). subst.
+        rewrite H3. rew_length.
+        destruct Elision. rewrite app_nil_l in H3.
+        inverts H3. rew_length; nat_math.
+*)
+Admitted. 
+
+Lemma run_array_element_list_correct : forall runs S C l oes o k,
   runs_type_correct runs ->
-  run_array_element_list runs S C l oes 0 = o ->
-  red_expr S C (expr_array_3 l oes) o.
+  run_array_element_list runs S C l oes k = o ->
+  red_expr S C (expr_array_3 l oes k) o.
 Proof.
-  admit.
-(*
   introv IH HR. gen runs S C l o. 
-  induction oes using (measure_induction length); destruct oes; intros. 
+  destruct oes; intros. 
 
   + inverts HR. apply red_expr_array_3_nil.
 
   + destruct o.
-    - simpls. apply red_expr_array_3_some. admit. 
-    - simpls. let_name. let_name.  
-      run red_expr_array_3_none.
+    - unfolds run_array_element_list.       
+      let_name. subst. 
+      run~ red_expr_array_3_some_val; rename a into v.
+      run~ red_expr_array_3_get_len using run_object_get_correct.
+      run~ red_expr_array_3_convert_len.
+      run~ red_expr_array_3_add_len.
+      let_name. subst. run~ red_expr_array_3_def_own_prop.
+      run red_expr_array_3_next. substs~. 
+      
+    - simpls. let_name.   
+      eapply red_expr_array_3_none.
       * apply elision_head_decomposition. 
       * jauto. * jauto. * jauto.                        
-      * simpls. subst loop_result. run~.
-      * substs~. run~. simpls.
-        apply red_expr_array_3_object_loc_eq in R1. subst l0.
-
-        apply red_expr_array_add_length.  
-        run red_expr_array_add_length_0 using run_object_get_correct.
-        run red_expr_array_add_length_1. run red_expr_array_add_length_2.         
-        run red_expr_array_add_length_3. apply red_expr_array_add_length_4.*)
+      * substs. applys* runs_type_correct_array_element_list. 
 Qed.
 
 Lemma init_array_correct : forall runs S C l oes o,
@@ -3116,9 +3121,10 @@ Proof.
                               (ElisionLength := ElisionLength); 
     try solve [try rewrite my_Z_of_nat_def; substs~]. 
   
-  run red_expr_array_2. 
+  run red_expr_array_2.
   eapply run_array_element_list_correct; eassumption.
-  apply run_array_element_list_correct in R1; auto. apply red_expr_array_3_object_loc_eq in R1. subst l0.
+  apply run_array_element_list_correct in R1; auto. 
+  apply red_expr_array_3_object_loc_eq in R1. subst l0.
     
   apply red_expr_array_add_length.  
     run red_expr_array_add_length_0 using run_object_get_correct.
@@ -4270,7 +4276,7 @@ Proof.
      introv. apply~ run_equal_correct.
      introv. apply~ to_integer_correct.
      introv. apply~ to_string_correct.
-     introv _. apply~ run_array_element_list_correct.
+     introv. apply~ run_array_element_list_correct.
      introv Hyp. apply~ run_object_define_own_prop_array_loop_correct.
 Qed.
 
