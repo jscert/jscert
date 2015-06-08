@@ -3,5 +3,5 @@
 	url = https://github.com/resource-reasoning/JS_Parser.git
 [submodule "lib/tlc"]
 	path = lib/tlc
-	url = https://gforge.inria.fr/git/tlc/tlc.git
+	url = https://scm.gforge.inria.fr/anonscm/git/tlc/tlc.git
 	ignore = dirty
