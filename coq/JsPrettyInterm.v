@@ -534,7 +534,13 @@ Inductive ext_expr :=
   | spec_call_object_proto_prop_is_enumerable_4 : specret full_descriptor -> ext_expr
 
   | spec_call_array_new_1 : list value -> ext_expr
-  | spec_call_array_new_2 : object_loc -> list value -> int -> ext_expr
+  | spec_call_array_new_2 : object_loc -> list value -> ext_expr
+  | spec_call_array_new_3 : object_loc -> list value -> int -> ext_expr
+
+  | spec_call_array_new_single_1 : value -> ext_expr
+  | spec_call_array_new_single_2 : object_loc -> value -> ext_expr
+  | spec_call_array_new_single_3 : object_loc -> number -> specret int -> ext_expr
+  | spec_call_array_new_single_4 : object_loc -> int -> ext_expr
 
   | spec_call_array_proto_pop_1 : out -> ext_expr
   | spec_call_array_proto_pop_2 : object_loc -> out -> ext_expr
@@ -1269,7 +1275,13 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_object_proto_prop_is_enumerable_4 y => out_of_specret y
 
   | spec_call_array_new_1 _ => None
-  | spec_call_array_new_2 _ _ _ => None
+  | spec_call_array_new_2 _ _ => None
+  | spec_call_array_new_3 _ _ _ => None
+
+  | spec_call_array_new_single_1 _ => None
+  | spec_call_array_new_single_2 _ _ => None
+  | spec_call_array_new_single_3 _ _ y => out_of_specret y
+  | spec_call_array_new_single_4 _ _ => None
   
   | spec_call_array_proto_pop_1 o => Some o
   | spec_call_array_proto_pop_2 _ o => Some o

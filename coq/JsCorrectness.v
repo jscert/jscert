@@ -2384,6 +2384,30 @@ Proof.
   run_inv. applys* red_expr_binary_op_coma.
 Admitted. (*faster*)
 
+(**************************************************************)
+(* Auxiliary results for [array_args_map_loop] *)
+
+Lemma array_args_map_loop_no_abort : forall oes runs S o l C k,
+  array_args_map_loop runs S C l oes k = o -> exists S', o = out_ter S' res_empty.
+Proof.
+  inductions oes; introv Hyp.
+
+  + simpls. exists S. inverts~ Hyp. 
+  + simpls. run. eapply IHoes; eassumption.
+Qed.
+
+Lemma array_args_map_loop_correct : forall oes runs S S' l C k,
+   array_args_map_loop runs S C l oes k = res_void S' ->
+   red_expr S C (spec_call_array_new_3 l oes k) (out_ter S' l).
+Proof.
+  induction oes; introv Hyp.
+
+  + simpls. inverts Hyp. apply red_spec_call_array_new_3_empty.
+  + simpls. unfolds res_void. run. rename x into S''.
+    apply pick_option_correct in E.
+    applys~ red_spec_call_array_new_3_nonempty. exact E.
+    jauto.
+Qed.
 
 (**************************************************************)
 (* Auxiliary results for [spec_expr_get_value_conv] *)
@@ -2483,8 +2507,45 @@ Proof.
   discriminate.
   (* prealloc_number_proto_to_precision *)
   discriminate.
+
   (* prealloc_array *)
-  skip. (* LATER? Conrad*)
+  repeat let_name. destruct p as (l & S'). repeat let_name.
+  subst arg_len. destruct args. case_if*. 
+
+  applys~ red_spec_call_array_new_no_args. 
+  eapply red_spec_call_array_new_1; try eassumption. 
+  run. apply pick_option_correct in E.
+  applys* red_spec_call_array_new_2.
+  simpls. run. apply red_spec_call_array_new_3_empty.
+  destruct args. case_if*. clear e.
+  
+  unfolds get_arg. unfolds nth_def. subst v. 
+  applys~ red_spec_call_array_new_single_arg.
+  applys~ red_spec_call_array_new_single_allocate; try (subst; eassumption).
+
+  destruct v0; [destruct p | ]; subst;
+  try solve [run; rename x into S''; run; rename x into S'''; apply pick_option_correct in E; apply pick_option_correct in E0;
+             apply (red_spec_call_array_new_single_not_prim_number S' S'') with (n := JsNumber.of_int 0); jauto;
+             introv Heq; inverts Heq].
+  
+  run~ red_spec_call_array_new_single_prim_number. cases_if*.
+  run; rename x into S''; apply pick_option_correct in E.
+  applys~ red_spec_call_array_new_single_number_correct.
+  applys~ red_spec_call_array_new_single_set_length.
+  applys~ red_spec_call_array_new_single_number_incorrect.
+  applys run_error_correct HR.
+  
+  cases_if*. eapply red_spec_call_array_new_multiple_args. reflexivity.
+  eapply red_spec_call_array_new_1; try eassumption.
+  run. apply pick_option_correct in E.
+  applys* red_spec_call_array_new_2.
+  remember (v1 :: args) as args'; clear dependent v1. 
+  run_pre. run_post; subst.
+  apply array_args_map_loop_no_abort in R1.
+  destruct R1 as (S'' & Heq_o'). subst. inverts Ab.
+  false~ H0. inverts HR.
+  eapply array_args_map_loop_correct. eassumption.
+
   (* prealloc_array_is_array *)
   discriminate.
   (* prealloc_array_proto *)

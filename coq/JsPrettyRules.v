@@ -3958,21 +3958,63 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_array_new_1 args) o ->
       red_expr S C (spec_construct_prealloc prealloc_array args) o
 
-  | red_spec_call_array_new_1 : forall S S' C args O l o,
-      O = object_new prealloc_array_proto "Array" ->
-      object_define_own_prop_ O = builtin_define_own_prop_array ->
+  | red_spec_call_array_new_1 : forall S S' C args O O' l o,
+      O' = object_new prealloc_array_proto "Array" ->
+      O  = object_for_array O' builtin_define_own_prop_array ->
       (l, S') = object_alloc S O ->
-      red_expr S' C (spec_call_array_new_2 l args 0) o ->
+      red_expr S' C (spec_call_array_new_2 l args) o ->
       red_expr S C (spec_call_array_new_1 args) o
 
-  | red_spec_call_array_new_2_nonempty: forall S S' C l v vs ilen o,
-      object_set_property S l (JsNumber.to_string (JsNumber.of_int ilen)) (attributes_data_intro v true true true) S' ->
-      red_expr S' C (spec_call_array_new_2 l vs (ilen + 1)) o ->
-      red_expr S C (spec_call_array_new_2 l (v::vs) ilen) o
+  | red_spec_call_array_new_2 : forall S S' C l args o,
+      object_set_property S l "length" (attributes_data_intro (JsNumber.of_int (length args)) true false false) S' ->
+      red_expr S' C (spec_call_array_new_3 l args 0) o ->
+      red_expr S  C (spec_call_array_new_2 l args) o      
 
-  | red_spec_call_array_new_2_empty: forall S S' C l ilen,
-      object_set_property S l "length" (attributes_data_intro (JsNumber.of_int ilen) true true true) S' ->
-      red_expr S C (spec_call_array_new_2 l nil ilen) (out_ter S' l)
+  | red_spec_call_array_new_3_nonempty: forall S S' C l v vs ilen o,
+      object_set_property S l (JsNumber.to_string (JsNumber.of_int ilen)) (attributes_data_intro v true true true) S' ->
+      red_expr S' C (spec_call_array_new_3 l vs (ilen + 1)) o ->
+      red_expr S  C (spec_call_array_new_3 l (v::vs) ilen) o
+
+  | red_spec_call_array_new_3_empty: forall S C l ilen,
+      red_expr S C (spec_call_array_new_3 l nil ilen) (out_ter S l)
+
+  | red_spec_call_array_new_single_arg : forall S C args v o,
+      args = v :: nil ->
+      red_expr S C (spec_call_array_new_single_1 v) o ->
+      red_expr S C (spec_construct_prealloc prealloc_array args) o
+
+  | red_spec_call_array_new_single_allocate : forall S S' C v O O' l o,
+      O' = object_new prealloc_array_proto "Array" ->
+      O  = object_for_array O' builtin_define_own_prop_array ->
+      (l, S') = object_alloc S O ->
+      red_expr S' C (spec_call_array_new_single_2 l v) o ->
+      red_expr S  C (spec_call_array_new_single_1 v) o
+
+  | red_spec_call_array_new_single_not_prim_number : forall S S' S'' C l v n,
+      v <> value_prim (prim_number n) ->
+      object_set_property S  l "0" (attributes_data_intro v true true true) S' ->
+      object_set_property S' l "length" (attributes_data_intro (JsNumber.of_int 1) true false false) S'' ->
+      red_expr S C (spec_call_array_new_single_2 l v) (out_ter S'' l)
+
+  | red_spec_call_array_new_single_prim_number : forall S C l v o n y,
+      v = value_prim (prim_number n) ->
+      red_spec S C (spec_to_uint32 n) y ->
+      red_expr S C (spec_call_array_new_single_3 l n y) o ->
+      red_expr S C (spec_call_array_new_single_2 l v) o
+
+  | red_spec_call_array_new_single_number_correct : forall S S' C l n ilen o,
+      JsNumber.of_int ilen = n ->
+      red_expr S' C (spec_call_array_new_single_4 l ilen) o ->
+      red_expr S  C (spec_call_array_new_single_3 l n (ret S' ilen)) o
+
+  | red_spec_call_array_new_single_set_length : forall S S' C l ilen,
+      object_set_property S l "length" (attributes_data_intro (JsNumber.of_int ilen) true false false) S' ->
+      red_expr S C (spec_call_array_new_single_4 l ilen) (out_ter S' l)
+
+  | red_spec_call_array_new_single_number_incorrect : forall S S' C l n ilen o,
+      JsNumber.of_int ilen <> n ->
+      red_expr S' C (spec_error native_error_range) o ->
+      red_expr S  C (spec_call_array_new_single_3 l n (ret S' ilen)) o
 
   (** Array.prototype.pop() (returns value)  (15.4.4.6) *)
 
