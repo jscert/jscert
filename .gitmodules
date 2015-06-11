@@ -1,6 +1,6 @@
 [submodule "interp/parser"]
 	path = interp/parser
-	url = https://github.com/resource-reasoning/JS_Parser.git
+	url = http://github.com/resource-reasoning/JS_Parser.git
 [submodule "lib/tlc"]
 	path = lib/tlc
 	url = https://gforge.inria.fr/git/tlc/tlc.git
