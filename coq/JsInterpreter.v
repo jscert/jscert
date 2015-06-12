@@ -127,7 +127,9 @@ Record runs_type : Type := runs_type_intro {
     runs_type_stat : state -> execution_ctx -> stat -> result;
     runs_type_prog : state -> execution_ctx -> prog -> result;
     runs_type_call : state -> execution_ctx -> object_loc -> value -> list value -> result;
+    runs_type_construct : state -> execution_ctx -> construct -> object_loc -> list value -> result;
     runs_type_function_has_instance : state -> object_loc -> value -> result;
+    runs_type_object_has_instance : state -> execution_ctx -> builtin_has_instance -> object_loc -> value -> result;
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_do_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_for_loop : state -> execution_ctx -> label_set -> resvalue -> option expr -> option expr -> stat -> result;
@@ -1113,9 +1115,13 @@ Definition run_construct runs S C co l args : result :=
   | construct_prealloc B =>
     run_construct_prealloc runs S C B args
   | construct_after_bind =>
-    impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
+    if_some (run_object_method object_target_function_ S l) (fun otrg => if_some otrg (fun target =>    (* Step 1 *)
+    if_some (run_object_method object_construct_ S target)  (fun oco  => if_some oco  (fun co     =>    (* Step 2 *)
+    if_some (run_object_method object_bound_args_ S l)      (fun oarg => if_some oarg (fun boundArgs => (* Step 3 *)    
+      'let arguments := LibList.append boundArgs args in    (* Step 4 *)
+       runs_type_construct runs S C co target arguments     (* Step 5 *)
+    ))))))
   end.
-
 
 (**************************************************************)
 (** Function Calls *)
@@ -1445,7 +1451,7 @@ Definition run_function_has_instance runs S lv vo : result :=
   end.
 
 
-Definition run_object_has_instance runs B S C l v : result :=
+Definition run_object_has_instance runs S C B l v : result :=
   match B with
 
   | builtin_has_instance_function =>
@@ -1462,8 +1468,10 @@ Definition run_object_has_instance runs B S C l v : result :=
     end
 
   | builtin_has_instance_after_bind =>
-    not_yet_implemented_because "builting_has_instance_after_bind: Waiting for the specification" (* LATER *)
-
+    if_some (run_object_method object_target_function_ S l) (fun ol => 
+      if_some ol (fun l =>
+        if_some (run_object_method object_has_instance_ S l) (fun ob => 
+          if_some ob (fun B => runs_type_object_has_instance runs S C B l v))))
   end.
 
 
@@ -1657,7 +1665,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
       if_some (run_object_method object_has_instance_ S l) (fun B =>
         option_case (fun _ => run_error S native_error_type : result)
         (fun has_instance_id _ =>
-          run_object_has_instance runs has_instance_id S C l v1)
+          run_object_has_instance runs S C has_instance_id l v1)
         B tt)
     | value_prim _ => run_error S native_error_type
     end
@@ -2697,6 +2705,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       then res_ter S vthis
       else run_error S native_error_type
     | value_object l =>
+
       if_some (run_object_method object_class_ S l) (fun s =>
         ifb s = "String"
         then run_object_prim_value S l
@@ -2759,12 +2768,76 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         if_spec (to_uint32 runs S C vlen) (fun S ilen =>
           push runs S C l args ilen)))
 
+  | prealloc_function_proto_bind => 
+    match vthis with
+     | value_object this =>
+       ifb (is_callable S this)                                                            (* Step  2 *)
+         then 
+         match args with
+          | thisArgObj :: A =>                                                             (* Step  3   *)      
+         match thisArgObj with
+          | value_object thisArg =>
+            'let O1 := object_new prealloc_object_proto "Object" in                        (* Steps 4-5 *)
+            'let O2 := object_with_get O1 builtin_get_function in                          (* Step  6   *)
+            'let O3 := object_with_details O2 None None None (Some this) 
+                                                             (Some (value_object thisArg))
+                                                             (Some A) 
+                                                             None in                       (* Steps 7-9 *)
+            'let O4 := object_set_class O3 "Function" in                                   (* Step  10  *)
+            'let O5 := object_set_proto O4 prealloc_function_proto in                      (* Step  11  *)
+            'let O6 := object_with_invokation O5 (Some construct_after_bind) 
+                                                 (Some call_after_bind)
+                                                 (Some builtin_has_instance_after_bind) in (* Steps 12-14 *)
+            'let O7 := object_set_extensible O6 true in                                    (* Step 18     *)
+             let '(ll, SS) := object_alloc S O7 in 
+             'let length :=                                                                (* Steps 15-16 *)             
+              match (run_typeof_value SS ll) with
+               | "function" =>
+                  'let lengthT :=
+                    'let res_len := 
+                       if_value (run_object_get runs SS C this "length") (fun S1 v => 
+                         to_uint32 runs S C v) in
+                     match res_len with
+                      | result_some (specret_val _ ilen) => ilen
+                      | _ => 0%Z
+                     end in
+                   ifb (lengthT - length A < 0) then (0%Z) else (lengthT - length A)
+               | _ => 0%Z
+              end in                
+             'let A := attributes_data_intro (JsNumber.of_int length) false false false in   (* Step 17 *)
+              if_bool (object_define_own_prop runs SS C ll "length" A false) (fun S1 _ =>
+             'let vthrower := value_object prealloc_throw_type_error in                      (* Step 19 *)
+             'let A := attributes_accessor_intro vthrower vthrower false false in         
+             if_bool (object_define_own_prop runs S1 C ll "caller" A false) (fun S2 _ =>      (* Step 20 *)
+               if_bool (object_define_own_prop runs S2 C ll "arguments" A false) (fun S3 _ => (* Step 21 *)
+                 res_ter S3 ll)))                                                             (* Step 22 *)
+          | _ => impossible_with_heap_because S "Value not an object." 
+         end
+          | nil => impossible_with_heap_because S "Function.prototype.bind must receive at least one argument." 
+         end
+         else 
+           run_error S native_error_type
+     | _ => impossible_with_heap_because S "Value not an object."
+    end
+
+  | prealloc_function_proto_call => 
+    match vthis with 
+     | value_object this =>
+       ifb (is_callable S this)  (* Step 1 *)
+         then 
+         match args with
+          | thisArg :: A => (* Steps 2-3 *)      
+              runs_type_call runs S C this thisArg A
+          | nil => impossible_with_heap_because S "Function.prototype.call must receive at least one argument." 
+         end
+         else run_error S native_error_type
+     | _ => impossible_with_heap_because S "Not an object."
+    end
+
   | _ =>
     not_yet_implemented_because "_ match" (* LATER *)
 
   end.
-
-(**************************************************************)
 
 Definition run_call runs S C l vthis args : result :=
   if_some (run_object_method object_call_ S l) (fun co =>
@@ -2775,7 +2848,12 @@ Definition run_call runs S C l vthis args : result :=
       | call_prealloc B =>
         run_call_prealloc runs S C B vthis args
       | call_after_bind =>
-        impossible_with_heap_because S "[run_call_full]:  [call_after_bind] found."
+         if_some (run_object_method object_bound_args_ S l)      (fun oarg => if_some oarg (fun boundArgs => (* Step 1 *)
+         if_some (run_object_method object_bound_this_ S l)      (fun obnd => if_some obnd (fun boundThis => (* Step 2 *)
+         if_some (run_object_method object_target_function_ S l) (fun otrg => if_some otrg (fun target =>    (* Step 3 *)
+           'let arguments := LibList.append boundArgs args in       (* Step 4 *)
+            runs_type_call runs S C target boundThis arguments      (* Step 5 *)
+         ))))))
       end)).
 
 (**************************************************************)
@@ -2798,7 +2876,9 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat := fun S _ _ => result_bottom S;
       runs_type_prog := fun S _ _ => result_bottom S;
       runs_type_call := fun S _ _ _ _ => result_bottom S;
+      runs_type_construct := fun S _ _ _ _ => result_bottom S;
       runs_type_function_has_instance := fun S _ _ => result_bottom S;
+      runs_type_object_has_instance := fun S _ _ _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_stat_do_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_stat_for_loop := fun S _ _ _ _ _ _ => result_bottom S;
@@ -2825,7 +2905,9 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat := wrap run_stat;
       runs_type_prog := wrap run_prog;
       runs_type_call := wrap run_call;
+      runs_type_construct := wrap run_construct;
       runs_type_function_has_instance := wrap run_function_has_instance;
+      runs_type_object_has_instance := wrap run_object_has_instance;
       runs_type_stat_while := wrap run_stat_while;
       runs_type_stat_do_while := wrap run_stat_do_while;
       runs_type_stat_for_loop := wrap run_stat_for_loop;

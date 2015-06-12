@@ -49,6 +49,14 @@ Definition object_set_proto O v :=
     object_intro v x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
   end.
 
+(** Sets class field of an object. *)
+
+Definition object_set_class O s :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1  s x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
+  end.
+
 (** Sets extensible to false to an object. *)
 
 Definition object_set_extensible O b :=

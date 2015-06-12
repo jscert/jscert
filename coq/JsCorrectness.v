@@ -73,9 +73,19 @@ Record runs_type_correct runs :=
     runs_type_correct_call : forall S C l v vs o,
        runs_type_call runs S C l v vs = o ->
        red_expr S C (spec_call l v vs) o;
+
+    runs_type_correct_construct : forall S C co l args o, 
+      runs_type_construct runs S C co l args = o ->
+      red_expr S C (spec_construct_1 co l args) o;
+
     runs_type_correct_function_has_instance : forall S C (lo lv : object_loc) o,
        runs_type_function_has_instance runs S lo lv = o ->
        red_expr S C (spec_function_has_instance_2 lv lo) o;
+
+    runs_type_correct_object_has_instance : forall S C B l v o,
+       runs_type_object_has_instance runs S C B l v = result_some (specret_out o) ->
+       red_expr S C (spec_object_has_instance_1 B l v) o;
+
     runs_type_correct_stat_while : forall S C rv ls e t o,
        runs_type_stat_while runs S C rv ls e t = o ->
        red_stat S C (stat_while_1 ls e t rv) o;
@@ -779,7 +789,9 @@ Ltac run_select_proj H :=
   | runs_type_stat => constr:(runs_type_correct_stat)
   | runs_type_prog => constr:(runs_type_correct_prog)
   | runs_type_call => constr:(runs_type_correct_call)
+  | runs_type_construct => constr:(runs_type_correct_construct)
   | runs_type_function_has_instance => constr:(runs_type_correct_function_has_instance)
+  | runs_type_object_has_instance => constr:(runs_type_correct_object_has_instance)
   | runs_type_stat_while => constr:(runs_type_correct_stat_while)
   | runs_type_stat_do_while => constr:(runs_type_correct_stat_do_while)
   | runs_type_stat_for_loop => constr:(runs_type_correct_stat_for_loop)
@@ -2287,13 +2299,12 @@ Proof.
 Qed.
 
 
-Lemma run_object_has_instance_correct : forall runs B S C l v o,
+Lemma run_object_has_instance_correct : forall runs S C B l v o,
   runs_type_correct runs ->
-  run_object_has_instance runs B S C l v = result_some (specret_out o) ->
+  run_object_has_instance runs S C B l v = result_some (specret_out o) ->
   red_expr S C (spec_object_has_instance_1 B l v) o.
 Proof.
-  introv IH HR. unfolds in HR.
-  destruct B; tryfalse.
+  introv IH HR. unfolds in HR. destruct B.
   destruct v.
   run_inv. applys* red_spec_object_has_instance_1_function_prim.
   run red_spec_object_has_instance_1_function_object
@@ -2302,6 +2313,9 @@ Proof.
   applys* red_spec_function_has_instance_1_prim.
   applys red_spec_function_has_instance_1_object.
    applys* runs_type_correct_function_has_instance.
+
+   admit. (* TODO !!! *)
+
 Admitted. (* faster*)
 
 
@@ -2605,8 +2619,11 @@ Lemma run_construct_correct : forall runs S C co l args o,
   red_expr S C (spec_construct_1 co l args) o.
 Proof.
   introv IH HR. unfolds in HR.
-  destruct co; tryfalse.
+  destruct co.
     applys* red_spec_construct_1_default. applys* run_construct_default_correct.
+
+    admit.
+
     applys* red_spec_construct_1_prealloc. applys* run_construct_prealloc_correct.
 Admitted. (* faster *)
 
@@ -4042,9 +4059,11 @@ Proof.
   (* prealloc_function_proto_apply *)
   discriminate.
   (* prealloc_function_proto_call *)
-  discriminate.
+  admit. (* TODO !!! *)
   (* prealloc_function_proto_bind *)
-  discriminate.
+  admit. (* TODO !!! *)  
+
+
   (* prealloc_bool *)
   inverts HR. apply~ red_spec_call_bool.
     apply~ get_arg_correct_0.
@@ -4178,9 +4197,12 @@ Proof.
   introv IH HR. simpls. unfolds in HR.
   run. run. subst. lets H: run_object_method_correct (rm E).
   applys* red_spec_call. clear H.
-  destruct x0; tryfalse.
+  destruct x0.
     applys* red_spec_call_1_default. applys* red_spec_call_default.
-     applys* entering_func_code_correct.
+    applys* entering_func_code_correct.
+
+    admit.
+
     applys* red_spec_call_1_prealloc. applys* run_call_prealloc_correct.
 Admitted. (* faster *)
 
@@ -4324,7 +4346,9 @@ Proof.
      introv. apply~ run_stat_correct.
      introv. apply~ run_prog_correct.
      introv. apply~ run_call_correct.
+     introv. apply~ run_construct_correct.
      introv. apply~ run_function_has_instance_correct.
+     introv. apply~ run_object_has_instance_correct.
      introv. apply~ run_stat_while_correct.
      introv. apply~ run_stat_do_while_correct.
      introv. apply~ run_stat_for_loop_correct.
@@ -4357,5 +4381,5 @@ Corollary run_javascript_correct_num : forall num p o,
 Proof.
   introv IH. applys~ run_javascript_correct IH.
   apply~ runs_correct.
-Qed.
+Qed. 
 
