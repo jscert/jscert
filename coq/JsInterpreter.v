@@ -130,6 +130,7 @@ Record runs_type : Type := runs_type_intro {
     runs_type_construct : state -> execution_ctx -> construct -> object_loc -> list value -> result;
     runs_type_function_has_instance : state -> object_loc -> value -> result;
     runs_type_object_has_instance : state -> execution_ctx -> builtin_has_instance -> object_loc -> value -> result;
+    runs_type_get_args_for_apply : state -> execution_ctx -> object_loc -> int -> int -> specres (list value);
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_do_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_for_loop : state -> execution_ctx -> label_set -> resvalue -> option expr -> option expr -> stat -> result;
@@ -2535,7 +2536,15 @@ Fixpoint run_object_is_frozen runs S C l xs : result :=
         impossible_with_heap_because S "[run_object_is_frozen]:  Undefined descriptor found in a place where it shouldn't."
       end)
   end.
-
+  
+Definition run_get_args_for_apply runs S C l (index n : int) : specres (list value) := 
+  ifb (index < n) then (* Step 8 for Function.prototype.apply *)
+    if_string (to_string runs S C index) (fun S sindex => (* Step 8a *)
+      if_value (run_object_get runs S C l sindex) (fun S v => (* Step 8b *)
+        'let tail_args := runs_type_get_args_for_apply runs S C l (index + 1) n (* Step 8d *) in
+        if_spec tail_args (fun S tail => res_spec S (v :: tail)))) (* Step 8c *)
+    else
+      res_spec S nil.
 
 Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   match B with
@@ -2768,6 +2777,32 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         if_spec (to_uint32 runs S C vlen) (fun S ilen =>
           push runs S C l args ilen)))
 
+  | prealloc_function_proto_apply =>
+    match args with 
+     | thisArg :: argArray :: args => (* Two arguments required *)
+       match vthis with
+        | value_object this =>
+          ifb (is_callable S this) (* Step 1 *)
+          then
+           match argArray with 
+            | value_prim prim_null
+            | value_prim prim_undef => (* Step 2 *)
+                runs_type_call runs S C this thisArg nil
+            | value_object array => (* Step 3 *)
+                if_value (run_object_get runs S C this "length") (fun S v => (* Step 4 *)
+                  if_spec (to_uint32 runs S C v) (fun S ilen => (* Step 5 *)
+                     if_spec (run_get_args_for_apply runs S C array 0 ilen) (fun S arguments => (* Steps 6-7-8 *)
+                       runs_type_call runs S C this thisArg arguments)))
+            | _ => impossible_with_heap_because S "Not null, under, or an object." (* run_error S native_error_type (* Not null, undef, or an object *) *)
+           end
+          else
+            impossible_with_heap_because S "Not callable."
+            (* run_error S native_error_type (* Not callable *) *)
+        | _ => impossible_with_heap_because S "Value not an object."
+       end
+     | _ => impossible_with_heap_because S "Function.prototype.apply must receive at least two arguments." 
+    end
+            
   | prealloc_function_proto_bind => 
     match vthis with
      | value_object this =>
@@ -2789,28 +2824,24 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
                                                  (Some call_after_bind)
                                                  (Some builtin_has_instance_after_bind) in (* Steps 12-14 *)
             'let O7 := object_set_extensible O6 true in                                    (* Step 18     *)
-             let '(ll, SS) := object_alloc S O7 in 
-             'let length :=                                                                (* Steps 15-16 *)             
-              match (run_typeof_value SS ll) with
+             let '(l, S') := object_alloc S O7 in 
+             'let vlength :=                                                                (* Steps 15-16 *)             
+              match (run_typeof_value S' l) return (specres int) with
                | "function" =>
-                  'let lengthT :=
-                    'let res_len := 
-                       if_value (run_object_get runs SS C this "length") (fun S1 v => 
-                         to_uint32 runs S C v) in
-                     match res_len with
-                      | result_some (specret_val _ ilen) => ilen
-                      | _ => 0%Z
-                     end in
-                   ifb (lengthT - length A < 0) then (0%Z) else (lengthT - length A)
-               | _ => 0%Z
-              end in                
+                 if_value (run_object_get runs S' C this "length") (fun S' v => 
+                   if_spec (to_uint32 runs S' C v) (fun S' ilen => 
+                     'let ires := ilen - length A in
+                     ifb (ires < 0) then (res_spec S' 0%Z) else (res_spec S' ires)))
+               | _ => (res_spec S' 0%Z) 
+              end in
+              if_spec vlength (fun S' length =>
              'let A := attributes_data_intro (JsNumber.of_int length) false false false in   (* Step 17 *)
-              if_bool (object_define_own_prop runs SS C ll "length" A false) (fun S1 _ =>
+              if_bool (object_define_own_prop runs S' C l "length" A false) (fun S' _ =>
              'let vthrower := value_object prealloc_throw_type_error in                      (* Step 19 *)
              'let A := attributes_accessor_intro vthrower vthrower false false in         
-             if_bool (object_define_own_prop runs S1 C ll "caller" A false) (fun S2 _ =>      (* Step 20 *)
-               if_bool (object_define_own_prop runs S2 C ll "arguments" A false) (fun S3 _ => (* Step 21 *)
-                 res_ter S3 ll)))                                                             (* Step 22 *)
+             if_bool (object_define_own_prop runs S' C l "caller" A false) (fun S' _ =>      (* Step 20 *)
+               if_bool (object_define_own_prop runs S' C l "arguments" A false) (fun S' _ => (* Step 21 *)
+                 res_ter S' l))))                                                            (* Step 22 *)
           | _ => impossible_with_heap_because S "Value not an object." 
          end
           | nil => impossible_with_heap_because S "Function.prototype.bind must receive at least one argument." 
@@ -2878,6 +2909,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_call := fun S _ _ _ _ => result_bottom S;
       runs_type_construct := fun S _ _ _ _ => result_bottom S;
       runs_type_function_has_instance := fun S _ _ => result_bottom S;
+      runs_type_get_args_for_apply := fun S _ _ _ _ => result_bottom S;
       runs_type_object_has_instance := fun S _ _ _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_stat_do_while := fun S _ _ _ _ _ => result_bottom S;
@@ -2907,6 +2939,7 @@ Fixpoint runs max_step : runs_type :=
       runs_type_call := wrap run_call;
       runs_type_construct := wrap run_construct;
       runs_type_function_has_instance := wrap run_function_has_instance;
+      runs_type_get_args_for_apply := wrap run_get_args_for_apply;
       runs_type_object_has_instance := wrap run_object_has_instance;
       runs_type_stat_while := wrap run_stat_while;
       runs_type_stat_do_while := wrap run_stat_do_while;

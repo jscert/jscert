@@ -288,7 +288,7 @@ Definition object_prealloc_function_proto :=
   let P := write_native P "constructor" prealloc_function in
   let P := Heap.write P "length" (attrib_constant 0) in (* todo: can we use write_constant? *)
   (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* LATER *)
-  (* let P := write_native P "apply" prealloc_function_proto_apply in *) (* LATER *)
+  let P := write_native P "apply" prealloc_function_proto_apply in 
   let P := write_native P "call" prealloc_function_proto_call in 
   let P := write_native P "bind" prealloc_function_proto_bind in 
   (* LATER: complete list *)
@@ -303,6 +303,9 @@ Definition function_proto_call_function_object :=
   
 Definition function_proto_bind_function_object :=
   object_create_prealloc_call prealloc_function_proto_bind 1 Heap.empty.
+
+Definition function_proto_apply_function_object :=
+  object_create_prealloc_call prealloc_function_proto_apply 2 Heap.empty.
 
 (**************************************************************)
 (** Number object *)
@@ -565,7 +568,10 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
   (* Function objects of Function.prototype *)
   let h := Heap.write h prealloc_function_proto_call function_proto_call_function_object in
   let h := Heap.write h prealloc_function_proto_bind function_proto_bind_function_object in
+  let h := Heap.write h prealloc_function_proto_apply function_proto_apply_function_object in h.
 
+Definition object_heap_initial_function_objects_4 (h : Heap.heap object_loc object) :=
+  let h := object_heap_initial_function_objects_3 h in 
   (* Function objects of Array.prototype *)
   let h := Heap.write h prealloc_array_proto_pop array_proto_pop_function_object in
   let h := Heap.write h prealloc_array_proto_push array_proto_push_function_object in
@@ -579,7 +585,7 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
   let h := Heap.write h prealloc_bool_proto_value_of bool_proto_value_of_function_object in h.
 
 Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
-  let h := object_heap_initial_function_objects_3 h in 
+  let h := object_heap_initial_function_objects_4 h in 
   (* Function objects of Number.prototype *)
   let h := Heap.write h prealloc_number_proto_to_string number_proto_to_string_function_object in
   let h := Heap.write h prealloc_number_proto_value_of number_proto_value_of_function_object in 

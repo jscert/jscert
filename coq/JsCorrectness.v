@@ -535,7 +535,7 @@ Lemma if_number_out : forall W K o,
   isout W (if_number_post K o).
 Proof.
   introv E. unfolds in E.
-  forwards~ (o1&WE&P): if_value_out (rm E). exists o1. split~.
+  forwards~ (o1 & WE & P): if_value_out (rm E). exists o1. split~.
   unfolds. unfolds in P.
   inversion_clear P as [[? ?]|(S&R&H&E)]; subst; [ left* | right ].
   destruct R; tryfalse. destruct p; tryfalse. exists___*.
@@ -4054,12 +4054,16 @@ Proof.
   discriminate. (* LATER *)
   (* prealloc_function_proto *)
   inverts HR. apply red_spec_call_function_proto_invoked.
+
   (* prealloc_function_proto_to_string *)
   discriminate.
+
   (* prealloc_function_proto_apply *)
-  discriminate.
+  admit. (* TODO !!! *)
+
   (* prealloc_function_proto_call *)
   admit. (* TODO !!! *)
+
   (* prealloc_function_proto_bind *)
   admit. (* TODO !!! *)  
 
@@ -4381,5 +4385,5 @@ Corollary run_javascript_correct_num : forall num p o,
 Proof.
   introv IH. applys~ run_javascript_correct IH.
   apply~ runs_correct.
-Qed. 
+Qed.  
 
