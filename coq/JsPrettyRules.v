@@ -3899,6 +3899,21 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       ~ (spec_function_get_error_case S x v) ->
       red_expr S0 C (spec_function_get_1 l x (out_ter S v)) (out_ter S v)
 
+   (** Function: Call (15.3.4.4) *)
+
+   | red_spec_call_function_not_callable : forall S C o vthis this args, (* Step 1 *)    
+       vthis = value_object this ->
+       (~ is_callable S this) ->
+       red_expr S C (spec_error native_error_type) o ->
+       red_expr S C (spec_call_prealloc prealloc_function_proto_call vthis args) o
+
+   | red_spec_call_function_callable : forall S C o (this : object_loc) vthis args thisArg arguments, (* Steps 2-4 *)
+       vthis = value_object this ->
+       is_callable S this ->
+       args = thisArg :: arguments ->
+       red_expr S C (spec_call this thisArg arguments) o ->
+       red_expr S C (spec_call_prealloc prealloc_function_proto_call vthis args) o
+
    (** Function: HasInstance  (returns bool)  (15.3.5.3) *)
 
    | red_spec_object_has_instance_1_function_prim : forall S C l w, (* Step 1 *)
@@ -3938,7 +3953,55 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Function built using Function.prototype.bind (15.3.4.5) *)
 
-   (** LATER: HasInstance, call, construct  *)
+   (** Call (15.3.4.5.2) *)
+
+   | red_spec_call_1_after_bind_full : forall S C l this args o boundArgs boundThis target arguments,
+       object_method object_bound_args_ S l (Some boundArgs) ->
+       object_method object_bound_this_ S l (Some boundThis) ->
+       object_method object_target_function_ S l (Some target) ->
+       arguments = LibList.append boundArgs args ->
+       red_expr S C (spec_call target boundThis arguments) o ->
+       red_expr S C (spec_call_1 call_after_bind l this args) o
+
+   (** Construct (15.3.4.5.2) *)
+
+   | red_spec_construct_1_after_bind : forall S C l args o target, (* Step 1 *)
+       object_method object_target_function_ S l (Some target) ->
+       red_expr S C (spec_construct_1_after_bind l args target) o ->
+       red_expr S C (spec_construct_1 construct_after_bind l args) o
+
+   | red_spec_construct_1_after_bind_1_some : forall S C l args co o target boundArgs arguments,
+       object_method object_construct_ S target (Some co) ->
+       object_method object_bound_args_ S l (Some boundArgs) ->
+       arguments = LibList.append boundArgs args ->
+       red_expr S C (spec_construct_1 co target arguments) o ->
+       red_expr S C (spec_construct_1_after_bind l args target) o
+
+   | red_spec_construct_1_after_bind_1_none : forall S C l args target o,
+       object_method object_construct_ S target None ->
+       red_expr S C (spec_error native_error_type) o ->
+       red_expr S C (spec_construct_1_after_bind l args target) o
+
+   (** HasInstance (15.3.4.5.3) *)
+
+   | red_spec_object_has_instance_after_bind : forall S C l v o, 
+       red_expr S C (spec_function_has_instance_after_bind_1 l v) o ->
+       red_expr S C (spec_object_has_instance_1 builtin_has_instance_after_bind l v) o
+
+   | red_spec_function_has_instance_after_bind_1 : forall S C l l' v o, (* Step 1 *)
+       object_method object_target_function_ S l (Some l') ->
+       red_expr S C (spec_function_has_instance_after_bind_2 l' v) o ->
+       red_expr S C (spec_function_has_instance_after_bind_1 l  v) o
+
+   | red_spec_function_has_instance_after_bind_2_none : forall S C l' v o, (* Step 2 *)
+       object_method object_has_instance_ S l' None ->
+       red_expr S C (spec_error native_error_type) o ->
+       red_expr S C (spec_function_has_instance_after_bind_2 l' v) o
+ 
+  | red_spec_function_has_instance_after_bind_2_some : forall S C B l' v o, (* Step 3 *)
+       object_method object_has_instance_ S l' (Some B) ->
+       red_expr S C (spec_object_has_instance_1 B l' v) o ->
+       red_expr S C (spec_function_has_instance_after_bind_2 l' v) o
 
   (*------------------------------------------------------------*)
   (** ** Array builtin functions *)

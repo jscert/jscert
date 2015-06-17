@@ -1116,12 +1116,15 @@ Definition run_construct runs S C co l args : result :=
   | construct_prealloc B =>
     run_construct_prealloc runs S C B args
   | construct_after_bind =>
-    if_some (run_object_method object_target_function_ S l) (fun otrg => if_some otrg (fun target =>    (* Step 1 *)
-    if_some (run_object_method object_construct_ S target)  (fun oco  => if_some oco  (fun co     =>    (* Step 2 *)
-    if_some (run_object_method object_bound_args_ S l)      (fun oarg => if_some oarg (fun boundArgs => (* Step 3 *)    
-      'let arguments := LibList.append boundArgs args in    (* Step 4 *)
-       runs_type_construct runs S C co target arguments     (* Step 5 *)
-    ))))))
+    if_some (run_object_method object_target_function_ S l) (fun otrg => if_some otrg (fun target => (* Step 1 *)
+    if_some (run_object_method object_construct_ S target)  (fun oco => 
+    match oco with
+     | None => run_error S native_error_type  (* Step 2 *)
+     | Some co =>
+       if_some (run_object_method object_bound_args_ S l) (fun oarg => if_some oarg (fun boundArgs => (* Step 3 *)    
+         'let arguments := LibList.append boundArgs args in (* Step 4 *)
+           runs_type_construct runs S C co target arguments (* Step 5 *) ))
+    end )))
   end.
 
 (**************************************************************)
@@ -1472,7 +1475,10 @@ Definition run_object_has_instance runs S C B l v : result :=
     if_some (run_object_method object_target_function_ S l) (fun ol => 
       if_some ol (fun l =>
         if_some (run_object_method object_has_instance_ S l) (fun ob => 
-          if_some ob (fun B => runs_type_object_has_instance runs S C B l v))))
+          match ob with 
+           | Some B => runs_type_object_has_instance runs S C B l v
+           | None => run_error S native_error_type
+        end)))
   end.
 
 
@@ -2854,14 +2860,14 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_function_proto_call => 
     match vthis with 
      | value_object this =>
-       ifb (is_callable S this)  (* Step 1 *)
+       ifb (is_callable S vthis)  (* Step 1 *)
          then 
          match args with
           | thisArg :: A => (* Steps 2-3 *)      
               runs_type_call runs S C this thisArg A
           | nil => impossible_with_heap_because S "Function.prototype.call must receive at least one argument." 
-         end
-         else run_error S native_error_type
+        end
+      else run_error S native_error_type
      | _ => impossible_with_heap_because S "Not an object."
     end
 

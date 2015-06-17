@@ -401,6 +401,9 @@ Inductive ext_expr :=
   | spec_function_has_instance_2 : object_loc -> object_loc -> ext_expr
   | spec_function_has_instance_3 : object_loc -> value -> ext_expr
 
+  | spec_function_has_instance_after_bind_1 : object_loc -> value -> ext_expr
+  | spec_function_has_instance_after_bind_2 : object_loc -> value  -> ext_expr
+
   | spec_function_get_1 : object_loc -> prop_name -> out -> ext_expr
 
   (* Throwing of errors *)
@@ -450,7 +453,7 @@ Inductive ext_expr :=
   | spec_call_default_1 : object_loc -> ext_expr
   | spec_call_default_2 : option funcbody -> ext_expr
   | spec_call_default_3 : out -> ext_expr
-
+ 
   | spec_construct : object_loc -> list value -> ext_expr
   | spec_construct_1 : construct -> object_loc -> list value -> ext_expr
 
@@ -459,6 +462,8 @@ Inductive ext_expr :=
   | spec_construct_default : object_loc -> list value -> ext_expr
   | spec_construct_default_1 : object_loc -> list value -> out -> ext_expr
   | spec_construct_default_2 : object_loc -> out -> ext_expr
+
+  | spec_construct_1_after_bind : object_loc -> list value -> object_loc -> ext_expr
 
   (** Extended expressions for calling global object builtin functions *)
   (* LATER: rename all the spec_call into spec_builtin *)
@@ -1150,6 +1155,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_function_has_instance_1 _ o => Some o
   | spec_function_has_instance_2 _ _ => None
   | spec_function_has_instance_3 _ _ => None
+  | spec_function_has_instance_after_bind_1 _ _ => None
+  | spec_function_has_instance_after_bind_2 _ _ => None 
 
   | spec_function_get_1 _ _ o => Some o
 
@@ -1200,6 +1207,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_construct_default _ _ => None
   | spec_construct_default_1 _ _ o => Some o
   | spec_construct_default_2 _ o => Some o
+
+  | spec_construct_1_after_bind _ _ _ => None
 
   | spec_construct_bool_1 o => Some o
 

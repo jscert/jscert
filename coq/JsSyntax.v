@@ -311,7 +311,7 @@ Coercion prealloc_native_error : native_error >-> prealloc.
 
 Inductive construct := (* Note: could be named [builtin_construct] *)
   | construct_default (* 13.2.2 *)
-  | construct_after_bind (* 15.3.4.5.2 *) (* LATER: support *)
+  | construct_after_bind (* 15.3.4.5.2 *) 
   | construct_prealloc : prealloc -> construct.
     (* only the ones below are actually used by construct_prealloc
       | construct_object

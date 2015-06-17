@@ -2314,8 +2314,13 @@ Proof.
   applys red_spec_function_has_instance_1_object.
    applys* runs_type_correct_function_has_instance.
 
-   admit. (* TODO !!! *)
-
+   repeat run; apply run_object_method_correct in E;
+   apply run_object_method_correct in E1; subst.
+   apply red_spec_object_has_instance_after_bind.
+   applys~ red_spec_function_has_instance_after_bind_1. eassumption. 
+   destruct x1. applys* red_spec_function_has_instance_after_bind_2_some.
+   applys* runs_type_correct_object_has_instance.
+   applys* red_spec_function_has_instance_after_bind_2_none.
 Admitted. (* faster*)
 
 
@@ -2622,7 +2627,14 @@ Proof.
   destruct co.
     applys* red_spec_construct_1_default. applys* run_construct_default_correct.
 
-    admit.
+    repeat run. apply run_object_method_correct in E.  
+    apply run_object_method_correct in E1; subst.
+    applys* red_spec_construct_1_after_bind.
+    destruct x1. repeat run. let_name. 
+    apply run_object_method_correct in E0; subst. 
+    applys* red_spec_construct_1_after_bind_1_some.
+    applys* runs_type_correct_construct.
+    applys* red_spec_construct_1_after_bind_1_none.
 
     applys* red_spec_construct_1_prealloc. applys* run_construct_prealloc_correct.
 Admitted. (* faster *)
@@ -4062,7 +4074,11 @@ Proof.
   admit. (* TODO !!! *)
 
   (* prealloc_function_proto_call *)
-  admit. (* TODO !!! *)
+  destruct vthis. inverts HR. cases_if*. 
+  destruct args. inverts HR.
+  applys* red_spec_call_function_callable.
+  applys* runs_type_correct_call.
+  applys* red_spec_call_function_not_callable.
 
   (* prealloc_function_proto_bind *)
   admit. (* TODO !!! *)  
@@ -4205,7 +4221,11 @@ Proof.
     applys* red_spec_call_1_default. applys* red_spec_call_default.
     applys* entering_func_code_correct.
 
-    admit.
+    repeat run. let_name. subst.
+    apply run_object_method_correct in E; apply run_object_method_correct in E1; 
+    apply run_object_method_correct in E3.
+    applys* red_spec_call_1_after_bind_full.
+    applys* runs_type_correct_call.
 
     applys* red_spec_call_1_prealloc. applys* run_call_prealloc_correct.
 Admitted. (* faster *)
@@ -4385,5 +4405,5 @@ Corollary run_javascript_correct_num : forall num p o,
 Proof.
   introv IH. applys~ run_javascript_correct IH.
   apply~ runs_correct.
-Qed.  
+Qed.
 
