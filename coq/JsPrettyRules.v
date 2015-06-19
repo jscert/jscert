@@ -3953,6 +3953,72 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Function built using Function.prototype.bind (15.3.4.5) *)
 
+   | red_spec_function_bind_1 : forall S C vthis o target args, (* Step 1 *)
+       vthis = value_object target ->    
+       red_expr S C (spec_function_proto_bind target args) o ->
+       red_expr S C (spec_call_prealloc prealloc_function_proto_bind vthis args) o
+
+   | red_spec_function_bind_2_false : forall S C (target : object_loc) args o, (* Step 2 *)
+       ~ is_callable S target ->
+       red_expr S C (spec_error native_error_type) o ->
+       red_expr S C (spec_function_proto_bind target args) o
+
+   | red_spec_function_bind_2_true : forall S C (target : object_loc) args o thisArg (A : list value), (* Steps 2, 3 *)
+       is_callable S target ->
+       args = (value_object thisArg) :: A ->
+       red_expr S C (spec_function_proto_bind_1 target thisArg A) o ->
+       red_expr S C (spec_function_proto_bind   target args) o
+
+   | red_spec_function_bind_3 : forall S S' C l target thisArg (A : list value)
+                                       O1 O2 O3 O4 O5 O6 O7 o,
+     O1 = object_new prealloc_object_proto "Object" -> (* Steps 4-5 *)
+     O2 = object_with_get O1 builtin_get_function -> (* Step 6 *)
+     O3 = object_with_details O2 None None None (Some target) 
+                                                (Some (value_object thisArg))
+                                                (Some A) 
+                                                 None -> (* Steps 7-9 *)
+     O4 = object_set_class O3 "Function" ->  (* Step 10  *)
+     O5 = object_set_proto O4 prealloc_function_proto -> (* Step  11  *)
+     O6 = object_with_invokation O5 (Some construct_after_bind) 
+                                     (Some call_after_bind)
+                                     (Some builtin_has_instance_after_bind) -> (* Steps 12-14 *)
+     O7 = object_set_extensible O6 true -> (* Step 18 *)
+     (l, S') = object_alloc S O7 ->
+       red_expr S' C (spec_function_proto_bind_2 l target A) o ->
+       red_expr S  C (spec_function_proto_bind_1 target thisArg A) o
+
+   | red_spec_function_bind_4 : forall S C l target (A : list value) y o,
+       red_spec S C (spec_function_proto_bind_length target A) y -> (* Steps 15-16 *)
+       red_expr S C (spec_function_proto_bind_3 l y) o ->
+       red_expr S C (spec_function_proto_bind_2 l target A) o
+
+   | red_spec_function_bind_5 : forall S S' C l length o,
+       red_expr S' C (spec_function_proto_bind_4 l length) o ->
+       red_expr S  C (spec_function_proto_bind_3 l (ret S' length)) o
+
+   | red_spec_function_bind_6 : forall S S' C l length A o,
+       A = attributes_data_intro (JsNumber.of_int length) false false false -> (* Step 17 *)
+       object_set_property S l "length" A S' ->
+       red_expr S' C (spec_function_proto_bind_5 l) o -> 
+       red_expr S  C (spec_function_proto_bind_4 l length) o
+
+   | red_spec_function_bind_7 : forall S C l o o1 vthrower A,
+     vthrower = value_object prealloc_throw_type_error ->
+     A = attributes_accessor_intro vthrower vthrower false false ->
+     red_expr S C (spec_object_define_own_prop l "caller" A false) o1 ->
+     red_expr S C (spec_function_proto_bind_6 l o1) o ->
+     red_expr S C (spec_function_proto_bind_5 l) o 
+
+   | red_spec_function_bind_8 : forall S S' C l o o1 vthrower A b,
+     vthrower = value_object prealloc_throw_type_error ->
+     A = attributes_accessor_intro vthrower vthrower false false ->
+     red_expr S' C (spec_object_define_own_prop l "arguments" A false) o1 ->
+     red_expr S' C (spec_function_proto_bind_7 l o1) o ->
+     red_expr S  C (spec_function_proto_bind_6 l (out_ter S' b)) o
+
+   | red_spec_function_bind_9 : forall S S' C l b,
+     red_expr S C (spec_function_proto_bind_7 l (out_ter S' b)) (out_ter S' l)
+
    (** Call (15.3.4.5.2) *)
 
    | red_spec_call_1_after_bind_full : forall S C l this args o boundArgs boundThis target arguments,
@@ -4984,6 +5050,36 @@ with red_spec : forall {T : Type}, state -> execution_ctx -> ext_spec -> specret
   | red_spec_object_get_prop_3_not_null : forall S C l x lproto (y:specret full_descriptor), (* Step 5 *)
       red_spec S C (spec_object_get_prop lproto x) y ->
       red_spec S C (spec_object_get_prop_3 l x lproto) y
+
+  (* Function.prototype.bind, Steps 15-16 *)
+
+  | red_spec_function_bind_length_true : forall S C target (A : list value) (y : specret int), 
+      object_method object_class_ S target "Function" -> (* Step 15 *)
+      red_spec S C (spec_function_proto_bind_length_1 target A) y ->
+      red_spec S C (spec_function_proto_bind_length target A) y
+
+  | red_spec_function_bind_length_false : forall S C target (A : list value) class,
+      object_method object_class_ S target class -> (* Step 16 *)
+      class <> "Function" ->
+      red_spec S C (spec_function_proto_bind_length target A) (ret S 0%Z)
+
+  | red_spec_function_bind_length_1 : forall S C (target : object_loc) (A : list value) o1 (y : specret int),
+      red_expr S C (spec_object_get target "length") o1 -> 
+      red_spec S C (spec_function_proto_bind_length_2 A o1) y ->
+      red_spec S C (spec_function_proto_bind_length_1 target A) y
+
+  | red_spec_function_bind_length_2 : forall S S' C (A : list value) (y y1 : specret int) n,
+      red_spec S' C (spec_to_int32 n) y1 ->
+      red_spec S' C (spec_function_proto_bind_length_3 y1 A) y ->
+      red_spec S  C (spec_function_proto_bind_length_2 A (out_ter S' n)) y
+
+  | red_spec_function_bind_length_3_zero : forall S S' C (ilen : int) (A : list value),
+      (ilen < length A) -> (* Step 15b *)
+      red_spec S C (spec_function_proto_bind_length_3 (ret S' ilen) A) (ret S' 0%Z)
+
+  | red_spec_function_bind_length_3_L : forall S S' C (ilen : int) (A : list value),
+      ~ (ilen < length A) -> (* Step 15b *)
+      red_spec S C (spec_function_proto_bind_length_3 (ret S' ilen) A) (ret S' (ilen - length A)%Z)
 
 .
 

@@ -4081,8 +4081,31 @@ Proof.
   applys* red_spec_call_function_not_callable.
 
   (* prealloc_function_proto_bind *)
-  admit. (* TODO !!! *)  
-
+  destruct vthis as [p | this]; [inverts HR | ].
+  applys* red_spec_function_bind_1.
+  case_if*. destruct args; [inverts HR | ]. 
+  destruct v as [p | thisArg]; [inverts HR | ]. 
+  applys* red_spec_function_bind_2_true.
+  repeat let_simpl; match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end;
+  destruct X as (l & S'); inversion HR. 
+  applys* red_spec_function_bind_3.
+  let_name. subst. run red_spec_function_bind_4.
+  run. cases_if*; subst; apply run_object_method_correct in E.
+  applys* red_spec_function_bind_length_true. 
+  run red_spec_function_bind_length_1 using run_object_get_correct.
+  run red_spec_function_bind_length_2. cases_if*; inverts R1.
+  applys* red_spec_function_bind_length_3_zero.
+  applys* red_spec_function_bind_length_3_L.
+  inverts R1. applys* red_spec_function_bind_length_false.
+  repeat let_name. repeat rewrite R1 in *. subst vlength. clear R1 HR. 
+  run; rename x into S''. repeat let_name.
+  forwards B: @pick_option_correct (rm E).
+  applys* red_spec_function_bind_5.
+  applys* red_spec_function_bind_6. rewrite* <- EQA. substs.
+  run* red_spec_function_bind_7. 
+  run* red_spec_function_bind_8. 
+  apply red_spec_function_bind_9.
+  applys* red_spec_function_bind_2_false.
 
   (* prealloc_bool *)
   inverts HR. apply~ red_spec_call_bool.

@@ -2831,23 +2831,21 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
                                                  (Some builtin_has_instance_after_bind) in (* Steps 12-14 *)
             'let O7 := object_set_extensible O6 true in                                    (* Step 18     *)
              let '(l, S') := object_alloc S O7 in 
-             'let vlength :=                                                                (* Steps 15-16 *)             
-              match (run_typeof_value S' l) return (specres int) with
-               | "function" =>
-                 if_value (run_object_get runs S' C this "length") (fun S' v => 
-                   if_spec (to_uint32 runs S' C v) (fun S' ilen => 
-                     'let ires := ilen - length A in
-                     ifb (ires < 0) then (res_spec S' 0%Z) else (res_spec S' ires)))
-               | _ => (res_spec S' 0%Z) 
-              end in
+             'let vlength :=                                                                (* Steps 15-16 *)       
+              if_some (run_object_method object_class_ S' this) (fun class =>
+              ifb (class = "Function") then
+                if_number (run_object_get runs S' C this "length") (fun S' n => 
+                  if_spec (to_int32 runs S' C n) (fun S' ilen => 
+                     ifb (ilen < length A) then (res_spec S' 0%Z) else (res_spec S' (ilen - length A))))
+              else (res_spec S' 0%Z)) in
               if_spec vlength (fun S' length =>
              'let A := attributes_data_intro (JsNumber.of_int length) false false false in   (* Step 17 *)
-              if_bool (object_define_own_prop runs S' C l "length" A false) (fun S' _ =>
+              if_some (pick_option (object_set_property S' l "length" A)) (fun S' => 
              'let vthrower := value_object prealloc_throw_type_error in                      (* Step 19 *)
              'let A := attributes_accessor_intro vthrower vthrower false false in         
              if_bool (object_define_own_prop runs S' C l "caller" A false) (fun S' _ =>      (* Step 20 *)
                if_bool (object_define_own_prop runs S' C l "arguments" A false) (fun S' _ => (* Step 21 *)
-                 res_ter S' l))))                                                            (* Step 22 *)
+                 res_ter S' l))))                                                          (* Step 22 *)
           | _ => impossible_with_heap_because S "Value not an object." 
          end
           | nil => impossible_with_heap_because S "Function.prototype.bind must receive at least one argument." 
