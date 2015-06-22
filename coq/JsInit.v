@@ -287,11 +287,10 @@ Definition object_prealloc_function_proto :=
   let P := Heap.empty in
   let P := write_native P "constructor" prealloc_function in
   let P := Heap.write P "length" (attrib_constant 0) in (* todo: can we use write_constant? *)
-  (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* LATER *)
+  (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* LATER - implementation dependent *)
   let P := write_native P "apply" prealloc_function_proto_apply in 
   let P := write_native P "call" prealloc_function_proto_call in 
   let P := write_native P "bind" prealloc_function_proto_bind in 
-  (* LATER: complete list *)
 
   (* LATER: why this construct here and not the usual (see other builtins), i.e. just 
      [object_create_builtin prealloc_object_proto "Function" P]? *)

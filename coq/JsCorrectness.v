@@ -82,6 +82,10 @@ Record runs_type_correct runs :=
        runs_type_function_has_instance runs S lo lv = o ->
        red_expr S C (spec_function_has_instance_2 lv lo) o;
 
+    runs_type_correct_get_args_for_apply : forall S C array (index n : int) y,
+       runs_type_get_args_for_apply runs S C array index n = result_some y ->
+       red_spec S C (spec_function_proto_apply_get_args array index n) y;
+
     runs_type_correct_object_has_instance : forall S C B l v o,
        runs_type_object_has_instance runs S C B l v = result_some (specret_out o) ->
        red_expr S C (spec_object_has_instance_1 B l v) o;
@@ -3915,6 +3919,19 @@ Proof.
     applys~ red_spec_call_object_seal_4.
 Qed.
 
+Lemma run_function_proto_apply_get_args_correct : forall runs S C array (index n : int) y,
+  runs_type_correct runs ->
+  run_get_args_for_apply runs S C array index n = result_some y ->
+  red_spec S C (spec_function_proto_apply_get_args array index n) y.
+Proof.
+  introv IH HR; unfolds run_get_args_for_apply. cases_if*.
+  + run~ red_spec_function_apply_get_args_true.
+    run red_spec_function_apply_get_args_1 using run_object_get_correct.
+    let_name; subst.
+    run red_spec_function_apply_get_args_2 using runs_type_correct_get_args_for_apply.
+    apply red_spec_function_apply_get_args_3.
+  + inverts HR. applys~ red_spec_function_apply_get_args_false.
+Qed.
 
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
@@ -4071,7 +4088,20 @@ Proof.
   discriminate.
 
   (* prealloc_function_proto_apply *)
-  admit. (* TODO !!! *)
+  destruct vthis as [p | func]. 
+    destruct args; inverts HR as HR; destruct args; inverts HR.
+    destruct args as [ | thisArg]; inverts HR as HR; 
+    destruct args as [ | argArray]; [inverts HR | ]; cases_if*. 
+      destruct argArray as [p | array]; 
+      [destruct p; try solve [inverts HR] | ]; 
+      try applys* red_spec_function_apply_1_2;
+      try solve [applys* red_spec_function_apply_2; 
+                 applys* runs_type_correct_call].
+      run~ red_spec_function_apply_4 using run_object_get_correct.
+      run red_spec_function_apply_5.
+      run red_spec_function_apply_6 using run_function_proto_apply_get_args_correct. 
+      apply red_spec_function_apply_7. applys* runs_type_correct_call.
+      applys* red_spec_function_apply_1.
 
   (* prealloc_function_proto_call *)
   destruct vthis. inverts HR. cases_if*. 
@@ -4395,6 +4425,7 @@ Proof.
      introv. apply~ run_call_correct.
      introv. apply~ run_construct_correct.
      introv. apply~ run_function_has_instance_correct.
+     introv. apply~ run_function_proto_apply_get_args_correct.
      introv. apply~ run_object_has_instance_correct.
      introv. apply~ run_stat_while_correct.
      introv. apply~ run_stat_do_while_correct.

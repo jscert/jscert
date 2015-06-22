@@ -2790,20 +2790,19 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         | value_object this =>
           ifb (is_callable S this) (* Step 1 *)
           then
-           match argArray with 
+          match argArray with 
             | value_prim prim_null
             | value_prim prim_undef => (* Step 2 *)
                 runs_type_call runs S C this thisArg nil
             | value_object array => (* Step 3 *)
-                if_value (run_object_get runs S C this "length") (fun S v => (* Step 4 *)
+                if_value (run_object_get runs S C array "length") (fun S v => (* Step 4 *)
                   if_spec (to_uint32 runs S C v) (fun S ilen => (* Step 5 *)
                      if_spec (run_get_args_for_apply runs S C array 0 ilen) (fun S arguments => (* Steps 6-7-8 *)
                        runs_type_call runs S C this thisArg arguments)))
             | _ => impossible_with_heap_because S "Not null, under, or an object." (* run_error S native_error_type (* Not null, undef, or an object *) *)
-           end
+          end
           else
-            impossible_with_heap_because S "Not callable."
-            (* run_error S native_error_type (* Not callable *) *)
+            run_error S native_error_type (* Not callable *)
         | _ => impossible_with_heap_because S "Value not an object."
        end
      | _ => impossible_with_heap_because S "Function.prototype.apply must receive at least two arguments." 

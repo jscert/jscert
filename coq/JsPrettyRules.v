@@ -3950,7 +3950,60 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
        red_expr S C (spec_function_has_instance_2 lo lv) o ->
        red_expr S C (spec_function_has_instance_3 lo lv) o
 
-  (*------------------------------------------------------------*)
+  (*-------------------------------------------------------------*)
+  (** ** Function.prototype.apply (15.3.4.3)                     *)
+
+   | red_spec_function_apply_1 : forall S C vthis o func args, (* Step 1 *)
+       vthis = value_object func -> (* func is an object    *)
+       ~ is_callable S func ->      (* that is not callable *)
+                                    (* therefore, TypeError exception *)
+       red_expr S C (spec_error native_error_type) o -> 
+       red_expr S C (spec_call_prealloc prealloc_function_proto_apply vthis args) o
+
+   | red_spec_function_apply_1_2 : forall S C vthis o func args thisArg argArray rest, (* Step 1 -> 2 *)
+       vthis = value_object func ->          (* func is an object *)
+       is_callable S func ->                 (* that is callable  *)
+       args = thisArg :: argArray :: rest -> (* apply called with at least two arguments *)
+                                             (* Proceed to Step 2 *)
+       red_expr S C (spec_function_proto_apply func thisArg argArray) o -> 
+       red_expr S C (spec_call_prealloc prealloc_function_proto_apply vthis args) o
+
+   | red_spec_function_apply_2 : forall S C func thisArg argArray o, (* Step 2 *)
+       argArray = null \/ argArray = undef ->         (* argArray is either null or undefined *)
+       red_expr S C (spec_call func thisArg nil) o -> (* Proceed with Step 2a *)
+       red_expr S C (spec_function_proto_apply func thisArg argArray) o
+
+   | red_spec_function_apply_3 : forall S C func thisArg argArray array o, (* Step 3 *)
+       argArray <> null  /\
+       argArray <> undef /\ 
+       argArray <> value_object array-> (* argArray is not an object *)
+                                        (* therefore, TypeError exception *)
+       red_expr S C (spec_error native_error_type) o ->
+       red_expr S C (spec_function_proto_apply func thisArg argArray) o
+
+   | red_spec_function_apply_4 : forall S C func thisArg argArray array o1 o, (* Step 4 *)
+       argArray = value_object array ->                    (* argArray is an object *)
+       red_expr S C (spec_object_get array "length") o1 -> (* Get its length *)
+                                                           (* Proceed to Step 5 *)
+       red_expr S C (spec_function_proto_apply_1 func thisArg array o1) o ->
+       red_expr S C (spec_function_proto_apply func thisArg argArray) o
+
+   | red_spec_function_apply_5 : forall S S' C func thisArg array v y o, (* Step 5 *)
+       red_spec S' C (spec_to_uint32 v) y -> (* Convert length to an uint32 *)
+                                             (* Proceed to Step 6 *)
+       red_expr S' C (spec_function_proto_apply_2 func thisArg array y) o ->
+       red_expr S  C (spec_function_proto_apply_1 func thisArg array (out_ter S' v)) o
+
+   | red_spec_function_apply_6 : forall S S' C func thisArg array ilen y o, (* Steps 6 -> 8 *)
+       red_spec S' C (spec_function_proto_apply_get_args array 0 ilen) y -> (* Construct the arguments list *)
+       red_expr S' C (spec_function_proto_apply_3 func thisArg y) o ->      (* Proceed to Step 9 *) 
+       red_expr S  C (spec_function_proto_apply_2 func thisArg array (ret S' ilen)) o
+
+   | red_spec_function_apply_7 : forall S S' C func thisArg (argList : list value) o, (* Step 9 *)
+       red_expr S' C (spec_call func thisArg argList) o ->
+       red_expr S  C (spec_function_proto_apply_3 func thisArg (ret S' argList)) o
+
+  (*-------------------------------------------------------------*)
   (** ** Function built using Function.prototype.bind (15.3.4.5) *)
 
    | red_spec_function_bind_1 : forall S C vthis o target args, (* Step 1 *)
@@ -5050,6 +5103,31 @@ with red_spec : forall {T : Type}, state -> execution_ctx -> ext_spec -> specret
   | red_spec_object_get_prop_3_not_null : forall S C l x lproto (y:specret full_descriptor), (* Step 5 *)
       red_spec S C (spec_object_get_prop lproto x) y ->
       red_spec S C (spec_object_get_prop_3 l x lproto) y
+
+  (* Function.prototype.apply, Step 8 *)
+  | red_spec_function_apply_get_args_false : forall S C array (index n : int), (* Step 8, exiting loop *)
+      ~ (index < n) ->
+      red_spec S C (spec_function_proto_apply_get_args array index n) (ret S (@nil value))
+
+  | red_spec_function_apply_get_args_true : forall S C array (index n : int) o (y : specret (list value)), (* Step 8a *)
+      index < n ->
+      red_expr S C (spec_to_string (JsNumber.of_int index)) o -> (* Step 8a *)
+      red_spec S C (spec_function_proto_apply_get_args_1 array index n o) y ->
+      red_spec S C (spec_function_proto_apply_get_args array index n) y
+
+  | red_spec_function_apply_get_args_1 : forall S S' C (array : object_loc) (index n : int) sindex o (y : specret (list value)),
+      red_expr S' C (spec_object_get array sindex) o -> (* Step 8b *)
+      red_spec S' C (spec_function_proto_apply_get_args_2 array index n o) y ->
+      red_spec S  C (spec_function_proto_apply_get_args_1 array index n (out_ter S' sindex)) y
+
+  | red_spec_function_apply_get_args_2 : forall S S' C array (index n : int) v (y1 y : specret (list value)),
+      red_spec S' C (spec_function_proto_apply_get_args array (index + 1) n) y1 -> (* Step 3d *)
+      red_spec S' C (spec_function_proto_apply_get_args_3 v y1) y ->
+      red_spec S  C (spec_function_proto_apply_get_args_2 array index n (out_ter S' v)) y
+
+  | red_spec_function_apply_get_args_3 : forall S S' C v lv, (* Step 3c *)
+      red_spec S C (spec_function_proto_apply_get_args_3 v (ret S' lv)) (ret S' (v :: lv))
+      
 
   (* Function.prototype.bind, Steps 15-16 *)
 

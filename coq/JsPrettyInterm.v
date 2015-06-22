@@ -406,6 +406,13 @@ Inductive ext_expr :=
 
   | spec_function_get_1 : object_loc -> prop_name -> out -> ext_expr
 
+  (* Function.prototype.apply *)
+
+  | spec_function_proto_apply   : object_loc -> value -> value -> ext_expr
+  | spec_function_proto_apply_1 : object_loc -> value -> object_loc -> out -> ext_expr   
+  | spec_function_proto_apply_2 : object_loc -> value -> object_loc -> specret int -> ext_expr
+  | spec_function_proto_apply_3 : object_loc -> value -> specret (list value) -> ext_expr 
+
   (* Function.prototype.bind *)
 
   | spec_function_proto_bind : object_loc -> list value -> ext_expr
@@ -803,9 +810,16 @@ with ext_spec :=
   | spec_string_get_own_prop_5 : string -> (specret int) -> ext_spec
   | spec_string_get_own_prop_6 : string -> int -> int -> ext_spec
 
+  (* Argumenst for Function.prototype.apply *)
+
+  | spec_function_proto_apply_get_args   : object_loc -> int -> int -> ext_spec
+  | spec_function_proto_apply_get_args_1 : object_loc -> int -> int -> out -> ext_spec
+  | spec_function_proto_apply_get_args_2 : object_loc -> int -> int -> out -> ext_spec
+  | spec_function_proto_apply_get_args_3 : value -> specret (list value) -> ext_spec 
+
   (* Length for Function.prototype.bind *)
 
-  | spec_function_proto_bind_length : object_loc -> list value -> ext_spec
+  | spec_function_proto_bind_length   : object_loc -> list value -> ext_spec
   | spec_function_proto_bind_length_1 : object_loc -> list value -> ext_spec
   | spec_function_proto_bind_length_2 : list value -> out -> ext_spec
   | spec_function_proto_bind_length_3 : specret int -> list value -> ext_spec
@@ -1205,6 +1219,11 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_creating_function_object_3 _ o => Some o
   | spec_creating_function_object_4 _ o => Some o
 
+  | spec_function_proto_apply _ _ _ => None
+  | spec_function_proto_apply_1 _ _ _ o => Some o  
+  | spec_function_proto_apply_2 _ _ _ y => out_of_specret y
+  | spec_function_proto_apply_3 _ _ y => out_of_specret y
+
   | spec_function_proto_bind _ _ => None 
   | spec_function_proto_bind_1 _ _ _ => None 
   | spec_function_proto_bind_2 _ _ _ => None 
@@ -1516,6 +1535,10 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_string_get_own_prop_4 _ _ => None
   | spec_string_get_own_prop_5 _ y => out_of_specret y
   | spec_string_get_own_prop_6 _ _ _ => None
+  | spec_function_proto_apply_get_args _ _ _ => None
+  | spec_function_proto_apply_get_args_1 _ _ _ o => Some o 
+  | spec_function_proto_apply_get_args_2 _ _ _ o => Some o 
+  | spec_function_proto_apply_get_args_3 _ y => out_of_specret y
   | spec_function_proto_bind_length _ _ => None
   | spec_function_proto_bind_length_1 _ _ => None
   | spec_function_proto_bind_length_2 _ o => Some o
