@@ -1959,7 +1959,6 @@ Definition run_expr_function runs S C fo args bd : result :=
       (fun L _ => follow L) tt
   end.
 
-
 Definition entering_eval_code runs S C direct bd K : result :=
   'let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
   'let C' := if direct then C else execution_ctx_initial str in
@@ -2767,7 +2766,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     if_object (to_object S vthis) (fun S l =>
       if_value (run_object_get runs S C l "length") (fun S vlen =>
         if_spec (to_uint32 runs S C vlen) (fun S ilen =>
-          ifb decide (ilen = 0) then
+          ifb (ilen = 0) then
             if_not_throw (object_put runs S C l "length" JsNumber.zero throw_true) (fun S _ =>
               out_ter S undef)
           else
@@ -2867,6 +2866,9 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       else run_error S native_error_type
      | _ => impossible_with_heap_because S "Not an object."
     end
+
+  | prealloc_array =>
+      run_construct_prealloc runs S C prealloc_array args
 
   | _ =>
     not_yet_implemented_because "_ match" (* LATER *)

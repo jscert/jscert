@@ -4125,6 +4125,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** Array builtin functions *)
 
+  | red_spec_call_to_construct_array : forall S C vthis args o,
+      red_expr S C (spec_construct_prealloc prealloc_array       args) o ->
+      red_expr S C (spec_call_prealloc      prealloc_array vthis args) o
+
   (** new Array() (returns object_loc)  (15.4.2.1) *)
   (** new Array(value, [value]) (returns object_loc)  (15.4.2.1) *)
   (* This constructor only applies if there are zero arguments or at least two
@@ -4220,20 +4224,20 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_call_array_proto_pop_3 l (ret S (0 : int))) o
 
   | red_spec_call_array_proto_pop_3_empty_1 : forall S C l o o1, (* 4a *)
-      red_expr S C (spec_object_put l "length" 0 throw_true) o1 ->
+      red_expr S C (spec_object_put l "length" JsNumber.zero throw_true) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_empty_2 o1) o ->
       red_expr S C (spec_call_array_proto_pop_3_empty_1 l) o
 
-  | red_spec_call_array_proto_pop_3_empty_2 : forall S0 S C r0, (* 4b *)
-      red_expr S0 C (spec_call_array_proto_pop_3_empty_2 (out_ter S r0)) (out_ter S undef)
+  | red_spec_call_array_proto_pop_3_empty_2 : forall S0 S C R, (* 4b *)
+      red_expr S0 C (spec_call_array_proto_pop_3_empty_2 (out_ter S R)) (out_ter S undef)
 
   | red_spec_call_array_proto_pop_3_nonempty : forall S0 S C l (lenuint32 : int) o, (* 5 *)
-      lenuint32 > 0 ->
+      lenuint32 <> 0 ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_1 l lenuint32) o ->
       red_expr S0 C (spec_call_array_proto_pop_3 l (ret S lenuint32)) o
 
-  | red_spec_call_array_proto_pop_3_nonempty_1 : forall S C l lenuint32 o o1, (* 5a *)
-      red_expr S C (spec_to_string (lenuint32 - 1)) o1 ->
+  | red_spec_call_array_proto_pop_3_nonempty_1 : forall S C l (lenuint32 :int) o o1, (* 5a *)
+      red_expr S C (spec_to_string (lenuint32 - 1)%Z) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_2 l o1) o ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_1 l lenuint32) o
 
@@ -4243,17 +4247,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_call_array_proto_pop_3_nonempty_2 l (out_ter S vindx)) o
 
   | red_spec_call_array_proto_pop_3_nonempty_3 : forall S0 S C l vindx velem o o1, (* 5c *)
-      red_expr S C (spec_object_delete l vindx throw_true) o1 ->
+      red_expr S C (spec_object_delete_1 builtin_delete_default l vindx throw_true) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_4 l vindx velem o1) o ->
       red_expr S0 C (spec_call_array_proto_pop_3_nonempty_3 l vindx (out_ter S velem)) o
 
-  | red_spec_call_array_proto_pop_3_nonempty_4 : forall S0 S C l vindx velem o o1 r0, (* 5d *)
+  | red_spec_call_array_proto_pop_3_nonempty_4 : forall S0 S C l vindx velem o o1 R, (* 5d *)
       red_expr S C (spec_object_put l "length" vindx throw_true) o1 ->
       red_expr S C (spec_call_array_proto_pop_3_nonempty_5 velem o1) o ->
-      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_4 l vindx velem (out_ter S r0)) o
+      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_4 l vindx velem (out_ter S R)) o
 
-  | red_spec_call_array_proto_pop_3_nonempty_5 : forall S0 S C velem r0, (* 5e *)
-      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_5 velem (out_ter S r0)) (out_ter S velem)
+  | red_spec_call_array_proto_pop_3_nonempty_5 : forall S0 S C velem R, (* 5e *)
+      red_expr S0 C (spec_call_array_proto_pop_3_nonempty_5 velem (out_ter S R)) (out_ter S velem)
 
   (** Array.prototype.push() (returns value)  (15.4.4.7) *)
 

@@ -371,6 +371,7 @@ Definition object_prealloc_array_proto :=
   let P := Heap.empty in
   let P := write_native P "pop" prealloc_array_proto_pop in
   let P := write_native P "push" prealloc_array_proto_push in
+  let P := write_constant P "length" 0 in 
   (* LATER *)
   object_create_builtin prealloc_object_proto "Array" P.
 

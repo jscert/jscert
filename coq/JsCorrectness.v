@@ -4165,16 +4165,32 @@ Proof.
   discriminate.
   (* prealloc_number_proto_to_precision *)
   discriminate.
+
   (* prealloc_array *)
-  discriminate.
+  apply run_construct_prealloc_correct in HR; auto.
+  applys* red_spec_call_to_construct_array. auto.
+
   (* prealloc_array_is_array *)
   discriminate.
   (* prealloc_array_proto *)
   discriminate.
   (* prealloc_array_proto_to_string *)
   discriminate.
+
   (* prealloc_array_proto_pop *)
-  skip. (* LATER *)
+  run red_spec_call_array_proto_pop using to_object_correct. 
+  run red_spec_call_array_proto_pop_1 using run_object_get_correct.
+  run red_spec_call_array_proto_pop_2. cases_if*. subst.
+  apply red_spec_call_array_proto_pop_3_empty.
+  run red_spec_call_array_proto_pop_3_empty_1.
+  apply red_spec_call_array_proto_pop_3_empty_2.
+  applys~ red_spec_call_array_proto_pop_3_nonempty.
+  run red_spec_call_array_proto_pop_3_nonempty_1.
+  run red_spec_call_array_proto_pop_3_nonempty_2 using run_object_get_correct.
+  run red_spec_call_array_proto_pop_3_nonempty_3 using object_delete_default_correct. 
+  run red_spec_call_array_proto_pop_3_nonempty_4.
+  applys~ red_spec_call_array_proto_pop_3_nonempty_5.
+  
   (* prealloc_array_proto_push *)
   skip. (* LATER *)
   (* prealloc_string *)
