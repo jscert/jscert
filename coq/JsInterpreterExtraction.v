@@ -76,7 +76,6 @@ Extract Constant N.modulo => "mod_float".
 Extract Constant N.compare =>
  "fun x y -> if x=y then Eq else if x<y then Lt else Gt".
 
-
 Extract Inductive Fappli_IEEE.binary_float => float [
   "(fun s -> if s then (0.) else (-0.))"
   "(fun s -> if s then infinity else neg_infinity)"
@@ -105,17 +104,23 @@ Extract Constant JsNumber.from_string =>
    (* Note that we're using `float_of_string' there, which does not have the same
       behavior than JavaScript.  For instance it will read ""022"" as 22 instead of
       18, which should be the JavaScript result for it. *)".
+
 Extract Constant JsNumber.to_string =>
   "(fun f -> 
     prerr_string (""Warning:  JsNumber.to_string called.  This might be responsible for errors.  Argument value:  "" ^ string_of_float f ^ ""."");
     prerr_newline();
     let string_of_number n =
-      let inum = int_of_float n in
-      if (float_of_int inum = n) then string_of_int inum else string_of_float n in
-    let ret = ref [] in (* Ugly, but the API for OCaml string is not very functionnal... *)
+      let sfn = string_of_float n in
+      (if (sfn = ""inf"") then ""Infinity"" else
+       if (sfn = ""-inf"") then ""-Infinity"" else
+       if (sfn = ""nan"") then ""NaN"" else
+       let inum = int_of_float n in
+       if (float_of_int inum = n) then (string_of_int inum) else (string_of_float n)) in
+    let ret = ref [] in (* Ugly, but the API for OCaml string is not very functional... *)
     String.iter (fun c -> ret := c :: !ret) (string_of_number f);
     List.rev !ret)
-   (* Note that this is ugly, we should use the spec of JsNumber.to_string here. *)".
+   (* Note that this is ugly, we should use the spec of JsNumber.to_string here (9.8.1). *)".
+
 Extract Constant JsNumber.add => "(+.)".
 Extract Constant JsNumber.sub => "(-.)".
 Extract Constant JsNumber.mult => "( *. )".
