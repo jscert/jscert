@@ -3933,6 +3933,26 @@ Proof.
   + inverts HR. applys~ red_spec_function_apply_get_args_false.
 Qed.
 
+Lemma push_correct : forall S S' C l args a o runs,
+  runs_type_correct runs ->
+  push runs S' C l args a = result_some (specret_out o) ->
+  red_expr S C (spec_call_array_proto_push_3 l args (specret_val S' a)) o.
+Proof.
+  introv IH HR. 
+  apply red_spec_call_array_proto_push_3. 
+  gen a o S S' C l runs. inductions args; intros.
+  + simpls; let_name; subst. 
+    apply red_spec_call_array_proto_push_4_empty.
+    run red_spec_call_array_proto_push_5.
+    apply red_spec_call_array_proto_push_6.
+  + unfold push in HR. unfolds let_binding. (* Why doesn't let_name work here? *)
+    apply red_spec_call_array_proto_push_4_nonempty. 
+    run red_spec_call_array_proto_push_4_nonempty_1. 
+    run red_spec_call_array_proto_push_4_nonempty_2. 
+    apply red_spec_call_array_proto_push_4_nonempty_3. 
+    applys* IHargs.
+Qed.
+
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
   run_call_prealloc runs S C B vthis args = o ->
@@ -4192,7 +4212,11 @@ Proof.
   applys~ red_spec_call_array_proto_pop_3_nonempty_5.
   
   (* prealloc_array_proto_push *)
-  skip. (* LATER *)
+  run red_spec_call_array_proto_push using to_object_correct. 
+  run red_spec_call_array_proto_push_1 using run_object_get_correct.
+  run red_spec_call_array_proto_push_2.
+  applys* push_correct.
+
   (* prealloc_string *)
   skip. (* LATER *)
   (* prealloc_string_proto *)

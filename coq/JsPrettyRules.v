@@ -4300,17 +4300,17 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_array_proto_push_4_nonempty_3 l vs lenuint32 v o1) o ->
       red_expr S0 C (spec_call_array_proto_push_4_nonempty_2 l vs lenuint32 v (out_ter S vindx)) o
 
-  | red_spec_call_array_proto_push_4_nonempty_3 : forall S0 S C l v vs lenuint32 o r0, (* 5c *)
+  | red_spec_call_array_proto_push_4_nonempty_3 : forall S0 S C l v vs lenuint32 o R, (* 5c *)
       red_expr S C (spec_call_array_proto_push_4 l vs (lenuint32 + 1)) o ->
-      red_expr S0 C (spec_call_array_proto_push_4_nonempty_3 l vs lenuint32 v (out_ter S r0)) o
+      red_expr S0 C (spec_call_array_proto_push_4_nonempty_3 l vs lenuint32 v (out_ter S R)) o
 
   | red_spec_call_array_proto_push_5 : forall S C l vlen o o1, (* 6 *)
       red_expr S C (spec_object_put l "length" vlen throw_true) o1 ->
       red_expr S C (spec_call_array_proto_push_6 vlen o1) o ->
       red_expr S C (spec_call_array_proto_push_5 l vlen) o
 
-  | red_spec_call_array_proto_push_6 : forall S0 S C vlen r0, (* 7 *)
-      red_expr S0 C (spec_call_array_proto_push_6 vlen (out_ter S r0)) (out_ter S vlen)
+  | red_spec_call_array_proto_push_6 : forall S0 S C vlen R, (* 7 *)
+      red_expr S0 C (spec_call_array_proto_push_6 vlen (out_ter S R)) (out_ter S vlen)
 
   (* LATER: special implementation of get_own_property *)
 
