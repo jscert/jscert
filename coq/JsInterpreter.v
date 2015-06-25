@@ -2762,6 +2762,19 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_throw_type_error =>
     run_error S native_error_type
 
+  | prealloc_array_is_array =>
+    match args with
+     | arg :: _ =>
+         match arg with 
+          | value_object arg =>
+              if_some (run_object_method object_class_ S arg) (fun class =>
+                ifb (class = "Array") then (res_ter S true) 
+                                      else (res_ter S false))
+          | _ => out_ter S false
+        end
+     | nil => impossible_with_heap_because S "Array.isArray must receive at least one argument." 
+    end
+
   | prealloc_array_proto_pop =>
     if_object (to_object S vthis) (fun S l =>
       if_value (run_object_get runs S C l "length") (fun S vlen =>

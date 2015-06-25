@@ -65,7 +65,7 @@ Definition attrib_constant v :=
   attributes_data_intro v false false false.
 
 (** Shorthand notation for building a property attributes
-    that is non writable, non configurable and non enumerable. *)
+    that is writable, non configurable and enumerable. *)
 
 Notation "'attrib_native'" := prop_attributes_for_global_object.
 
@@ -356,11 +356,14 @@ Definition number_proto_value_of_function_object :=
 Definition object_prealloc_array :=
   let P := Heap.empty in
   let P := write_constant P "prototype" prealloc_array_proto in
+  let P := write_native   P "isArray" prealloc_array_is_array in
   let P := write_constant P "length" 1 in 
   (* LATER:  Implement the full specification given in the paragraph starting Section 15.4 instead of his dummy object. *)
   (* LATER *)
   object_create_prealloc_constructor prealloc_array 1 P.
 
+Definition array_is_array_function_object :=
+  object_create_prealloc_call prealloc_array_is_array 1 Heap.empty.
 
 (**************************************************************)
 (** Array prototype object *)
@@ -379,7 +382,7 @@ Definition array_proto_pop_function_object :=
   object_create_prealloc_call prealloc_array_proto_pop 0 Heap.empty.
 
 Definition array_proto_push_function_object :=
-  object_create_prealloc_call prealloc_array_proto_push 0 Heap.empty.
+  object_create_prealloc_call prealloc_array_proto_push 1 Heap.empty.
 
 (**************************************************************)
 (** String object *)
@@ -572,6 +575,8 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
 
 Definition object_heap_initial_function_objects_4 (h : Heap.heap object_loc object) :=
   let h := object_heap_initial_function_objects_3 h in 
+  (* Function objects of Array.prototype *)
+  let h := Heap.write h prealloc_array_is_array array_is_array_function_object in
   (* Function objects of Array.prototype *)
   let h := Heap.write h prealloc_array_proto_pop array_proto_pop_function_object in
   let h := Heap.write h prealloc_array_proto_push array_proto_push_function_object in

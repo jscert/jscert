@@ -565,6 +565,9 @@ Inductive ext_expr :=
   | spec_call_array_new_single_3 : object_loc -> number -> specret int -> ext_expr
   | spec_call_array_new_single_4 : object_loc -> int -> ext_expr
 
+  | spec_call_array_is_array_1 : value -> ext_expr
+  | spec_call_array_is_array_2_3 : class_name -> ext_expr
+
   | spec_call_array_proto_pop_1 : out -> ext_expr
   | spec_call_array_proto_pop_2 : object_loc -> out -> ext_expr
   | spec_call_array_proto_pop_3 : object_loc -> specret int -> ext_expr
@@ -1338,6 +1341,9 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_array_new_single_3 _ _ y => out_of_specret y
   | spec_call_array_new_single_4 _ _ => None
   
+  | spec_call_array_is_array_1 _ => None
+  | spec_call_array_is_array_2_3 _ => None
+
   | spec_call_array_proto_pop_1 o => Some o
   | spec_call_array_proto_pop_2 _ o => Some o
   | spec_call_array_proto_pop_3 _ y  => out_of_specret y

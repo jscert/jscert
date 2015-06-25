@@ -81,7 +81,7 @@ Extract Inductive Fappli_IEEE.binary_float => float [
   "(fun s -> if s then infinity else neg_infinity)"
   "nan"
   "(fun (s, m, e) -> failwith ""FIXME: No extraction from binary float allowed yet."")"
-].
+]. 
 
 Extract Constant JsNumber.of_int => "fun x -> x".
 
@@ -95,6 +95,7 @@ Extract Constant JsNumber.max_value => "max_float".
 Extract Constant JsNumber.min_value => "(Int64.float_of_bits Int64.one)".
 Extract Constant JsNumber.floor => "floor".
 Extract Constant JsNumber.absolute => "abs_float".
+
 Extract Constant JsNumber.from_string =>
   "(fun s ->
     try
@@ -144,6 +145,7 @@ Extract Constant JsNumber.to_int32 =>
     in
     (if int32bit >= i31 then int32bit -. i32 else int32bit)
   | _ -> 0.". (* LATER:  do in Coq.  Spec is 9.5, p. 47.*)
+
 Extract Constant JsNumber.to_uint32 =>
 "fun n ->
   match classify_float n with
@@ -156,6 +158,7 @@ Extract Constant JsNumber.to_uint32 =>
     in
     int32bit
   | _ -> 0.". (* LAER:  do in Coq.  Spec is 9.6, p47.*)
+
 Extract Constant JsNumber.modulo_32 => "(fun x -> let r = mod_float x 32. in if x < 0. then r +. 32. else r)".
 Extract Constant JsNumber.int32_bitwise_not => "fun x -> Int32.to_float (Int32.lognot (Int32.of_float x))".
 Extract Constant JsNumber.int32_bitwise_and => "fun x y -> Int32.to_float (Int32.logand (Int32.of_float x) (Int32.of_float y))".

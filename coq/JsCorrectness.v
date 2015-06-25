@@ -4191,9 +4191,19 @@ Proof.
   applys* red_spec_call_to_construct_array. auto.
 
   (* prealloc_array_is_array *)
-  discriminate.
+  destruct args; [inverts HR | ].
+  applys* red_spec_call_array_is_array_prep_1.
+  destruct v. 
+    inverts HR. applys* red_spec_call_array_is_array_1. discriminate.
+    run. apply run_object_method_correct in E. 
+    applys* red_spec_call_array_is_array_prep_2_3.
+    cases_if*; inverts HR.
+      applys* red_spec_call_array_is_array_2.
+      applys* red_spec_call_array_is_array_3.
+
   (* prealloc_array_proto *)
   discriminate.
+
   (* prealloc_array_proto_to_string *)
   discriminate.
 
