@@ -2072,16 +2072,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_error_or_cst throw native_error_type false) o ->
       red_expr S C (spec_object_define_own_prop_reject throw) o
 
-  
-
-
-
-
-
-
-
-
-
   (** DefineOwnProperty for Arrays (15.4.5.1) *)
   
   (* Step 1 *)
@@ -3901,16 +3891,15 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
    (** Function: Call (15.3.4.4) *)
 
-   | red_spec_call_function_not_callable : forall S C o vthis this args, (* Step 1 *)    
-       vthis = value_object this ->
-       (~ is_callable S this) ->
+   | red_spec_call_function_not_callable : forall S C o vthis args, (* Step 1 *)    
+       (~ is_callable S vthis) ->
        red_expr S C (spec_error native_error_type) o ->
        red_expr S C (spec_call_prealloc prealloc_function_proto_call vthis args) o
 
    | red_spec_call_function_callable : forall S C o (this : object_loc) vthis args thisArg arguments, (* Steps 2-4 *)
        vthis = value_object this ->
        is_callable S this ->
-       args = thisArg :: arguments ->
+       arguments_first_and_rest args (thisArg, arguments) ->
        red_expr S C (spec_call this thisArg arguments) o ->
        red_expr S C (spec_call_prealloc prealloc_function_proto_call vthis args) o
 
@@ -3953,18 +3942,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*-------------------------------------------------------------*)
   (** ** Function.prototype.apply (15.3.4.3)                     *)
 
-   | red_spec_function_apply_1 : forall S C vthis o func args, (* Step 1 *)
-       vthis = value_object func -> (* func is an object    *)
-       ~ is_callable S func ->      (* that is not callable *)
+   | red_spec_function_apply_1 : forall S C vthis o args, (* Step 1 *)
+       ~ is_callable S vthis ->     (* vthis is not callable *)
                                     (* therefore, TypeError exception *)
        red_expr S C (spec_error native_error_type) o -> 
        red_expr S C (spec_call_prealloc prealloc_function_proto_apply vthis args) o
 
-   | red_spec_function_apply_1_2 : forall S C vthis o func args thisArg argArray rest, (* Step 1 -> 2 *)
-       vthis = value_object func ->          (* func is an object *)
-       is_callable S func ->                 (* that is callable  *)
-       args = thisArg :: argArray :: rest -> (* apply called with at least two arguments *)
-                                             (* Proceed to Step 2 *)
+   | red_spec_function_apply_1_2 : forall S C vthis o func args thisArg argArray, (* Step 1 -> 2 *)
+       is_callable S vthis ->                (* vthis is callable  *)
+       vthis = value_object func ->          (* and it points to func *)
+       arguments_from args (thisArg :: argArray :: nil) ->
        red_expr S C (spec_function_proto_apply func thisArg argArray) o -> 
        red_expr S C (spec_call_prealloc prealloc_function_proto_apply vthis args) o
 
@@ -4006,28 +3993,24 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*-------------------------------------------------------------*)
   (** ** Function built using Function.prototype.bind (15.3.4.5) *)
 
-   | red_spec_function_bind_1 : forall S C vthis o target args, (* Step 1 *)
-       vthis = value_object target ->    
-       red_expr S C (spec_function_proto_bind target args) o ->
+   | red_spec_function_bind_1 : forall S C vthis o args, (* Step 1 *)
+       ~ is_callable S vthis ->
+       red_expr S C (spec_error native_error_type) o ->
        red_expr S C (spec_call_prealloc prealloc_function_proto_bind vthis args) o
 
-   | red_spec_function_bind_2_false : forall S C (target : object_loc) args o, (* Step 2 *)
-       ~ is_callable S target ->
-       red_expr S C (spec_error native_error_type) o ->
-       red_expr S C (spec_function_proto_bind target args) o
-
-   | red_spec_function_bind_2_true : forall S C (target : object_loc) args o thisArg (A : list value), (* Steps 2, 3 *)
-       is_callable S target ->
-       args = (value_object thisArg) :: A ->
+   | red_spec_function_bind_2 : forall S C vthis target thisArg (A : list value) o args,
+       is_callable S vthis ->       
+       vthis = value_object target ->
+       arguments_first_and_rest args (thisArg, A) ->
        red_expr S C (spec_function_proto_bind_1 target thisArg A) o ->
-       red_expr S C (spec_function_proto_bind   target args) o
+       red_expr S C (spec_call_prealloc prealloc_function_proto_bind vthis args) o
 
    | red_spec_function_bind_3 : forall S S' C l target thisArg (A : list value)
                                        O1 O2 O3 O4 O5 O6 O7 o,
      O1 = object_new prealloc_object_proto "Object" -> (* Steps 4-5 *)
      O2 = object_with_get O1 builtin_get_function -> (* Step 6 *)
      O3 = object_with_details O2 None None None (Some target) 
-                                                (Some (value_object thisArg))
+                                                (Some thisArg)
                                                 (Some A) 
                                                  None -> (* Steps 7-9 *)
      O4 = object_set_class O3 "Function" ->  (* Step 10  *)
@@ -4204,8 +4187,8 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Array.isArray(arg) (returns bool)  (15.4.3.2) *)
 
-  | red_spec_call_array_is_array_prep_1 : forall S C vthis o args arg rest, (* Preparation for Step 1 *)
-      args = arg :: rest ->
+  | red_spec_call_array_is_array_prep_1 : forall S C vthis o args arg, (* Preparation for Step 1 *)
+      arguments_from args (arg :: nil) ->
       red_expr S C (spec_call_array_is_array_1 arg) o ->
       red_expr S C (spec_call_prealloc prealloc_array_is_array vthis args) o
 
@@ -4226,6 +4209,98 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_call_array_is_array_3 : forall S C class, (* Step 3 *)
       class <> "Array" ->
       red_expr S C (spec_call_array_is_array_2_3 class) (out_ter S false)
+
+  (** Array.prototype.toString() (returns string)  (15.4.4.2) *)
+
+  | red_spec_call_array_proto_to_string : forall S C vthis args o1 o, (* Step 1 *)
+      red_expr S C (spec_to_object vthis) o1 ->
+      red_expr S C (spec_call_array_proto_to_string o1) o ->     
+      red_expr S C (spec_call_prealloc prealloc_array_proto_to_string vthis args) o
+
+  | red_spec_call_array_proto_to_string_1 : forall S S' C l o o1, (* Step 2 *)
+      red_expr S' C (spec_object_get l "join") o1 ->
+      red_expr S' C (spec_call_array_proto_to_string_1 l o1) o ->      
+      red_expr S  C (spec_call_array_proto_to_string (out_ter S' l)) o  
+
+  | red_spec_call_array_proto_to_string_2_false : forall S S' C l o vfunc, (* Step 3 *)
+      ~ is_callable S' vfunc ->
+      red_expr S' C (spec_call_prealloc prealloc_object_proto_to_string l nil) o ->
+      red_expr S  C (spec_call_array_proto_to_string_1 l (out_ter S' vfunc)) o 
+
+  | red_spec_call_array_proto_to_string_2_true : forall S S' C l o vfunc func, (* Step 4 *)
+      is_callable S' vfunc ->
+      vfunc = value_object func ->
+      red_expr S' C (spec_call func l nil) o ->
+      red_expr S  C (spec_call_array_proto_to_string_1 l (out_ter S' vfunc)) o
+
+  (** Array.prototype.join(separator) (returns string)  (15.4.4.5) *)
+
+  | red_spec_call_array_proto_join : forall S C vthis args o1 o, (* Step 1 *)
+      red_expr S C (spec_to_object vthis) o1 ->
+      red_expr S C (spec_call_array_proto_join o1 args) o ->     
+      red_expr S C (spec_call_prealloc prealloc_array_proto_join vthis args) o
+
+  | red_spec_call_array_proto_join_1 : forall S S' C l o o1 args, (* Step 2 *)
+      red_expr S' C (spec_object_get l "length") o1 ->
+      red_expr S' C (spec_call_array_proto_join_1 l o1 args) o ->      
+      red_expr S  C (spec_call_array_proto_join (out_ter S' l) args) o  
+
+  | red_spec_call_array_proto_join_2 : forall S S' C l vlen o y args, (* Step 3 *)
+      red_spec S' C (spec_to_uint32 vlen) y ->
+      red_expr S' C (spec_call_array_proto_join_2 l y args) o ->
+      red_expr S  C (spec_call_array_proto_join_1 l (out_ter S' vlen) args) o
+
+  | red_spec_call_array_proto_join_3 : forall S S' C l (length : int) o args sep, (* Intermediate *)
+      arguments_from args (sep :: nil) ->
+      red_expr S' C (spec_call_array_proto_join_3 l length sep) o ->
+      red_expr S  C (spec_call_array_proto_join_2 l (ret S' length) args) o
+
+  | red_spec_call_array_proto_join_3_undef : forall S S' C l (length : int) o o1 sep, (* Steps 4-5 *)
+      sep = undef ->
+      red_expr S' C (spec_to_string ",") o1 ->
+      red_expr S' C (spec_call_array_proto_join_4 l length o1) o ->
+      red_expr S  C (spec_call_array_proto_join_3 l length sep) o
+
+  | red_spec_call_array_proto_join_3_other : forall S S' C l (length : int) o o1 sep, (* Steps 4-5 *)
+      sep <> undef ->
+      red_expr S' C (spec_to_string sep) o1 ->
+      red_expr S' C (spec_call_array_proto_join_4 l length o1) o ->
+      red_expr S  C (spec_call_array_proto_join_3 l length sep) o
+
+  | red_spec_call_array_proto_join_4 : forall S S' C l length s, (* Step 6 *)
+      (length = 0)%Z ->
+      red_expr S C (spec_call_array_proto_join_4 l length (out_ter S' s)) (out_ter S' "")
+
+  | red_spec_call_array_proto_join_5 : forall S S' C l length sep o (y : specret string), (* Steps 7-8 *)
+      (length <> 0)%Z ->
+      red_spec S' C (spec_call_array_proto_join_vtsfj l 0%Z) y ->
+      red_expr S' C (spec_call_array_proto_join_5 l length sep y) o ->
+      red_expr S  C (spec_call_array_proto_join_4 l length (out_ter S' sep)) o
+
+  | red_spec_call_array_proto_join_6 : forall S S' C l length sep s o, (* The remaining steps *)
+      red_expr S' C (spec_call_array_proto_join_elements l 1%Z length sep s) o ->
+      red_expr S  C (spec_call_array_proto_join_5 l length sep (ret S' s)) o
+  
+  (* Array.prototype.join - Steps 10-11 *)
+
+  | red_spec_call_array_proto_join_elements_exit : forall S C l (k length : int) (sep sR : string), (* Step 11 *)
+      ~ (k < length) -> 
+      red_expr S C (spec_call_array_proto_join_elements l k length sep sR) (out_ter S sR)
+
+  | red_spec_call_array_proto_join_elements_continue : forall S C l (k length : int) sep sR (str : string) o, (* Step 10a *)
+      k < length ->
+      str = sR ++ sep ->
+      red_expr S C (spec_call_array_proto_join_elements_1 l k length sep str) o ->
+      red_expr S C (spec_call_array_proto_join_elements   l k length sep sR) o
+
+  | red_spec_call_array_proto_join_elements_1 : forall S C l (k length : int) sep (str : string) (y : specret string) o, (* Steps 10b-c *)
+      red_spec S C (spec_call_array_proto_join_vtsfj l k) y ->
+      red_expr S C (spec_call_array_proto_join_elements_2 l k length sep str y) o ->
+      red_expr S C (spec_call_array_proto_join_elements_1 l k length sep str) o
+
+  | red_spec_call_array_proto_join_elements_2 : forall S S' C l k length sep (str : string) next o, (* Steps 10d-e *)
+      red_expr S' C (spec_call_array_proto_join_elements l (k + 1) length sep (str ++ next)) o ->
+      red_expr S  C (spec_call_array_proto_join_elements_2 l k length sep str (ret S' next)) o
 
   (** Array.prototype.pop() (returns value)  (15.4.4.6) *)
 
@@ -5188,5 +5263,29 @@ with red_spec : forall {T : Type}, state -> execution_ctx -> ext_spec -> specret
       ~ (ilen < length A) -> (* Step 15b *)
       red_spec S C (spec_function_proto_bind_length_3 (ret S' ilen) A) (ret S' (ilen - length A)%Z)
 
+  (* Array.prototype.join - Steps 7-8, 10b-c *)
+
+  | red_spec_call_array_proto_join_vtsfj : forall S C l (index : int) o (y : specret string), (* Step 7, Step 10b *)
+      red_expr S C (spec_to_string index) o ->
+      red_spec S C (spec_call_array_proto_join_vtsfj_1 l o) y ->
+      red_spec S C (spec_call_array_proto_join_vtsfj   l index) y
+
+  | red_spec_call_array_proto_join_vtsfj_1 : forall S S' C l prop o (y : specret string), (* Step 7, Step 10b *)
+      red_expr S' C (spec_object_get l prop) o ->
+      red_spec S' C (spec_call_array_proto_join_vtsfj_2 l o) y ->      
+      red_spec S  C (spec_call_array_proto_join_vtsfj_1 l (out_ter S' prop)) y
+
+  | red_spec_call_array_proto_join_vtsfj_2_undef_null : forall S S' C l v, (* Step 8, Step 10c *)
+      v = undef \/ v = null ->
+      red_spec S C (spec_call_array_proto_join_vtsfj_2 l (out_ter S' v)) (ret S' "")
+
+  | red_spec_call_array_proto_join_vtsfj_2_other : forall S S' C l v o (y : specret string), (* Step 8, Step 10c *)
+      ~ (v = undef \/ v = null) ->
+      red_expr S' C (spec_to_string v) o ->
+      red_spec S' C (spec_call_array_proto_join_vtsfj_3 o) y ->
+      red_spec S  C (spec_call_array_proto_join_vtsfj_2 l (out_ter S' v)) y
+
+  | red_spec_call_array_proto_join_vtsfj_3 : forall S S' C l (s : string), (* Step 8, Step 10c *)
+      red_spec S C (spec_call_array_proto_join_vtsfj_3 (out_ter S' s)) (ret S' s)
 .
 

@@ -152,6 +152,12 @@ Section InterpreterEliminations.
 
 Definition get_arg := nth_def undef.
 
+Definition get_arg_first_and_rest (lv : list value) :=
+ (get_arg 0 lv, match lv with
+                 | nil => nil
+                 | _ :: rest => rest
+                end).        
+
 Definition destr_list (A B : Type) (l : list A) (d : B) f :=
   match l with
   | nil => d

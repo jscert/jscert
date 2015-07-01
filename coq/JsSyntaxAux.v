@@ -263,6 +263,7 @@ Definition prealloc_compare bl1 bl2 :=
   | prealloc_array_proto_pop, prealloc_array_proto_pop => true
   | prealloc_array_proto_push, prealloc_array_proto_push => true
   | prealloc_array_proto_to_string, prealloc_array_proto_to_string => true
+  | prealloc_array_proto_join, prealloc_array_proto_join => true
   | prealloc_string, prealloc_string => true
   | prealloc_string_proto, prealloc_string_proto => true
   | prealloc_string_proto_to_string, prealloc_string_proto_to_string => true

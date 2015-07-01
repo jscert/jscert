@@ -70,9 +70,14 @@ Record runs_type_correct runs :=
     runs_type_correct_prog : forall S C p o,
        runs_type_prog runs S C p = o ->
        red_prog S C (prog_basic p) o;
+
     runs_type_correct_call : forall S C l v vs o,
        runs_type_call runs S C l v vs = o ->
        red_expr S C (spec_call l v vs) o;
+
+    runs_type_correct_call_prealloc : forall S C l B args o,
+       runs_type_call_prealloc runs S C B l args = result_some (specret_out o) ->
+       red_expr S C (spec_call_prealloc B l args) o;
 
     runs_type_correct_construct : forall S C co l args o, 
       runs_type_construct runs S C co l args = o ->
@@ -139,7 +144,11 @@ Record runs_type_correct runs :=
                 def S x Desc str = res_out o ->
                 red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc str) o),
        runs_type_object_define_own_prop_array_loop runs S C l newLen oldLen newLenDesc newWritable throw def = o -> 
-       red_expr S C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o
+       red_expr S C (spec_object_define_own_prop_array_3l l newLen oldLen newLenDesc newWritable throw) o;
+
+     runs_type_correct_array_join_elements : forall S C l k length sep s o, 
+       runs_type_array_join_elements runs S C l k length sep s = result_some (specret_out o) ->
+       red_expr S C (spec_call_array_proto_join_elements l k length sep s) o
   }.
 
 
@@ -217,6 +226,15 @@ Proof. introv. destruct args as [|? [|? ?]]; do 3 constructors. Qed.
 Lemma get_arg_correct_2 : forall args,
   arguments_from args (get_arg 0 args :: get_arg 1 args :: get_arg 2 args :: nil).
 Proof. introv. destruct args as [|? [|? [|? ?]]]; do 4 constructors. Qed.
+
+Lemma get_arg_first_and_rest_correct : forall args v lv,
+  (v, lv) = get_arg_first_and_rest args <-> 
+  arguments_first_and_rest args (v, lv).
+Proof.
+  induction args; introv; splits; introv Hyp; 
+  unfolds get_arg_first_and_rest; unfolds get_arg; 
+  simpls; inverts~ Hyp.
+Qed.
 
 Lemma and_impl_left : forall P1 P2 P3 : Prop,
   (P1 -> P2) ->
@@ -2575,6 +2593,8 @@ Proof.
   discriminate.
   (* prealloc_array_proto_to_string *)
   discriminate.
+  (* prealloc_array_proto_join *)
+  discriminate.
   (* prealloc_array_proto_pop *)
   discriminate.
   (* prealloc_array_proto_push *)
@@ -3953,6 +3973,37 @@ Proof.
     applys* IHargs.
 Qed.
 
+Lemma vtsfj_correct : forall runs S C l index sR,
+  runs_type_correct runs ->
+  valueToStringForJoin runs S C l index = result_some sR ->
+  red_spec S C (spec_call_array_proto_join_vtsfj l index) sR.
+Proof.
+  introv IH HR. unfolds in HR.
+  run red_spec_call_array_proto_join_vtsfj. 
+  run red_spec_call_array_proto_join_vtsfj_1 using run_object_get_correct.
+  destruct v as [p | loc].
+  + destruct p; try solve [inverts HR; applys* red_spec_call_array_proto_join_vtsfj_2_undef_null];
+    run* red_spec_call_array_proto_join_vtsfj_2_other; try solve [intuition; inverts H0]; 
+    applys* red_spec_call_array_proto_join_vtsfj_3.
+  + run* red_spec_call_array_proto_join_vtsfj_2_other; try solve [intuition; inverts H0]; 
+    applys* red_spec_call_array_proto_join_vtsfj_3.
+Qed.
+
+Lemma run_array_join_elements_correct : forall runs S C l k length sep sR o,
+  runs_type_correct runs -> 
+  run_array_join_elements runs S C l k length sep sR = o ->
+  red_expr S C (spec_call_array_proto_join_elements l k length sep sR) o.
+Proof.
+  introv IH HR. unfolds in HR. cases_if*.
+  + repeat let_name; subst.
+    applys* red_spec_call_array_proto_join_elements_continue.
+    run* red_spec_call_array_proto_join_elements_1 using vtsfj_correct. 
+    let_name; subst.
+    apply red_spec_call_array_proto_join_elements_2.
+    applys* runs_type_correct_array_join_elements.
+  + inverts HR. applys* red_spec_call_array_proto_join_elements_exit.
+Qed.
+
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
   run_call_prealloc runs S C B vthis args = o ->
@@ -4108,36 +4159,37 @@ Proof.
   discriminate.
 
   (* prealloc_function_proto_apply *)
-  destruct vthis as [p | func]. 
-    destruct args; inverts HR as HR; destruct args; inverts HR.
-    destruct args as [ | thisArg]; inverts HR as HR; 
-    destruct args as [ | argArray]; [inverts HR | ]; cases_if*. 
-      destruct argArray as [p | array]; 
-      [destruct p; try solve [inverts HR] | ]; 
-      try applys* red_spec_function_apply_1_2;
-      try solve [applys* red_spec_function_apply_2; 
-                 applys* runs_type_correct_call].
-      run~ red_spec_function_apply_4 using run_object_get_correct.
-      run red_spec_function_apply_5.
-      run red_spec_function_apply_6 using run_function_proto_apply_get_args_correct. 
-      apply red_spec_function_apply_7. applys* runs_type_correct_call.
-      applys* red_spec_function_apply_1.
+  repeat let_name.
+  cases_if*; [ | applys* red_spec_function_apply_1].
+  destruct vthis as [p | func]; [inverts i; inverts H | ]. 
+  applys* red_spec_function_apply_1_2; [apply get_arg_correct_1 | substs].
+  destruct (get_arg 1 args) as [p | array].
+  destruct p;
+    try solve [apply runs_type_correct_call in HR; auto;
+               applys* red_spec_function_apply_2];
+    try solve [apply red_spec_function_apply_3 with (array := func); [splits; discriminate | applys* run_error_correct]].
+  run~ red_spec_function_apply_4 using run_object_get_correct.
+  run red_spec_function_apply_5.
+  run red_spec_function_apply_6 using run_function_proto_apply_get_args_correct. 
+  apply red_spec_function_apply_7. applys* runs_type_correct_call.
 
   (* prealloc_function_proto_call *)
-  destruct vthis. inverts HR. cases_if*. 
-  destruct args. inverts HR.
+  cases_if*; [ | applys* red_spec_call_function_not_callable].
+  destruct vthis as [p | l]; [inverts i; inverts H |].
+  remember (get_arg_first_and_rest args) as gargs; destruct gargs.
   applys* red_spec_call_function_callable.
+  rewrite* <- get_arg_first_and_rest_correct.
   applys* runs_type_correct_call.
-  applys* red_spec_call_function_not_callable.
 
   (* prealloc_function_proto_bind *)
+  cases_if*; [ | applys* red_spec_function_bind_1].
   destruct vthis as [p | this]; [inverts HR | ].
-  applys* red_spec_function_bind_1.
-  case_if*. destruct args; [inverts HR | ]. 
-  destruct v as [p | thisArg]; [inverts HR | ]. 
-  applys* red_spec_function_bind_2_true.
-  repeat let_simpl; match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end;
-  destruct X as (l & S'); inversion HR. 
+  remember (get_arg_first_and_rest args) as gargs; destruct gargs as (thisArg & A).
+  applys* red_spec_function_bind_2.
+  rewrite* <- get_arg_first_and_rest_correct.
+  repeat let_simpl; 
+  match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end;
+  destruct X as (l & S').  
   applys* red_spec_function_bind_3.
   let_name. subst. run red_spec_function_bind_4.
   run. cases_if*; subst; apply run_object_method_correct in E.
@@ -4147,15 +4199,14 @@ Proof.
   applys* red_spec_function_bind_length_3_zero.
   applys* red_spec_function_bind_length_3_L.
   inverts R1. applys* red_spec_function_bind_length_false.
-  repeat let_name. repeat rewrite R1 in *. subst vlength. clear R1 HR. 
-  run; rename x into S''. repeat let_name.
-  forwards B: @pick_option_correct (rm E).
+  repeat let_name. 
+  run; rename x into S''. run. repeat let_name.
+  forwards B: @pick_option_correct (rm E0).
   applys* red_spec_function_bind_5.
-  applys* red_spec_function_bind_6. rewrite* <- EQA. substs.
+  applys* red_spec_function_bind_6. rewrite* <- EQA0. substs.
   run* red_spec_function_bind_7. 
   run* red_spec_function_bind_8. 
   apply red_spec_function_bind_9.
-  applys* red_spec_function_bind_2_false.
 
   (* prealloc_bool *)
   inverts HR. apply~ red_spec_call_bool.
@@ -4191,10 +4242,11 @@ Proof.
   applys* red_spec_call_to_construct_array. auto.
 
   (* prealloc_array_is_array *)
-  destruct args; [inverts HR | ].
-  applys* red_spec_call_array_is_array_prep_1.
-  destruct v. 
-    inverts HR. applys* red_spec_call_array_is_array_1. discriminate.
+  let_name. applys* red_spec_call_array_is_array_prep_1.
+  applys* get_arg_correct_0.
+  destruct arg. 
+    inverts HR. applys* red_spec_call_array_is_array_1. 
+    rewrite <- EQarg. discriminate.
     run. apply run_object_method_correct in E. 
     applys* red_spec_call_array_is_array_prep_2_3.
     cases_if*; inverts HR.
@@ -4205,7 +4257,32 @@ Proof.
   discriminate.
 
   (* prealloc_array_proto_to_string *)
-  discriminate.
+  run red_spec_call_array_proto_to_string using to_object_correct.
+  run red_spec_call_array_proto_to_string_1 using run_object_get_correct.
+  cases_if*. 
+  destruct v as [p | array]; inverts HR.
+  applys* red_spec_call_array_proto_to_string_2_true.
+  applys* runs_type_correct_call.
+  applys* red_spec_call_array_proto_to_string_2_false.
+  applys* runs_type_correct_call_prealloc.
+  
+  (* prealloc_array_proto_join *)
+  let_name; subst.
+  run red_spec_call_array_proto_join using to_object_correct.
+  run red_spec_call_array_proto_join_1 using run_object_get_correct.
+  run red_spec_call_array_proto_join_2. let_name; subst.
+  applys* red_spec_call_array_proto_join_3. 
+  apply get_arg_correct_0. cases_if*.
+  run~ red_spec_call_array_proto_join_3_other.
+  cases_if*. inverts HR. applys* red_spec_call_array_proto_join_4.
+  let_name; subst.
+  run~ red_spec_call_array_proto_join_5 using vtsfj_correct. 
+  apply red_spec_call_array_proto_join_6. applys* run_array_join_elements_correct.
+  run~ red_spec_call_array_proto_join_3_undef.
+  cases_if*. inverts HR. applys* red_spec_call_array_proto_join_4.
+  let_name; subst.
+  run~ red_spec_call_array_proto_join_5 using vtsfj_correct. 
+  apply red_spec_call_array_proto_join_6. applys* run_array_join_elements_correct.
 
   (* prealloc_array_proto_pop *)
   run red_spec_call_array_proto_pop using to_object_correct. 
@@ -4473,6 +4550,7 @@ Proof.
      introv. apply~ run_stat_correct.
      introv. apply~ run_prog_correct.
      introv. apply~ run_call_correct.
+     introv. apply~ run_call_prealloc_correct.
      introv. apply~ run_construct_correct.
      introv. apply~ run_function_has_instance_correct.
      introv. apply~ run_function_proto_apply_get_args_correct.
@@ -4509,5 +4587,5 @@ Corollary run_javascript_correct_num : forall num p o,
 Proof.
   introv IH. applys~ run_javascript_correct IH.
   apply~ runs_correct.
-Qed.
+Qed. 
 

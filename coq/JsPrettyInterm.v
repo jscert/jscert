@@ -415,9 +415,8 @@ Inductive ext_expr :=
 
   (* Function.prototype.bind *)
 
-  | spec_function_proto_bind : object_loc -> list value -> ext_expr
-  | spec_function_proto_bind_1 : object_loc -> object_loc -> list value -> ext_expr
-  | spec_function_proto_bind_2 : object_loc -> object_loc -> list value -> ext_expr
+  | spec_function_proto_bind_1 : object_loc -> value -> list value -> ext_expr
+  | spec_function_proto_bind_2 : object_loc -> value -> list value -> ext_expr
   | spec_function_proto_bind_3 : object_loc -> specret int -> ext_expr
   | spec_function_proto_bind_4 : object_loc -> int -> ext_expr
   | spec_function_proto_bind_5 : object_loc -> ext_expr
@@ -567,6 +566,20 @@ Inductive ext_expr :=
 
   | spec_call_array_is_array_1 : value -> ext_expr
   | spec_call_array_is_array_2_3 : class_name -> ext_expr
+
+  | spec_call_array_proto_to_string : out -> ext_expr
+  | spec_call_array_proto_to_string_1 : object_loc -> out -> ext_expr
+
+  | spec_call_array_proto_join   : out -> list value -> ext_expr 
+  | spec_call_array_proto_join_1 : object_loc -> out -> list value -> ext_expr 
+  | spec_call_array_proto_join_2 : object_loc -> specret int -> list value -> ext_expr
+  | spec_call_array_proto_join_3 : object_loc -> int -> value -> ext_expr
+  | spec_call_array_proto_join_4 : object_loc -> int -> out -> ext_expr
+  | spec_call_array_proto_join_5 : object_loc -> int -> string -> specret string -> ext_expr
+
+  | spec_call_array_proto_join_elements : object_loc -> int -> int -> string -> string -> ext_expr
+  | spec_call_array_proto_join_elements_1 : object_loc -> int -> int -> string -> string -> ext_expr
+  | spec_call_array_proto_join_elements_2 : object_loc -> int -> int -> string -> string -> specret string -> ext_expr
 
   | spec_call_array_proto_pop_1 : out -> ext_expr
   | spec_call_array_proto_pop_2 : object_loc -> out -> ext_expr
@@ -826,8 +839,14 @@ with ext_spec :=
   | spec_function_proto_bind_length_1 : object_loc -> list value -> ext_spec
   | spec_function_proto_bind_length_2 : list value -> out -> ext_spec
   | spec_function_proto_bind_length_3 : specret int -> list value -> ext_spec
-.
 
+  (* Conversion for Array.prototype.join *)
+
+  | spec_call_array_proto_join_vtsfj : object_loc -> int -> ext_spec
+  | spec_call_array_proto_join_vtsfj_1 : object_loc -> out -> ext_spec
+  | spec_call_array_proto_join_vtsfj_2 : object_loc -> out -> ext_spec
+  | spec_call_array_proto_join_vtsfj_3 : out -> ext_spec
+.
 
 (** Coercions *)
 
@@ -1227,7 +1246,6 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_function_proto_apply_2 _ _ _ y => out_of_specret y
   | spec_function_proto_apply_3 _ _ y => out_of_specret y
 
-  | spec_function_proto_bind _ _ => None 
   | spec_function_proto_bind_1 _ _ _ => None 
   | spec_function_proto_bind_2 _ _ _ => None 
   | spec_function_proto_bind_3 _ y => out_of_specret y 
@@ -1343,6 +1361,20 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   
   | spec_call_array_is_array_1 _ => None
   | spec_call_array_is_array_2_3 _ => None
+
+  | spec_call_array_proto_join   o _ => Some o 
+  | spec_call_array_proto_join_1 _ o _ => Some o 
+  | spec_call_array_proto_join_2 _ y _ => out_of_specret y
+  | spec_call_array_proto_join_3 _ _ _ => None
+  | spec_call_array_proto_join_4 _ _ o => Some o
+  | spec_call_array_proto_join_5 _ _ _ y => out_of_specret y
+
+  | spec_call_array_proto_join_elements _ _ _ _ _ => None
+  | spec_call_array_proto_join_elements_1 _ _ _ _ _ => None
+  | spec_call_array_proto_join_elements_2 _ _ _ _ _ y => out_of_specret y
+
+  | spec_call_array_proto_to_string o => Some o
+  | spec_call_array_proto_to_string_1 _ o => Some o
 
   | spec_call_array_proto_pop_1 o => Some o
   | spec_call_array_proto_pop_2 _ o => Some o
@@ -1549,6 +1581,10 @@ Definition out_of_ext_spec (es : ext_spec) : option out :=
   | spec_function_proto_bind_length_1 _ _ => None
   | spec_function_proto_bind_length_2 _ o => Some o
   | spec_function_proto_bind_length_3 y _ => out_of_specret y
+  | spec_call_array_proto_join_vtsfj _ _ => None
+  | spec_call_array_proto_join_vtsfj_1 _ o => Some o 
+  | spec_call_array_proto_join_vtsfj_2 _ o => Some o 
+  | spec_call_array_proto_join_vtsfj_3 o => Some o 
   end.
 
 
@@ -1658,6 +1694,12 @@ Inductive arguments_from : list value -> list value -> Prop :=
       arguments_from Vs1 Vs2 ->
       arguments_from (v::Vs1) (v::Vs2).
 
+Inductive arguments_first_and_rest : list value -> (value * list value) -> Prop :=
+ | arguments_f_a_r_from_nil  : arguments_first_and_rest nil (undef, nil)
+ | arguments_f_a_r_from_cons : forall v lv, 
+     arguments_first_and_rest (v :: lv) (v, lv).
+
+Hint Constructors arguments_first_and_rest.
 
 (**************************************************************)
 (** ** Rules for delete_events. *)

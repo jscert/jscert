@@ -372,6 +372,8 @@ Definition array_is_array_function_object :=
 
 Definition object_prealloc_array_proto :=
   let P := Heap.empty in
+  let P := write_native P "toString" prealloc_array_proto_to_string in
+  let P := write_native P "join" prealloc_array_proto_join in
   let P := write_native P "pop" prealloc_array_proto_pop in
   let P := write_native P "push" prealloc_array_proto_push in
   let P := write_constant P "length" 0 in 
@@ -383,6 +385,12 @@ Definition array_proto_pop_function_object :=
 
 Definition array_proto_push_function_object :=
   object_create_prealloc_call prealloc_array_proto_push 1 Heap.empty.
+
+Definition array_proto_to_string_function_object :=
+  object_create_prealloc_call prealloc_array_proto_to_string 0 Heap.empty.
+
+Definition array_proto_join_function_object :=
+  object_create_prealloc_call prealloc_array_proto_join 1 Heap.empty.
 
 (**************************************************************)
 (** String object *)
@@ -578,6 +586,8 @@ Definition object_heap_initial_function_objects_4 (h : Heap.heap object_loc obje
   (* Function objects of Array.prototype *)
   let h := Heap.write h prealloc_array_is_array array_is_array_function_object in
   (* Function objects of Array.prototype *)
+  let h := Heap.write h prealloc_array_proto_to_string array_proto_to_string_function_object in
+  let h := Heap.write h prealloc_array_proto_join array_proto_join_function_object in
   let h := Heap.write h prealloc_array_proto_pop array_proto_pop_function_object in
   let h := Heap.write h prealloc_array_proto_push array_proto_push_function_object in
 
