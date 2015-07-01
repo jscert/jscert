@@ -4569,6 +4569,7 @@ Proof.
      introv. apply~ to_string_correct.
      introv. apply~ run_array_element_list_correct.
      introv Hyp. apply~ run_object_define_own_prop_array_loop_correct.
+     introv. apply~ run_array_join_elements_correct.
 Qed.
 
 Theorem run_javascript_correct : forall runs p o,
