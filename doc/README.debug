@@ -91,7 +91,24 @@ as p.
 browse large data structures without printing them in full. display can be
 abbreviated as d.
 
+To display the state, you need to load a custom printer. To this end, do
+    source "interp/load_prtest"
+in the debugger
 
+________________________________________________________________________________
+To run into Emacs
+
+- launch ocamldebug (M-x ocamldebug) then choose the interp/run_js.byte
+  program and the default debugging program
+- run the following list of instructions in the debugging buffer, where XXX is
+  name of the file to run (relative to the root directory of the repo)
+    cd ..
+    directory interp/src/extract
+    directory interp/src
+    directory interp
+    set arguments -jsparser interp/parser/lib/js_parser.jar -test_prelude interp/test_prelude.js -file XXX
+
+You may then proceed as usual, and code being debugged should be shown.
 
 ********************************************************************************
 A SHORT EXAMPLE:
