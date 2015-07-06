@@ -105,7 +105,7 @@ default: coq interpreter tags
 all: default interp/run_jsbisect interp/run_jstrace
 
 debug: OCAMLBUILDFLAGS+=-tag debug
-debug: default interp/run_js.byte
+debug: default interp/run_js.byte interp/prtest.cmo
 
 report:
 	bisect-report -html report bisect*.out
