@@ -3857,19 +3857,909 @@ Proof.
       applys* red_spec_entering_func_code_1_object.
 Admitted. (* faster *)
 
+Lemma if_spec_throw_result : forall S K, if_spec (@throw_result descriptor (run_error S native_error_type)) K = @throw_result descriptor (run_error S native_error_type).
+Proof.
+  intros. repeat unfolds.
+  remember (run_error S native_error_type) as Error.
+  unfolds run_error. unfolds if_object.
+  unfolds if_value. unfolds if_success. unfolds if_ter.
+  unfolds if_out_some. unfolds if_result_some. unfolds build_error. 
+  cases_if*; rewrite decide_def in H; cases_if*; clear H.
+  remember (object_alloc S (object_new (prealloc_native_error_proto native_error_type) "Error")) as O.
+  destruct O as (l & S'). simpls.
+  unfolds if_empty_label.
+  cases_if*. subst. simpls. cases_if*.
+Qed.
+
 Lemma run_to_descriptor_correct : forall runs S C v y,
   runs_type_correct runs ->
   run_to_descriptor runs S C v = result_some y ->
   red_spec S C (spec_to_descriptor v) y.
 Proof.
-  introv IH HR. unfolds in HR.
-  destruct v as [p|l].
-   apply~ red_spec_to_descriptor_not_object.
-    (* apply~ run_error_correct.
-    destruct p; discriminate. *)
-   skip. (* Is it [spec_error_spec] or [spec_error]? *)
-  skip. (* TODO! *)
-Qed.
+  introv IH HR. unfold run_to_descriptor in HR.
+  destruct v as [p | l]. 
+
+  apply~ red_spec_to_descriptor_not_object.
+  applys* throw_result_run_error_correct.
+
+  applys* red_spec_to_descriptor_object.
+  run red_spec_to_descriptor_1a using object_has_prop_correct.
+  cases_if*; destruct b; inverts H.
+  + apply red_spec_to_descriptor_1b_false.
+    run red_spec_to_descriptor_2a using object_has_prop_correct.
+    cases_if*; destruct b; inverts H.
+    - apply red_spec_to_descriptor_2b_false.
+      run red_spec_to_descriptor_3a using object_has_prop_correct.
+      cases_if*; destruct b; inverts H.
+      * apply red_spec_to_descriptor_3b_false.
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+        }
+      * run red_spec_to_descriptor_3b_true using run_object_get_correct.
+        simpls. applys* red_spec_to_descriptor_3c. 
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+        }
+    - run red_spec_to_descriptor_2b_true using run_object_get_correct.
+      simpls. applys* red_spec_to_descriptor_2c.
+      run red_spec_to_descriptor_3a using object_has_prop_correct.
+      cases_if*; destruct b; inverts H.
+      * apply red_spec_to_descriptor_3b_false.
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+        }
+      * run red_spec_to_descriptor_3b_true using run_object_get_correct.
+        simpls. applys* red_spec_to_descriptor_3c. 
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+         }
+  + run red_spec_to_descriptor_1b_true using run_object_get_correct.
+    simpls. applys* red_spec_to_descriptor_1c.
+    run red_spec_to_descriptor_2a using object_has_prop_correct.
+    cases_if*; destruct b; inverts H.
+    - apply red_spec_to_descriptor_2b_false.
+      run red_spec_to_descriptor_3a using object_has_prop_correct.
+      cases_if*; destruct b; inverts H.
+      * apply red_spec_to_descriptor_3b_false.
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+        }
+      * run red_spec_to_descriptor_3b_true using run_object_get_correct.
+        simpls. applys* red_spec_to_descriptor_3c. 
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+        }
+    - run red_spec_to_descriptor_2b_true using run_object_get_correct.
+      simpls. applys* red_spec_to_descriptor_2c.
+      run red_spec_to_descriptor_3a using object_has_prop_correct.
+      cases_if*; destruct b; inverts H.
+      * apply red_spec_to_descriptor_3b_false.
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+        }
+      * run red_spec_to_descriptor_3b_true using run_object_get_correct.
+        simpls. applys* red_spec_to_descriptor_3c. 
+        run red_spec_to_descriptor_4a using object_has_prop_correct.
+        { 
+          cases_if*; destruct b; inverts H.
+          + apply red_spec_to_descriptor_4b_false.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+          + run red_spec_to_descriptor_4b_true using run_object_get_correct.
+            simpls. applys* red_spec_to_descriptor_4c.
+            run red_spec_to_descriptor_5a using object_has_prop_correct.
+            cases_if*; destruct b; inverts H.
+            - apply red_spec_to_descriptor_5b_false.
+              run red_spec_to_descriptor_6a using object_has_prop_correct.
+              cases_if*; destruct b; inverts H.
+              * apply red_spec_to_descriptor_6b_false.
+                { 
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+              * run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                {
+                  cases_if*.
+                  rewrite if_spec_throw_result in *.
+                  applys* red_spec_to_descriptor_6c_error.
+                  applys* throw_result_run_error_correct.
+                  simpls. applys* red_spec_to_descriptor_6c_ok.
+                  cases_if*. 
+                  + applys~ red_spec_to_descriptor_7_error.
+                    applys* throw_result_run_error_correct.
+                  + unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+            - run red_spec_to_descriptor_5b_true using run_object_get_correct.
+              cases_if*.
+              * rewrite if_spec_throw_result in *.
+                applys* red_spec_to_descriptor_5c_error.
+                applys* throw_result_run_error_correct.
+              * simpls. applys* red_spec_to_descriptor_5c_ok.
+                run red_spec_to_descriptor_6a using object_has_prop_correct.
+                {
+                  cases_if*; destruct b; inverts H.
+                  + apply red_spec_to_descriptor_6b_false.
+                    cases_if*. 
+                    - applys~ red_spec_to_descriptor_7_error.
+                      applys* throw_result_run_error_correct.
+                    - unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                  + run red_spec_to_descriptor_6b_true using run_object_get_correct.
+                    cases_if*.
+                    - rewrite if_spec_throw_result in *.
+                      applys* red_spec_to_descriptor_6c_error.
+                      applys* throw_result_run_error_correct.
+                    - simpls. applys* red_spec_to_descriptor_6c_ok.
+                      cases_if*. 
+                      * applys~ red_spec_to_descriptor_7_error.
+                        applys* throw_result_run_error_correct.
+                      * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
+                }
+         }             
+Admitted. (* Faster *)
+
 
 Lemma run_object_freeze_correct : forall runs S C l xs o,
   runs_type_correct runs ->

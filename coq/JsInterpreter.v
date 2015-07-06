@@ -431,6 +431,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                  object_define_own_prop_write S1 A
                else ifb attributes_is_data A <> descriptor_is_data Desc then
                  (* LATER: restore version with negation:
+
                  if neg (attributes_configurable A) then
                    reject S1
                  else
@@ -589,7 +590,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
 Definition run_to_descriptor runs S C v : specres descriptor :=
   match v with
   | value_prim _ =>
-    run_error S native_error_type
+    throw_result (run_error S native_error_type)
   | value_object l =>
     let sub S Desc name conv K :=
       if_bool (object_has_prop runs S C l name) (fun S1 has =>
@@ -611,18 +612,16 @@ Definition run_to_descriptor runs S C v : specres descriptor :=
                   res_spec S4 (descriptor_with_writable Desc (Some b))) (fun S4' Desc =>
                     sub S4' Desc "get" (fun S5 v5 Desc =>
                       ifb (is_callable S5 v5 = false) /\ v5 <> undef then
-                        res_spec S5 (descriptor_with_get Desc (Some v5))
-                      else run_error S5 native_error_type) (fun S5' Desc =>
+                        throw_result (run_error S5 native_error_type)
+                      else res_spec S5 (descriptor_with_get Desc (Some v5))) (fun S5' Desc =>
                         sub S5' Desc "set" (fun S6 v6 Desc =>
                           ifb (is_callable S6 v6 = false) /\ v6 <> undef then
-                            res_spec S6 (descriptor_with_set Desc (Some v6))
-                          else run_error S6 native_error_type) (fun S7 Desc =>
+                            throw_result (run_error S6 native_error_type)
+                          else res_spec S6 (descriptor_with_set Desc (Some v6))) (fun S7 Desc =>
                             ifb descriptor_inconsistent Desc then
-                              run_error S7 native_error_type
+                              throw_result (run_error S7 native_error_type)
                             else res_spec S7 Desc))))))
-
-  end.
-
+end.
 
 (**************************************************************)
 (** Conversions *)
