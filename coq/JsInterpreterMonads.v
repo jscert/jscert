@@ -85,6 +85,8 @@ Implicit Arguments result_bottom [[T]].
   where it has been proven impossible to get it under normal condition.
   See [JsCorrectness.v] for more details. *)
 
+Definition not_yet_implemented_because {T} s : resultof T := result_not_yet_implemented.
+
 Definition impossible_because {T} s : resultof T := result_impossible.
 
 Definition impossible_with_heap_because {T} S s : resultof T := result_impossible.

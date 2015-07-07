@@ -216,11 +216,14 @@ Extract Constant parse_pickable => "(fun s strict ->
 
 
 (* Debugging *)
-Extract Constant impossible_because => "(fun s ->
-  print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
+Extract Inlined Constant not_yet_implemented_because => "(fun s ->
+  print_endline (__LOC__ ^ "": Not implemented because: "" ^ Prheap.string_of_char_list s) ;
+  Coq_result_not_yet_implemented)".
+Extract Inlined Constant impossible_because => "(fun s ->
+  print_endline (__LOC__ ^ "": Stuck because: "" ^ Prheap.string_of_char_list s) ;
   Coq_result_impossible)".
-Extract Constant impossible_with_heap_because => "(fun s message ->
-  print_endline (""Stuck!\nState:  "" ^ Prheap.prstate true s
+Extract Inlined Constant impossible_with_heap_because => "(fun s message ->
+  print_endline (__LOC__ ^ "": Stuck!\nState:  "" ^ Prheap.prstate true s
     ^ ""\nMessage:\t"" ^ Prheap.string_of_char_list message) ;
   Coq_result_impossible)".
 

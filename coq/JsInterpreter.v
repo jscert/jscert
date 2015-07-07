@@ -80,7 +80,7 @@ Definition build_error S vproto vmsg : result :=
   let O := object_new vproto "Error" in
   let '(l, S') := object_alloc S O in
   ifb vmsg = undef then out_ter S' l
-  else result_not_yet_implemented (* LATER:  Need [to_string] (this function shall be put in [runs_type].) *).
+  else not_yet_implemented_because "Need [to_string] (this function shall be put in [runs_type].)" (* LATER *).
 
 Definition run_error T S ne : specres T :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
@@ -897,7 +897,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     call_object_new S v
 
   | prealloc_function =>
-    result_not_yet_implemented (* LATER:  Waiting for specification *)
+    not_yet_implemented_because "prealloc_function: Waiting for specification" (* LATER *)
 
   | prealloc_bool =>
     'let v := get_arg 0 args in
@@ -929,7 +929,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
       out_ter S l)
 
   | prealloc_string =>
-    result_not_yet_implemented (* LATER:  Waiting for specification *)
+    not_yet_implemented_because "prealloc_string: Waiting for specification" (* LATER *)
 
   | prealloc_error =>
     'let v := get_arg 0 args in
@@ -1320,7 +1320,7 @@ Definition run_object_has_instance runs B S C l v : result :=
     end
 
   | builtin_has_instance_after_bind =>
-    result_not_yet_implemented (* LATER:  Waiting for the specification *)
+    not_yet_implemented_because "builting_has_instance_after_bind: Waiting for the specification" (* LATER *)
 
   end.
 
@@ -2207,10 +2207,10 @@ Definition run_stat runs S C t : result :=
     run_stat_for_var runs S C ls ds eo2 eo3 s
 
   | stat_for_in ls e1 e2 s =>
-    result_not_yet_implemented (* LATER *)
+    not_yet_implemented_because "stat_for_in" (* LATER *)
 
   | stat_for_in_var ls x e1o e2 s =>
-    result_not_yet_implemented (* LATER *)
+    not_yet_implemented_because "stat_for_in_var" (* LATER *)
 
   | stat_debugger =>
     out_ter S res_empty
@@ -2585,7 +2585,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
           push runs S C l args ilen)))
 
   | _ =>
-    result_not_yet_implemented (* LATER *)
+    not_yet_implemented_because "_ match" (* LATER *)
 
   end.
 
