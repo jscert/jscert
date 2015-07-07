@@ -3940,6 +3940,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
        red_expr S C (spec_function_has_instance_3 lo lv) o
 
   (*-------------------------------------------------------------*)
+  (** ** Function.prototype.toString (15.3.4.2)                  *)
+  
+   | red_spec_function_proto_to_string_not_callable : forall S C vthis args o,
+       ~ is_callable S vthis ->
+       red_expr S C (spec_error native_error_type) o -> 
+       red_expr S C (spec_call_prealloc prealloc_function_proto_to_string vthis args) o
+
+  (*-------------------------------------------------------------*)
   (** ** Function.prototype.apply (15.3.4.3)                     *)
 
    | red_spec_function_apply_1 : forall S C vthis o args, (* Step 1 *)

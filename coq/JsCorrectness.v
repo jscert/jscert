@@ -5046,7 +5046,7 @@ Proof.
   inverts HR. apply red_spec_call_function_proto_invoked.
 
   (* prealloc_function_proto_to_string *)
-  discriminate.
+  cases_if*. applys* red_spec_function_proto_to_string_not_callable.
 
   (* prealloc_function_proto_apply *)
   repeat let_name.

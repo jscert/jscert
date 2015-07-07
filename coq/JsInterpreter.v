@@ -2842,6 +2842,11 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         if_spec (to_uint32 runs S C vlen) (fun S ilen =>
           push runs S C l args ilen)))
 
+  | prealloc_function_proto_to_string =>
+    ifb (is_callable S vthis)
+      then not_yet_implemented_because "Function.prototype.toString() is implementation dependent."
+      else run_error S native_error_type
+
   | prealloc_function_proto_apply =>
     'let thisArg  := get_arg 0 args in
     'let argArray := get_arg 1 args in 
