@@ -242,6 +242,8 @@ interp/%.byte: extract_interpreter %.ml
 	cd interp && $(OCAMLBUILD) -use-ocamlfind $(OCAMLBUILDFLAGS) $(@F)
 interp/%.native: extract_interpreter %.ml
 	cd interp && $(OCAMLBUILD) -use-ocamlfind $(OCAMLBUILDFLAGS) $(@F)
+interp/%.cmo: %.ml
+	cd interp && $(OCAMLBUILD) -use-ocamlfind $(OCAMLBUILDFLAGS) $(@F)
 
 .PRECIOUS: interp/%.native
 interp/%: interp/%.native
