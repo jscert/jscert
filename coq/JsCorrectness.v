@@ -5135,7 +5135,7 @@ Proof.
   let_name. applys* red_spec_call_array_is_array_prep_1.
   applys* get_arg_correct_0.
   destruct arg. 
-    inverts HR. applys* red_spec_call_array_is_array_1. 
+    inverts HR. apply red_spec_call_array_is_array_1 with (l := object_loc_normal 0). 
     rewrite <- EQarg. discriminate.
     run. apply run_object_method_correct in E. 
     applys* red_spec_call_array_is_array_prep_2_3.
