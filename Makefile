@@ -187,12 +187,18 @@ nofast: $(FAST_VO:.vo=_full.vo)
 
 coq: $(JS_VO)
 
-patch_proof:
+ifeq (proof,$(MAKECMDGOALS))
+$(JS_SRC): proof.patched
+endif
+
+proof.patched:
 	@echo -e "\e[1;41;5mWARNING! WARNING!\e[0m This command modifies files in coq/"
 	tools/runcheck.py patch
+	touch proof.patched
 
 proof: COQFLAGS=
-proof: patch_proof coq
+proof: proof.patched coq
+	rm -f proof.patched
 
 # Interpreter extraction spits out lots of *.ml,mli files
 # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
