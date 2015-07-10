@@ -20,7 +20,7 @@ MOD_SUBMODULES=$(git diff --cached --name-only | grep -F "$SUBMODULES")
 if [[ -n "$MOD_SUBMODULES" ]]; then
     echo "The following modified submodules are about to be committed:"
     echo "$MOD_SUBMODULES"
-    echo -n "Continue with commit? [n] "
+    echo -n "Continue with commit? y/[n] "
     read -n 1 reply </dev/tty
     echo
     if [[ "$reply" == "y" || "$reply" == "Y" ]]; then
