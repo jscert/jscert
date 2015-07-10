@@ -133,9 +133,10 @@ install_optional_depend: install_depend
 # EXTERNAL LIBRARIES: TLC and Flocq
 
 init:
-	git submodule init; git submodule update
-	tar -xzf lib/flocq-2.1.0.tar.gz
-	mv flocq-2.1.0 lib/flocq
+	tools/git-hooks/install.sh .
+	git submodule update --init
+	mkdir -p lib/flocq
+	tar -xzf lib/flocq-2.1.0.tar.gz -C lib/flocq --strip-components 1
 # alternative: pull git from svn
 #	git clone https://gforge.inria.fr/git/flocq/flocq.git flocq
 
