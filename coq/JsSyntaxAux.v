@@ -272,12 +272,15 @@ Definition prealloc_compare bl1 bl2 :=
   | prealloc_string_proto_char_code_at, prealloc_string_proto_char_code_at => true
   | prealloc_math, prealloc_math => true
   | prealloc_mathop m1, prealloc_mathop m2 => decide (m1 = m2)
+  | prealloc_date, prealloc_date => true
+  | prealloc_regexp, prealloc_regexp => true
   | prealloc_error, prealloc_error => true
   | prealloc_error_proto, prealloc_error_proto => true
   | prealloc_native_error ne1, prealloc_native_error ne2 => decide (ne1 = ne2)
   | prealloc_native_error_proto ne1, prealloc_native_error_proto ne2 => decide (ne1 = ne2)
   | prealloc_error_proto_to_string, prealloc_error_proto_to_string => true
   | prealloc_throw_type_error, prealloc_throw_type_error => true
+  | prealloc_json, prealloc_json => true
   | _,_ => false
   end.
 

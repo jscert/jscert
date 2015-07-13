@@ -1082,12 +1082,15 @@ match B with
   | prealloc_string_proto_char_code_at=> "string_proto_char_code_at"
   | prealloc_math => "math"
   | prealloc_mathop _ => "mathop"
+  | prealloc_date => "date"
+  | prealloc_regexp => "regexp"
   | prealloc_error => "error"
   | prealloc_error_proto => "error_proto"
   | prealloc_native_error _ => "native_error"
   | prealloc_native_error_proto _ => "native_error_proto"
   | prealloc_error_proto_to_string => "error_proto_to_string"
   | prealloc_throw_type_error => "throw_type_error"
+  | prealloc_json => "json"
 end.
 
 Definition run_construct_prealloc runs S C B (args : list value) : result :=
@@ -1096,9 +1099,6 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
   | prealloc_object =>
     'let v := get_arg 0 args in
     call_object_new S v
-
-  | prealloc_function =>
-    not_yet_implemented_because "prealloc_function: Waiting for specification" (* LATER *)
 
   | prealloc_bool =>
     'let v := get_arg 0 args in
@@ -1145,9 +1145,6 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
     else
       if_some (pick_option (object_set_property S' l "length" (attributes_data_intro (JsNumber.of_int arg_len) true false false))) (fun S =>
         if_void (array_args_map_loop runs S C l args 0) (fun S => res_ter S l))
-
-  | prealloc_string =>
-    not_yet_implemented_because "prealloc_string: Waiting for specification" (* LATER *)
 
   | prealloc_error =>
     'let v := get_arg 0 args in

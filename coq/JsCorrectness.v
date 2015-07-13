@@ -2615,6 +2615,10 @@ Proof.
   discriminate.
   (* prealloc_mathop *)
   discriminate.
+  (* prealloc_date *)
+  discriminate.
+  (* prealloc_regexp *)
+  discriminate.
   (* prealloc_error *)
   skip. (* TODO *)
   (* prealloc_error_proto *)
@@ -2626,6 +2630,8 @@ Proof.
   (* prealloc_error_proto_to_string *)
   discriminate.
   (* prealloc_throw_type_error *)
+  discriminate.
+  (* prealloc_json *)
   discriminate.
 Admitted. (*faster*)
 
@@ -5260,6 +5266,10 @@ Proof.
   discriminate.
   (* prealloc_mathop *)
   discriminate.
+  (* prealloc_date *)
+  discriminate.
+  (* prealloc_regexp *)
+  discriminate.     
   (* prealloc_error *)
   let_name. apply~ red_spec_call_error.
     apply~ get_arg_correct_0.
@@ -5275,6 +5285,8 @@ Proof.
   (* prealloc_throw_type_error *)
   apply~ red_spec_call_throw_type_error.
   apply* run_error_correct.
+  (* prealloc_json *)
+  discriminate.
 Admitted. (* faster *)
 
 Lemma run_call_correct : forall runs S C l v vs o,

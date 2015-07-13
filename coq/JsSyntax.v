@@ -290,12 +290,15 @@ Inductive prealloc :=
   | prealloc_string_proto_char_code_at (* LATER: support *)
   | prealloc_math (* not callable *)
   | prealloc_mathop : mathop -> prealloc
+  | prealloc_date
+  | prealloc_regexp
   | prealloc_error (* 15.11 *)
   | prealloc_error_proto (* 15.11.3.1 *)
   | prealloc_native_error : native_error -> prealloc (* 15.11.6 *)
   | prealloc_native_error_proto : native_error -> prealloc (* 15.11.7.7 *)
   | prealloc_error_proto_to_string
   | prealloc_throw_type_error (* 13.2.3 *)
+  | prealloc_json
   .
 
 (* Identifiers for "Callable" methods *)
