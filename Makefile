@@ -133,9 +133,10 @@ install_optional_depend: install_depend
 # EXTERNAL LIBRARIES: TLC and Flocq
 
 init:
-	git submodule init; git submodule update
-	tar -xzf lib/flocq-2.1.0.tar.gz
-	mv flocq-2.1.0 lib/flocq
+	tools/git-hooks/install.sh .
+	git submodule update --init
+	mkdir -p lib/flocq
+	tar -xzf lib/flocq-2.1.0.tar.gz -C lib/flocq --strip-components 1
 # alternative: pull git from svn
 #	git clone https://gforge.inria.fr/git/flocq/flocq.git flocq
 
@@ -187,12 +188,18 @@ nofast: $(FAST_VO:.vo=_full.vo)
 
 coq: $(JS_VO)
 
-patch_proof:
+ifeq (proof,$(MAKECMDGOALS))
+$(JS_SRC): proof.patched
+endif
+
+proof.patched:
 	@echo -e "\e[1;41;5mWARNING! WARNING!\e[0m This command modifies files in coq/"
 	tools/runcheck.py patch
+	touch proof.patched
 
 proof: COQFLAGS=
-proof: patch_proof coq
+proof: proof.patched coq
+	rm -f proof.patched
 
 # Interpreter extraction spits out lots of *.ml,mli files
 # The option [-dont-load-proof] would extract all instance to an axiom! -- Martin.
