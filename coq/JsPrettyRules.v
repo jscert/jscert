@@ -1562,13 +1562,13 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       (l, S') = object_alloc S O ->
       red_expr S C (spec_prim_new_object (prim_number n)) (out_ter S' l)
 
-  | red_spec_prim_new_object_string : forall S C s S' l,
+  | red_spec_prim_new_object_string : forall S C s S' S'' l,
       let O2 := object_new prealloc_string_proto "String" in
       let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
       let O := object_with_primitive_value O1 s in
-      (* TODO: We should do something about the "length" property. *)
       (l, S') = object_alloc S O ->
-      red_expr S C (spec_prim_new_object (prim_string s)) (out_ter S' l)
+      object_set_property S' l "length" (attributes_data_intro_constant (JsNumber.of_int (String.length s))) S'' ->
+      red_expr S C (spec_prim_new_object (prim_string s)) (out_ter S'' l)
 
   (** Conversion to primitive (returns prim) (9.1) *)
 

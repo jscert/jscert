@@ -1787,13 +1787,12 @@ Proof.
  introv H. destruct w; tryfalse;
  unfolds in H;  repeat let_simpl;
  match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end;
- destruct X as (l&S');
- inversion H.
- applys* red_spec_prim_new_object_bool.
- applys* red_spec_prim_new_object_number.
- run_simpl. applys* red_spec_prim_new_object_string.
-  rewrite <- EQX. fequals. skip. (* FIXME: Problem here! The interpreter is not following the rules! *)
-Admitted. (* faster *)
+ destruct X as (l&S').
+ inversion H. applys* red_spec_prim_new_object_bool.
+ inversion H. applys* red_spec_prim_new_object_number.
+ run. applys* red_spec_prim_new_object_string.
+ apply pick_option_correct in E. auto.
+Qed.
 
 (* todo: move to the right place above here *)
 Lemma to_object_correct : forall S C v o,
@@ -2486,7 +2485,19 @@ Proof.
   (* prealloc_global_parse_int *)
   discriminate.
   (* prealloc_object *)
-  let_name. skip. (* TODO *)
+  let_name. subst.
+  applys* red_spec_call_object_new.
+    applys* get_arg_correct_0.
+  destruct (get_arg 0 args) as [p | l]; unfolds call_object_new; [destruct p | ]; simpls; repeat let_name; try destruct p as (l & S'); substs.
+  inverts HR. applys* red_spec_call_object_new_1_null_or_undef.
+  inverts HR. applys* red_spec_call_object_new_1_null_or_undef.
+  applys* red_spec_call_object_new_1_prim.
+  applys* to_object_correct.
+  applys* red_spec_call_object_new_1_prim.
+  applys* to_object_correct.
+  applys* red_spec_call_object_new_1_prim.
+  applys* to_object_correct.
+  inverts HR. applys* red_spec_call_object_new_1_object.  
   (* prealloc_object_get_proto_of *)
   discriminate.
   (* prealloc_object_get_own_prop_descriptor *)
@@ -4983,6 +4994,34 @@ Proof.
   false~. inverts Hyp. inverts Hyp.
 Qed.
 
+Lemma bool_proto_value_of_call_correct : forall runs S C vthis o args,
+  runs_type_correct runs ->
+  bool_proto_value_of_call S vthis = o ->
+  red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) o.
+Proof.
+  introv IH HR.
+  apply red_spec_call_bool_proto_value_of.
+  unfolds bool_proto_value_of_call.
+  run. destruct x; try solve [
+  apply red_spec_call_bool_proto_value_of_1_not_bool;
+  [introv Hyp; applys* run_value_not_viewable_bool; discriminate | applys* run_error_correct]].
+  inverts HR.
+  apply red_spec_call_bool_proto_value_of_1_bool.
+  unfolds run_value_viewable_as_prim.
+  destruct vthis as [p | l]. inverts E. constructor.
+  unfolds if_some_or_default; unfolds option_case.
+  lets H1 : run_object_method_correct object_class_ S l.
+  destruct (run_object_method object_class_ S l).
+  specializes H1 (@eq_refl (option string)). 
+  cases_if*. subst c.
+  lets H2 : run_object_method_correct object_prim_value_ S l.
+  destruct (run_object_method object_prim_value_ S l).
+  destruct o; [ | inverts E].
+  destruct v; inverts E.
+  specializes H2 (@eq_refl (option (option value))). 
+  constructor~. inverts E. inverts E.
+Qed.
+
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
   run_call_prealloc runs S C B vthis args = o ->
@@ -5133,7 +5172,22 @@ Proof.
   (* prealloc_object_proto *)
   discriminate.
   (* prealloc_object_proto_to_string *)
-  skip. (* LATER *)
+  apply red_spec_call_object_proto_to_string.
+  destruct vthis as [p | l]; [destruct p | ].
+  inverts HR. apply red_spec_call_object_proto_to_string_1_undef.
+  inverts HR. apply red_spec_call_object_proto_to_string_1_null.
+  run red_spec_call_object_proto_to_string_1_other using to_object_correct. rew_logic; splits; discriminate.
+  run. apply run_object_method_correct in E.
+  applys* red_spec_call_object_proto_to_string_2.
+  run red_spec_call_object_proto_to_string_1_other using to_object_correct. rew_logic; splits; discriminate.
+  run. apply run_object_method_correct in E.
+  applys* red_spec_call_object_proto_to_string_2.
+  run red_spec_call_object_proto_to_string_1_other using to_object_correct. rew_logic; splits; discriminate.
+  run. apply run_object_method_correct in E.
+  applys* red_spec_call_object_proto_to_string_2.
+  run red_spec_call_object_proto_to_string_1_other using to_object_correct. rew_logic. splits; discriminate.
+  run. apply run_object_method_correct in E.
+  applys* red_spec_call_object_proto_to_string_2.
   (* prealloc_object_proto_value_of *)
   apply~ red_spec_call_object_proto_value_of.
   apply~ to_object_correct.
@@ -5231,28 +5285,11 @@ Proof.
   (* prealloc_bool_proto *)
   discriminate.
   (* prealloc_bool_proto_to_string *)  
-  skip. (* LATER *)
+  run red_spec_call_bool_proto_to_string. 
+  applys* bool_proto_value_of_call_correct. 
+  applys~ red_spec_call_bool_proto_to_string_1.  
   (* prealloc_bool_proto_value_of *)
-  apply red_spec_call_bool_proto_value_of.
-  unfolds bool_proto_value_of_call.
-  run. destruct x; try solve [
-  apply red_spec_call_bool_proto_value_of_1_not_bool;
-  [introv Hyp; applys* run_value_not_viewable_bool; discriminate | applys* run_error_correct]].
-  inverts HR.
-  apply red_spec_call_bool_proto_value_of_1_bool.
-  unfolds run_value_viewable_as_prim.
-  destruct vthis as [p | l]. inverts E. constructor.
-  unfolds if_some_or_default; unfolds option_case.
-  lets H1 : run_object_method_correct object_class_ S l.
-  destruct (run_object_method object_class_ S l).
-  specializes H1 (@eq_refl (option string)). 
-  cases_if*. subst c.
-  lets H2 : run_object_method_correct object_prim_value_ S l.
-  destruct (run_object_method object_prim_value_ S l).
-  destruct o; [ | inverts E].
-  destruct v; inverts E.
-  specializes H2 (@eq_refl (option (option value))). 
-  constructor~. inverts E. inverts E.
+  applys* bool_proto_value_of_call_correct.
   (* prealloc_number *)
   cases_if.
    substs. inverts HR. apply~ red_spec_call_number_nil.
@@ -5362,61 +5399,34 @@ Proof.
   (* prealloc_string_proto *)
   discriminate. (* LATER *)
   (* prealloc_string_proto_to_string *)
-  skip. (* LATER *)
-  (* prealloc_string_proto_value_of *)
-  destruct vthis.
-  destruct p. (* NOTE:  This could be improved. *)
-    applys* red_spec_call_string_proto_value_of_bad_type.
-    case_if*.
-    case_if*.
-    case_if*.
-    applys* red_spec_call_string_proto_value_of_bad_type.
-    applys* red_spec_call_string_proto_value_of_bad_type.
-    case_if*.
-    case_if*.
-    case_if*.
-    applys* red_spec_call_string_proto_value_of_bad_type.
-    case_if*. unfolds in HR. unfolds in HR. unfolds in HR. unfolds in HR.
-    inversion HR.
-    applys red_spec_call_string_proto_value_of_prim_string. simpl. reflexivity.
-    run.
-    cases_if*.
-    forwards (v&EQo&opv): run_object_prim_value_correct HR. subst o.
-    applys red_spec_call_string_proto_value_of_obj_string opv.
-    unfold object_class.
-    unfolds in E.
-    sets_eq <- Owitness: (pick_option (object_binds S o0)).
-    destruct Owitness; simpls; tryfalse.
-    exists o.
-    splits~.
-    forwards~: @pick_option_correct EQOwitness.
-    inverts~ E.
-    sets_eq <- Owitness: (pick_option (object_binds S o0)).
-    destruct Owitness; simpls; tryfalse.
-    forwards~: @pick_option_correct EQOwitness.
-    applys* red_spec_call_string_proto_value_of_obj_other.
-    unfold object_class.
-    unfolds in E.
-    sets_eq <- Owitness: (pick_option (object_binds S o0)).
-    destruct Owitness.
-      simpls. inversion~ E. intro Hfalse. inversion Hfalse. destruct H0 as [H2 H3].
-      assert (object_binds_func: forall S l O1 O2, object_binds S l O1 -> object_binds S l O2 -> O1 = O2).
-        introv.
-        intros HO1 HO2.
-        unfolds in HO1.
-        unfolds in HO2.
-        apply Heap_binds_func with object_loc (state_object_heap S0) l.
-        apply object_loc_comparable. apply HO1. apply HO2.
-      apply pick_option_correct in EQOwitness0.
-      apply object_binds_func with S o0 o2 x0 in EQOwitness0.
-      rewrite EQOwitness0 in H1. rewrite H1 in H3. rewrite H3 in n. tryfalse.
-      assumption.
-      simpls. inversion E.
-    apply~ red_spec_call_string_proto_value_of_obj_other.
-     introv (O&B&EQ). lets Ex: (ex_intro _ O B).
-      apply pick_option_defined in Ex. destruct Ex as [O' PO'].
-      rewrite EQOwitness in PO'. false.
-     apply* run_error_correct.
+  applys* red_spec_call_string_proto_to_string.
+  destruct vthis as [p | l]. cases_if*. 
+  inverts HR. applys* red_spec_call_string_proto_value_of_prim_string.
+  applys* red_spec_call_string_proto_value_of_bad_type.
+  run. apply run_object_method_correct in E.
+  cases_if*. subst.
+  apply run_object_prim_value_correct in HR.
+  destruct HR as (v & Heq & Hprim). subst.
+  applys* red_spec_call_string_proto_value_of_obj_string.
+  applys* red_spec_call_string_proto_value_of_obj_other.
+  destruct E as (y & Hbind & Hclass).
+  introv (y' & Hbind' & Hclass').
+  assert (y = y'). applys* Heap_binds_func.
+  apply object_loc_comparable. subst. false~.
+   (* prealloc_string_proto_value_of *)
+  destruct vthis as [p | l]. cases_if*. inverts HR. 
+  applys* red_spec_call_string_proto_value_of_prim_string.
+  applys* red_spec_call_string_proto_value_of_bad_type.
+run. apply run_object_method_correct in E.
+  cases_if*. subst.
+  apply run_object_prim_value_correct in HR.
+  destruct HR as (v & Heq & Hprim). subst.
+  applys* red_spec_call_string_proto_value_of_obj_string.
+  applys* red_spec_call_string_proto_value_of_obj_other.
+  destruct E as (y & Hbind & Hclass).
+  introv (y' & Hbind' & Hclass').
+  assert (y = y'). applys* Heap_binds_func.
+  apply object_loc_comparable. subst. false~.
   (* prealloc_string_proto_char_at *)
   discriminate.
   (* prealloc_string_proto_char_code_at *)
