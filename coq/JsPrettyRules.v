@@ -3344,18 +3344,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_call_object_call : forall S C vthis args v o,
       arguments_from args (v::nil) ->
-      red_expr S C (spec_call_object_call_1 v) o ->
+      red_expr S C (spec_call_object_call_1 v args) o ->
       red_expr S C (spec_call_prealloc prealloc_object vthis args) o
 
-  | red_spec_call_object_call_1_null_or_undef : forall S C v o,
+  | red_spec_call_object_call_1_null_or_undef : forall S C v o args,
       (v = null \/ v = undef) ->
-      red_expr S C (spec_call_object_new_1 v) o ->
-      red_expr S C (spec_call_object_call_1 v) o
+      red_expr S C (spec_construct_prealloc prealloc_object args) o ->
+      red_expr S C (spec_call_object_call_1 v args) o
 
-  | red_spec_call_object_call_1_other : forall S C v o,
+  | red_spec_call_object_call_1_other : forall S C v o args,
       v <> null /\ v <> undef ->
       red_expr S C (spec_to_object v) o ->
-      red_expr S C (spec_call_object_call_1 v) o
+      red_expr S C (spec_call_object_call_1 v args) o
 
   (** new Object([value]) (returns object_loc)  (15.2.2.1) *)
 

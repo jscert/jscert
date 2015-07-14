@@ -488,7 +488,7 @@ Inductive ext_expr :=
   | spec_call_global_is_nan_1 : out -> ext_expr
   | spec_call_global_is_finite_1 : out -> ext_expr
 
-  | spec_call_object_call_1 : value -> ext_expr
+  | spec_call_object_call_1 : value -> list value -> ext_expr
   | spec_call_object_new_1 : value -> ext_expr
   | spec_call_object_get_proto_of_1 : value -> ext_expr
   | spec_call_object_is_extensible_1 : value -> ext_expr
@@ -1284,7 +1284,7 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_global_is_nan_1 o => Some o
   | spec_call_global_is_finite_1 o => Some o
 
-  | spec_call_object_call_1 _ => None
+  | spec_call_object_call_1 _ _ => None
   | spec_call_object_new_1 _ => None
   | spec_call_object_get_proto_of_1 _ => None
   | spec_call_object_is_extensible_1 _ => None
