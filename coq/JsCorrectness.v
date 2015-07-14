@@ -5332,13 +5332,13 @@ Proof.
   applys* red_spec_call_to_construct_array. auto.
 
   (* prealloc_array_is_array *)
-  let_name. applys* red_spec_call_array_is_array_prep_1.
-  applys* get_arg_correct_0.
-  destruct arg. 
-    inverts HR. apply red_spec_call_array_is_array_1 with (l := object_loc_normal 0). 
-    rewrite <- EQarg. discriminate.
+  let_name; subst. 
+  applys* red_spec_call_array_is_array_fetch_arg.
+    applys* get_arg_correct_0.
+  destruct (get_arg 0 args). 
+    inverts HR. applys* red_spec_call_array_is_array_1. 
     run. apply run_object_method_correct in E. 
-    applys* red_spec_call_array_is_array_prep_2_3.
+    applys* red_spec_call_array_is_array_2_branch.
     cases_if*; inverts HR.
       applys* red_spec_call_array_is_array_2.
       applys* red_spec_call_array_is_array_3.

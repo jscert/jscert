@@ -4195,16 +4195,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** Array.isArray(arg) (returns bool)  (15.4.3.2) *)
 
-  | red_spec_call_array_is_array_prep_1 : forall S C vthis o args arg, (* Preparation for Step 1 *)
+  | red_spec_call_array_is_array_fetch_arg : forall S C vthis o args arg, (* Fetching arguments *)
       arguments_from args (arg :: nil) ->
       red_expr S C (spec_call_array_is_array_1 arg) o ->
       red_expr S C (spec_call_prealloc prealloc_array_is_array vthis args) o
 
-  | red_spec_call_array_is_array_1 : forall S C arg l, (* Step 1 *)
-      arg <> value_object l ->
+  | red_spec_call_array_is_array_1 : forall S C arg, (* Step 1 *)
+      type_of arg <> type_object ->
       red_expr S C (spec_call_array_is_array_1 arg) (out_ter S false)
 
-  | red_spec_call_array_is_array_prep_2_3 : forall S C arg l class o, (* Preparation for Steps 2-3 *)
+  | red_spec_call_array_is_array_2_branch : forall S C arg l class o, (* Branch in step 2 *)
       arg = value_object l ->
       object_method object_class_ S l class ->
       red_expr S C (spec_call_array_is_array_2_3 class) o ->
@@ -4215,7 +4215,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_array_is_array_2_3 class) (out_ter S true)
 
   | red_spec_call_array_is_array_3 : forall S C class, (* Step 3 *)
-      class <> "Array" ->
       red_expr S C (spec_call_array_is_array_2_3 class) (out_ter S false)
 
   (** Array.prototype.toString() (returns string)  (15.4.4.2) *)
