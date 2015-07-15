@@ -533,9 +533,9 @@ Definition object_prealloc_native_error ne :=
 Definition object_prealloc_native_error_proto ne :=
   let P := Heap.empty in
   let P := write_native P "constructor" (prealloc_native_error ne) in
-  let P := write_native P "name" (string_of_native_error ne) in   
-  let P := write_native P "message" (prim_string "") in 
-  object_create_builtin (prealloc_native_error_proto ne) "Error" P. 
+  let P := write_native P "name" (string_of_native_error ne) in
+  let P := write_native P "message" (prim_string "") in
+  object_create_builtin prealloc_error_proto "Error" P.
 
 
 (**************************************************************)
