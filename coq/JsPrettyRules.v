@@ -4524,30 +4524,21 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Boolean.prototype.toString() (returns string)  (15.6.4.2)
       Note: behavior encoded using valueOf and conversion to string *)
 
-  | red_spec_call_bool_proto_to_string : forall S C vthis args o1 o,
-      (* LATER : check vthis value *)
-      red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) o1 ->
-      red_expr S C (spec_call_bool_proto_to_string_1 o1) o ->
-      red_expr S C (spec_call_prealloc prealloc_bool_proto_to_string vthis args) o
-
-  | red_spec_call_bool_proto_to_string_1 : forall S0 S C s b,
+  | red_spec_call_bool_proto_to_string : forall S C vthis args s o b,
+      value_viewable_as "Boolean" S vthis b ->
       s = (convert_bool_to_string b) ->
-      red_expr S0 C (spec_call_bool_proto_to_string_1 (out_ter S b)) (out_ter S s)
+      red_expr S C (spec_call_prealloc prealloc_bool_proto_to_string vthis args) o
 
   (** Boolean.prototype.valueOf() (returns bool)  (15.6.4.3) *)
 
-  | red_spec_call_bool_proto_value_of : forall S C o vthis args,
-      red_expr S C (spec_call_bool_proto_value_of_1 vthis) o ->
-      red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) o
+  | red_spec_call_bool_proto_value_of_bool : forall S C vthis args b,
+      value_viewable_as "Boolean" S vthis b ->
+      red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) (out_ter S b)
 
-  | red_spec_call_bool_proto_value_of_1_bool : forall S C v b,
-      value_viewable_as "Boolean" S v b ->
-      red_expr S C (spec_call_bool_proto_value_of_1 v) (out_ter S b)
-
-   | red_spec_call_bool_proto_value_of_1_not_bool : forall S C v o,
-      (forall b, ~ value_viewable_as "Boolean" S v b) ->
+   | red_spec_call_bool_proto_value_of_not_bool : forall S C vthis args o,
+      (forall b, ~ value_viewable_as "Boolean" S vthis b) ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (spec_call_bool_proto_value_of_1 v) o
+      red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) o
 
   (*------------------------------------------------------------*)
   (** ** Number builtin functions *)
@@ -4589,18 +4580,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Number.prototype.valueOf() (returns number)  (15.7.4.4) *)
 
-  | red_spec_call_number_proto_value_of : forall S C o vthis args,
-      red_expr S C (spec_call_number_proto_value_of_1 vthis) o ->
-      red_expr S C (spec_call_prealloc prealloc_number_proto_value_of vthis args) o
+  | red_spec_call_number_proto_value_of : forall S C vthis args n,
+      value_viewable_as "Number" S vthis n ->
+      red_expr S C (spec_call_prealloc prealloc_number_proto_value_of vthis args) (out_ter S n)
 
-  | red_spec_call_number_proto_value_of_1_number : forall S C v n,
-      value_viewable_as "Number" S v n ->
-      red_expr S C (spec_call_number_proto_value_of_1 v) (out_ter S n)
-
-   | red_spec_call_number_proto_value_of_1_not_number : forall S C v o,
-      (forall n, ~ value_viewable_as "Number" S v n) ->
+   | red_spec_call_number_proto_value_of_1_not_number : forall S C vthis args o,
+      (forall n, ~ value_viewable_as "Number" S vthis n) ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (spec_call_number_proto_value_of_1 v) o
+            red_expr S C (spec_call_prealloc prealloc_number_proto_value_of vthis args) o
 
   (*------------------------------------------------------------*)
   (** ** Common functions for throwing errors *)

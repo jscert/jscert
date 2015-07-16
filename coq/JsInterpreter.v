@@ -670,20 +670,38 @@ Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
     object_get_builtin runs S' C builtin_get_default v l x).
 
-Definition run_value_viewable_as_prim s S v : option prim :=
+Definition run_value_viewable_as_bool S v : result :=
   match v with
-  | value_prim p => Some p
+  | value_prim (prim_bool b) => res_ter S b
   | value_object l =>
-      if_some_or_default (run_object_method object_class_ S l) None
-        (fun s' =>
-          ifb (s' = s) then 
-          if_some_or_default (run_object_method object_prim_value_ S l)
-            None (fun wo => 
+      if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Boolean") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
               match wo with
-              | Some (value_prim p) => (Some p)
-              | _ => None
+              | Some (value_prim (prim_bool b)) => res_ter S b
+              | _ => run_error S native_error_type
               end)
-          else None)
+          else run_error S native_error_type)
+   | _ => run_error S native_error_type
+  end.
+
+Definition run_value_viewable_as_number S v : result :=
+  match v with
+  | value_prim (prim_number n) => res_ter S n
+  | value_object l =>
+      if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Number") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
+              match wo with
+              | Some (value_prim (prim_number n)) => res_ter S n
+              | _ => run_error S native_error_type
+              end)
+          else run_error S native_error_type)
+   | _ => run_error S native_error_type
   end.
 
 (**************************************************************)
@@ -1006,13 +1024,6 @@ Definition call_object_new S v : result :=
     let '(l, S') := p in
     out_ter S' l
   end.
-
-Definition bool_proto_value_of_call S vthis : result :=
-  if_some (run_value_viewable_as_prim "Boolean" S vthis) (fun vw =>
-    match vw return result with
-    | prim_bool b => out_ter S b
-    | _ => run_error S native_error_type
-    end).
 
 Fixpoint array_args_map_loop runs S C l args ind : result_void :=
   (* last paragraph of 15.4.2.1 *)
@@ -2820,11 +2831,11 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     out_ter S (convert_value_to_boolean v)
 
   | prealloc_bool_proto_to_string =>
-    if_bool (bool_proto_value_of_call S vthis) (fun S' b =>
-      res_ter S' (convert_bool_to_string b))
+    if_bool (run_value_viewable_as_bool S vthis)
+    (fun S b => res_ter S (convert_bool_to_string b))
 
   | prealloc_bool_proto_value_of =>
-    bool_proto_value_of_call S vthis
+    run_value_viewable_as_bool S vthis
 
   | prealloc_number =>
     ifb args = nil then
@@ -2834,11 +2845,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       to_number runs S C v
 
   | prealloc_number_proto_value_of =>
-    if_some (run_value_viewable_as_prim "Number" S vthis) (fun vw =>
-      match vw with
-      | prim_number n => res_ter S n
-      | _ => run_error S native_error_type
-      end)
+    run_value_viewable_as_number S vthis
 
   | prealloc_error =>
     'let v := get_arg 0 args in

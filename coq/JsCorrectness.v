@@ -4946,80 +4946,162 @@ Proof.
   + inverts HR. applys* red_spec_call_array_proto_join_elements_exit.
 Qed.
 
-Lemma run_value_not_viewable_bool : forall S v (x : prim), run_value_viewable_as_prim "Boolean" S v = Some x -> forall b, x <> b -> ~ value_viewable_as "Boolean" S v b.
-Proof. 
-  introv Hyp Hneq Hnv.
-  inverts Hnv. simpls. inverts Hyp. false~.
-  simpls. unfolds if_some_or_default.
-  unfolds option_case.
-  lets H1 : run_object_method_correct object_class_ S l0.
-  destruct (run_object_method object_class_ S l0).
-  specializes H1 (@eq_refl (option string)). 
-  cases_if*. subst c.
-  lets H2 : run_object_method_correct object_prim_value_ S l0.
-  destruct (run_object_method object_prim_value_ S l0).
-  destruct o; [ | inverts Hyp].
-  destruct v; inverts Hyp.
-  specializes H2 (@eq_refl (option (option value))).
-  destruct H0 as (O1 & Hb1 & Hv1).
-  destruct H2 as (O2 & Hb2 & Hv2).
-  assert (O1 = O2).
-  applys* Heap_binds_func.
-  apply object_loc_comparable. subst.
-  rewrite Hv2 in Hv1. inverts Hv1.
-  false~. inverts Hyp. inverts Hyp.
+Lemma run_value_viewable_bool : forall S v b, run_value_viewable_as_bool S v = out_ter S b <-> value_viewable_as "Boolean" S v b.
+Proof with (try solve [false; applys* run_error_not_some_out_res]). 
+  introv; splits*; introv Hyp.
+  + unfolds run_value_viewable_as_bool.
+    destruct v as [p | l].
+    - destruct p...
+      inverts Hyp. constructor.
+    - run... cases_if...
+      subst. run...
+      destruct n...
+      destruct v...
+      destruct p...
+      inverts Hyp.
+      apply run_object_method_correct in E.
+      apply run_object_method_correct in E0.
+      constructor~.
+  + inverts Hyp; simpls~.
+    remember (run_object_method object_class_ S l0).
+    assert (o = Some "Boolean").
+    {
+      destruct o; symmetry in Heqo.
+      + apply run_object_method_correct in Heqo.
+        destruct H as (O1 & Hb1 & Hv1).
+        destruct Heqo as (O2 & Hb2 & Hv2).
+        assert (O1 = O2).
+        {
+          applys* Heap_binds_func.
+          apply object_loc_comparable. 
+        } subst. fequals.
+      + destruct H as (O & Hb & Hv).
+        unfolds run_object_method.
+        assert (exists a, object_binds S l0 a).
+          eexists; jauto.
+        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H). 
+        destruct Hyp as (a & Heq). 
+        rewrite Heq in Heqo.
+        simpls. inverts Heqo.
+    } subst. rewrite H1. simpls.
+    cases_if*. clear e.
+    remember (run_object_method object_prim_value_ S l0).
+    assert (o = Some (Some (value_prim (prim_bool b)))).
+    {
+      destruct o; symmetry in Heqo. 
+      + apply run_object_method_correct in Heqo.
+        destruct H0 as (O1 & Hb1 & Hv1).
+        destruct Heqo as (O2 & Hb2 & Hv2).
+        assert (O1 = O2).
+        {
+          applys* Heap_binds_func.
+          apply object_loc_comparable. 
+        } subst. fequals.
+      + destruct H0 as (O & Hb & Hv).
+        unfolds run_object_method.
+        assert (exists a, object_binds S l0 a).
+          eexists; jauto.
+        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H0). 
+        destruct Hyp as (a & Heq). 
+        rewrite Heq in Heqo.
+        simpls. inverts Heqo.
+    } subst. rewrite H2. simpls*.
 Qed.
 
-Lemma run_value_not_viewable_number : forall S v (x : prim), run_value_viewable_as_prim "Number" S v = Some x -> forall n, x <> n -> ~ value_viewable_as "Number" S v n.
-Proof. 
-  introv Hyp Hneq Hnv.
-  inverts Hnv. simpls. inverts Hyp. false~.
-  simpls. unfolds if_some_or_default.
-  unfolds option_case.
-  lets H1 : run_object_method_correct object_class_ S l0.
-  destruct (run_object_method object_class_ S l0).
-  specializes H1 (@eq_refl (option string)). 
-  cases_if*. subst c.
-  lets H2 : run_object_method_correct object_prim_value_ S l0.
-  destruct (run_object_method object_prim_value_ S l0).
-  destruct o; [ | inverts Hyp].
-  destruct v; inverts Hyp.
-  specializes H2 (@eq_refl (option (option value))).
-  destruct H0 as (O1 & Hb1 & Hv1).
-  destruct H2 as (O2 & Hb2 & Hv2).
-  assert (O1 = O2).
-  applys* Heap_binds_func.
-  apply object_loc_comparable. subst.
-  rewrite Hv2 in Hv1. inverts Hv1.
-  false~. inverts Hyp. inverts Hyp.
-Qed.
-
-Lemma bool_proto_value_of_call_correct : forall runs S C vthis o args,
-  runs_type_correct runs ->
-  bool_proto_value_of_call S vthis = o ->
-  red_expr S C (spec_call_prealloc prealloc_bool_proto_value_of vthis args) o.
+Lemma run_value_viewable_bool_destruct : forall S vthis,
+(exists (b : bool), run_value_viewable_as_bool S vthis = out_ter S b) \/ (run_value_viewable_as_bool S vthis = run_error S native_error_type).
 Proof.
-  introv IH HR.
-  apply red_spec_call_bool_proto_value_of.
-  unfolds bool_proto_value_of_call.
-  run. destruct x; try solve [
-  apply red_spec_call_bool_proto_value_of_1_not_bool;
-  [introv Hyp; applys* run_value_not_viewable_bool; discriminate | applys* run_error_correct]].
-  inverts HR.
-  apply red_spec_call_bool_proto_value_of_1_bool.
-  unfolds run_value_viewable_as_prim.
-  destruct vthis as [p | l]. inverts E. constructor.
-  unfolds if_some_or_default; unfolds option_case.
-  lets H1 : run_object_method_correct object_class_ S l.
-  destruct (run_object_method object_class_ S l).
-  specializes H1 (@eq_refl (option string)). 
-  cases_if*. subst c.
-  lets H2 : run_object_method_correct object_prim_value_ S l.
-  destruct (run_object_method object_prim_value_ S l).
-  destruct o; [ | inverts E].
-  destruct v; inverts E.
-  specializes H2 (@eq_refl (option (option value))). 
-  constructor~. inverts E. inverts E.
+  destruct vthis as [p | l]; simpls.
+  + destruct p; simpls*.
+    left. eexists. reflexivity.
+  + destruct (run_object_method object_class_ S l); simpls*. 
+    - cases_if*. 
+      * subst; simpls.
+        destruct (run_object_method object_prim_value_ S l); simpls*.
+        destruct o; simpls*.
+        destruct v; simpls*.
+        destruct p; simpls*.
+        left. eexists. reflexivity.
+Qed.
+
+Lemma run_value_viewable_number : forall S v (n : number), run_value_viewable_as_number S v = out_ter S n <-> value_viewable_as "Number" S v n.
+Proof with (try solve [false; applys* run_error_not_some_out_res]). 
+  introv; splits*; introv Hyp.
+  + unfolds run_value_viewable_as_number.
+    destruct v as [p | l].
+    - destruct p...
+      inverts Hyp. constructor.
+    - unfolds if_some_or_default; unfolds option_case. 
+      remember (run_object_method object_class_ S l). destruct o...
+      cases_if...
+      subst. remember (run_object_method object_prim_value_ S l). destruct o...
+      destruct o...
+      destruct v...
+      destruct p...
+      inverts Hyp. symmetry in Heqo, Heqo0.
+      apply run_object_method_correct in Heqo.
+      apply run_object_method_correct in Heqo0.
+      constructor~.
+  + inverts Hyp; simpls~.
+    remember (run_object_method object_class_ S l0).
+    assert (o = Some "Number").
+    {
+      destruct o; symmetry in Heqo.
+      + apply run_object_method_correct in Heqo.
+        destruct H as (O1 & Hb1 & Hv1).
+        destruct Heqo as (O2 & Hb2 & Hv2).
+        assert (O1 = O2).
+        {
+          applys* Heap_binds_func.
+          apply object_loc_comparable. 
+        } subst. fequals.
+      + destruct H as (O & Hb & Hv).
+        unfolds run_object_method.
+        assert (exists a, object_binds S l0 a).
+          eexists; jauto.
+        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H). 
+        destruct Hyp as (a & Heq). 
+        rewrite Heq in Heqo.
+        simpls. inverts Heqo.
+    } subst. rewrite H1. simpls.
+    cases_if*. clear e.
+    remember (run_object_method object_prim_value_ S l0).
+    assert (o = Some (Some (value_prim (prim_number n)))).
+    {
+      destruct o; symmetry in Heqo. 
+      + apply run_object_method_correct in Heqo.
+        destruct H0 as (O1 & Hb1 & Hv1).
+        destruct Heqo as (O2 & Hb2 & Hv2).
+        assert (O1 = O2).
+        {
+          applys* Heap_binds_func.
+          apply object_loc_comparable. 
+        } subst. fequals.
+      + destruct H0 as (O & Hb & Hv).
+        unfolds run_object_method.
+        assert (exists a, object_binds S l0 a).
+          eexists; jauto.
+        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H0). 
+        destruct Hyp as (a & Heq). 
+        rewrite Heq in Heqo.
+        simpls. inverts Heqo.
+    } subst. rewrite H2. simpls*.
+Qed. 
+
+Lemma run_value_viewable_number_destruct : forall S vthis,
+(exists (n : number), run_value_viewable_as_number S vthis = out_ter S n) \/ (run_value_viewable_as_number S vthis = run_error S native_error_type).
+Proof.
+  destruct vthis as [p | l]; simpls.
+  + destruct p; simpls*.
+    left. eexists. reflexivity.
+  + destruct (run_object_method object_class_ S l); simpls*. 
+    - cases_if*. 
+      * subst; simpls.
+        destruct (run_object_method object_prim_value_ S l); simpls*.
+        destruct o; simpls*.
+        destruct v; simpls*.
+        destruct p; simpls*.
+        left. eexists. reflexivity.
 Qed.
 
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
@@ -5285,11 +5367,20 @@ Proof.
   (* prealloc_bool_proto *)
   discriminate.
   (* prealloc_bool_proto_to_string *)  
-  run red_spec_call_bool_proto_to_string. 
-  applys* bool_proto_value_of_call_correct. 
-  applys~ red_spec_call_bool_proto_to_string_1.  
+  skip.
   (* prealloc_bool_proto_value_of *)
-  applys* bool_proto_value_of_call_correct.
+  lets H : run_value_viewable_bool_destruct S vthis. inverts H as H. 
+    destruct H as (b & Heq). 
+    rewrite Heq in HR. inverts HR. 
+    apply red_spec_call_bool_proto_value_of_bool.
+    rewrite~ run_value_viewable_bool in Heq.
+    rewrite H in HR. 
+    apply red_spec_call_bool_proto_value_of_not_bool.  
+    exact true.
+    introv Hyp.
+    rewrite <- run_value_viewable_bool in Hyp.
+    rewrite H in Hyp. applys* run_error_not_some_out_res. 
+    applys* run_error_correct.
   (* prealloc_number *)
   cases_if.
    substs. inverts HR. apply~ red_spec_call_number_nil.
@@ -5301,25 +5392,18 @@ Proof.
   (* prealloc_number_proto_to_string *)
   discriminate.
   (* prealloc_number_proto_value_of *)
-  apply red_spec_call_number_proto_value_of.
-  run. destruct x; try solve [
-  apply red_spec_call_number_proto_value_of_1_not_number;
-  [introv Hyp; applys* run_value_not_viewable_number; discriminate | applys* run_error_correct]].
-  inverts HR.
-  apply red_spec_call_number_proto_value_of_1_number.
-  unfolds run_value_viewable_as_prim.
-  destruct vthis as [p | l]. inverts E. constructor.
-  unfolds if_some_or_default; unfolds option_case.
-  lets H1 : run_object_method_correct object_class_ S l.
-  destruct (run_object_method object_class_ S l).
-  specializes H1 (@eq_refl (option string)). 
-  cases_if*. subst c.
-  lets H2 : run_object_method_correct object_prim_value_ S l.
-  destruct (run_object_method object_prim_value_ S l).
-  destruct o; [ | inverts E].
-  destruct v; inverts E.
-  specializes H2 (@eq_refl (option (option value))). 
-  constructor~. inverts E. inverts E.  
+  lets H : run_value_viewable_number_destruct S vthis. inverts H as H. 
+    destruct H as (n & Heq). 
+    rewrite Heq in HR. inverts HR. 
+    apply red_spec_call_number_proto_value_of.
+    rewrite~ run_value_viewable_number in Heq.
+    rewrite H in HR. 
+    apply red_spec_call_number_proto_value_of_1_not_number. 
+    exact JsNumber.zero.
+    introv Hyp.
+    rewrite <- run_value_viewable_number in Hyp.
+    rewrite H in Hyp. applys* run_error_not_some_out_res. 
+    applys* run_error_correct. 
   (* prealloc_number_proto_to_fixed *)
   discriminate.
   (* prealloc_number_proto_to_exponential *)
