@@ -19,7 +19,7 @@
 
     JSCert depends on:
     - Coq
-	 - OCaml (version 4 or above minimum, 4.02 or above for all optional features to build)
+	- OCaml (version 4 or above minimum, 4.02 or above for all optional features to build)
     - Java (for the parser)
 
     In addition, in order to run the Test262 tests, and query the

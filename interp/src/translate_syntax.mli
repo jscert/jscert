@@ -17,6 +17,6 @@ val exp_to_elem : Parser_syntax.exp -> JsSyntax.element
 val exp_to_funcbody :
   Parser_syntax.exp -> JsSyntax.strictness_flag -> JsSyntax.funcbody
 
-val coq_syntax_from_file : string -> JsSyntax.prog
+val coq_syntax_from_file : ?init:bool -> string -> JsSyntax.prog
 val coq_syntax_from_string : string -> JsSyntax.prog
-
+val coq_syntax_from_main : string -> JsSyntax.prog

@@ -384,7 +384,7 @@ Definition object_prealloc_array_proto :=
   let P := write_native P "join" prealloc_array_proto_join in
   let P := write_native P "pop" prealloc_array_proto_pop in
   let P := write_native P "push" prealloc_array_proto_push in
-  let P := write_constant P "length" 0 in 
+  let P := write_constant P "length" 0 in
   (* LATER *)
   object_create_builtin prealloc_object_proto "Array" P.
 
@@ -605,7 +605,6 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
 
 Definition object_heap_initial_function_objects_4 (h : Heap.heap object_loc object) :=
   let h := object_heap_initial_function_objects_3 h in 
-  (* Function objects of Array.prototype *)
   let h := Heap.write h prealloc_array_is_array array_is_array_function_object in
   (* Function objects of Array.prototype *)
   let h := Heap.write h prealloc_array_proto_to_string array_proto_to_string_function_object in

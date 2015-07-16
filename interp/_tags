@@ -1,4 +1,4 @@
-true: package(xml-light), use_unix, use_str
+true: package(xml-light), package(yojson), use_unix, use_str
 
 # Source directories to use
 <src> or <parser/src> or <src/extract> or <tracer/annotml> or <top_level>: include

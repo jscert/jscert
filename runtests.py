@@ -40,6 +40,9 @@ argp.add_argument("--interp_path", action="store", metavar="path",
 argp.add_argument("--interp_version", action="store", metavar="version", default="",
     help="The version of the interpreter you're running. Default is the git hash of the current directory.")
 
+argp.add_argument("--jsonparser", action="store_true",
+                  help="Use the JSON parser (Esprima) when running tests.")
+
 argp.add_argument("--webreport",action="store_true",
     help="Produce a web-page of your results in the default web directory. Requires pystache.")
 
@@ -372,6 +375,8 @@ def jsRefArgBuilder(filename):
     arglist = [args.interp_path,
                "-jsparser",
                os.path.join("interp","parser","lib","js_parser.jar")]
+    if args.jsonparser:
+        arglist.append("-json")
     if args.debug:
         arglist.append("-print-heap")
         arglist.append("-verbose")

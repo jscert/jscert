@@ -1,3 +1,5 @@
+exception AbnormalPreludeTermination of JsInterpreterMonads.result
+
 let file = ref ""
 let test_prelude = ref []
 let test = ref false
@@ -20,7 +22,14 @@ let string_to_list str = (* Does it already exists somewhere? *)
 let arguments () =
   let usage_msg="Usage: -jsparser <path> -file <path>" in
   Arg.parse
-    [ "-jsparser",
+    [ "-json",
+      Arg.Unit(fun () -> Parser_main.use_json := true),
+      "use the JSON parser (Esprima), -jsparser argument is ignored";
+      "-from_stdin",
+      Arg.Unit(fun () -> Parser_main.from_stdin := true),
+      "Get a pre-parsed intermediate representation from stdin, 
+       -jsparser and -file arguments are ignored, not recommended for use with XML";
+      "-jsparser",
       Arg.String(fun f -> Parser_main.js_to_xml_parser := f),
       "path to js_parser.jar";
       "-file",
@@ -32,7 +41,7 @@ let arguments () =
       "-test_prelude",
       Arg.String(fun f ->
          test_prelude := !test_prelude @ string_to_list f; test := true),
-      "include the given files before runnning the specified file.";
+      "include the given files before runnning the specified file";
       "-print-heap",
       Arg.Unit(fun () -> printHeap := true),
       "print the final state of the heap";
@@ -41,7 +50,7 @@ let arguments () =
       "do not print the initial heap";
       "-no-parasite",
       Arg.Unit(fun () -> noParasite := true),
-      "do not run interpreter's code without being explicitely asked for.";
+      "do not run interpreter's code without being explicitely asked for";
     ]
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
@@ -74,27 +83,9 @@ let pr_test state =
      if not !test then
        print_endline "No variable [__$ERROR__] is defined at global scope.\n"
 
-
-let _ =
-  arguments ();
+let handle_result result =
   let exit_if_test _ = if !test then exit 1 in
-  try
-    let exp = Translate_syntax.coq_syntax_from_file !file in
-    let exp' = if !test then
-                begin
-                    let JsSyntax.Coq_prog_intro (str, el) = exp in
-                    let els =
-                        List.concat (List.map (fun f ->
-                            let JsSyntax.Coq_prog_intro (_, el0) =
-                                Translate_syntax.coq_syntax_from_file f in
-                            el0) !test_prelude) in
-                    JsSyntax.Coq_prog_intro (str, els @ el)
-                  end
-              else exp
-    in match JsInterpreter.run_javascript
-            (JsInterpreter.runs max_int)
-            exp'
-    with
+  match result with
     | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_val (_, _)) ->
           print_endline "\n\nA `nothing' object has been created.\n" ;
           print_endline "\n\nFIXME:  this should be impossible!\n" ;
@@ -167,7 +158,51 @@ let _ =
       print_endline "\n\nNYI:  this has not yet been implemented in Coq!\n" ; exit 2
     | JsInterpreterMonads.Coq_result_bottom s ->
       print_endline ("\n\nBOTTOM\nCurrent state:\n" ^ Prheap.prstate !skipInit s)
+
+let run_prog_with_state state prog = 
+                let runs = JsInterpreter.runs max_int in
+                let prog' = (JsSyntaxInfos.add_infos_prog JsSyntax.strictness_false prog) in
+                let ctx = JsCommon.execution_ctx_initial (JsSyntaxAux.prog_intro_strictness prog') in
+                (JsInterpreterMonads.if_void
+                  (JsInterpreter.execution_ctx_binding_inst runs state ctx JsSyntax.Coq_codetype_global None prog' [])
+                  (fun s' -> runs.JsInterpreter.runs_type_prog s' ctx prog'))
+
+let run_prog_incremental prog_res prog =
+  match prog_res with
+  | JsInterpreterMonads.Coq_result_some (JsSyntax.Coq_specret_out o) ->
+    begin
+      match o with
+      | JsSyntax.Coq_out_ter (state, res) ->
+        begin
+          match JsSyntax.res_type res with
+          | JsSyntax.Coq_restype_normal ->
+              (run_prog_with_state state prog)
+          | _ -> raise (AbnormalPreludeTermination prog_res) (* to print out a sensible error *)
+        end
+      | _ -> raise (AbnormalPreludeTermination prog_res) (* to print out a sensible error *)
+    end
+  | _ -> raise (AbnormalPreludeTermination prog_res) (* to print out a sensible error *)
+
+let _ =
+  arguments ();
+  let exit_if_test _ = if !test then exit 1 in
+  try
+    let prog = Translate_syntax.coq_syntax_from_main !file in
+    let JsSyntax.Coq_prog_intro (str, el) = prog in
+    let exp_prelude = begin
+                        let els =
+                          List.concat (List.map (fun f ->
+                            let JsSyntax.Coq_prog_intro (_, el0) =
+                              Translate_syntax.coq_syntax_from_file ~init:true f in
+                            el0) !test_prelude) in
+                          JsSyntax.Coq_prog_intro (str, els)
+                      end in
+    let prelude_res = JsInterpreter.run_javascript (JsInterpreter.runs max_int) exp_prelude in
+    handle_result (run_prog_incremental prelude_res prog)
   with
+  | AbnormalPreludeTermination res ->
+    handle_result res;
+    exit 2
   | Assert_failure (file, line, col) ->
     print_string (
       "\nNot implemented code in file `" ^ file ^ "', line " ^
