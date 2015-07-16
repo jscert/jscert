@@ -4946,164 +4946,6 @@ Proof.
   + inverts HR. applys* red_spec_call_array_proto_join_elements_exit.
 Qed.
 
-Lemma run_value_viewable_bool : forall S v b, run_value_viewable_as_bool S v = out_ter S b <-> value_viewable_as "Boolean" S v b.
-Proof with (try solve [false; applys* run_error_not_some_out_res]). 
-  introv; splits*; introv Hyp.
-  + unfolds run_value_viewable_as_bool.
-    destruct v as [p | l].
-    - destruct p...
-      inverts Hyp. constructor.
-    - run... cases_if...
-      subst. run...
-      destruct n...
-      destruct v...
-      destruct p...
-      inverts Hyp.
-      apply run_object_method_correct in E.
-      apply run_object_method_correct in E0.
-      constructor~.
-  + inverts Hyp; simpls~.
-    remember (run_object_method object_class_ S l0).
-    assert (o = Some "Boolean").
-    {
-      destruct o; symmetry in Heqo.
-      + apply run_object_method_correct in Heqo.
-        destruct H as (O1 & Hb1 & Hv1).
-        destruct Heqo as (O2 & Hb2 & Hv2).
-        assert (O1 = O2).
-        {
-          applys* Heap_binds_func.
-          apply object_loc_comparable. 
-        } subst. fequals.
-      + destruct H as (O & Hb & Hv).
-        unfolds run_object_method.
-        assert (exists a, object_binds S l0 a).
-          eexists; jauto.
-        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H). 
-        destruct Hyp as (a & Heq). 
-        rewrite Heq in Heqo.
-        simpls. inverts Heqo.
-    } subst. rewrite H1. simpls.
-    cases_if*. clear e.
-    remember (run_object_method object_prim_value_ S l0).
-    assert (o = Some (Some (value_prim (prim_bool b)))).
-    {
-      destruct o; symmetry in Heqo. 
-      + apply run_object_method_correct in Heqo.
-        destruct H0 as (O1 & Hb1 & Hv1).
-        destruct Heqo as (O2 & Hb2 & Hv2).
-        assert (O1 = O2).
-        {
-          applys* Heap_binds_func.
-          apply object_loc_comparable. 
-        } subst. fequals.
-      + destruct H0 as (O & Hb & Hv).
-        unfolds run_object_method.
-        assert (exists a, object_binds S l0 a).
-          eexists; jauto.
-        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H0). 
-        destruct Hyp as (a & Heq). 
-        rewrite Heq in Heqo.
-        simpls. inverts Heqo.
-    } subst. rewrite H2. simpls*.
-Qed.
-
-Lemma run_value_viewable_bool_destruct : forall S vthis,
-(exists (b : bool), run_value_viewable_as_bool S vthis = out_ter S b) \/ (run_value_viewable_as_bool S vthis = run_error S native_error_type).
-Proof.
-  destruct vthis as [p | l]; simpls.
-  + destruct p; simpls*.
-    left. eexists. reflexivity.
-  + destruct (run_object_method object_class_ S l); simpls*. 
-    - cases_if*. 
-      * subst; simpls.
-        destruct (run_object_method object_prim_value_ S l); simpls*.
-        destruct o; simpls*.
-        destruct v; simpls*.
-        destruct p; simpls*.
-        left. eexists. reflexivity.
-Qed.
-
-Lemma run_value_viewable_number : forall S v (n : number), run_value_viewable_as_number S v = out_ter S n <-> value_viewable_as "Number" S v n.
-Proof with (try solve [false; applys* run_error_not_some_out_res]). 
-  introv; splits*; introv Hyp.
-  + unfolds run_value_viewable_as_number.
-    destruct v as [p | l].
-    - destruct p...
-      inverts Hyp. constructor.
-    - unfolds if_some_or_default; unfolds option_case. 
-      remember (run_object_method object_class_ S l). destruct o...
-      cases_if...
-      subst. remember (run_object_method object_prim_value_ S l). destruct o...
-      destruct o...
-      destruct v...
-      destruct p...
-      inverts Hyp. symmetry in Heqo, Heqo0.
-      apply run_object_method_correct in Heqo.
-      apply run_object_method_correct in Heqo0.
-      constructor~.
-  + inverts Hyp; simpls~.
-    remember (run_object_method object_class_ S l0).
-    assert (o = Some "Number").
-    {
-      destruct o; symmetry in Heqo.
-      + apply run_object_method_correct in Heqo.
-        destruct H as (O1 & Hb1 & Hv1).
-        destruct Heqo as (O2 & Hb2 & Hv2).
-        assert (O1 = O2).
-        {
-          applys* Heap_binds_func.
-          apply object_loc_comparable. 
-        } subst. fequals.
-      + destruct H as (O & Hb & Hv).
-        unfolds run_object_method.
-        assert (exists a, object_binds S l0 a).
-          eexists; jauto.
-        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H). 
-        destruct Hyp as (a & Heq). 
-        rewrite Heq in Heqo.
-        simpls. inverts Heqo.
-    } subst. rewrite H1. simpls.
-    cases_if*. clear e.
-    remember (run_object_method object_prim_value_ S l0).
-    assert (o = Some (Some (value_prim (prim_number n)))).
-    {
-      destruct o; symmetry in Heqo. 
-      + apply run_object_method_correct in Heqo.
-        destruct H0 as (O1 & Hb1 & Hv1).
-        destruct Heqo as (O2 & Hb2 & Hv2).
-        assert (O1 = O2).
-        {
-          applys* Heap_binds_func.
-          apply object_loc_comparable. 
-        } subst. fequals.
-      + destruct H0 as (O & Hb & Hv).
-        unfolds run_object_method.
-        assert (exists a, object_binds S l0 a).
-          eexists; jauto.
-        lets Hyp : (@pick_option_defined _ (object_binds S l0) (object_binds_pickable_option S l0) H0). 
-        destruct Hyp as (a & Heq). 
-        rewrite Heq in Heqo.
-        simpls. inverts Heqo.
-    } subst. rewrite H2. simpls*.
-Qed. 
-
-Lemma run_value_viewable_number_destruct : forall S vthis,
-(exists (n : number), run_value_viewable_as_number S vthis = out_ter S n) \/ (run_value_viewable_as_number S vthis = run_error S native_error_type).
-Proof.
-  destruct vthis as [p | l]; simpls.
-  + destruct p; simpls*.
-    left. eexists. reflexivity.
-  + destruct (run_object_method object_class_ S l); simpls*. 
-    - cases_if*. 
-      * subst; simpls.
-        destruct (run_object_method object_prim_value_ S l); simpls*.
-        destruct o; simpls*.
-        destruct v; simpls*.
-        destruct p; simpls*.
-        left. eexists. reflexivity.
-Qed.
-
 Lemma run_call_prealloc_correct : forall runs S C B vthis args o,
   runs_type_correct runs ->
   run_call_prealloc runs S C B vthis args = o ->
@@ -5367,43 +5209,349 @@ Proof.
   (* prealloc_bool_proto *)
   discriminate.
   (* prealloc_bool_proto_to_string *)  
-  skip.
+  destruct vthis as [p | l].
+    destruct p; try solve [
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]]. 
+    inverts HR. applys* red_spec_call_bool_proto_to_string_bool. constructor.
+    remember (run_object_method object_class_ S l). destruct o0.
+    simpls. cases_if*. 
+    remember (run_object_method object_prim_value_ S l). destruct o0.
+    simpls. destruct o0. destruct v. 
+    destruct p.
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      inverts HR. subst. 
+      symmetry in Heqo1, Heqo0. 
+      apply run_object_method_correct in Heqo0. 
+      apply run_object_method_correct in Heqo1. 
+      applys* red_spec_call_bool_proto_to_string_bool.
+      constructor*.
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      simpls.  apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H3 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        eexists; jauto.
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo1.
+      simpls. inverts Heqo1.
+      apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H0 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        exists~ O. 
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo0.
+      simpls. assert (a = O).
+      {
+        apply pick_option_correct in Heq.
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. rewrite Hv in Heqo0. false*.
+      simpls. apply red_spec_call_bool_proto_to_string_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H0 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        exists~ O. 
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo0.
+      simpls. inverts Heqo0. 
   (* prealloc_bool_proto_value_of *)
-  lets H : run_value_viewable_bool_destruct S vthis. inverts H as H. 
-    destruct H as (b & Heq). 
-    rewrite Heq in HR. inverts HR. 
-    apply red_spec_call_bool_proto_value_of_bool.
-    rewrite~ run_value_viewable_bool in Heq.
-    rewrite H in HR. 
-    apply red_spec_call_bool_proto_value_of_not_bool.  
-    exact true.
-    introv Hyp.
-    rewrite <- run_value_viewable_bool in Hyp.
-    rewrite H in Hyp. applys* run_error_not_some_out_res. 
-    applys* run_error_correct.
+  destruct vthis as [p | l].
+    destruct p; try solve [
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]]. 
+    inverts HR. apply red_spec_call_bool_proto_value_of_bool. constructor.
+    remember (run_object_method object_class_ S l). destruct o0.
+    simpls. cases_if*. 
+    remember (run_object_method object_prim_value_ S l). destruct o0.
+    simpls. destruct o0. destruct v. 
+    destruct p.
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      inverts HR. subst. apply red_spec_call_bool_proto_value_of_bool.
+      symmetry in Heqo1, Heqo0. 
+      apply run_object_method_correct in Heqo0. 
+      apply run_object_method_correct in Heqo1. 
+      constructor*.
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      simpls.  apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H3 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        eexists; jauto.
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo1.
+      simpls. inverts Heqo1.
+      apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H0 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        exists~ O. 
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo0.
+      simpls. assert (a = O).
+      {
+        apply pick_option_correct in Heq.
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. rewrite Hv in Heqo0. false*.
+      simpls. apply red_spec_call_bool_proto_value_of_not_bool;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H0 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        exists~ O. 
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo0.
+      simpls. inverts Heqo0. 
   (* prealloc_number *)
   cases_if.
-   substs. inverts HR. apply~ red_spec_call_number_nil.
-   inverts HR. apply~ red_spec_call_number_not_nil.
-     apply~ get_arg_correct_0.
-    apply* to_number_correct.
+  substs. inverts HR. apply~ red_spec_call_number_nil.
+  inverts HR. apply~ red_spec_call_number_not_nil.
+    apply~ get_arg_correct_0.
+  apply* to_number_correct.
   (* prealloc_number_proto *)
   discriminate.
   (* prealloc_number_proto_to_string *)
   discriminate.
   (* prealloc_number_proto_value_of *)
-  lets H : run_value_viewable_number_destruct S vthis. inverts H as H. 
-    destruct H as (n & Heq). 
-    rewrite Heq in HR. inverts HR. 
-    apply red_spec_call_number_proto_value_of.
-    rewrite~ run_value_viewable_number in Heq.
-    rewrite H in HR. 
-    apply red_spec_call_number_proto_value_of_1_not_number. 
-    exact JsNumber.zero.
-    introv Hyp.
-    rewrite <- run_value_viewable_number in Hyp.
-    rewrite H in Hyp. applys* run_error_not_some_out_res. 
-    applys* run_error_correct. 
+  destruct vthis as [p | l].
+    destruct p; try solve [
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]]. 
+    inverts HR. apply red_spec_call_number_proto_value_of_number. constructor.
+    remember (run_object_method object_class_ S l). destruct o0.
+    simpls. cases_if*. 
+    remember (run_object_method object_prim_value_ S l). destruct o0.
+    simpls. destruct o0. destruct v. 
+    destruct p.
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      inverts HR. subst. apply red_spec_call_number_proto_value_of_number.
+      symmetry in Heqo1, Heqo0. 
+      apply run_object_method_correct in Heqo0. 
+      apply run_object_method_correct in Heqo1. 
+      constructor*.
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      symmetry in Heqo1. apply run_object_method_correct in Heqo1.
+      destruct Heqo1 as (O1 & Hb1 & Hv1).
+      destruct H3 as (O2 & Hb2 & Hv2).
+      assert (O1 = O2).
+      {
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. false~.
+      simpls.  apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H3 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        eexists; jauto.
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo1.
+      simpls. inverts Heqo1.
+      apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H0 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        exists~ O. 
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo0.
+      simpls. assert (a = O).
+      {
+        apply pick_option_correct in Heq.
+        applys* Heap_binds_func.
+        apply object_loc_comparable. 
+      } subst. rewrite Hv in Heqo0. false*.
+      simpls. apply red_spec_call_number_proto_value_of_not_number;
+      [introv Hv; inverts Hv | applys* run_error_correct]. 
+      destruct H0 as (O & Hb & Hv).
+      unfolds run_object_method.
+      assert (exists a, object_binds S l a).
+        exists~ O. 
+      lets Hyp : (@pick_option_defined _ (object_binds S l) (object_binds_pickable_option S l) H). 
+      destruct Hyp as (a & Heq). 
+      rewrite Heq in Heqo0.
+      simpls. inverts Heqo0. 
   (* prealloc_number_proto_to_fixed *)
   discriminate.
   (* prealloc_number_proto_to_exponential *)

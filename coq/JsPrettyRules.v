@@ -4524,9 +4524,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (** Boolean.prototype.toString() (returns string)  (15.6.4.2)
       Note: behavior encoded using valueOf and conversion to string *)
 
-  | red_spec_call_bool_proto_to_string : forall S C vthis args s o b,
+  | red_spec_call_bool_proto_to_string_bool : forall S C vthis args s o b,
       value_viewable_as "Boolean" S vthis b ->
       s = (convert_bool_to_string b) ->
+      red_expr S C (spec_call_prealloc prealloc_bool_proto_to_string vthis args) o
+
+   | red_spec_call_bool_proto_to_string_not_bool : forall S C vthis args o,
+      (forall b, ~ value_viewable_as "Boolean" S vthis b) ->
+      red_expr S C (spec_error native_error_type) o ->
       red_expr S C (spec_call_prealloc prealloc_bool_proto_to_string vthis args) o
 
   (** Boolean.prototype.valueOf() (returns bool)  (15.6.4.3) *)
@@ -4580,11 +4585,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (* Number.prototype.valueOf() (returns number)  (15.7.4.4) *)
 
-  | red_spec_call_number_proto_value_of : forall S C vthis args n,
+  | red_spec_call_number_proto_value_of_number : forall S C vthis args n,
       value_viewable_as "Number" S vthis n ->
       red_expr S C (spec_call_prealloc prealloc_number_proto_value_of vthis args) (out_ter S n)
 
-   | red_spec_call_number_proto_value_of_1_not_number : forall S C vthis args o,
+   | red_spec_call_number_proto_value_of_not_number : forall S C vthis args o,
       (forall n, ~ value_viewable_as "Number" S vthis n) ->
       red_expr S C (spec_error native_error_type) o ->
             red_expr S C (spec_call_prealloc prealloc_number_proto_value_of vthis args) o

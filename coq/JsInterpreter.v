@@ -670,40 +670,6 @@ Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
     object_get_builtin runs S' C builtin_get_default v l x).
 
-Definition run_value_viewable_as_bool S v : result :=
-  match v with
-  | value_prim (prim_bool b) => res_ter S b
-  | value_object l =>
-      if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
-        (fun s =>
-          ifb (s = "Boolean") then
-          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
-            (fun wo => 
-              match wo with
-              | Some (value_prim (prim_bool b)) => res_ter S b
-              | _ => run_error S native_error_type
-              end)
-          else run_error S native_error_type)
-   | _ => run_error S native_error_type
-  end.
-
-Definition run_value_viewable_as_number S v : result :=
-  match v with
-  | value_prim (prim_number n) => res_ter S n
-  | value_object l =>
-      if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
-        (fun s =>
-          ifb (s = "Number") then
-          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
-            (fun wo => 
-              match wo with
-              | Some (value_prim (prim_number n)) => res_ter S n
-              | _ => run_error S native_error_type
-              end)
-          else run_error S native_error_type)
-   | _ => run_error S native_error_type
-  end.
-
 (**************************************************************)
 (** Operations on environments *)
 
@@ -2831,11 +2797,38 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     out_ter S (convert_value_to_boolean v)
 
   | prealloc_bool_proto_to_string =>
-    if_bool (run_value_viewable_as_bool S vthis)
-    (fun S b => res_ter S (convert_bool_to_string b))
+    match vthis with
+     | value_prim (prim_bool b) => res_ter S (convert_bool_to_string b)
+     | value_object l =>
+        if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Boolean") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
+              match wo with
+              | Some (value_prim (prim_bool b)) => res_ter S (convert_bool_to_string b)
+              | _ => run_error S native_error_type
+              end)
+          else run_error S native_error_type)
+      | _ => run_error S native_error_type
+     end
 
   | prealloc_bool_proto_value_of =>
-    run_value_viewable_as_bool S vthis
+    match vthis with
+     | value_prim (prim_bool b) => res_ter S b
+     | value_object l =>
+        if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Boolean") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
+              match wo with
+              | Some (value_prim (prim_bool b)) => res_ter S b
+              | _ => run_error S native_error_type
+              end)
+          else run_error S native_error_type)
+      | _ => run_error S native_error_type
+     end
 
   | prealloc_number =>
     ifb args = nil then
@@ -2845,7 +2838,21 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       to_number runs S C v
 
   | prealloc_number_proto_value_of =>
-    run_value_viewable_as_number S vthis
+    match vthis with
+     | value_prim (prim_number n) => res_ter S n
+     | value_object l =>
+       if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Number") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
+              match wo with
+              | Some (value_prim (prim_number n)) => res_ter S n
+              | _ => run_error S native_error_type
+              end)
+          else run_error S native_error_type)
+     | _ => run_error S native_error_type
+    end
 
   | prealloc_error =>
     'let v := get_arg 0 args in
