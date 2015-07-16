@@ -466,6 +466,7 @@ Definition bool_proto_value_of_function_object :=
 Definition object_prealloc_math :=
   let P := Heap.empty in
   let P := write_constant P "PI" JsNumber.pi in
+  let P := write_constant P "E" JsNumber.e in
   object_create_builtin prealloc_object_proto "Math" P.
 
 

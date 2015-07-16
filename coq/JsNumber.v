@@ -23,6 +23,7 @@ Parameter neg_infinity : number.
 Parameter max_value : number.
 Parameter min_value : number.
 Parameter pi : number.
+Parameter e : number.
 
 (**************************************************************)
 (** ** Conversions on numbers *)
