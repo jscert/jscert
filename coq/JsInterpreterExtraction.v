@@ -93,6 +93,7 @@ Extract Constant JsNumber.infinity => "infinity".
 Extract Constant JsNumber.neg_infinity => "neg_infinity".
 Extract Constant JsNumber.max_value => "max_float".
 Extract Constant JsNumber.min_value => "(Int64.float_of_bits Int64.one)".
+Extract Constant JsNumber.pi => "(4. *. atan 1.)".
 Extract Constant JsNumber.floor => "floor".
 Extract Constant JsNumber.absolute => "abs_float".
 
