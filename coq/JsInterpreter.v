@@ -1124,6 +1124,24 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
       if_some (pick_option (object_set_property S' l "length" (attributes_data_intro (JsNumber.of_int arg_len) true false false))) (fun S =>
         if_void (array_args_map_loop runs S C l args 0) (fun S => res_ter S l))
 
+  | prealloc_string =>
+    'let O2 := object_new prealloc_string_proto "String" in
+    'let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
+    'let follow := (fun S s =>
+                     'let O :=  object_with_primitive_value O1 s in
+                     let '(l, S1) := object_alloc S O in
+                     'let lenDesc := attributes_data_intro_constant (String.length s) in
+                     if_some (pick_option (object_set_property S1 l "length" lenDesc)) (fun S' => 
+                       res_ter S' l)) in
+                       (* While the spec never explicitly says to do this, it specifies that it is the case immediately after creation*)
+    'let arg_len := length args in
+    ifb (arg_len = 0) then
+      follow S ""
+    else
+      'let arg := get_arg 0 args in
+      if_string (to_string runs S C arg) (fun S s =>
+        follow S s)
+
   | prealloc_error =>
     'let v := get_arg 0 args in
     build_error S prealloc_error_proto v
@@ -2776,6 +2794,14 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
 
   | prealloc_function_proto =>
     out_ter S undef
+
+  | prealloc_string =>
+    'let arg_len := length args in
+    ifb (arg_len = 0) then res_ter S ""
+    else       
+      'let value := get_arg 0 args in
+      if_string (to_string runs S C value) (fun S s =>
+        res_ter S s)
 
   | prealloc_string_proto_to_string
   | prealloc_string_proto_value_of =>

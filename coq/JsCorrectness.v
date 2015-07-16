@@ -2646,7 +2646,7 @@ Proof.
   (* prealloc_array_proto_push *)
   discriminate.
   (* prealloc_string *)
-  discriminate. 
+  skip.
   (* prealloc_string_proto *)
   discriminate.
   (* prealloc_string_proto_to_string *)
@@ -5627,7 +5627,7 @@ Proof.
   applys* push_correct.
 
   (* prealloc_string *)
-  discriminate. (* LATER *)
+  skip. (* LATER *)
   (* prealloc_string_proto *)
   discriminate. (* LATER *)
   (* prealloc_string_proto_to_string *)
