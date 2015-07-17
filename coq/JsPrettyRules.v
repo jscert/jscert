@@ -4426,10 +4426,14 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   (** String ([value]) (returns primitive string) (15.5.1.1) *)
 
-  | red_spec_call_string_non_empty : forall S C args o v vthis,
+  | red_spec_call_string_non_empty : forall S C args o o1 v vthis,
     arguments_from args (v::nil) ->
-    red_expr S C (spec_to_string v) o ->
+    red_expr S C (spec_to_string v) o1 ->
+    red_expr S C (spec_call_string_non_empty o1) o ->
     red_expr S C (spec_call_prealloc prealloc_string vthis args) o
+
+  | red_spec_call_string_non_empty_1 : forall S S' C s,
+    red_expr S C (spec_call_string_non_empty (out_ter S' s)) (out_ter S' s)
 
   | red_spec_call_string_empty : forall S C vthis,
       red_expr S C (spec_call_prealloc prealloc_string vthis nil) (out_ter S "")

@@ -5653,11 +5653,13 @@ Proof.
   applys* push_correct.
 
   (* prealloc_string *)
-  cases_if. substs. inverts HR. apply red_spec_call_string_empty.
-  let_name. apply red_spec_call_string_non_empty with value. substs.
-  apply get_arg_correct_0. apply to_string_correct with runs. apply IH.
-  run_inv. unfold res_out. rewrite <- HR.
-  skip. (* FIXME *)
+
+  cases_if; substs.
+    inverts HR. apply red_spec_call_string_empty.
+    let_name; substs. run red_spec_call_string_non_empty.
+      apply get_arg_correct_0.
+    apply red_spec_call_string_non_empty_1.
+
   (* prealloc_string_proto *)
   discriminate. (* LATER *)
   (* prealloc_string_proto_to_string *)

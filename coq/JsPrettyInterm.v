@@ -602,6 +602,8 @@ Inductive ext_expr :=
   | spec_call_array_proto_push_5 : object_loc -> value -> ext_expr
   | spec_call_array_proto_push_6 : value -> out -> ext_expr
 
+  | spec_call_string_non_empty : out -> ext_expr 
+
   | spec_construct_string_1 : value -> ext_expr
   | spec_construct_string_2 : out -> ext_expr
 
@@ -1396,6 +1398,8 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_call_array_proto_push_4_nonempty_3 _ _ _ _ o => Some o
   | spec_call_array_proto_push_5 _ _ => None
   | spec_call_array_proto_push_6 _ o => Some o
+
+  | spec_call_string_non_empty o => Some o 
 
   | spec_construct_string_1 _ => None
   | spec_construct_string_2 o => Some o
