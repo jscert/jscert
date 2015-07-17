@@ -4424,6 +4424,16 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   (*------------------------------------------------------------*)
   (** ** String builtin functions *)
 
+  (** String ([value]) (returns primitive string) (15.5.1.1) *)
+
+  | red_spec_call_string_non_empty : forall S C args o v vthis,
+    arguments_from args (v::nil) ->
+    red_expr S C (spec_to_string v) o ->
+    red_expr S C (spec_call_prealloc prealloc_string vthis args) o
+
+  | red_spec_call_string_empty : forall S C vthis,
+      red_expr S C (spec_call_prealloc prealloc_string vthis nil) (out_ter S "")
+
   (** new String ([value]) (returns object)  (15.5.2.1) *)
 
   | red_spec_construct_string_non_empty : forall S C v args o,

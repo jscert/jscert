@@ -3953,6 +3953,7 @@ Lemma run_to_descriptor_correct : forall runs S C v y,
   run_to_descriptor runs S C v = result_some y ->
   red_spec S C (spec_to_descriptor v) y.
 Proof.
+  (*
   introv IH HR. unfold run_to_descriptor in HR.
   destruct v as [p | l]. 
 
@@ -4834,7 +4835,7 @@ Proof.
                         applys* throw_result_run_error_correct.
                       * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
                 }
-         }             
+         }             *)
 Admitted. (* Faster *)
 
 
@@ -5652,7 +5653,11 @@ Proof.
   applys* push_correct.
 
   (* prealloc_string *)
-  skip. (* LATER *)
+  cases_if. substs. inverts HR. apply red_spec_call_string_empty.
+  let_name. apply red_spec_call_string_non_empty with value. substs.
+  apply get_arg_correct_0. apply to_string_correct with runs. apply IH.
+  run_inv. unfold res_out. rewrite <- HR.
+  skip. (* FIXME *)
   (* prealloc_string_proto *)
   discriminate. (* LATER *)
   (* prealloc_string_proto_to_string *)

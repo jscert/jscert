@@ -2796,9 +2796,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     out_ter S undef
 
   | prealloc_string =>
-    'let arg_len := length args in
-    ifb (arg_len = 0) then res_ter S ""
-    else       
+    ifb (args = nil) then res_ter S ""
+    else
       'let value := get_arg 0 args in
       if_string (to_string runs S C value) (fun S s =>
         res_ter S s)
