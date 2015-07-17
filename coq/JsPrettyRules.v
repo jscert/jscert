@@ -4432,7 +4432,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_construct_string_1 v) o ->
       red_expr S C (spec_construct_prealloc prealloc_string args) o
 
-  | red_spec_construct_string_empty : forall S C v o,
+  | red_spec_construct_string_empty : forall S C o,
       red_expr S C (spec_construct_string_2 (out_ter S "")) o ->
       red_expr S C (spec_construct_prealloc prealloc_string nil) o
 
@@ -4441,7 +4441,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_construct_string_2 o') o ->
       red_expr S C (spec_construct_string_1 v) o
 
-  | red_spec_construct_string_2 : forall S0 S S' C l s P A O,
+  | red_spec_construct_string_2 : forall S0 S S' S'' C l s O,
       (* We demand that this object has the properties required by 15.5.2.1. *)
       (* We also require the "length" property because of 15.5.5.1. *)
       (* We also require the [GetOwnProperty] property because of 15.5.5.2. *)
@@ -4450,11 +4450,9 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       object_extensible_ O = true ->
       object_prim_value_ O = Some (s : value) ->
       object_get_own_prop_ O = builtin_get_own_prop_string ->
-      P = object_properties_ O ->
-      Heap.binds P "length" A ->
-      A = attributes_data_intro_constant (String.length s) ->
       (l, S') = object_alloc S O ->
-      red_expr S0 C (spec_construct_string_2 (out_ter S s)) (out_ter S' l)
+      object_set_property S' l "length" (attributes_data_intro_constant (JsNumber.of_int (String.length s))) S'' ->
+      red_expr S0 C (spec_construct_string_2 (out_ter S s)) (out_ter S'' l)
 
 
   (** String.prototype.toString() (returns string)  (15.5.4.2) *)

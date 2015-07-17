@@ -2646,7 +2646,32 @@ Proof.
   (* prealloc_array_proto_push *)
   discriminate.
   (* prealloc_string *)
-  skip.
+  repeat let_name.
+  cases_if*. subst.
+  symmetry in EQarg_len. apply length_zero_inv in EQarg_len. subst.
+  apply red_spec_construct_string_empty. 
+  let_name.
+  match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end.
+  destruct X as (l & S'). let_name. subst.
+  run. rename x into S''. apply pick_option_correct in E.
+  remember (object_with_primitive_value
+             (object_with_get_own_property
+                (object_new prealloc_string_proto "String")
+                builtin_get_own_prop_string) "") as O.
+  applys* red_spec_construct_string_2; substs~.
+  applys* red_spec_construct_string_non_empty.
+  subst. destruct args; jauto; discriminate.
+  apply get_arg_correct_0. subst.
+  run red_spec_construct_string_1 using to_string_correct.
+  let_name.
+  match goal with H: context [object_alloc ?s ?o] |- _ => sets_eq X: (object_alloc s o) end.
+  destruct X as (l & S'). let_name. subst.
+  run. rename x into S''. apply pick_option_correct in E.
+  remember (object_with_primitive_value
+             (object_with_get_own_property
+                (object_new prealloc_string_proto "String")
+                builtin_get_own_prop_string) "") as O.
+  applys* red_spec_construct_string_2; substs~.
   (* prealloc_string_proto *)
   discriminate.
   (* prealloc_string_proto_to_string *)
