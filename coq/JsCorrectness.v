@@ -3953,7 +3953,6 @@ Lemma run_to_descriptor_correct : forall runs S C v y,
   run_to_descriptor runs S C v = result_some y ->
   red_spec S C (spec_to_descriptor v) y.
 Proof.
-  (*
   introv IH HR. unfold run_to_descriptor in HR.
   destruct v as [p | l]. 
 
@@ -4835,7 +4834,7 @@ Proof.
                         applys* throw_result_run_error_correct.
                       * unfolds in HR. inverts HR. applys~ red_spec_to_descriptor_7_ok. 
                 }
-         }             *)
+         }
 Admitted. (* Faster *)
 
 
