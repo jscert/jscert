@@ -24,6 +24,7 @@ Parameter max_value : number.
 Parameter min_value : number.
 Parameter pi : number.
 Parameter e : number.
+Parameter ln2 : number.
 
 (**************************************************************)
 (** ** Conversions on numbers *)

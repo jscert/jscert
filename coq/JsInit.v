@@ -467,6 +467,7 @@ Definition object_prealloc_math :=
   let P := Heap.empty in
   let P := write_constant P "PI" JsNumber.pi in
   let P := write_constant P "E" JsNumber.e in
+  let P := write_constant P "LN2" JsNumber.ln2 in
   object_create_builtin prealloc_object_proto "Math" P.
 
 
