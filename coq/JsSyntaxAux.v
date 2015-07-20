@@ -193,6 +193,7 @@ Definition native_error_compare ne1 ne2 :=
   | native_error_ref, native_error_ref => true
   | native_error_syntax, native_error_syntax => true
   | native_error_type, native_error_type => true
+  | native_error_uri, native_error_uri => true
   | _, _ => false
   end.
 

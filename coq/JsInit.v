@@ -155,6 +155,7 @@ Definition object_prealloc_global_properties :=
   let P := write_native P "ReferenceError" native_error_ref in
   let P := write_native P "SyntaxError" native_error_syntax in
   let P := write_native P "TypeError" native_error_type in
+  let P := write_native P "URIError" native_error_uri in
   let P := write_native P "JSON" prealloc_json in
   P.
 
@@ -654,6 +655,7 @@ Definition object_heap_initial :=
   let h := Heap.write h (prealloc_native_error_proto native_error_ref) (object_prealloc_native_error_proto native_error_ref) in
   let h := Heap.write h (prealloc_native_error_proto native_error_syntax) (object_prealloc_native_error_proto native_error_syntax) in
   let h := Heap.write h (prealloc_native_error_proto native_error_type) (object_prealloc_native_error_proto native_error_type) in
+  let h := Heap.write h (prealloc_native_error_proto native_error_uri) (object_prealloc_native_error_proto native_error_uri) in
   let h := Heap.write h prealloc_error object_prealloc_error in
   let h := Heap.write h native_error_eval (object_prealloc_native_error native_error_eval) in
   let h := Heap.write h native_error_range (object_prealloc_native_error native_error_range) in

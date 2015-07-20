@@ -226,7 +226,8 @@ Inductive native_error :=
   | native_error_range
   | native_error_ref
   | native_error_syntax
-  | native_error_type.
+  | native_error_type
+  | native_error_uri.
 
 (** Identifiers for objects pre-allocated in the initial heap *)
 

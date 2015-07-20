@@ -241,5 +241,6 @@ Definition string_of_native_error (ne : native_error) :=
   | native_error_ref => "ReferenceError"
   | native_error_syntax => "SyntaxError"
   | native_error_type => "TypeError"
+  | native_error_uri => "URIError"
   end.
 
