@@ -1958,10 +1958,10 @@ Proof.
    asserts: (ref_is_property r). unfolds. destruct* EQ.
    lets (v&Ev): ref_kind_base_object_inv EQ. rewrite Ev in HR.
    unfolds ref_has_primitive_base. case_if.
-     run* red_spec_ref_get_value_ref_b using prim_value_get_correct. case_if*.
+     run* red_spec_ref_get_value_ref_b_has_primitive_base using prim_value_get_correct.
       applys* red_spec_ref_get_value_ref_b_1.
      destruct EQ; tryfalse. destruct v as [|l]; tryfalse.
-     run* red_spec_ref_get_value_ref_b using run_object_get_correct. case_if*.
+     run* red_spec_ref_get_value_ref_b_has_not_primitive_base using run_object_get_correct.
       applys* red_spec_ref_get_value_ref_b_1.
     clear EQM.
   sets_eq k: (ref_kind_of r). destruct k; tryfalse.
@@ -2026,23 +2026,23 @@ Lemma ref_put_value_correct : forall runs S C rv v o,
 Proof.
   introv IH HR. unfolds in HR.
   destruct rv; tryfalse.
-  applys* red_spec_ref_put_value_value.
-  case_if.
+   applys* red_spec_ref_put_value_value.
+   case_if.
     case_if.
-      applys~ red_spec_ref_put_value_ref_a_1.
-       applys* run_error_correct.
-      applys~ red_spec_ref_put_value_ref_a_2.
-       applys* object_put_correct.
-  case_if.
-  cases (ref_base r); tryfalse.
-  case_if; destruct v0; tryfalse.
-  applys* red_spec_ref_put_value_ref_b.
-  case_if. applys* prim_value_put_correct.
-  applys* red_spec_ref_put_value_ref_b.
-  case_if. applys* object_put_correct.
-  cases (ref_base r); tryfalse.
-   applys* red_spec_ref_put_value_ref_c.
-   applys* env_record_set_mutable_binding_correct.
+     applys~ red_spec_ref_put_value_ref_a_1.
+      applys* run_error_correct.
+     applys~ red_spec_ref_put_value_ref_a_2.
+      applys* object_put_correct.
+    case_if.
+     cases (ref_base r); tryfalse.
+      case_if; destruct v0; tryfalse.
+       applys* red_spec_ref_put_value_ref_b_has_primitive_base.
+        applys* prim_value_put_correct.
+       applys* red_spec_ref_put_value_ref_b_has_not_primitive_base.
+        applys* object_put_correct.
+      cases (ref_base r); tryfalse.
+       applys* red_spec_ref_put_value_ref_c.
+       applys* env_record_set_mutable_binding_correct.
 Admitted. (* faster *)
 
 

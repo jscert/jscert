@@ -187,7 +187,7 @@ Inductive ext_expr :=
 
   (** Extended expressions for operations on objects *)
 
-  | spec_object_get : value -> prop_name -> ext_expr
+  | spec_object_get : object_loc -> prop_name -> ext_expr
   | spec_object_get_1 : builtin_get -> value -> object_loc -> prop_name -> ext_expr
   | spec_object_get_2 : value -> specret full_descriptor -> ext_expr
   | spec_object_get_3 : value -> value -> ext_expr
@@ -201,7 +201,7 @@ Inductive ext_expr :=
   | spec_object_can_put_5 : object_loc -> specret full_descriptor -> ext_expr
   | spec_object_can_put_6 : attributes_data -> bool -> ext_expr
 
-  | spec_object_put : value -> prop_name -> value -> bool -> ext_expr
+  | spec_object_put : object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_1 : builtin_put -> value -> object_loc -> prop_name -> value -> bool -> ext_expr
   | spec_object_put_2 : value -> object_loc -> prop_name -> value -> bool -> out -> ext_expr
   | spec_object_put_3 : value -> object_loc -> prop_name -> value -> bool -> specret full_descriptor -> ext_expr
@@ -237,6 +237,7 @@ Inductive ext_expr :=
   | spec_object_define_own_prop_6c : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
   | spec_object_define_own_prop_reject : bool -> ext_expr
   | spec_object_define_own_prop_write : object_loc -> prop_name -> attributes -> descriptor -> bool -> ext_expr
+
   | spec_prim_value_get : value -> prop_name -> ext_expr
   | spec_prim_value_get_1 : value -> prop_name -> out -> ext_expr
   | spec_prim_value_put : value -> prop_name -> value -> bool -> ext_expr

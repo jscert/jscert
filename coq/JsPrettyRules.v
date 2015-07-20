@@ -1972,11 +1972,10 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_define_own_prop_2 l x Desc throw y) o ->
       red_expr S C (spec_object_define_own_prop_1 builtin_define_own_prop_default l x Desc throw) o
 
-  | red_spec_object_define_own_prop_2 : forall S0 S C l x Desc throw An bext o, (* Step 2 *)
+  | red_spec_object_define_own_prop_2 : forall S0 S C l x Desc throw D bext o, (* Step 2 *)
       object_extensible S l bext ->
-      red_expr S C (spec_object_define_own_prop_3 l x Desc throw An bext) o ->
-      red_expr S0 C (spec_object_define_own_prop_2 l x Desc throw (ret S An)) o
-      (* LATER: This [An] is a [full_descriptor]:  why not calling it [D]? -- Martin *)
+      red_expr S C (spec_object_define_own_prop_3 l x Desc throw D bext) o ->
+      red_expr S0 C (spec_object_define_own_prop_2 l x Desc throw (ret S D)) o
 
   | red_spec_object_define_own_prop_3_undef_false : forall S C l x Desc throw o, (* Step 3 *)
       red_expr S C (spec_object_define_own_prop_reject throw) o ->
@@ -2356,13 +2355,18 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_object_put prealloc_global (ref_name r) vnew throw_false) o ->
       red_expr S C (spec_put_value r vnew) o
 
-  | red_spec_ref_put_value_ref_b : forall v ext_put S C r vnew o, (* Step 4 *)
+  | red_spec_ref_put_value_ref_b_has_primitive_base : forall v S C r vnew o, (* Step 4 *)
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
-      ext_put = (If ref_has_primitive_base r
-        then spec_prim_value_put
-        else spec_object_put) ->
-      red_expr S C (ext_put v (ref_name r) vnew (ref_strict r)) o ->
+      ref_has_primitive_base r ->
+      red_expr S C (spec_prim_value_put v (ref_name r) vnew (ref_strict r)) o ->
+      red_expr S C (spec_put_value (resvalue_ref r) vnew) o
+
+  | red_spec_ref_put_value_ref_b_has_not_primitive_base : forall l S C r vnew o, (* Step 4 *)
+      ref_is_property r ->
+      ref_base r = ref_base_type_value l ->
+      ~ ref_has_primitive_base r ->
+      red_expr S C (spec_object_put l (ref_name r) vnew (ref_strict r)) o ->
       red_expr S C (spec_put_value (resvalue_ref r) vnew) o
 
   | red_spec_ref_put_value_ref_c : forall L S C r vnew o, (* Step 5 *)
@@ -2866,7 +2870,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      red_expr S C (spec_args_obj_get_1 vthis l x lmap (ret S0 full_descriptor_undef)) o
 
   | red_spec_object_get_args_obj_1_attrs : forall S0 S C vthis l x lmap A o, (* Step 4 *)
-     red_expr S0 C (spec_object_get (value_object lmap) x) o ->
+     red_expr S0 C (spec_object_get lmap x) o ->
      red_expr S C (spec_args_obj_get_1 vthis l x lmap (ret S0 (full_descriptor_some A))) o
 
   (* Arguments Object: DefineOwnProperty (returns bool) (10.6) *)
@@ -2895,7 +2899,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_object_define_own_prop_args_obj_2_true_not_acc_some : forall v o1 S C l x Desc throw lmap A S' o, (* Step 5 b i *)
       ~ (descriptor_is_accessor Desc) ->
       descriptor_value Desc = Some v ->
-      red_expr S' C (spec_object_put (value_object lmap) x v throw) o1 ->
+      red_expr S' C (spec_object_put lmap x v throw) o1 ->
       red_expr S' C (spec_args_obj_define_own_prop_3 l x Desc throw lmap o1) o ->
       red_expr S C (spec_args_obj_define_own_prop_2 l x Desc throw lmap (full_descriptor_some A) (out_ter S' true)) o
 
@@ -3180,7 +3184,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_construct_default l args) o
 
   | red_spec_construct_default_1 : forall S0 S S' C l' vproto O l args v o1 o,
-      vproto = (If (type_of v) = type_object then v else prealloc_object_proto) -> (* Step 6-7 *)
+      vproto = (If type_of v = type_object then v else prealloc_object_proto) -> (* Step 6-7 *)
       O = object_new vproto "Object" -> (* Step 1-4 *)
       (l', S') = object_alloc S O ->
       red_expr S' C (spec_call l (value_object l') args) o1 -> (* Step 8*)
@@ -3188,7 +3192,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S0 C (spec_construct_default_1 l args (out_ter S v)) o
 
   | red_spec_function_construct_2 : forall S0 S C l' v v', (* Step 9-10 *)
-      v' = (If (type_of v = type_object) then v else l') ->
+      v' = (If type_of v = type_object then v else l') ->
       red_expr S0 C (spec_construct_default_2 l' (out_ter S v)) (out_ter S v')
       (* Note: exceptions get propagated automatically *)
 
@@ -3333,7 +3337,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_call_prealloc prealloc_global_is_finite vthis args) o
 
   | red_spec_call_global_is_finite_1 : forall S S0 C b n,
-      b = (If (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity) then false else true) ->
+      b = (If n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity then false else true) ->
       red_expr S0 C (spec_call_global_is_finite_1 (out_ter S n)) (out_ter S b)
 
 
@@ -4613,7 +4617,6 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
 
   | red_spec_error : forall S C ne o1 o,
       red_expr S C (spec_build_error (prealloc_native_error_proto ne) undef) o1 ->
-      (* LATER: I'm not sure, but shall this [prealloc_native_error_proto] be a [prealloc_native_error] instead? -- Martin *)
       red_expr S C (spec_error_1 o1) o ->
       red_expr S C (spec_error ne) o
 
@@ -5044,7 +5047,7 @@ with red_spec : forall {T : Type}, state -> execution_ctx -> ext_spec -> specret
       red_spec S0 C (spec_args_obj_get_own_prop_1 l x (ret S (full_descriptor_some A))) y
 
   | red_spec_object_get_own_prop_args_obj_2_attrs : forall o1 S0 S C l x lmap A Amap (y:specret full_descriptor), (* Step 5 *)
-      red_expr S0 C (spec_object_get (value_object lmap) x) o1 ->
+      red_expr S0 C (spec_object_get lmap x) o1 ->
       red_spec S0 C (spec_args_obj_get_own_prop_3 A o1) y ->
       red_spec S C (spec_args_obj_get_own_prop_2 l x lmap A (ret S0 (full_descriptor_some Amap))) y
 
@@ -5117,14 +5120,19 @@ with red_spec : forall {T : Type}, state -> execution_ctx -> ext_spec -> specret
       red_spec S C (spec_error_spec native_error_ref) y ->
       red_spec S C (spec_get_value r) y
 
-  | red_spec_ref_get_value_ref_b: forall ext_get v S C r o1 (y:specret value), (* Steps 2 and 4 *)
+  | red_spec_ref_get_value_ref_b_has_primitive_base : forall v S C r o1 (y:specret value), (* Steps 2 and 4 *)
       ref_is_property r ->
       ref_base r = ref_base_type_value v ->
-      ext_get = (If ref_has_primitive_base r
-        then spec_prim_value_get
-        else spec_object_get) ->
-        (* LATER: It would make more sense for [spec_object_get] to get a location instead of a value.  Can this part of the rule be splitted in two to get a location [l] in the second case to directly give it to [spec_object_get] and avoid confusions in the rule [red_spec_object_get]? -- Martin. *)
-      red_expr S C (ext_get v (ref_name r)) o1 ->
+      ref_has_primitive_base r ->
+      red_expr S C (spec_prim_value_get v (ref_name r)) o1 ->
+      red_spec S C (spec_get_value_ref_b_1 o1) y ->
+      red_spec S C (spec_get_value r) y
+
+  | red_spec_ref_get_value_ref_b_has_not_primitive_base : forall l S C r o1 (y:specret value), (* Steps 2 and 4 *)
+      ref_is_property r ->
+      ref_base r = ref_base_type_value l ->
+      ~ ref_has_primitive_base r ->
+      red_expr S C (spec_object_get l (ref_name r)) o1 ->
       red_spec S C (spec_get_value_ref_b_1 o1) y ->
       red_spec S C (spec_get_value r) y
 
