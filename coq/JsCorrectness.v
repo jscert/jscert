@@ -2476,13 +2476,21 @@ Proof.
   discriminate.
   (* prealloc_global_eval *)
   discriminate.
+  (* prealloc_global_parse_int *)
+  discriminate.
+  (* prealloc_global_parse_float *)
+  discriminate.
   (* prealloc_global_is_finite *)
   discriminate.
   (* prealloc_global_is_nan *)
   discriminate.
-  (* prealloc_global_parse_float *)
+  (* prealloc_global_decode_uri *)
   discriminate.
-  (* prealloc_global_parse_int *)
+  (* prealloc_global_decode_uri_component *)
+  discriminate.
+  (* prealloc_global_encode_uri *)
+  discriminate.
+  (* prealloc_global_encode_uri_component *)
   discriminate.
   (* prealloc_object *)
   let_name. subst.
@@ -4982,6 +4990,10 @@ Proof.
   discriminate.
   (* prealloc_global_eval *)
   discriminate.
+  (* prealloc_global_parse_int *)
+  discriminate.
+  (* prealloc_global_parse_float *)
+  discriminate.
   (* prealloc_global_is_finite *)
   let_name. run red_spec_call_global_is_finite.
     substs. apply~ get_arg_correct_0.
@@ -4992,9 +5004,13 @@ Proof.
     substs. apply~ get_arg_correct_0.
   applys red_spec_call_global_is_nan_1.
   cases_if; fold_bool; rew_refl~.
-  (* prealloc_global_parse_float *)
+  (* prealloc_global_decode_uri *)
   discriminate.
-  (* prealloc_global_parse_int *)
+  (* prealloc_global_decode_uri_component *)
+  discriminate.
+  (* prealloc_global_encode_uri *)
+  discriminate.
+  (* prealloc_global_encode_uri_component *)
   discriminate.
   (* prealloc_object *)
   let_name. subst.
