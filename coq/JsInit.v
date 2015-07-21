@@ -560,7 +560,7 @@ Definition object_prealloc_native_error_proto ne :=
 
 Definition object_prealloc_json :=
   let P := Heap.empty in
-  object_create_prealloc_constructor prealloc_json 1 P.
+  object_create_builtin prealloc_object_proto "JSON" P.
 
 (**************************************************************)
 (** The [[ThrowTypeError]] Function Object  (13.2.3) *)
