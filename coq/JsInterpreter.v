@@ -1152,11 +1152,7 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
 
   | prealloc_native_error ne =>
     'let v := get_arg 0 args in
-    build_error S (prealloc_native_error ne) v
-
-  | prealloc_native_error_proto ne =>
-    'let v := get_arg 0 args in
-    build_error S B v
+    build_error S (prealloc_native_error_proto ne) v
 
   (* LATER *)
   | _  => not_yet_implemented_because ("Construct prealloc_" ++ string_of_prealloc B  ++ " not yet implemented.") 
@@ -2887,9 +2883,9 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     'let v := get_arg 0 args in
     build_error S prealloc_error_proto v
 
-  | prealloc_native_error_proto ne =>
+  | prealloc_native_error ne =>
     'let v := get_arg 0 args in
-    build_error S B v
+    build_error S (prealloc_native_error_proto ne) v
 
   | prealloc_throw_type_error =>
     run_error S native_error_type

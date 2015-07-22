@@ -517,7 +517,7 @@ Definition object_prealloc_regexp :=
 
 Definition object_prealloc_error :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" prealloc_error_proto in (* Daniele: replaced 'native' with 'constant' *)
+  let P := write_constant P "prototype" prealloc_error_proto in
   object_create_prealloc_constructor prealloc_error 1 P.
 
 (**************************************************************)
@@ -540,8 +540,8 @@ Definition error_proto_to_string_function_object :=
 
 Definition object_prealloc_native_error ne :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" (prealloc_native_error_proto ne) in (* Daniele: replaced 'native' with 'constant' *)
-  object_create_prealloc_constructor (prealloc_native_error_proto ne) 1 P.
+  let P := write_constant P "prototype" (prealloc_native_error_proto ne) in
+  object_create_prealloc_constructor (prealloc_native_error ne) 1 P.
 
 
 (**************************************************************)
