@@ -681,6 +681,7 @@ Definition object_heap_initial :=
   let h := Heap.write h native_error_ref (object_prealloc_native_error native_error_ref) in
   let h := Heap.write h native_error_syntax (object_prealloc_native_error native_error_syntax) in
   let h := Heap.write h native_error_type (object_prealloc_native_error native_error_type) in
+  let h := Heap.write h native_error_uri (object_prealloc_native_error native_error_uri) in
   let h := Heap.write h prealloc_json object_prealloc_json in
   object_heap_initial_function_objects h.
 
