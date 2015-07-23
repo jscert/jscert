@@ -1,0 +1,549 @@
+--- tests/shell.js	2015-07-13 11:10:37.714554490 +0100
++++ tests/shell.js	2015-07-09 09:24:05.016932029 +0100
+@@ -35,7 +35,7 @@
+ /*
+  * constant strings
+  */
+-var GLOBAL = this + '';
++var GLOBAL = "[GLOBAL OBJECT]"
+ var PASSED = " PASSED! ";
+ var FAILED = " FAILED! ";
+ 
+@@ -86,7 +86,7 @@
+   this.reason = '';
+   this.bugnumber = typeof(BUGNUMER) != 'undefined' ? BUGNUMBER : '';
+   this.type = (typeof window == 'undefined' ? 'shell' : 'browser');
+-  gTestcases[gTc++] = this;
++  gTestcases.push(this);
+ }
+ 
+ gFailureExpected = false;
+@@ -94,8 +94,7 @@
+ TestCase.prototype.dump = function () {
+   // let reftest handle error reporting, otherwise
+   // output a summary line.
+-  if (typeof document != "object" ||
+-      !document.location.href.match(/jsreftest.html/))
++  if (true)
+   {
+     dump('\njstest: ' + this.path + ' ' +
+          'bug: '         + this.bugnumber + ' ' +
+@@ -139,13 +138,9 @@
+  */
+ function reportFailure (msg)
+ {
+-  var lines = msg.split ("\n");
+-  var l;
+   var funcName = currentFunc();
+   var prefix = (funcName) ? "[reported from " + funcName + "] ": "";
+-
+-  for (var i=0; i<lines.length; i++)
+-    print (FAILED + prefix + lines[i]);
++  $ERROR(FAILED + prefix + msg);
+ }
+ 
+ /*
+@@ -158,11 +153,7 @@
+    msg = msg.toString();
+ */
+   msg = msg.toString();
+-  var lines = msg.split ("\n");
+-  var l;
+-
+-  for (var i=0; i<lines.length; i++)
+-    print (STATUS + lines[i]);
++  print (STATUS + msg);
+ }
+ 
+ /*
+@@ -177,45 +168,12 @@
+ function toPrinted(value)
+ {
+   value = String(value);
+-  value = value.replace(/\\n/g, 'NL')
+-               .replace(/\n/g, 'NL')
+-               .replace(/\\r/g, 'CR')
+-               .replace(/[^\x20-\x7E]+/g, escapeString);
+   return value;
+ }
+ 
+ function escapeString (str)
+ {
+-  var a, b, c, d;
+-  var len = str.length;
+-  var result = "";
+-  var digits = ["0", "1", "2", "3", "4", "5", "6", "7",
+-                "8", "9", "A", "B", "C", "D", "E", "F"];
+-
+-  for (var i=0; i<len; i++)
+-  {
+-    var ch = str.charCodeAt(i);
+-
+-    a = digits[ch & 0xf];
+-    ch >>= 4;
+-    b = digits[ch & 0xf];
+-    ch >>= 4;
+-
+-    if (ch)
+-    {
+-      c = digits[ch & 0xf];
+-      ch >>= 4;
+-      d = digits[ch & 0xf];
+-
+-      result += "\\u" + d + c + b + a;
+-    }
+-    else
+-    {
+-      result += "\\x" + b + a;
+-    }
+-  }
+-
+-  return result;
++  $ERROR("escapeString(): Not implemented!");
+ }
+ 
+ /*
+@@ -293,8 +251,7 @@
+   testcase.reason = output;
+ 
+   // if running under reftest, let it handle result reporting.
+-  if (typeof document != "object" ||
+-      !document.location.href.match(/jsreftest.html/)) {
++  if (true) {
+     if (testcase.passed)
+     {
+       print(PASSED + description);
+@@ -314,58 +271,7 @@
+  * failure report.
+  */
+ function reportMatch (expectedRegExp, actual, description) {
+-  var expected_t = "string";
+-  var actual_t = typeof actual;
+-  var output = "";
+-
+-  if (typeof description == "undefined")
+-  {
+-    description = '';
+-  }
+-  else if (VERBOSE)
+-  {
+-    printStatus ("Comparing '" + description + "'");
+-  }
+-
+-  if (expected_t != actual_t)
+-  {
+-    output += "Type mismatch, expected type " + expected_t +
+-      ", actual type " + actual_t + " ";
+-  }
+-  else if (VERBOSE)
+-  {
+-    printStatus ("Expected type '" + expected_t + "' matched actual " +
+-                 "type '" + actual_t + "'");
+-  }
+-
+-  var matches = expectedRegExp.test(actual);
+-  if (!matches)
+-  {
+-    output += "Expected match to '" + toPrinted(expectedRegExp) +
+-      "', Actual value '" + toPrinted(actual) + "' ";
+-  }
+-  else if (VERBOSE)
+-  {
+-    printStatus ("Expected match to '" + toPrinted(expectedRegExp) +
+-                 "' matched actual value '" + toPrinted(actual) + "'");
+-  }
+-
+-  var testcase = new TestCase("unknown-test-name", description, true, matches);
+-  testcase.reason = output;
+-
+-  // if running under reftest, let it handle result reporting.
+-  if (typeof document != "object" ||
+-      !document.location.href.match(/jsreftest.html/)) {
+-    if (testcase.passed)
+-    {
+-      print(PASSED + description);
+-    }
+-    else
+-    {
+-      reportFailure (description + " : " + output);
+-    }
+-  }
+-  return testcase.passed;
++  $ERROR("reportMatch(): Not implemented!")
+ }
+ 
+ /*
+@@ -374,9 +280,6 @@
+  */
+ function enterFunc (funcName)
+ {
+-  if (!funcName.match(/\(\)$/))
+-    funcName += "()";
+-
+   callStack.push(funcName);
+ }
+ 
+@@ -390,9 +293,6 @@
+ 
+   if (funcName)
+   {
+-    if (!funcName.match(/\(\)$/))
+-      funcName += "()";
+-
+     if (lastFunc != funcName)
+       reportCompare(funcName, lastFunc, "Test driver failure wrong exit function ");
+   }
+@@ -413,277 +313,34 @@
+ */
+ function BigO(data)
+ {
+-  var order = 0;
+-  var origLength = data.X.length;
+-
+-  while (data.X.length > 2)
+-  {
+-    var lr = new LinearRegression(data);
+-    if (lr.b > 1e-6)
+-    {
+-      // only increase the order if the slope
+-      // is "great" enough
+-      order++;
+-    }
+-
+-    if (lr.r > 0.98 || lr.Syx < 1 || lr.b < 1e-6)
+-    {
+-      // terminate if close to a line lr.r
+-      // small error lr.Syx
+-      // small slope lr.b
+-      break;
+-    }
+-    data = dataDeriv(data);
+-  }
+-
+-  if (2 == origLength - order)
+-  {
+-    order = Number.POSITIVE_INFINITY;
+-  }
+-  return order;
+-
+-  function LinearRegression(data)
+-  {
+-    /*
+-      y = a + bx
+-      for data points (Xi, Yi); 0 <= i < n
+-
+-      b = (n*SUM(XiYi) - SUM(Xi)*SUM(Yi))/(n*SUM(Xi*Xi) - SUM(Xi)*SUM(Xi))
+-      a = (SUM(Yi) - b*SUM(Xi))/n
+-    */
+-    var i;
+-
+-    if (data.X.length != data.Y.length)
+-    {
+-      throw 'LinearRegression: data point length mismatch';
+-    }
+-    if (data.X.length < 3)
+-    {
+-      throw 'LinearRegression: data point length < 2';
+-    }
+-    var n = data.X.length;
+-    var X = data.X;
+-    var Y = data.Y;
+-
+-    this.Xavg = 0;
+-    this.Yavg = 0;
+-
+-    var SUM_X  = 0;
+-    var SUM_XY = 0;
+-    var SUM_XX = 0;
+-    var SUM_Y  = 0;
+-    var SUM_YY = 0;
+-
+-    for (i = 0; i < n; i++)
+-    {
+-      SUM_X  += X[i];
+-      SUM_XY += X[i]*Y[i];
+-      SUM_XX += X[i]*X[i];
+-      SUM_Y  += Y[i];
+-      SUM_YY += Y[i]*Y[i];
+-    }
+-
+-    this.b = (n * SUM_XY - SUM_X * SUM_Y)/(n * SUM_XX - SUM_X * SUM_X);
+-    this.a = (SUM_Y - this.b * SUM_X)/n;
+-
+-    this.Xavg = SUM_X/n;
+-    this.Yavg = SUM_Y/n;
+-
+-    var SUM_Ydiff2 = 0;
+-    var SUM_Xdiff2 = 0;
+-    var SUM_XdiffYdiff = 0;
+-
+-    for (i = 0; i < n; i++)
+-    {
+-      var Ydiff = Y[i] - this.Yavg;
+-      var Xdiff = X[i] - this.Xavg;
+-
+-      SUM_Ydiff2 += Ydiff * Ydiff;
+-      SUM_Xdiff2 += Xdiff * Xdiff;
+-      SUM_XdiffYdiff += Xdiff * Ydiff;
+-    }
+-
+-    var Syx2 = (SUM_Ydiff2 - Math.pow(SUM_XdiffYdiff/SUM_Xdiff2, 2))/(n - 2);
+-    var r2   = Math.pow((n*SUM_XY - SUM_X * SUM_Y), 2) /
+-      ((n*SUM_XX - SUM_X*SUM_X)*(n*SUM_YY-SUM_Y*SUM_Y));
+-
+-    this.Syx = Math.sqrt(Syx2);
+-    this.r = Math.sqrt(r2);
+-
+-  }
+-
+-  function dataDeriv(data)
+-  {
+-    if (data.X.length != data.Y.length)
+-    {
+-      throw 'length mismatch';
+-    }
+-    var length = data.X.length;
+-
+-    if (length < 2)
+-    {
+-      throw 'length ' + length + ' must be >= 2';
+-    }
+-    var X = data.X;
+-    var Y = data.Y;
+-
+-    var deriv = {X: [], Y: [] };
+-
+-    for (var i = 0; i < length - 1; i++)
+-    {
+-      deriv.X[i] = (X[i] + X[i+1])/2;
+-      deriv.Y[i] = (Y[i+1] - Y[i])/(X[i+1] - X[i]);
+-    }
+-    return deriv;
+-  }
+-
+-  return 0;
++  $ERROR("BigO(): Not implemented!");
+ }
+ 
+ function compareSource(expect, actual, summary)
+ {
+-  // compare source
+-  var expectP = expect.
+-    replace(/([(){},.:\[\]])/mg, ' $1 ').
+-    replace(/(\w+)/mg, ' $1 ').
+-    replace(/<(\/)? (\w+) (\/)?>/mg, '<$1$2$3>').
+-    replace(/\s+/mg, ' ').
+-    replace(/new (\w+)\s*\(\s*\)/mg, 'new $1');
+-
+-  var actualP = actual.
+-    replace(/([(){},.:\[\]])/mg, ' $1 ').
+-    replace(/(\w+)/mg, ' $1 ').
+-    replace(/<(\/)? (\w+) (\/)?>/mg, '<$1$2$3>').
+-    replace(/\s+/mg, ' ').
+-    replace(/new (\w+)\s*\(\s*\)/mg, 'new $1');
+-
+-  print('expect:\n' + expectP);
+-  print('actual:\n' + actualP);
+-
+-  reportCompare(expectP, actualP, summary);
+-
+-  // actual must be compilable if expect is?
+-  try
+-  {
+-    var expectCompile = 'No Error';
+-    var actualCompile;
+-
+-    eval(expect);
+-    try
+-    {
+-      eval(actual);
+-      actualCompile = 'No Error';
+-    }
+-    catch(ex1)
+-    {
+-      actualCompile = ex1 + '';
+-    }
+-    reportCompare(expectCompile, actualCompile,
+-                  summary + ': compile actual');
+-  }
+-  catch(ex)
+-  {
+-  }
++  $ERROR("compareSource(): Not implemented!");
+ }
+ 
+ function optionsInit() {
+-
+-  // record initial values to support resetting
+-  // options to their initial values
+-  options.initvalues  = {};
+-
+-  // record values in a stack to support pushing
+-  // and popping options
+-  options.stackvalues = [];
+-
+-  var optionNames = options().split(',');
+-
+-  for (var i = 0; i < optionNames.length; i++)
+-  {
+-    var optionName = optionNames[i];
+-    if (optionName)
+-    {
+-      options.initvalues[optionName] = '';
+-    }
+-  }
++  $ERROR("optionsInit(): Not implemented!");
+ }
+ 
+ function optionsClear() {
+-
+-  // turn off current settings
+-  // except jit.
+-  var optionNames = options().split(',');
+-  for (var i = 0; i < optionNames.length; i++)
+-  {
+-    var optionName = optionNames[i];
+-    if (optionName &&
+-        optionName != "methodjit" &&
+-        optionName != "methodjit_always" &&
+-        optionName != "ion")
+-    {
+-      options(optionName);
+-    }
+-  }
++  $ERROR("optionsClear(): Not implemented!");
+ }
+ 
+ function optionsPush()
+ {
+-  var optionsframe = {};
+-
+-  options.stackvalues.push(optionsframe);
+-
+-  var optionNames = options().split(',');
+-
+-  for (var i = 0; i < optionNames.length; i++)
+-  {
+-    var optionName = optionNames[i];
+-    if (optionName)
+-    {
+-      optionsframe[optionName] = '';
+-    }
+-  }
+-
+-  optionsClear();
++  $ERROR("optionsPush(): Not implemented!");
+ }
+ 
+ function optionsPop()
+ {
+-  var optionsframe = options.stackvalues.pop();
+-
+-  optionsClear();
+-
+-  for (optionName in optionsframe)
+-  {
+-    options(optionName);
+-  }
+-
++  $ERROR("optionsPop(): Not implemented!");
+ }
+ 
+ function optionsReset() {
+-
+-  try
+-  {
+-    optionsClear();
+-
+-    // turn on initial settings
+-    for (var optionName in options.initvalues)
+-    {
+-      if (!options.hasOwnProperty(optionName))
+-        continue;
+-      options(optionName);
+-    }
+-  }
+-  catch(ex)
+-  {
+-    print('optionsReset: caught ' + ex);
+-  }
+-
+-}
+-
+-if (typeof options == 'function')
+-{
+-  optionsInit();
+-  optionsClear();
++  $ERROR("optionsReset(): Not implemented!");
+ }
+ 
+ function getTestCaseResult(expected, actual)
+@@ -728,7 +385,8 @@
+ }
+ 
+ function test() {
+-  for ( gTc=0; gTc < gTestcases.length; gTc++ ) {
++  gTc = 0;
++  while (gTc < gTestcases.length) {
+     // temporary hack to work around some unknown issue in 1.7
+     try
+     {
+@@ -742,6 +400,7 @@
+     {
+       print('test(): empty testcase for gTc = ' + gTc + ' ' + e);
+     }
++    gTc++;
+   }
+   stopTest();
+   return ( gTestcases );
+@@ -757,15 +416,19 @@
+ function writeTestCaseResult( expect, actual, string ) {
+   var passed = getTestCaseResult( expect, actual );
+   // if running under reftest, let it handle result reporting.
+-  if (typeof document != "object" ||
+-      !document.location.href.match(/jsreftest.html/)) {
++  if (true) {
+     writeFormattedResult( expect, actual, string, passed );
+   }
+   return passed;
+ }
+ function writeFormattedResult( expect, actual, string, passed ) {
+   var s = ( passed ? PASSED : FAILED ) + string + ' expected: ' + expect;
+-  print(s);
++  if (passed) {
++    print(s);
++  } else {
++    $ERROR(s);
++  }
++
+   return passed;
+ }
+ 
+@@ -793,11 +456,13 @@
+  *
+  */
+ function getFailedCases() {
+-  for ( var i = 0; i < gTestcases.length; i++ ) {
++  var i = 0;
++  while (i < gTestcases.length) {
+     if ( ! gTestcases[i].passed ) {
+       print( gTestcases[i].description + " = " +gTestcases[i].actual +
+              " expected: " + gTestcases[i].expect );
+     }
++    i++;
+   }
+ }
+ 
+@@ -825,9 +490,11 @@
+     dump('jsTestDriverEnd ' + ex);
+   }
+ 
+-  for (var i = 0; i < gTestcases.length; i++)
++  var i = 0;
++  while (i < gTestcases.length)
+   {
+     gTestcases[i].dump();
++    i++;
+   }
+ 
+ }
