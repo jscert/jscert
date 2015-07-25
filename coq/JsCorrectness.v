@@ -2705,9 +2705,11 @@ Proof.
   (* prealloc_error_proto *)
   discriminate.
   (* prealloc_native_error *)  
-  skip. (* TODO *)
+  let_name. apply~ red_spec_construct_native_error.
+    apply~ get_arg_correct_0.
+  substs. apply* build_error_correct.
   (* prealloc_native_error_proto *)
-  skip. (* TODO *)
+  discriminate. (* TODO *)
   (* prealloc_error_proto_to_string *)
   discriminate.
   (* prealloc_throw_type_error *)
@@ -5725,9 +5727,11 @@ run. apply run_object_method_correct in E.
   (* prealloc_error_proto *)
   discriminate.
   (* prealloc_native_error *)
-  discriminate.
+  let_name. applys* red_spec_call_native_error.
+    apply~ get_arg_correct_0.
+  substs; applys* build_error_correct.
   (* prealloc_native_error_proto *)
-  skip. (* FIXME: We need the rules here! *)
+  discriminate.
   (* prealloc_error_proto_to_string *)
   discriminate.
   (* prealloc_throw_type_error *)
