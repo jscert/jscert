@@ -121,6 +121,10 @@ Inductive expr :=
   | expr_identifier : string -> expr
   | expr_literal : literal -> expr
   | expr_object : list (propname * propbody) -> expr
+
+  (* _ARRAYS_ : support for processing arrays, based on parser_syntax.ml *)
+  | expr_array : list (option expr) -> expr
+
   | expr_function : option string -> list string -> funcbody -> expr
   | expr_access : expr -> expr -> expr
   | expr_member : expr -> string -> expr
@@ -222,17 +226,22 @@ Inductive native_error :=
   | native_error_range
   | native_error_ref
   | native_error_syntax
-  | native_error_type.
+  | native_error_type
+  | native_error_uri.
 
 (** Identifiers for objects pre-allocated in the initial heap *)
 
 Inductive prealloc :=
   | prealloc_global (* not callable *)
   | prealloc_global_eval
+  | prealloc_global_parse_int
+  | prealloc_global_parse_float
   | prealloc_global_is_finite
   | prealloc_global_is_nan
-  | prealloc_global_parse_float
-  | prealloc_global_parse_int
+  | prealloc_global_decode_uri
+  | prealloc_global_decode_uri_component
+  | prealloc_global_encode_uri
+  | prealloc_global_encode_uri_component
   | prealloc_object
   | prealloc_object_get_proto_of      (* location to getPrototypeOf function object *)
   | prealloc_object_get_own_prop_descriptor
@@ -258,6 +267,7 @@ Inductive prealloc :=
   | prealloc_function_proto
   | prealloc_function_proto_to_string
   | prealloc_function_proto_apply
+  | prealloc_function_proto_call
   | prealloc_function_proto_bind (* LATER: support this and others *)
   | prealloc_bool
   | prealloc_bool_proto
@@ -273,7 +283,8 @@ Inductive prealloc :=
   | prealloc_array
   | prealloc_array_is_array
   | prealloc_array_proto
-  | prealloc_array_proto_to_string (* LATER: support *)
+  | prealloc_array_proto_to_string 
+  | prealloc_array_proto_join
   | prealloc_array_proto_pop
   | prealloc_array_proto_push
   | prealloc_string
@@ -284,12 +295,15 @@ Inductive prealloc :=
   | prealloc_string_proto_char_code_at (* LATER: support *)
   | prealloc_math (* not callable *)
   | prealloc_mathop : mathop -> prealloc
+  | prealloc_date
+  | prealloc_regexp
   | prealloc_error (* 15.11 *)
   | prealloc_error_proto (* 15.11.3.1 *)
   | prealloc_native_error : native_error -> prealloc (* 15.11.6 *)
-  | prealloc_native_error_proto : native_error -> prealloc (* 15.11.7.7 *)
+  | prealloc_native_error_proto : native_error -> prealloc (* 15.11.7.7 *) (* not callable *)
   | prealloc_error_proto_to_string
   | prealloc_throw_type_error (* 13.2.3 *)
+  | prealloc_json (* not callable *)
   .
 
 (* Identifiers for "Callable" methods *)
@@ -306,7 +320,7 @@ Coercion prealloc_native_error : native_error >-> prealloc.
 
 Inductive construct := (* Note: could be named [builtin_construct] *)
   | construct_default (* 13.2.2 *)
-  | construct_after_bind (* 15.3.4.5.2 *) (* LATER: support *)
+  | construct_after_bind (* 15.3.4.5.2 *) 
   | construct_prealloc : prealloc -> construct.
     (* only the ones below are actually used by construct_prealloc
       | construct_object
@@ -386,8 +400,10 @@ Inductive builtin_default_value :=
 
 Inductive builtin_define_own_prop :=
   | builtin_define_own_prop_default
+  (* ARRAYS *)
+  | builtin_define_own_prop_array
   | builtin_define_own_prop_args_obj.
-  (* LATER: string and array *)
+  (* LATER: string *)
 
 
 (**************************************************************)
@@ -667,7 +683,7 @@ Coercion resvalue_ref : ref >-> resvalue.
 
 (** Representation of a result as a triple *)
 
-Inductive res := res_intro {
+Record res := res_intro {
   res_type : restype;
   res_value : resvalue;
   res_label : label }.
@@ -720,7 +736,7 @@ Implicit Arguments specret_out [[T]].
 
 (** [ret S a] is a shorthand for [specret_val S a] *)
 
-Definition ret T S (a:T) := specret_val S a.
+Definition ret {T} S (a:T) := specret_val S a.
 Implicit Arguments ret [[T]].
 
 (** [ret_void S] is a shorthand for [specret_val S tt],

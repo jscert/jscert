@@ -1,0 +1,45 @@
+Looking at Array and some other bits of code, they all appear to make use of a stripped down internal version of Array called InternalArray. InternalArray is an array with a subset of the Array functions, so the first step to getting Array working would be to get InternalArray working. From the magic required to do this, the remaining Array methods (some of which rely on InternalArray) should come reasonably naturally.
+
+The steps needed to get InternalArray working are as follows:
+
+The constructor will need to be magic, unfortunately, as will whatever needs to be done to give InternalArray a distinct prototype. The actual filling out of the prototype with the required functions can be done separately though.
+
+SetUpLockedPrototype() (of v8natives.js) needs to have its "meat" implemented in some way. I believe that it is possible to rewrite calls to this helper function and some others to use pure JavaScript instead, if it can be guaranteed that they will never occur after user code is run (which should be the case). This would require a "magic" implementation of Object.defineProperty(), but saves having to re-implement quite a few C++ helper functions in several places, and also means we don't need to wrestle with the way V8 passes JavaScript functions their arguments. As an aside, Tachyon's strategy for setting up prototypes is similar to the one I'm thinking about, but contains several apparent mistakes. I'm becoming less convinced of its usefulness. The downside of this is that it takes us slightly further away from being a simple copy of the V8 library, which was pointed out as having certain advantages. If you think this is a bad idea, there are other solutions we can talk about.
+
+%IsObserved() needs to always return false, I believe it's ES6 functionality.
+
+I think %_IsUndetectableObject() needs to always return false, although I'm not sure what an undetectable object actually IS (looks like it has something to do with the Document object)
+
+%IS_VAR() should return its (single) argument unaltered if it is passed a variable. In V8, a parse error occurs if %IS_VAR is "called" with something other than a variable (it's really a macro that's caught in the parser), although this should only occur in their code. It may be sufficient for it to simply return its argument/be regexp'd out.
+
+%_HasCachedArrayIndex() needs to always return false.
+
+%StringToNumber() accepts a single argument and behaves as specified by 9.3.1 (ToNumber Applied to the String Type) of ES5.
+
+%DefaultNumber() behaves as the Object case of ToNumber (9.3).
+
+V8 uses a function "ToObject" which behaves as the ES5 specified function of the same name. At the start of execution, references to the build-in objects are saved in variables "$String", "$Boolean" etc, and these are used as constructors for the different cases;
+
+  if (IS_NUMBER(x)) return new $Number(x);
+
+for example. This means that the constructors for String, Number and Boolean must be implemented.
+
+%MakeTypeError() accepts two arguments and returns a TypeError with a message string containing a helpful description of the type error that just occurred. Getting a nice string the "V8 way" is quite problematic (there seems to be a directive to the parser to run a JavaScript method and inline the returned string, or something equally weird) so as a stop-gap it may be best to return some sort of unhelpful "Oh no a TypeError" message for now.
+
+%_IsSmi() should return true if its (single) argument is a fixnum, false otherwise. I'm actually not sure if there are any 32 bit vs 64 bit oddities here.
+
+%_NumberToString() accepts a single argument and behaves as specified by 9.8.1 (ToString applied to the Number type) of ES5.
+
+%ToString() accepts a single argument and behaves as specified by 9.8 (ToString) of ES5.
+
+%DefaultString() accepts one argument and behaves as the Object case of ToString (9.8).
+
+%_FastAsciiArrayJoin() should return undefined.
+
+%_IsArray() accepts one argument and should return true if the argument is an Array.
+
+%NumberToInteger() behaves as 9.4 (ToInteger) of ES5, starting from step 2 (the argument is guaranteed to be already cast).
+
+%StringBuilderConcat and %StringBuilderJoin both accept three arguments, a (dense) Array of elements, a length parameter (the size of the array), and a separating token (possibly the empty string), and return a String consisting of the elements of the Array concatenated together with the separator interposed between each element.
+
+I think it's possible for some of these to be implemented in JavaScript, inlined, or removed, but in any case this should be a complete list of the "magic" that needs to be implemented in order for InternalArray to behave correctly. From here, it should not be too much trouble to get the full functionality of Array. One caveat of all this is that I don't know how InternalArray is taken out of scope of user programs. I'm not sure how much of a problem this is.

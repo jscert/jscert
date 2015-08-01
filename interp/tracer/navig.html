@@ -1,0 +1,223 @@
+
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>JavaScript Reference Tracer</title>
+
+<link rel=stylesheet href="codemirror/lib/codemirror.css">
+<script src="codemirror/lib/codemirror.js"></script>
+<script src="codemirror_ocaml.js"></script>
+<script src="jquery-2.1.1.min.js"></script>
+
+<style>
+.source_div {
+   border-top: 1px solid black; 
+   border-bottom: 1px solid black;
+}
+
+#file_list {
+   margin-bottom: 8px;
+}
+
+.file_item, .file_item_current {
+   margin-right: 5px;
+   padding: 5px;
+   text-decoration: underline;
+}
+
+.file_item, .file_item_current:hover {
+   cursor: pointer; 
+   cursor: hand;
+}
+
+.file_item {
+   background-color: #FAFAFA;
+}
+
+.file_item_current {
+   background-color: #FFCCCC;
+}
+
+.CodeMirror-selected { background: #F3F781; }
+.CodeMirror-focused .CodeMirror-selected { background: #F3F781; }
+
+</style>
+
+
+</head>
+<body>
+
+<h2>Tracer</h2>
+<p>Instructions: type 'S' for step (next function call), 'N' for next (next call at same level), 'B' for backstep (symmetric to step), 'P' for previous (symmetric to next), 'F' for finish (next call at upper level), 'R' for restart.</p>
+
+<div id='file_list'></div>
+
+<div class='source_div'>
+<textarea id='source_code' class='source' rows='40'>
+</textarea>
+</div>
+
+<script type = "text/javascript" src="trace.js"></script>
+
+<script type = "text/javascript">
+   // Assumes tracer_files to be a string containing the source code
+
+   // Assumes tracer_items to be an array with items, e.g.:
+   // { type: 'enter_call', file: 'foo.ml', start_line: 4, start_col: 0, end_line: 5, end_col: 10 },
+   // { type: 'exit_call', file: 'foo.ml', start_line: 4, start_col: 0, end_line: 5, end_col: 10 },
+
+   var tracer_length = tracer_items.length;
+   var tracer_pos = 0; 
+
+   function tracer_valid_pos(i) {
+      return (i >= 0 && i < tracer_length);
+   }
+
+   // dir is -1 or +1
+   function shared_step(dir) { 
+      var i = tracer_pos;
+      i += dir; 
+      if (! tracer_valid_pos(i)) 
+         return; // not found
+      tracer_pos = i;
+   }
+   
+   // dir is -1 or +1,
+   // target is 0 for (next/prev) 
+   // or -1 (finish)
+   function shared_next(dir, target) { 
+      var i = tracer_pos;
+      var depth = 0;
+      var ty = tracer_items[i].type;
+      if (dir == +1 && ty == 'exit_call') {
+         depth = 1;
+      } else if (dir == -1 && ty == 'enter_call') {
+         depth = -1;
+      } 
+      while (true) {
+         if (! tracer_valid_pos(i)) {
+            tracer_pos = i - dir; // just before out of range
+            return; // not found
+         }
+         if (i != tracer_pos && depth == target) {
+            tracer_pos = i;
+            return;
+         }
+         var ty = tracer_items[i].type;
+         if (ty == 'enter_call') {
+            depth++;
+         } else if (ty == 'exit_call') {
+            depth--;
+         }
+         i += dir; 
+      }
+   }
+
+   function restart() { tracer_pos = 0; }
+   function step() { shared_step(+1); }
+   function backstep() { shared_step(-1); }
+   function next() { shared_next(+1, 0); }
+   function previous() { shared_next(-1, 0); }
+   function finish() { next(+1, -1); } 
+
+   var curfile = '';
+
+   var docs = {};
+   for (file in tracer_files) {
+      var txt = tracer_files[file];
+      docs[file] = CodeMirror.Doc(txt, 'ocaml');
+   }
+
+   var editor = null;
+
+   function viewFile(file) {
+      if (curfile != file) {
+         curfile = file;
+         editor.swapDoc(docs[curfile]);
+         editor.focus();
+         updateFileList();
+      }
+   }
+
+   function updateFileList() {
+      var s = '';
+      for (file in tracer_files) {
+         s += "<span class=\"file_item" + ((curfile == file) ? '_current' : '') + "\" onclick=\"viewFile('" + file + "')\">" + file + "</span> ";
+      }
+      $('#file_list').html(s);
+   }
+
+   function updateSelection(cm) {
+      var item = tracer_items[tracer_pos];
+      viewFile(item.file);
+      var anchor = {line: item.start_line-1, ch: item.start_col};
+      var head = {line: item.end_line-1, ch: item.end_col};
+
+      console.log("pos: " + tracer_pos);
+      var ty = tracer_items[tracer_pos].type;
+      var color = (ty == 'enter_call') ? '#F3F781' : '#CCCCCC';
+      //console.log("color " + color);
+      $('.CodeMirror-selected').css({ background: color });
+      $('.CodeMirror-focused .CodeMirror-selected').css({ background: color });
+      cm.setSelection(anchor, head);
+      updateFileList();
+   }
+
+   editor = CodeMirror.fromTextArea(document.getElementById('source_code'), {
+      mode: 'ocaml',
+      lineNumbers: true,
+      lineWrapping: true,
+      readOnly: true,
+      extraKeys: {
+         'R': function(cm) { restart(); updateSelection(cm); },
+         'S': function(cm) { step(); updateSelection(cm); },
+         'B': function(cm) { backstep(); updateSelection(cm); },
+         'N': function(cm) { next(); updateSelection(cm); },
+         'P': function(cm) { previous(); updateSelection(cm); },
+         'F': function(cm) { finish(); updateSelection(cm); },
+      },
+   });
+   editor.setSize(800,600);
+
+   editor.on('dblclick', function() {
+      var line = editor.getCursor().line;
+      var txt = editor.getLine(line);
+      var prefix = "#sec-";
+      var pos_start = txt.indexOf(prefix);
+      if (pos_start == -1)
+         return;
+      var pos_end = txt.indexOf("*", pos_start);
+      if (pos_end == -1)
+         return;
+      var sec = txt.substring(pos_start, pos_end);
+      var url = "http://www.ecma-international.org/ecma-262/5.1/" + sec;
+      window.open(url, '_blank');
+   });
+
+   editor.focus();
+   updateSelection(editor);
+</script>
+
+</body>
+</html>
+
+
+
+<!---
+$timeout(function() {codeMirror.refresh();});
+
+this.codeMirrorInstance.setValue(content);
+var that = this;
+setTimeout(function() {
+    that.codeMirrorInstance.refresh();
+},1);
+
+http://codemirror.net/demo/buffers.html
+
+//CodeMirror.Doc(text
+---->
+
+
+

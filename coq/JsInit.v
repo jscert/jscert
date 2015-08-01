@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Export JsPreliminary JsPreliminaryAux.
+Require Export JsCommon JsCommonAux.
 
 
 Coercion JsNumber.of_int : Z >-> JsNumber.number.
@@ -65,7 +65,7 @@ Definition attrib_constant v :=
   attributes_data_intro v false false false.
 
 (** Shorthand notation for building a property attributes
-    that is non writable, non configurable and non enumerable. *)
+    that is writable, non configurable and enumerable. *)
 
 Notation "'attrib_native'" := prop_attributes_for_global_object.
 
@@ -138,29 +138,32 @@ Definition object_prealloc_global_properties :=
   let P := write_constant P "Infinity" JsNumber.infinity in
   let P := write_constant P "undefined" undef in
   let P := write_native P "eval" prealloc_global_eval in
+  let P := write_native P "parseInt" prealloc_global_parse_int in
+  let P := write_native P "parseFloat" prealloc_global_parse_float in
   let P := write_native P "isNaN" prealloc_global_is_nan in
   let P := write_native P "isFinite" prealloc_global_is_finite in
+  let P := write_native P "decodeURI" prealloc_global_decode_uri in
+  let P := write_native P "decodeURIComponent" prealloc_global_decode_uri_component in
+  let P := write_native P "encodeURI" prealloc_global_encode_uri in
+  let P := write_native P "encodeURIComponent" prealloc_global_encode_uri_component in
   let P := write_native P "Object" prealloc_object in
   let P := write_native P "Function" prealloc_function in
   let P := write_native P "Array" prealloc_array in
   let P := write_native P "String" prealloc_string in
   let P := write_native P "Boolean" prealloc_bool in
   let P := write_native P "Number" prealloc_number in
+  let P := write_native P "Math" prealloc_math in
+  let P := write_native P "Date" prealloc_date in 
+  let P := write_native P "RegExp" prealloc_regexp in 
   let P := write_native P "Error" prealloc_error in
   let P := write_native P "EvalError" native_error_eval in
   let P := write_native P "RangeError" native_error_range in
   let P := write_native P "ReferenceError" native_error_ref in
   let P := write_native P "SyntaxError" native_error_syntax in
   let P := write_native P "TypeError" native_error_type in
+  let P := write_native P "URIError" native_error_uri in
+  let P := write_native P "JSON" prealloc_json in
   P.
-
-  (* LATER: let P := write_native P "parse_int" prealloc_parse_int in *)
-  (* LATER: let P := write_native P "parse_float" prealloc_parse_float in *)
-  (* LATER: 15.1.3 URI Handling Function Properties *)
-  (* LATER: let P := write_native P "Math" prealloc_math in *)
-  (* LATER: let P := write_native P "Date" prealloc_date in *)
-  (* LATER: let P := write_native P "RegExp" prealloc_regexp in *)
-  (* LATER: let P := write_native P "URI_error" prealloc_uri_error in *)
 
 
 (** Definition of the global object *)
@@ -174,14 +177,29 @@ Definition object_prealloc_global :=
 Definition global_eval_function_object :=
   object_create_prealloc_call prealloc_global_eval 1 Heap.empty.
 
+Definition global_parse_int_function_object :=
+  object_create_prealloc_call prealloc_global_parse_int 2 Heap.empty.
+
+Definition global_parse_float_function_object :=
+  object_create_prealloc_call prealloc_global_parse_float 1 Heap.empty.
+
 Definition global_is_nan_function_object := 
   object_create_prealloc_call prealloc_global_is_nan 1 Heap.empty.
   
 Definition global_is_finite_function_object :=
   object_create_prealloc_call prealloc_global_is_finite 1 Heap.empty.
 
-(* LATER: need to add something similar for constructors
-   (basically everything which is after 'isFinite')? *)
+Definition global_decode_uri_function_object :=
+  object_create_prealloc_call prealloc_global_decode_uri 1 Heap.empty.
+
+Definition global_decode_uri_component_function_object :=
+  object_create_prealloc_call prealloc_global_decode_uri_component 1 Heap.empty.
+
+Definition global_encode_uri_function_object :=
+  object_create_prealloc_call prealloc_global_encode_uri 1 Heap.empty.
+
+Definition global_encode_uri_component_function_object :=
+  object_create_prealloc_call prealloc_global_encode_uri_component 1 Heap.empty.
 
 (**************************************************************)
 (** Object object *)
@@ -287,16 +305,27 @@ Definition object_prealloc_function_proto :=
   let P := Heap.empty in
   let P := write_native P "constructor" prealloc_function in
   let P := Heap.write P "length" (attrib_constant 0) in (* todo: can we use write_constant? *)
-  (* let P := write_native P "toString" prealloc_function_proto_to_string in *) (* LATER *)
-  (* let P := write_native P "apply" prealloc_function_proto_apply in *) (* LATER *)
-  (* let P := write_native P "call" prealloc_function_proto_call in *) (* LATER *)
-  (* let P := write_native P "bind" prealloc_function_proto_bind in *) (* LATER *)
-  (* LATER: complete list *)
+  let P := write_native P "toString" prealloc_function_proto_to_string in (* !!! Implementation dependent !!! *)
+  let P := write_native P "apply" prealloc_function_proto_apply in 
+  let P := write_native P "call" prealloc_function_proto_call in 
+  let P := write_native P "bind" prealloc_function_proto_bind in 
 
   (* LATER: why this construct here and not the usual (see other builtins), i.e. just 
      [object_create_builtin prealloc_object_proto "Function" P]? *)
   let O := object_create_builtin prealloc_object_proto "Function" P in
   object_with_invokation O None (Some (call_prealloc prealloc_function_proto)) None.
+
+Definition function_proto_to_string_function_object :=
+  object_create_prealloc_call prealloc_function_proto_to_string 0 Heap.empty.
+
+Definition function_proto_call_function_object :=
+  object_create_prealloc_call prealloc_function_proto_call 1 Heap.empty.
+  
+Definition function_proto_bind_function_object :=
+  object_create_prealloc_call prealloc_function_proto_bind 1 Heap.empty.
+
+Definition function_proto_apply_function_object :=
+  object_create_prealloc_call prealloc_function_proto_apply 2 Heap.empty.
 
 (**************************************************************)
 (** Number object *)
@@ -348,10 +377,14 @@ Definition number_proto_value_of_function_object :=
 Definition object_prealloc_array :=
   let P := Heap.empty in
   let P := write_constant P "prototype" prealloc_array_proto in
-  let P := write_constant P "length" 1 in (* LATER:  Implement the full specification given in the paragraph starting Section 15.4 instead of his dummy object. *)
+  let P := write_native   P "isArray" prealloc_array_is_array in
+  let P := write_constant P "length" 1 in 
+  (* LATER:  Implement the full specification given in the paragraph starting Section 15.4 instead of his dummy object. *)
   (* LATER *)
   object_create_prealloc_constructor prealloc_array 1 P.
 
+Definition array_is_array_function_object :=
+  object_create_prealloc_call prealloc_array_is_array 1 Heap.empty.
 
 (**************************************************************)
 (** Array prototype object *)
@@ -360,8 +393,12 @@ Definition object_prealloc_array :=
 
 Definition object_prealloc_array_proto :=
   let P := Heap.empty in
+  let P := write_native P "constructor" prealloc_array in
+  let P := write_native P "toString" prealloc_array_proto_to_string in
+  let P := write_native P "join" prealloc_array_proto_join in
   let P := write_native P "pop" prealloc_array_proto_pop in
   let P := write_native P "push" prealloc_array_proto_push in
+  let P := write_constant P "length" 0 in
   (* LATER *)
   object_create_builtin prealloc_object_proto "Array" P.
 
@@ -369,7 +406,13 @@ Definition array_proto_pop_function_object :=
   object_create_prealloc_call prealloc_array_proto_pop 0 Heap.empty.
 
 Definition array_proto_push_function_object :=
-  object_create_prealloc_call prealloc_array_proto_push 0 Heap.empty.
+  object_create_prealloc_call prealloc_array_proto_push 1 Heap.empty.
+
+Definition array_proto_to_string_function_object :=
+  object_create_prealloc_call prealloc_array_proto_to_string 0 Heap.empty.
+
+Definition array_proto_join_function_object :=
+  object_create_prealloc_call prealloc_array_proto_join 1 Heap.empty.
 
 (**************************************************************)
 (** String object *)
@@ -377,7 +420,7 @@ Definition array_proto_push_function_object :=
 Definition object_prealloc_string :=
   let P := Heap.empty in
   let P := write_constant P "prototype" prealloc_string_proto in
-  object_create_prealloc_constructor prealloc_function 1 P.
+  object_create_prealloc_constructor prealloc_string 1 P.
 (* LATER *)
 
 (**************************************************************)
@@ -434,13 +477,21 @@ Definition bool_proto_value_of_function_object :=
 (**************************************************************)
 (** Math object *)
 
-(* LATER *)
+Definition object_prealloc_math :=
+  let P := Heap.empty in
+  let P := write_constant P "PI" JsNumber.pi in
+  let P := write_constant P "E" JsNumber.e in
+  let P := write_constant P "LN2" JsNumber.ln2 in
+  object_create_builtin prealloc_object_proto "Math" P.
 
 
 (**************************************************************)
 (** Date object *)
 
-(* LATER *)
+Definition object_prealloc_date :=
+  let P := Heap.empty in
+  (* let P := write_constant P "prototype" prealloc_date_proto in *)
+  object_create_prealloc_constructor prealloc_date 1 P.
 
 (**************************************************************)
 (** Date prototype *)
@@ -450,7 +501,10 @@ Definition bool_proto_value_of_function_object :=
 (**************************************************************)
 (** RegExp object *)
 
-(* LATER *)
+Definition object_prealloc_regexp :=
+  let P := Heap.empty in
+  (* let P := write_constant P "prototype" prealloc_regexp_proto in *)
+  object_create_prealloc_constructor prealloc_regexp 1 P.
 
 (**************************************************************)
 (** RegExp prototype object *)
@@ -463,7 +517,7 @@ Definition bool_proto_value_of_function_object :=
 
 Definition object_prealloc_error :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" prealloc_error_proto in (* Daniele: replaced 'native' with 'constant' *)
+  let P := write_constant P "prototype" prealloc_error_proto in
   object_create_prealloc_constructor prealloc_error 1 P.
 
 (**************************************************************)
@@ -486,8 +540,8 @@ Definition error_proto_to_string_function_object :=
 
 Definition object_prealloc_native_error ne :=
   let P := Heap.empty in
-  let P := write_constant P "prototype" (prealloc_native_error_proto ne) in (* Daniele: replaced 'native' with 'constant' *)
-  object_create_prealloc_constructor (prealloc_native_error_proto ne) 1 P.
+  let P := write_constant P "prototype" (prealloc_native_error_proto ne) in
+  object_create_prealloc_constructor (prealloc_native_error ne) 1 P.
 
 
 (**************************************************************)
@@ -496,14 +550,17 @@ Definition object_prealloc_native_error ne :=
 Definition object_prealloc_native_error_proto ne :=
   let P := Heap.empty in
   let P := write_native P "constructor" (prealloc_native_error ne) in
-  let P := write_native P "name" (string_of_native_error ne) in   
-  let P := write_native P "message" (prim_string "") in   
-  object_create_builtin prealloc_error_proto "Error" P. 
+  let P := write_native P "name" (string_of_native_error ne) in
+  let P := write_native P "message" (prim_string "") in
+  object_create_builtin prealloc_error_proto "Error" P.
 
 
 (**************************************************************)
 (** JSON object *)
 
+Definition object_prealloc_json :=
+  let P := Heap.empty in
+  object_create_builtin prealloc_object_proto "JSON" P.
 
 (**************************************************************)
 (** The [[ThrowTypeError]] Function Object  (13.2.3) *)
@@ -527,8 +584,14 @@ Definition object_heap_initial_function_objects_1 (h : Heap.heap object_loc obje
 
   (* Function objects of Global object *)
   let h := Heap.write h prealloc_global_eval global_eval_function_object in
+  let h := Heap.write h prealloc_global_parse_int global_parse_int_function_object in
+  let h := Heap.write h prealloc_global_parse_float global_parse_float_function_object in
   let h := Heap.write h prealloc_global_is_nan global_is_nan_function_object in
-  let h := Heap.write h prealloc_global_is_finite global_is_finite_function_object in h.
+  let h := Heap.write h prealloc_global_is_finite global_is_finite_function_object in
+  let h := Heap.write h prealloc_global_decode_uri global_decode_uri_function_object in
+  let h := Heap.write h prealloc_global_decode_uri_component global_decode_uri_component_function_object in
+  let h := Heap.write h prealloc_global_encode_uri global_encode_uri_function_object in
+  let h := Heap.write h prealloc_global_encode_uri_component global_encode_uri_component_function_object in h.
 
 Definition object_heap_initial_function_objects_2 (h : Heap.heap object_loc object) :=
   let h := object_heap_initial_function_objects_1 h in 
@@ -555,7 +618,18 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
   let h := Heap.write h prealloc_object_proto_is_prototype_of object_proto_is_prototype_of_function_object in
   let h := Heap.write h prealloc_object_proto_prop_is_enumerable object_proto_prop_is_enumerable_function_object in
 
+  (* Function objects of Function.prototype *)
+  let h := Heap.write h prealloc_function_proto_to_string function_proto_to_string_function_object in
+  let h := Heap.write h prealloc_function_proto_call function_proto_call_function_object in
+  let h := Heap.write h prealloc_function_proto_bind function_proto_bind_function_object in
+  let h := Heap.write h prealloc_function_proto_apply function_proto_apply_function_object in h.
+
+Definition object_heap_initial_function_objects_4 (h : Heap.heap object_loc object) :=
+  let h := object_heap_initial_function_objects_3 h in 
+  let h := Heap.write h prealloc_array_is_array array_is_array_function_object in
   (* Function objects of Array.prototype *)
+  let h := Heap.write h prealloc_array_proto_to_string array_proto_to_string_function_object in
+  let h := Heap.write h prealloc_array_proto_join array_proto_join_function_object in
   let h := Heap.write h prealloc_array_proto_pop array_proto_pop_function_object in
   let h := Heap.write h prealloc_array_proto_push array_proto_push_function_object in
 
@@ -568,7 +642,7 @@ Definition object_heap_initial_function_objects_3 (h : Heap.heap object_loc obje
   let h := Heap.write h prealloc_bool_proto_value_of bool_proto_value_of_function_object in h.
 
 Definition object_heap_initial_function_objects (h : Heap.heap object_loc object) :=
-  let h := object_heap_initial_function_objects_3 h in 
+  let h := object_heap_initial_function_objects_4 h in 
   (* Function objects of Number.prototype *)
   let h := Heap.write h prealloc_number_proto_to_string number_proto_to_string_function_object in
   let h := Heap.write h prealloc_number_proto_value_of number_proto_value_of_function_object in 
@@ -591,18 +665,24 @@ Definition object_heap_initial :=
   let h := Heap.write h prealloc_array_proto object_prealloc_array_proto in
   let h := Heap.write h prealloc_string object_prealloc_string in
   let h := Heap.write h prealloc_string_proto object_prealloc_string_proto in
+  let h := Heap.write h prealloc_math object_prealloc_math in
+  let h := Heap.write h prealloc_date object_prealloc_date in
+  let h := Heap.write h prealloc_regexp object_prealloc_regexp in
   let h := Heap.write h prealloc_error_proto object_prealloc_error_proto in
   let h := Heap.write h (prealloc_native_error_proto native_error_eval) (object_prealloc_native_error_proto native_error_eval) in
   let h := Heap.write h (prealloc_native_error_proto native_error_range) (object_prealloc_native_error_proto native_error_range) in
   let h := Heap.write h (prealloc_native_error_proto native_error_ref) (object_prealloc_native_error_proto native_error_ref) in
   let h := Heap.write h (prealloc_native_error_proto native_error_syntax) (object_prealloc_native_error_proto native_error_syntax) in
   let h := Heap.write h (prealloc_native_error_proto native_error_type) (object_prealloc_native_error_proto native_error_type) in
+  let h := Heap.write h (prealloc_native_error_proto native_error_uri) (object_prealloc_native_error_proto native_error_uri) in
   let h := Heap.write h prealloc_error object_prealloc_error in
   let h := Heap.write h native_error_eval (object_prealloc_native_error native_error_eval) in
   let h := Heap.write h native_error_range (object_prealloc_native_error native_error_range) in
   let h := Heap.write h native_error_ref (object_prealloc_native_error native_error_ref) in
   let h := Heap.write h native_error_syntax (object_prealloc_native_error native_error_syntax) in
   let h := Heap.write h native_error_type (object_prealloc_native_error native_error_type) in
+  let h := Heap.write h native_error_uri (object_prealloc_native_error native_error_uri) in
+  let h := Heap.write h prealloc_json object_prealloc_json in
   object_heap_initial_function_objects h.
 
   (* LATER : update and uncomment once definitions have been completed

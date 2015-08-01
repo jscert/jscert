@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import JsSyntax JsInterpreter JsInit.
+Require Import JsSyntax JsInterpreterMonads JsInterpreter JsInit.
 Require Import LibFix LibList.
 
 Require Export Shared.
@@ -32,7 +32,7 @@ Extract Inductive positive => float
   "(fun p -> 2. *. p)"
   "1." ]
 "(fun f2p1 f2p f1 p ->
-if p <= 1. then f1 () else if mod_float p 2. = 0. then f2p (p /. 2.) else f2p1 (p /. 2.))".
+if p <= 1. then f1 () else if mod_float p 2. = 0. then f2p (floor (p /. 2.)) else f2p1 (floor (p /. 2.)))".
 
 Extract Inductive Z => float [ "0." "" "(~-.)" ]
 "(fun f0 fp fn z -> if z=0. then f0 () else if z>0. then fp z else fn (~-. z))".
@@ -76,13 +76,12 @@ Extract Constant N.modulo => "mod_float".
 Extract Constant N.compare =>
  "fun x y -> if x=y then Eq else if x<y then Lt else Gt".
 
-
 Extract Inductive Fappli_IEEE.binary_float => float [
   "(fun s -> if s then (0.) else (-0.))"
   "(fun s -> if s then infinity else neg_infinity)"
   "nan"
   "(fun (s, m, e) -> failwith ""FIXME: No extraction from binary float allowed yet."")"
-].
+]. 
 
 Extract Constant JsNumber.of_int => "fun x -> x".
 
@@ -94,8 +93,12 @@ Extract Constant JsNumber.infinity => "infinity".
 Extract Constant JsNumber.neg_infinity => "neg_infinity".
 Extract Constant JsNumber.max_value => "max_float".
 Extract Constant JsNumber.min_value => "(Int64.float_of_bits Int64.one)".
+Extract Constant JsNumber.pi => "(4. *. atan 1.)".
+Extract Constant JsNumber.e => "(exp 1.)".
+Extract Constant JsNumber.ln2 => "(log 2.)".
 Extract Constant JsNumber.floor => "floor".
 Extract Constant JsNumber.absolute => "abs_float".
+
 Extract Constant JsNumber.from_string =>
   "(fun s ->
     try
@@ -105,17 +108,23 @@ Extract Constant JsNumber.from_string =>
    (* Note that we're using `float_of_string' there, which does not have the same
       behavior than JavaScript.  For instance it will read ""022"" as 22 instead of
       18, which should be the JavaScript result for it. *)".
+
 Extract Constant JsNumber.to_string =>
   "(fun f -> 
     prerr_string (""Warning:  JsNumber.to_string called.  This might be responsible for errors.  Argument value:  "" ^ string_of_float f ^ ""."");
     prerr_newline();
     let string_of_number n =
-      let inum = int_of_float n in
-      if (float_of_int inum = n) then string_of_int inum else string_of_float n in
-    let ret = ref [] in (* Ugly, but the API for OCaml string is not very functionnal... *)
+      let sfn = string_of_float n in
+      (if (sfn = ""inf"") then ""Infinity"" else
+       if (sfn = ""-inf"") then ""-Infinity"" else
+       if (sfn = ""nan"") then ""NaN"" else
+       let inum = int_of_float n in
+       if (float_of_int inum = n) then (string_of_int inum) else (string_of_float n)) in
+    let ret = ref [] in (* Ugly, but the API for OCaml string is not very functional... *)
     String.iter (fun c -> ret := c :: !ret) (string_of_number f);
     List.rev !ret)
-   (* Note that this is ugly, we should use the spec of JsNumber.to_string here. *)".
+   (* Note that this is ugly, we should use the spec of JsNumber.to_string here (9.8.1). *)".
+
 Extract Constant JsNumber.add => "(+.)".
 Extract Constant JsNumber.sub => "(-.)".
 Extract Constant JsNumber.mult => "( *. )".
@@ -139,6 +148,7 @@ Extract Constant JsNumber.to_int32 =>
     in
     (if int32bit >= i31 then int32bit -. i32 else int32bit)
   | _ -> 0.". (* LATER:  do in Coq.  Spec is 9.5, p. 47.*)
+
 Extract Constant JsNumber.to_uint32 =>
 "fun n ->
   match classify_float n with
@@ -151,6 +161,7 @@ Extract Constant JsNumber.to_uint32 =>
     in
     int32bit
   | _ -> 0.". (* LAER:  do in Coq.  Spec is 9.6, p47.*)
+
 Extract Constant JsNumber.modulo_32 => "(fun x -> let r = mod_float x 32. in if x < 0. then r +. 32. else r)".
 Extract Constant JsNumber.int32_bitwise_not => "fun x -> Int32.to_float (Int32.lognot (Int32.of_float x))".
 Extract Constant JsNumber.int32_bitwise_and => "fun x y -> Int32.to_float (Int32.logand (Int32.of_float x) (Int32.of_float y))".
@@ -168,12 +179,10 @@ Extract Constant JsNumber.uint32_right_shift =>
 
 Extract Constant int_of_char => "(fun c -> float_of_int (int_of_char c))".
 
-Extract Constant prealloc_comparable => "(=)".
-Extract Constant ascii_compare => "(=)".
+Extract Constant ascii_comparable => "(=)".
 Extract Constant lt_int_decidable => "(<)".
 Extract Constant le_int_decidable => "(<=)".
 Extract Constant ge_nat_decidable => "(>=)".
-Extract Constant binary_op_comparable => "(=)".
 
 (* TODO ARTHUR:  This TLC lemma does not extract to something computable... whereas it should! *)
 Extract Constant prop_eq_decidable => "(=)".
@@ -202,26 +211,30 @@ Extract Constant object_prealloc_global_class => "(
 
 
 (* Parsing *)
-Extract Constant parse_pickable => "(fun s ->
+Extract Constant parse_pickable => "(fun s strict ->
     let str = String.concat """" (List.map (String.make 1) s) in
-    let parserExp = Parser_main.exp_from_string str in
     try
-      Some (JsSyntaxInfos.add_infos_prog strictness_false (* LATER:  This should depend on the parsed program... *)
+      let parserExp = Parser_main.exp_from_string ~force_strict:strict str in
+      Some (JsSyntaxInfos.add_infos_prog strict
         (Translate_syntax.exp_to_prog parserExp))
     with
     (* | Translate_syntax.CoqSyntaxDoesNotSupport _ -> assert false (* Temporary *) *)
-    | Parser.InvalidArgument _ ->
+    | Parser.ParserFailure _
+    | Parser.InvalidArgument ->
       prerr_string (""Warning:  Parser error on eval.  Input string:  \"""" ^ str ^ ""\""\n"");
       None
   )".
 
 
 (* Debugging *)
-Extract Constant impossible_because => "(fun s ->
-  print_endline (""Stuck because:\t"" ^ Prheap.string_of_char_list s) ;
+Extract Inlined Constant not_yet_implemented_because => "(fun s ->
+  print_endline (__LOC__ ^ "": Not implemented because: "" ^ Prheap.string_of_char_list s) ;
+  Coq_result_not_yet_implemented)".
+Extract Inlined Constant impossible_because => "(fun s ->
+  print_endline (__LOC__ ^ "": Stuck because: "" ^ Prheap.string_of_char_list s) ;
   Coq_result_impossible)".
-Extract Constant impossible_with_heap_because => "(fun s message ->
-  print_endline (""Stuck!\nState:  "" ^ Prheap.prstate true s
+Extract Inlined Constant impossible_with_heap_because => "(fun s message ->
+  print_endline (__LOC__ ^ "": Stuck!\nState:  "" ^ Prheap.prstate true s
     ^ ""\nMessage:\t"" ^ Prheap.string_of_char_list message) ;
   Coq_result_impossible)".
 

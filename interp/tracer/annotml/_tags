@@ -1,0 +1,2 @@
+<ppx_lines.*>: package(compiler-libs.common)
+<test/*>: ppx(./ppx_lines.native)

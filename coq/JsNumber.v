@@ -11,14 +11,6 @@ Definition number : Type :=
 
 
 (**************************************************************)
-(** ** Conversions on numbers *)
-
-(* LATER: implement definitions *)
-Parameter from_string : string -> number.
-Parameter to_string : number -> string.
-
-
-(**************************************************************)
 (** ** Particular values of numbers *)
 
 (* LATER: find definitions in Flocq *)
@@ -30,7 +22,16 @@ Parameter infinity : number.
 Parameter neg_infinity : number.
 Parameter max_value : number.
 Parameter min_value : number.
+Parameter pi : number.
+Parameter e : number.
+Parameter ln2 : number.
 
+(**************************************************************)
+(** ** Conversions on numbers *)
+
+(* LATER: implement definitions *)
+Parameter from_string : string -> number.
+Parameter to_string : number -> string.
 
 (**************************************************************)
 (** ** Unary operations on numbers *)

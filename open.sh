@@ -1,5 +1,5 @@
-TLC=tlc
-FLOCQ=flocq
+TLC=lib/tlc/src
+FLOCQ=lib/flocq
 COQBIN=
 if [ -f settings.sh ]
 then

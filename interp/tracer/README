@@ -1,0 +1,21 @@
+To compile the tracer code, you need to do the following.
+
+- switch to ocaml 4.02
+  opam switch 4.02.1
+  eval `opam config env`
+- build the tracer
+  make interp/run_jstrace
+
+If you run this program (with arguments identical to those of run_js),
+it generates a trace.log file.
+
+To use it, you need to transform it in the correct JavaScript
+environment.
+
+  cd tracer
+  make generate.out
+  cd ../..
+  interp/tracer/generate.out interp/tracer/trace.log interp/tracer/trace.js interp/src/extract/JsInterpreterTrace.ml
+
+You can then open the file navig.html in tracer and follow the
+instructions there.

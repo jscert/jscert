@@ -49,6 +49,14 @@ Definition object_set_proto O v :=
     object_intro v x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
   end.
 
+(** Sets class field of an object. *)
+
+Definition object_set_class O s :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1  s x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
+  end.
+
 (** Sets extensible to false to an object. *)
 
 Definition object_set_extensible O b :=
@@ -136,6 +144,14 @@ Definition object_with_details O scope params code target boundthis boundargs pa
   | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
     object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 scope params code target boundthis boundargs paramsmap
   end.
+
+(** Modifies the parameters for new Arrays *)
+
+Definition object_for_array O defineownproperty :=
+  match O with
+  | object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 =>
+    object_intro x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 defineownproperty x15 x16 x17 x18 x19 x20 x21 x22 x23 x24
+  end.
   
 (** Modifies the parameters for the Arguments Object *)
 
@@ -177,6 +193,7 @@ Definition native_error_compare ne1 ne2 :=
   | native_error_ref, native_error_ref => true
   | native_error_syntax, native_error_syntax => true
   | native_error_type, native_error_type => true
+  | native_error_uri, native_error_uri => true
   | _, _ => false
   end.
 
@@ -199,10 +216,14 @@ Definition prealloc_compare bl1 bl2 :=
   match bl1, bl2 with
   | prealloc_global, prealloc_global => true
   | prealloc_global_eval, prealloc_global_eval => true
+  | prealloc_global_parse_int, prealloc_global_parse_int => true
+  | prealloc_global_parse_float, prealloc_global_parse_float => true
   | prealloc_global_is_finite, prealloc_global_is_finite => true
   | prealloc_global_is_nan, prealloc_global_is_nan => true
-  | prealloc_global_parse_float, prealloc_global_parse_float => true
-  | prealloc_global_parse_int, prealloc_global_parse_int => true
+  | prealloc_global_decode_uri, prealloc_global_decode_uri => true
+  | prealloc_global_decode_uri_component, prealloc_global_decode_uri_component => true
+  | prealloc_global_encode_uri, prealloc_global_encode_uri => true
+  | prealloc_global_encode_uri_component, prealloc_global_encode_uri_component => true
   | prealloc_object, prealloc_object => true
   | prealloc_object_get_proto_of, prealloc_object_get_proto_of => true
   | prealloc_object_get_own_prop_descriptor , prealloc_object_get_own_prop_descriptor  => true
@@ -228,6 +249,7 @@ Definition prealloc_compare bl1 bl2 :=
   | prealloc_function_proto, prealloc_function_proto => true
   | prealloc_function_proto_to_string, prealloc_function_proto_to_string => true
   | prealloc_function_proto_apply, prealloc_function_proto_apply => true
+  | prealloc_function_proto_call, prealloc_function_proto_call => true
   | prealloc_function_proto_bind, prealloc_function_proto_bind => true
   | prealloc_bool, prealloc_bool => true
   | prealloc_bool_proto, prealloc_bool_proto => true
@@ -246,6 +268,7 @@ Definition prealloc_compare bl1 bl2 :=
   | prealloc_array_proto_pop, prealloc_array_proto_pop => true
   | prealloc_array_proto_push, prealloc_array_proto_push => true
   | prealloc_array_proto_to_string, prealloc_array_proto_to_string => true
+  | prealloc_array_proto_join, prealloc_array_proto_join => true
   | prealloc_string, prealloc_string => true
   | prealloc_string_proto, prealloc_string_proto => true
   | prealloc_string_proto_to_string, prealloc_string_proto_to_string => true
@@ -254,85 +277,24 @@ Definition prealloc_compare bl1 bl2 :=
   | prealloc_string_proto_char_code_at, prealloc_string_proto_char_code_at => true
   | prealloc_math, prealloc_math => true
   | prealloc_mathop m1, prealloc_mathop m2 => decide (m1 = m2)
+  | prealloc_date, prealloc_date => true
+  | prealloc_regexp, prealloc_regexp => true
   | prealloc_error, prealloc_error => true
   | prealloc_error_proto, prealloc_error_proto => true
   | prealloc_native_error ne1, prealloc_native_error ne2 => decide (ne1 = ne2)
   | prealloc_native_error_proto ne1, prealloc_native_error_proto ne2 => decide (ne1 = ne2)
   | prealloc_error_proto_to_string, prealloc_error_proto_to_string => true
   | prealloc_throw_type_error, prealloc_throw_type_error => true
+  | prealloc_json, prealloc_json => true
   | _,_ => false
   end.
 
-(* This is ugly but if I put a ';' after the destruct x everything is too slow *)
-
 Global Instance prealloc_comparable : Comparable prealloc.
 Proof.
-(*
   applys (comparable_beq prealloc_compare). intros x y.
-  destruct x.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct m; destruct m0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse; congruence; destruct n; destruct n0; simpls.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-  destruct y; simpls; rew_refl; iff~; tryfalse.
-*)
-Admitted. (*faster*)
+  (* This shall take a long, like some tens of seconds. *)
+  destruct x; destruct y; simpls; iff; tryfalse; auto~; rew_refl in *; congruence.
+Qed.
 
 
 (**************************************************************)
@@ -731,10 +693,10 @@ Fixpoint binary_op_compare op1 op2 :=
 
 Global Instance binary_op_comparable : Comparable binary_op.
 Proof.
-  applys (comparable_beq binary_op_compare). (* intros x y.
+  applys (comparable_beq binary_op_compare). intros x y.
   destruct x; destruct y; simpl; rew_refl; iff;
-   tryfalse; auto; try congruence. *)
-Admitted. (*faster*)
+   tryfalse; auto; try congruence.
+Qed.
 
 
 (**************************************************************)

@@ -1,3 +1,5 @@
+open Fappli_IEEE_bits
+open JsNumber
 open Parser_syntax
 open List
 
@@ -69,6 +71,9 @@ let exp_to_literal exp : JsSyntax.literal =
 
 let rec exp_to_exp exp : JsSyntax.expr =
   let f = exp_to_exp in 
+  let string_to_coq_op e = match e with 
+    | None -> None
+    | Some e -> Some (string_to_coq e) in
   match exp.exp_stx with
       (* Literals *)
       | Num _
@@ -89,8 +94,8 @@ let rec exp_to_exp exp : JsSyntax.expr =
       | Comma (e1, e2) -> JsSyntax.Coq_expr_binary_op (f e1, JsSyntax.Coq_binary_op_coma, f e2)
       | Call (e1, e2s) -> JsSyntax.Coq_expr_call (f e1, map (fun e2 -> f e2) e2s)
       | New (e1, e2s) -> JsSyntax.Coq_expr_new (f e1, map (fun e2 -> f e2) e2s)
-      | AnnonymousFun (s, vs, e) -> JsSyntax.Coq_expr_function (None, (map string_to_coq vs), exp_to_funcbody e s)
-      | NamedFun (s, n, vs, e) -> JsSyntax.Coq_expr_function (Some (string_to_coq n), (map string_to_coq vs), exp_to_funcbody e s)
+      | FunctionExp (s, n, vs, e) -> JsSyntax.Coq_expr_function ((string_to_coq_op n), (map string_to_coq vs), exp_to_funcbody e s)
+      | Function (s, n, vs, e) -> JsSyntax.Coq_expr_function ((string_to_coq_op n), (map string_to_coq vs), exp_to_funcbody e s)
       | Obj xs -> JsSyntax.Coq_expr_object (map (fun (pn,p,e) -> 
         (match pn with 
           | PropnameId id -> JsSyntax.Coq_propname_identifier (string_to_coq id)
@@ -101,16 +106,22 @@ let rec exp_to_exp exp : JsSyntax.expr =
           | PropbodyVal -> JsSyntax.Coq_propbody_val (f e)
           | PropbodyGet -> 
             begin match e.exp_stx with 
-              | AnnonymousFun (s, vs, e) -> JsSyntax.Coq_propbody_get (exp_to_funcbody e s) 
+              | FunctionExp (s, None, vs, e) -> JsSyntax.Coq_propbody_get (exp_to_funcbody e s)
+              | Function (s, None, vs, e) -> JsSyntax.Coq_propbody_get (exp_to_funcbody e s) 
               | _ -> raise Parser.InvalidArgument
             end
           | PropbodySet ->
             begin match e.exp_stx with
-              | AnnonymousFun (s, vs, e) -> JsSyntax.Coq_propbody_set (map string_to_coq vs, exp_to_funcbody e s) 
+              | FunctionExp (s, None, vs, e) -> JsSyntax.Coq_propbody_set (map string_to_coq vs, exp_to_funcbody e s) 
+              | Function (s, None, vs, e) -> JsSyntax.Coq_propbody_set (map string_to_coq vs, exp_to_funcbody e s) 
               | _ -> raise Parser.InvalidArgument
             end) 
         ) xs)
-      | Array _ -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
+      (* _ARRAYS_ : Parsing array arguments *)
+      | Array oes -> JsSyntax.Coq_expr_array (map (fun oe -> begin match oe with
+                                                               | None   -> None
+                                                               | Some e -> Some (f e)
+                                                              end) oes)
       | ConditionalOp (e1, e2, e3) -> JsSyntax.Coq_expr_conditional (f e1, f e2, f e3)
 
       (*Statements*)
@@ -129,8 +140,8 @@ let rec exp_to_exp exp : JsSyntax.expr =
       | If _
       | ForIn _
       | For _
-      | Switch _ 
-      | Block _ 
+      | Switch _
+      | Block _
       | Script _ -> raise Parser.InvalidArgument
 
 and exp_to_stat exp : JsSyntax.stat =
@@ -158,10 +169,10 @@ and exp_to_stat exp : JsSyntax.stat =
       | New _
       | Obj _
       | Array _ 
-      | ConditionalOp _ -> JsSyntax.Coq_stat_expr (exp_to_exp exp)
+      | ConditionalOp _
+      | FunctionExp _ -> JsSyntax.Coq_stat_expr (exp_to_exp exp)
 
-      | AnnonymousFun _
-      | NamedFun _ -> raise Parser.InvalidArgument
+      | Function _ -> raise Parser.InvalidArgument
          (* If a function appears in the middle of a statement, it shall not be interpreted as an expression function, but as a function declaration *)
          (* NOTE in spec p.86 *)
          (* ... It is recommended that ECMAScript implementations either disallow this usage of FunctionDeclaration or issue a warning *)
@@ -190,14 +201,17 @@ and exp_to_stat exp : JsSyntax.stat =
       | If (e1, e2, None) -> JsSyntax.Coq_stat_if (exp_to_exp e1, f e2, None)
       | ForIn (e1, e2, e3) -> raise (CoqSyntaxDoesNotSupport (Pretty_print.string_of_exp false exp))
       | For (e1, e2, e3, e4) ->
-          (match e1.exp_stx with
-          | VarDec vs ->
+        let to_option expr = begin match expr with
+                                 | None -> None
+                                 | Some(real_e) -> Some (exp_to_exp real_e) end in
+        (match e1 with
+          | Some ({exp_offset; exp_stx = (VarDec vs); exp_annot}) ->
                 JsSyntax.Coq_stat_for_var ([], (map (fun (v, e) ->
                     string_to_coq v, match e with None -> None
                         | Some e -> Some (exp_to_exp e)) vs),
-                    Some (exp_to_exp e2), Some (exp_to_exp e3), f e4)
+                    to_option e2, to_option e3, f e4)
           | _ ->
-                  JsSyntax.Coq_stat_for ([], Some (exp_to_exp e1), Some (exp_to_exp e2), Some (exp_to_exp e3), f e4))
+                  JsSyntax.Coq_stat_for ([], to_option e1, to_option e2, to_option e3, f e4))
       | Switch (e1, e2s) -> 
         let (firstpart, defaultcase, secondpart) = List.fold_left (fun (fi, de, se) el -> (
           if de = None then
@@ -226,7 +240,8 @@ and exp_to_prog exp : JsSyntax.prog =
 and exp_to_elem exp : JsSyntax.element = 
     let tos = string_to_coq in
     match exp.exp_stx with
-      | NamedFun (s, name, args, body) -> JsSyntax.Coq_element_func_decl (tos name, map tos args, exp_to_funcbody body s)
+      | FunctionExp (s, (Some name), args, body) -> JsSyntax.Coq_element_func_decl (tos name, map tos args, exp_to_funcbody body s)
+      | Function (s, (Some name), args, body) -> JsSyntax.Coq_element_func_decl (tos name, map tos args, exp_to_funcbody body s)
       | _ -> JsSyntax.Coq_element_stat (exp_to_stat exp)
 
 and exp_to_funcbody exp strict : JsSyntax.funcbody =
@@ -235,8 +250,12 @@ and exp_to_funcbody exp strict : JsSyntax.funcbody =
     | JsSyntax.Coq_prog_intro (_, elems) -> JsSyntax.Coq_prog_intro (strict, elems)
   in JsSyntax.Coq_funcbody_intro (body, [])
 
-let coq_syntax_from_file filename =
-  let exp = Parser_main.exp_from_file filename in
+let coq_syntax_from_main filename =
+  let exp = (Parser_main.exp_from_main filename)() in
+  exp_to_prog exp
+
+let coq_syntax_from_file ?init:(i = false) filename =
+  let exp = Parser_main.exp_from_file ~init:i filename in
   exp_to_prog exp
   
 let coq_syntax_from_string s =

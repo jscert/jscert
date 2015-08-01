@@ -1,0 +1,166 @@
+********************************************************************************
+COMPILING FOR DEBUGGING:
+
+Before the debugger can be used, the program must be compiled and linked with
+the -g option.
+
+- 'make debug'
+
+
+
+********************************************************************************
+STARTING THE DEBUGGER:
+
+The OCaml debugger is invoked by running the program ocamldebug with the name of
+the bytecode executable file as first argument.
+
+- './interp/run_debug my/javascript/file'
+
+
+The command 'quit' exits the debugger. You can also exit the debugger by typing
+an end-of-file character (usually ctrl-D).
+
+Typing an interrupt character (usually ctrl-C) will not exit the debugger, but
+will terminate the action of any debugger command that is in progress and return
+to the debugger command level.
+
+
+
+********************************************************************************
+SOME USEFUL COMMANDS:
+
+The entire list could be found in the OCaml manual.
+
+________________________________________________________________________________
+Running the program:
+
+- run: Execute the program forward from current time. Stops at next breakpoint
+or when the program terminates.
+
+- kill: Kill the program being executed. This command is mainly useful if you
+wish to recompile the program without leaving the debugger.
+
+- reverse: Execute the program backward from current time. Mostly useful to go
+to the last breakpoint encountered before the current time.
+
+- step [count]: Run the program and stop at the next event. With an argument, do
+it 'count' times.
+
+- backstep [count]: Run the program backward and stop at the previous event.
+With an argument, do it 'count' times.
+
+- next [count]: Run the program and stop at the next event, skipping over
+function calls. With an argument, do it 'count' times.
+
+- previous [count]: Run the program backward and stop at the previous event,
+skipping over function calls. With an argument, do it 'count' times.
+
+- finish: Run the program until the current function returns.
+
+- start: Run the program backward and stop at the first event before the current
+function invocation.
+
+________________________________________________________________________________
+Time travel:
+
+- goto time: Jump to the given 'time'.
+
+- last [count]: Go back to the latest time recorded in the execution history.
+With an argument, do it 'count' times.
+
+________________________________________________________________________________
+Breakpoints:
+
+- break: Set a breakpoint at the current position in the program execution. The
+current position must be on an event (i.e., neither at the beginning, nor at the
+end of the program).
+
+- break function: Set a breakpoint at the beginning of 'function'. This works
+only when the functional value of the identifier 'function' has been computed
+and assigned to the identifier. Hence this command cannot be used at the very
+beginning of the program execution, when all identifiers are still undefined;
+use goto 'time' to advance execution until the functional value is available.
+
+________________________________________________________________________________
+Examining variable values:
+
+- print 'var': Print the values of the given variables. print can be abbreviated
+as p.
+
+- display var: Same as print, but limit the depth of printing to 1. Useful to
+browse large data structures without printing them in full. display can be
+abbreviated as d.
+
+To display the state, you need to load a custom printer. To this end, do
+    source "interp/load_prtest"
+in the debugger
+
+________________________________________________________________________________
+To run into Emacs
+
+- launch ocamldebug (M-x ocamldebug) then choose the interp/run_js.byte
+  program and the default debugging program
+- run the following list of instructions in the debugging buffer, where XXX is
+  name of the file to run (relative to the root directory of the repo)
+    cd ..
+    directory interp/src/extract
+    directory interp/src
+    directory interp
+    set arguments -jsparser interp/parser/lib/js_parser.jar -test_prelude interp/test_prelude.js -file XXX
+
+You may then proceed as usual, and code being debugged should be shown.
+
+********************************************************************************
+A SHORT EXAMPLE:
+
+#Launch the debugger with ledit.
+$ ledit ./interp/run_debug.sh tests/more-tests/loop.js
+	OCaml Debugger version 4.00.1
+
+#Run the program until the end in order to define every functional value
+(ocd) run
+Loading program... done.
+
+
+EXCEPTION THROWN
+
+	Returned value:	@8
+
+Warning: ref_get_value returns the undefined value on Coq_resvalue_ref: ref: (value: @8) . __$ERROR__
+Fetching the `__$ERROR__' field of this returned object resulted to:	undefined
+Time : 58321
+Program exit.
+
+#Set a breakpoint on the JsInterpreter.ref_get_value function
+(ocd) break JsInterpreter.ref_get_value
+Breakpoint 1 at 438948 : file interp/src/extract/JsInterpreter.ml, line 938, characters 4-388
+
+#Return at the beginning of program.
+(ocd) goto 0
+Time : 0
+Beginning of program.
+
+#Run until the next breakpoint. The current position is indicated by <|b|>.
+(ocd) run
+Time : 35117 - pc : 438948 - module JsInterpreter
+Breakpoint : 1
+938    <|b|>let res = ref_get_value runs s c r in match res with
+
+#Continue to the next event, skipping the call to ref_get_value.
+(ocd) next
+Time : 35641 - pc : 438988 - module JsInterpreter
+938    let res = ref_get_value runs s c r in <|b|>match res with
+
+#Print the res value.
+(ocd) print res
+res : result =
+  Coq_result_out
+   (Coq_out_ter
+     ({state_object_heap = <abstr>; state_env_record_heap = <abstr>;
+       state_fresh_locations = <lazy>},
+     {res_type = Coq_restype_normal;
+      res_value =
+       Coq_resvalue_value (Coq_value_object (Coq_object_loc_normal 1));
+      res_label = Coq_label_empty})) 
+
+

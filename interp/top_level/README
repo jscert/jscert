@@ -1,0 +1,34 @@
+---------------------------
+Installation and launching:
+---------------------------
+
+The toplevel is built during a standard make. The binary is placed in /interp.
+
+From the /interp directory,
+- [ledit] ./top
+
+
+--------------
+How to use it:
+--------------
+
+Input to the toplevel can span several lines. It is terminated by an empty line.
+Example:
+
+< b = (1 == true)
+< 
+normal; Coq_resvalue_value: true
+
+
+The following directives control the toplevel behavior.
+Note: all directives start with a # (sharp) symbol.
+
+#dump: dump the memory state
+#load: load a file and launch the interpreter
+#reset: reset the state to the initial state
+#step: step-by-step mode available
+#unstep: step-by-step mode disable
+
+
+/!\ : Relative addresses are used by the program. Be cautious
+if you want to move files.

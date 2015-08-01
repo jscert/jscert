@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 Require Import Shared.
-Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsPreliminary JsPreliminaryAux JsInit.
+Require Import JsSyntax JsSyntaxAux JsSyntaxInfos JsCommon JsCommonAux JsPreliminary JsInit JsInterpreterMonads.
 Require Import LibFix LibList.
 
 
@@ -53,8 +53,7 @@ Implicit Type T : Type.
 (**************************************************************)
 (** ** Structure of This File *)
 
-(* Definitions of the datatypes used.
- * Monadic constructors.
+(*
  * Functions corresponding to the [spec_*] of the semantics.
  * Operatorshandling.
  * Functions corresponding to syntax cases of the semantics (while, if, ...)
@@ -71,276 +70,8 @@ Implicit Type T : Type.
   * [result_bottom] means that the computation taked too long and we run out of fuel.
 *)
 
-Inductive resultof T :=
-  | result_some : T -> resultof T
-  | result_not_yet_implemented
-  | result_impossible
-  | result_bottom : state -> resultof T.
-
-  (* We could put any information there.  They can be used to create step by step interpreter. *)
-
-Implicit Arguments result_some [[T]].
-Implicit Arguments result_not_yet_implemented [[T]].
-Implicit Arguments result_impossible [[T]].
-Implicit Arguments result_bottom [[T]].
-
-(* It can be useful to get details on why a stuck is obtained. *)
-(* The cases where [result_impossible] is directly used are the cases
-  where it has been proven impossible to get it under normal condition.
-  See [JsCorrectness.v] for more details. *)
-
-Definition impossible_because {T} s : resultof T := result_impossible.
-
-Definition impossible_with_heap_because {T} S s : resultof T := result_impossible.
-
-(* Some special reduction rules does not return a usual triple (called [out] here), but a
-  special value.  The following type is there to encapsulate that. *)
-
-Definition specres T := resultof (specret T).
-
-Definition res_out T o : specres T :=
-  result_some (specret_out o).
-Implicit Arguments res_out [[T]].
-
-Definition res_spec T S a : specres T :=
-  result_some (specret_val S a).
-
-(* [result] is the most common result type, returning an [out] each time. *)
-(* Note that this [out] does not necessarily (and hopefully rarely) aborts. *)
-Inductive nothing : Type :=.
-Definition retn := specret nothing.
-Definition result := resultof retn.
-Definition res_ter S R : result := res_out (out_ter S R).
-
-Implicit Type W : result.
-
-(* In the semantics, some rules returns an [out] which actually never
-  carries a result, only an [out_void] of something (or an error).  The
-  following type is there to differentiate those functions from the
-  others. *)
-(* It shall be replaced by a [specres unit]. *)
-Definition result_void := result.
-
-Definition res_void S : result_void := res_out (out_void S).
-
-(* Coercion *)
-
-Coercion result_some_out o : resultof out := result_some o.
-
-Definition out_from_retn (sp : retn) : out :=
-  match sp with
-  | specret_val _ n => nothing_rect _ n
-  | specret_out o => o
-  end.
-
-Coercion out_retn o : retn := specret_out o.
-Coercion result_out o : result := res_out o.
-
-Coercion res_to_res_void (W : result) : result_void := W.
-
-(* Inhabited *)
-
-Global Instance result_inhab : forall T, Inhab (resultof T).
-Proof. introv. applys prove_Inhab @impossible_because. exact "Resultof is inhabited". Qed.
-
-
-(**************************************************************)
-(** ** Helper functions for the interpreter *)
-
-Section InterpreterEliminations.
-
-(**************************************************************)
-(** Generic constructions *)
-
-Definition get_arg := nth_def undef.
-
-Definition destr_list (A B : Type) (l : list A) (d : B) f :=
-  match l with
-  | nil => d
-  | cons a _ => f a
-  end.
-
-
-(**************************************************************)
-(** Monadic Constructors *)
-
-Definition if_empty_label T S R (K : unit -> resultof T) : resultof T :=
-  ifb res_label R = label_empty then K tt
-  else
-    impossible_with_heap_because S "[if_empty_label] received a normal result with non-empty label.".
-
-Definition if_some (A B : Type) (op : option A) (K : A -> resultof B) : resultof B :=
-  match op with
-  | None => impossible_because "[if_some] called with [None]."
-  | Some a => K a
-  end.
-
-Definition if_some_or_default (A B : Type) (o : option B) (d : A) (K : B -> A) : A :=
-  option_case d K o.
-
-Definition if_result_some (A B : Type) (W : resultof A) (K : A -> resultof B) : resultof B :=
-  match W with
-  | result_some a => K a
-  | result_not_yet_implemented => result_not_yet_implemented
-  | result_impossible => result_impossible
-  | result_bottom S0 => result_bottom S0
-  end.
-
-Definition if_out_some T W (K : out -> resultof T) : resultof T :=
-  if_result_some W (fun sp => K (out_from_retn sp)).
-
-Definition throw_result T W : specres T := (* Returns a [res_out], formatted into a [specres T]. *)
-  if_out_some W (fun o => res_out o).
-
-Definition if_ter T W (K : state -> res -> specres T) : specres T :=
-  if_out_some W (fun o =>
-    match o with
-    | out_ter S0 R => K S0 R
-    | _ => res_out o
-    end).
-
-Definition if_success_state rv W (K : state -> resvalue -> result) : result :=
-  if_ter W (fun S0 R =>
-    match res_type R with
-    | restype_normal =>
-      if_empty_label S0 R (fun _ =>
-        K S0 (ifb res_value R = resvalue_empty then rv else res_value R))
-    | restype_throw => res_ter S0 R
-    | _ =>
-      res_ter S0 (res_overwrite_value_if_empty rv R)
-    end).
-
-Definition if_success T W (K : state -> resvalue -> specres T) : specres T :=
-  if_ter W (fun S0 R =>
-    match res_type R with
-    | restype_normal =>
-      if_empty_label S0 R (fun _ =>
-        K S0 (res_value R))
-    | _ =>
-      res_out (out_ter S0 R)
-    end).
-
-Definition if_void (W : result_void) (K : state -> result) : result :=
-  if_success W (fun S rv =>
-    match rv with
-    | resvalue_empty => K S
-    | _ =>
-      impossible_with_heap_because S "[if_void called] with non-void result value."
-    end).
-
-Definition if_not_throw W (K : state -> res -> result) : result :=
-  if_ter W (fun S0 R =>
-    match res_type R with
-    | restype_throw => W
-    | _ => K S0 R
-    end).
-
-Definition if_any_or_throw W (K1 : state -> res -> result)
-    (K2 : state -> value -> result) : result :=
-  if_ter W (fun S R =>
-    match res_type R with
-    | restype_throw =>
-      match res_value R with
-      | resvalue_value v =>
-        if_empty_label S R (fun _ =>
-          K2 S v)
-      | _ =>
-        impossible_with_heap_because S "[if_any_or_throw] called with a non-value result."
-      end
-    | _ => K1 S R
-    end).
-
-Definition if_success_or_return W (K1 : state -> result) (K2 : state -> resvalue -> result) : result :=
-  if_ter W (fun S R =>
-    match res_type R with
-    | restype_normal =>
-      if_empty_label S R (fun _ => K1 S)
-    | restype_return =>
-      if_empty_label S R (fun _ => K2 S (res_value R))
-    | _ => W
-    end).
-
-Definition if_break W (K : state -> res -> result) : result :=
-  if_ter W (fun S R =>
-    match res_type R with
-    | restype_break => K S R
-    | _ => res_ter S R
-    end).
-
-Definition if_value T W (K : state -> value -> specres T) : specres T :=
-  if_success W (fun S rv =>
-    match rv with
-    | resvalue_value v => K S v
-    | _ =>
-      impossible_with_heap_because S "[if_value] called with non-value."
-    end).
-
-Definition if_bool T W (K : state -> bool -> specres T) : specres T :=
-  if_value W (fun S v =>
-    match v with
-    | prim_bool b => K S b
-    | _ =>
-      impossible_with_heap_because S "[if_bool] called with non-boolean value."
-    end).
-
-Definition if_object T W (K : state -> object_loc -> specres T) : specres T :=
-  if_value W (fun S v =>
-    match v with
-    | value_object l => K S l
-    | value_prim _ =>
-      impossible_with_heap_because S "[if_object] called on a primitive."
-    end).
-
-Definition if_string T W (K : state -> string -> specres T) : specres T :=
-  if_value W (fun S v =>
-    match v with
-    | prim_string s => K S s
-    | _ =>
-      impossible_with_heap_because S "[if_string] called on a non-string value."
-    end).
-
-Definition if_number T W (K : state -> number -> specres T) : specres T :=
-  if_value W (fun S v =>
-    match v with
-    | prim_number n => K S n
-    | _ =>
-      impossible_with_heap_because S "[if_number] called with non-number value."
-    end).
-
-Definition if_prim T W (K : state -> prim -> specres T) : specres T :=
-  if_value W (fun S v =>
-    match v with
-    | value_prim w => K S w
-    | value_object _ =>
-      impossible_with_heap_because S "[if_primitive] called on an object."
-    end).
-
-Definition convert_option_attributes : option attributes -> option full_descriptor :=
-  LibOption.map (fun A => A : full_descriptor).
-
-Definition if_abort (T:Type) o (K : unit -> resultof T) : resultof T :=
-  match o with
-  | out_ter S0 R =>
-    ifb res_type R = restype_normal then
-      impossible_with_heap_because S0 "[if_abort] received a normal result!"
-    else K tt
-  | _ => K tt
-  end.
-
-Definition if_spec (A B : Type) (W : specres A) (K : state -> A -> specres B) : specres B :=
-  if_result_some W (fun sp =>
-    match sp with
-    | specret_val S0 a => K S0 a
-    | specret_out o =>
-      if_abort o (fun _ =>
-        res_out o)
-    end).
-
-End InterpreterEliminations.
-Implicit Arguments throw_result [[T]].
 
 Section LexicalEnvironments.
-
 
 (**************************************************************)
 (** Error Handling *)
@@ -349,7 +80,7 @@ Definition build_error S vproto vmsg : result :=
   let O := object_new vproto "Error" in
   let '(l, S') := object_alloc S O in
   ifb vmsg = undef then out_ter S' l
-  else result_not_yet_implemented (* LATER:  Need [to_string] (this function shall be put in [runs_type].) *).
+  else not_yet_implemented_because "Need [to_string] (this function shall be put in [runs_type].)" (* LATER *).
 
 Definition run_error T S ne : specres T :=
   if_object (build_error S (prealloc_native_error_proto ne) undef) (fun S' l =>
@@ -396,7 +127,11 @@ Record runs_type : Type := runs_type_intro {
     runs_type_stat : state -> execution_ctx -> stat -> result;
     runs_type_prog : state -> execution_ctx -> prog -> result;
     runs_type_call : state -> execution_ctx -> object_loc -> value -> list value -> result;
+    runs_type_call_prealloc : state -> execution_ctx -> prealloc -> value -> list value -> result;
+    runs_type_construct : state -> execution_ctx -> construct -> object_loc -> list value -> result;
     runs_type_function_has_instance : state -> object_loc -> value -> result;
+    runs_type_object_has_instance : state -> execution_ctx -> builtin_has_instance -> object_loc -> value -> result;
+    runs_type_get_args_for_apply : state -> execution_ctx -> object_loc -> int -> int -> specres (list value);
     runs_type_stat_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_do_while : state -> execution_ctx -> resvalue -> label_set -> expr -> stat -> result;
     runs_type_stat_for_loop : state -> execution_ctx -> label_set -> resvalue -> option expr -> option expr -> stat -> result;
@@ -408,7 +143,12 @@ Record runs_type : Type := runs_type_intro {
     runs_type_object_put : state -> execution_ctx -> object_loc -> prop_name -> value -> strictness_flag -> result;
     runs_type_equal : state -> execution_ctx -> value -> value -> result;
     runs_type_to_integer : state -> execution_ctx -> value -> result;
-    runs_type_to_string : state -> execution_ctx -> value -> result
+    runs_type_to_string : state -> execution_ctx -> value -> result;
+   
+    (* ARRAYS *)
+    runs_type_array_join_elements : state -> execution_ctx -> object_loc -> int -> int -> string -> string -> result;
+    runs_type_array_element_list : state -> execution_ctx -> object_loc -> list (option expr) -> int -> result;
+    runs_type_object_define_own_prop_array_loop : state -> execution_ctx -> object_loc -> int -> int -> descriptor -> bool -> bool -> (state -> prop_name -> descriptor -> strictness_flag -> specres nothing) -> result
   }.
 
 Implicit Type runs : runs_type.
@@ -507,6 +247,73 @@ Definition object_proto_is_prototype_of runs S l0 l : result :=
       impossible_with_heap_because S "[run_object_method] returned a primitive in [object_proto_is_prototype_of_body]."
     end).
 
+(**************************************************************)
+(** Conversions *)
+
+Definition object_default_value runs S C l (prefo : option preftype) : result :=
+  if_some (run_object_method object_default_value_ S l) (fun B =>
+    match B with
+
+    | builtin_default_value_default =>
+      let gpref := unsome_default preftype_number prefo in
+      let lpref := other_preftypes gpref in
+      'let sub := fun S' x (K:state->result) =>
+        (if_value (run_object_get runs S' C l x) (fun S1 vfo =>
+          if_some (run_callable S1 vfo) (fun co =>
+            match co with
+            | Some B =>
+              if_object (out_ter S1 vfo) (fun S2 lfunc =>
+                if_value (runs_type_call runs S2 C lfunc l nil) (fun S3 v =>
+                  match v return result with
+                  | value_prim w => out_ter S3 w
+                  | value_object l => K S3
+                  end))
+            | None => K S1
+            end))) in
+      'let gmeth := method_of_preftype gpref in
+      sub S gmeth (fun S' =>
+        let lmeth := method_of_preftype lpref in
+        sub S' lmeth (fun S'' => run_error S'' native_error_type))
+
+    end).
+
+Definition to_primitive runs S C v (prefo : option preftype) : result :=
+  match v with
+  | value_prim w => out_ter S w
+  | value_object l =>
+    if_prim (object_default_value runs S C l prefo) res_ter
+  end.
+
+Definition to_number runs S C v : result :=
+  match v with
+  | value_prim w =>
+    out_ter S (convert_prim_to_number w)
+  | value_object l =>
+    if_prim (to_primitive runs S C l (Some preftype_number)) (fun S1 w =>
+      res_ter S1 (convert_prim_to_number w))
+  end.
+
+Definition to_integer runs S C v : result :=
+  if_number (to_number runs S C v) (fun S1 n =>
+    res_ter S1 (convert_number_to_integer n)).
+
+Definition to_int32 runs S C v : specres int :=
+  if_number (to_number runs S C v) (fun S' n =>
+    res_spec S' (JsNumber.to_int32 n)).
+
+Definition to_uint32 runs S C v : specres int :=
+  if_number (to_number runs S C v) (fun S' n =>
+    res_spec S' (JsNumber.to_uint32 n)).
+
+Definition to_string runs S C v : result :=
+  match v with
+  | value_prim w =>
+    out_ter S (convert_prim_to_string w)
+  | value_object l =>
+    if_prim (to_primitive runs S C l (Some preftype_string)) (fun S1 w =>
+      res_ter S1 (convert_prim_to_string w))
+  end.
+
 
 (**************************************************************)
 (** Object Set *)
@@ -547,12 +354,58 @@ Definition object_can_put runs S C l x : result :=
           end)
       end).
 
+Fixpoint object_define_own_prop_array_loop runs S C l newLen oldOff newLenDesc (newWritable : bool) default throw : result :=
+  match oldOff with
+  | S oldOff' =>
+    'let oldLen := newLen + oldOff' in
+    if_string (to_string runs S C oldLen) (fun S slen =>
+      if_bool (runs_type_object_delete runs S C l slen false) (fun S deleteSucceeded =>
+        ifb (not deleteSucceeded) then
+          'let newLenDesc := descriptor_with_value newLenDesc (Some (value_prim (prim_number (JsNumber.of_int (oldLen + 1))))) in
+          'let newLenDesc := (ifb (not newWritable) then
+                               descriptor_with_writable newLenDesc (Some false)
+                             else
+                               newLenDesc) in
+          if_bool (default S "length" newLenDesc false) (fun S _ =>
+            out_error_or_cst S throw native_error_type false)
+        else
+          object_define_own_prop_array_loop runs S C l newLen oldOff' newLenDesc newWritable default throw))
+  | O => ifb (not newWritable) then
+           default S "length" (descriptor_intro None (Some false) None None None None) false
+         else
+           res_ter S true
+  end.
+
+Definition run_object_define_own_prop_array_loop runs S C l (newLen oldLen : int) (newLenDesc : descriptor) (newWritable throw : bool) (def : state -> prop_name -> descriptor -> strictness_flag -> specres nothing) : result := 
+  ifb (newLen < oldLen) 
+    then 
+     'let oldLen' := oldLen - 1 in
+      if_string (to_string runs S C oldLen') (fun S slen =>
+        if_bool (runs_type_object_delete runs S C l slen false) (fun S deleteSucceeded =>
+          ifb (not deleteSucceeded) 
+            then
+              'let newLenDesc := descriptor_with_value newLenDesc (Some (value_prim (prim_number (JsNumber.of_int (oldLen' + 1))))) in
+              'let newLenDesc := (ifb (not newWritable) 
+                 then
+                   descriptor_with_writable newLenDesc (Some false)
+                 else
+                   newLenDesc) in
+                 if_bool (def S "length" newLenDesc false) (fun S _ =>
+                   out_error_or_cst S throw native_error_type false)
+            else
+              runs_type_object_define_own_prop_array_loop runs S C l newLen oldLen' newLenDesc newWritable throw def))
+
+    else (ifb (not newWritable) 
+         then
+           def S "length" (descriptor_intro None (Some false) None None None None) false
+         else
+           res_ter S true).
 
 Definition object_define_own_prop runs S C l x Desc throw : result :=
   'let reject := fun S throw =>
     out_error_or_cst S throw native_error_type false in
 
-  'let default := fun S throw =>
+  'let default := fun S x Desc throw =>
       if_spec (runs_type_object_get_own_prop runs S C l x) (fun S1 D =>
         if_some (run_object_method object_extensible_ S1 l) (fun ext =>
              match D, ext with
@@ -578,6 +431,7 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                  object_define_own_prop_write S1 A
                else ifb attributes_is_data A <> descriptor_is_data Desc then
                  (* LATER: restore version with negation:
+
                  if neg (attributes_configurable A) then
                    reject S1
                  else
@@ -630,12 +484,13 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
 
   if_some (run_object_method object_define_own_prop_ S l) (fun B =>
     match B with
-    | builtin_define_own_prop_default => default S throw
+    | builtin_define_own_prop_default => default S x Desc throw
+
     | builtin_define_own_prop_args_obj =>
       if_some (run_object_method object_parameter_map_ S l) (fun lmapo =>
         if_some lmapo (fun lmap =>
           if_spec (runs_type_object_get_own_prop runs S C lmap x) (fun S D =>
-            if_bool (default S false) (fun S b =>
+            if_bool (default S x Desc false) (fun S b =>
               if b then
                 'let follow := fun S => res_ter S true in
                 match D with
@@ -661,12 +516,81 @@ Definition object_define_own_prop runs S C l x Desc throw : result :=
                        end
                 end
               else reject S throw))))
+
+    (* ARRAYS *)
+    | builtin_define_own_prop_array =>
+      if_spec (runs_type_object_get_own_prop runs S C l "length") (fun S D =>
+        match D with
+        | full_descriptor_some Attr =>
+          (match Attr with
+          | attributes_data_of A =>
+            'let oldLen := attributes_data_value A in
+            (match oldLen with
+            | value_object l => impossible_with_heap_because S "Spec asserts length of array is number."
+            | value_prim w =>
+              'let oldLen := JsNumber.to_uint32 (convert_prim_to_number w) in
+              'let descValueOpt := (descriptor_value Desc) in
+              ifb x = "length" then
+                match descValueOpt with
+                | None => default S "length" Desc throw
+                | Some descValue => 
+                  if_spec (to_uint32 runs S C descValue) (fun S newLen => 
+                    if_number (to_number runs S C descValue) (fun S newLenN =>
+                      ifb ((JsNumber.of_int newLen) <> newLenN) then
+                        run_error S native_error_range
+                      else
+                        'let newLenDesc := descriptor_with_value Desc (Some (value_prim (prim_number (JsNumber.of_int newLen)))) in
+                        ifb (oldLen <= newLen) then
+                          default S "length" newLenDesc throw
+                        else
+                          ifb (not (attributes_data_writable A)) then
+                            reject S throw
+                          else
+                            'let newWritable := (match (descriptor_writable newLenDesc) with
+                                                | Some false => false
+                                                | _ => true
+                                                end) in
+                            'let newLenDesc := (ifb (not newWritable) then
+                                                 descriptor_with_writable newLenDesc (Some true)
+                                               else
+                                                 newLenDesc) in
+                            if_bool (default S "length" newLenDesc throw) (fun S succ =>
+                              ifb (not succ) then
+                                res_ter S false
+                              else
+                                run_object_define_own_prop_array_loop runs S C l newLen oldLen newLenDesc newWritable throw default)))
+                end
+              else
+                if_spec (to_uint32 runs S C x) (fun S ilen => 
+                  if_string (to_string runs S C (JsNumber.of_int ilen)) (fun S slen =>
+                    ifb ((x = slen) /\ ilen <> (4294967295%Z)) then
+                      if_spec (to_uint32 runs S C x) (fun S index =>
+                        ifb (oldLen <= index /\ (not (attributes_data_writable A))) then
+                          reject S throw
+                        else
+                          if_bool (default S x Desc false) (fun S b =>
+                            ifb (not b) then
+                              reject S throw
+                            else
+                              ifb (oldLen <= index) then
+                                let A := (descriptor_with_value A (Some (value_prim (JsNumber.of_int (index + 1))))) in
+                                default S "length" A false
+                              else
+                                res_ter S true))
+                    else
+                      default S x Desc throw))
+            end)
+          | _ => impossible_with_heap_because S "Array length property descriptor cannot be accessor."
+          end)
+        | _ =>
+          impossible_with_heap_because S "Array length property descriptor cannot be undefined."
+        end)
     end).
 
 Definition run_to_descriptor runs S C v : specres descriptor :=
   match v with
   | value_prim _ =>
-    run_error S native_error_type
+    throw_result (run_error S native_error_type)
   | value_object l =>
     let sub S Desc name conv K :=
       if_bool (object_has_prop runs S C l name) (fun S1 has =>
@@ -688,18 +612,16 @@ Definition run_to_descriptor runs S C v : specres descriptor :=
                   res_spec S4 (descriptor_with_writable Desc (Some b))) (fun S4' Desc =>
                     sub S4' Desc "get" (fun S5 v5 Desc =>
                       ifb (is_callable S5 v5 = false) /\ v5 <> undef then
-                        res_spec S5 (descriptor_with_get Desc (Some v5))
-                      else run_error S5 native_error_type) (fun S5' Desc =>
+                        throw_result (run_error S5 native_error_type)
+                      else res_spec S5 (descriptor_with_get Desc (Some v5))) (fun S5' Desc =>
                         sub S5' Desc "set" (fun S6 v6 Desc =>
                           ifb (is_callable S6 v6 = false) /\ v6 <> undef then
-                            res_spec S6 (descriptor_with_set Desc (Some v6))
-                          else run_error S6 native_error_type) (fun S7 Desc =>
+                            throw_result (run_error S6 native_error_type)
+                          else res_spec S6 (descriptor_with_set Desc (Some v6))) (fun S7 Desc =>
                             ifb descriptor_inconsistent Desc then
-                              run_error S7 native_error_type
+                              throw_result (run_error S7 native_error_type)
                             else res_spec S7 Desc))))))
-
-  end.
-
+end.
 
 (**************************************************************)
 (** Conversions *)
@@ -719,9 +641,14 @@ Definition prim_new_object S w : result :=
   | prim_string s =>
       'let O2 := object_new prealloc_string_proto "String" in
       'let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
+
       'let O :=  object_with_primitive_value O1 s in
       let '(l, S1) := object_alloc S O in
-      out_ter S1 l
+      (* This is probably not correct. *)
+      if_some (pick_option (object_set_property S1 l "length" (attributes_data_intro_constant (String.length s)))) (fun S' => 
+        res_ter S' l) 
+      (* While the spec never explicitly says to do this, it specifies that it is the case immediately after creation *)
+
   | _ =>
     impossible_with_heap_because S "[prim_new_object] received an null or undef."
   end.
@@ -742,21 +669,6 @@ Definition run_object_prim_value S l : result :=
 Definition prim_value_get runs S C v x : result :=
   if_object (to_object S v) (fun S' l =>
     object_get_builtin runs S' C builtin_get_default v l x).
-
-Definition run_value_viewable_as_prim s S v : option (option prim) :=
-  match v with
-  | value_prim w => Some (Some w)
-  | value_object l =>
-      if_some_or_default (run_object_method object_class_ S l)
-        None (fun s =>
-          if_some_or_default (run_object_method object_prim_value_ S l)
-            None (fun wo => Some (
-              match wo with
-              | Some (value_prim w) => Some w
-              | _ => None
-              end)))
-  end.
-
 
 (**************************************************************)
 (** Operations on environments *)
@@ -1065,74 +977,6 @@ Definition env_record_initialize_immutable_binding S L x v : result_void :=
 
 
 (**************************************************************)
-(** Conversions *)
-
-Definition object_default_value runs S C l (prefo : option preftype) : result :=
-  if_some (run_object_method object_default_value_ S l) (fun B =>
-    match B with
-
-    | builtin_default_value_default =>
-      let gpref := unsome_default preftype_number prefo in
-      let lpref := other_preftypes gpref in
-      'let sub := fun S' x (K:state->result) =>
-        (if_value (run_object_get runs S' C l x) (fun S1 vfo =>
-          if_some (run_callable S1 vfo) (fun co =>
-            match co with
-            | Some B =>
-              if_object (out_ter S1 vfo) (fun S2 lfunc =>
-                if_value (runs_type_call runs S2 C lfunc l nil) (fun S3 v =>
-                  match v return result with
-                  | value_prim w => out_ter S3 w
-                  | value_object l => K S3
-                  end))
-            | None => K S1
-            end))) in
-      'let gmeth := method_of_preftype gpref in
-      sub S gmeth (fun S' =>
-        let lmeth := method_of_preftype lpref in
-        sub S' lmeth (fun S'' => run_error S'' native_error_type))
-
-    end).
-
-Definition to_primitive runs S C v (prefo : option preftype) : result :=
-  match v with
-  | value_prim w => out_ter S w
-  | value_object l =>
-    if_prim (object_default_value runs S C l prefo) res_ter
-  end.
-
-Definition to_number runs S C v : result :=
-  match v with
-  | value_prim w =>
-    out_ter S (convert_prim_to_number w)
-  | value_object l =>
-    if_prim (to_primitive runs S C l (Some preftype_number)) (fun S1 w =>
-      res_ter S1 (convert_prim_to_number w))
-  end.
-
-Definition to_integer runs S C v : result :=
-  if_number (to_number runs S C v) (fun S1 n =>
-    res_ter S1 (convert_number_to_integer n)).
-
-Definition to_int32 runs S C v : specres int :=
-  if_number (to_number runs S C v) (fun S' n =>
-    res_spec S' (JsNumber.to_int32 n)).
-
-Definition to_uint32 runs S C v : specres int :=
-  if_number (to_number runs S C v) (fun S' n =>
-    res_spec S' (JsNumber.to_uint32 n)).
-
-Definition to_string runs S C v : result :=
-  match v with
-  | value_prim w =>
-    out_ter S (convert_prim_to_string w)
-  | value_object l =>
-    if_prim (to_primitive runs S C l (Some preftype_string)) (fun S1 w =>
-      res_ter S1 (convert_prim_to_string w))
-  end.
-
-
-(**************************************************************)
 (** Built-in constructors *)
 
 Definition call_object_new S v : result :=
@@ -1147,12 +991,89 @@ Definition call_object_new S v : result :=
     out_ter S' l
   end.
 
-Definition bool_proto_value_of_call S vthis : result :=
-  if_some (run_value_viewable_as_prim "Boolean" S vthis) (fun vw =>
-    match vw return result with
-    | Some (prim_bool b) => out_ter S b
-    | _ => run_error S native_error_type
-    end).
+Fixpoint array_args_map_loop runs S C l args ind : result_void :=
+  (* last paragraph of 15.4.2.1 *)
+  match args with
+  | h :: rest => if_some (pick_option (object_set_property S l (JsNumber.to_string (JsNumber.of_int ind)) (attributes_data_intro_all_true h)))
+                   (fun S' => array_args_map_loop runs S' C l rest (ind + 1))
+  | nil => res_void S
+  end.
+
+Definition string_of_prealloc (B : prealloc) : string :=
+match B with
+  | prealloc_global => "global"
+  | prealloc_global_eval => "global_eval"
+  | prealloc_global_parse_int => "global_parse_int"
+  | prealloc_global_parse_float => "global_parse_float"
+  | prealloc_global_is_finite => "global_is_finite"
+  | prealloc_global_is_nan => "global_is_nan"
+  | prealloc_global_decode_uri => "global_decode_uri"
+  | prealloc_global_decode_uri_component => "global_decode_uri_component"
+  | prealloc_global_encode_uri => "global_encode_uri"
+  | prealloc_global_encode_uri_component => "global_encode_uri_component"
+  | prealloc_object => "object"
+  | prealloc_object_get_proto_of => "object_get_proto_of"
+  | prealloc_object_get_own_prop_descriptor => "object_get_own_prop_descriptor"
+  | prealloc_object_get_own_prop_name => "object_get_own_prop_name"
+  | prealloc_object_create => "object_create"
+  | prealloc_object_define_prop => "object_define_prop"
+  | prealloc_object_define_props => "object_define_props"
+  | prealloc_object_seal => "object_seal"
+  | prealloc_object_freeze => "object_freeze"
+  | prealloc_object_prevent_extensions => "object_prevent_extensions"
+  | prealloc_object_is_sealed => "object_is_sealed"
+  | prealloc_object_is_frozen => "object_is_frozen"
+  | prealloc_object_is_extensible => "object_is_extensible"
+  | prealloc_object_keys => "object_keys"
+  | prealloc_object_keys_call => "object_keys_call"
+  | prealloc_object_proto => "object_proto_"
+  | prealloc_object_proto_to_string => "object_proto_to_string"
+  | prealloc_object_proto_value_of => "object_proto_value_of"
+  | prealloc_object_proto_has_own_prop => "object_proto_has_own_prop"
+  | prealloc_object_proto_is_prototype_of => "object_proto_is_prototype_of"
+  | prealloc_object_proto_prop_is_enumerable => "object_proto_prop_is_enumerable"
+  | prealloc_function => "function"
+  | prealloc_function_proto => "function_proto"
+  | prealloc_function_proto_to_string => "function_proto_to_string"
+  | prealloc_function_proto_apply => "function_proto_apply"
+  | prealloc_function_proto_call => "function_proto_call"
+  | prealloc_function_proto_bind => "function_proto_bind"
+  | prealloc_bool => "bool"
+  | prealloc_bool_proto => "bool_proto"
+  | prealloc_bool_proto_to_string => "bool_proto_to_string"
+  | prealloc_bool_proto_value_of => "bool_proto_value_of"
+  | prealloc_number => "number"
+  | prealloc_number_proto => "number_proto"
+  | prealloc_number_proto_to_string => "number_proto_to_string"
+  | prealloc_number_proto_value_of => "number_proto_value_of"
+  | prealloc_number_proto_to_fixed => "number_proto_to_fixed"
+  | prealloc_number_proto_to_exponential => "number_proto_to_exponential"
+  | prealloc_number_proto_to_precision=> "number_proto_to_precision"
+  | prealloc_array => "array"
+  | prealloc_array_is_array => "array_is_array"
+  | prealloc_array_proto => "array_proto"
+  | prealloc_array_proto_to_string => "array_proto_to_string"
+  | prealloc_array_proto_join => "array_proto_join"
+  | prealloc_array_proto_pop => "array_proto_pop"
+  | prealloc_array_proto_push => "array_proto_push"
+  | prealloc_string => "string"
+  | prealloc_string_proto => "string_proto"
+  | prealloc_string_proto_to_string => "string_proto_to_string"
+  | prealloc_string_proto_value_of => "string_proto_value_of"
+  | prealloc_string_proto_char_at => "string_proto_char_at"
+  | prealloc_string_proto_char_code_at=> "string_proto_char_code_at"
+  | prealloc_math => "math"
+  | prealloc_mathop _ => "mathop"
+  | prealloc_date => "date"
+  | prealloc_regexp => "regexp"
+  | prealloc_error => "error"
+  | prealloc_error_proto => "error_proto"
+  | prealloc_native_error _ => "native_error"
+  | prealloc_native_error_proto _ => "native_error_proto"
+  | prealloc_error_proto_to_string => "error_proto_to_string"
+  | prealloc_throw_type_error => "throw_type_error"
+  | prealloc_json => "json"
+end.
 
 Definition run_construct_prealloc runs S C B (args : list value) : result :=
   match B with
@@ -1160,9 +1081,6 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
   | prealloc_object =>
     'let v := get_arg 0 args in
     call_object_new S v
-
-  | prealloc_function =>
-    result_not_yet_implemented (* LATER:  Waiting for specification *)
 
   | prealloc_bool =>
     'let v := get_arg 0 args in
@@ -1187,14 +1105,46 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
       if_number (to_number runs S C v) follow
 
   | prealloc_array =>
-    'let O := object_new prealloc_array_proto "Array" in
+    'let O' := object_new prealloc_array_proto "Array" in
+    'let O := object_for_array O' builtin_define_own_prop_array in
     'let p := object_alloc S O in
     let '(l, S') := p in
-    if_not_throw (object_define_own_prop runs S' C l "length" (attributes_data_intro JsNumber.zero true true true) throw_false) (fun S _ =>
-      out_ter S l)
+    'let follow := fun S'' length => if_some (pick_option (object_set_property S'' l "length" (attributes_data_intro (JsNumber.of_int length) true false false))) (fun S => res_ter S l)
+    in
+    'let arg_len := length args in
+    ifb (arg_len = 1) then
+      'let v := get_arg 0 args in
+      match v with
+      | prim_number vlen =>
+          if_spec (to_uint32 runs S' C vlen) (fun S ilen =>
+            ifb ((JsNumber.of_int ilen) = vlen) then
+              follow S ilen
+            else
+              run_error S native_error_range)
+      | _ => if_some (pick_option (object_set_property S' l "0" (attributes_data_intro_all_true v))) (fun S =>
+        follow S 1)
+      end
+    else
+      if_some (pick_option (object_set_property S' l "length" (attributes_data_intro (JsNumber.of_int arg_len) true false false))) (fun S =>
+        if_void (array_args_map_loop runs S C l args 0) (fun S => res_ter S l))
 
   | prealloc_string =>
-    result_not_yet_implemented (* LATER:  Waiting for specification *)
+    'let O2 := object_new prealloc_string_proto "String" in
+    'let O1 := object_with_get_own_property O2 builtin_get_own_prop_string in
+    'let follow := (fun S s =>
+                     'let O :=  object_with_primitive_value O1 s in
+                     let '(l, S1) := object_alloc S O in
+                     'let lenDesc := attributes_data_intro_constant (String.length s) in
+                     if_some (pick_option (object_set_property S1 l "length" lenDesc)) (fun S' => 
+                       res_ter S' l)) in
+                       (* While the spec never explicitly says to do this, it specifies that it is the case immediately after creation*)
+    'let arg_len := length args in
+    ifb (arg_len = 0) then
+      follow S ""
+    else
+      'let arg := get_arg 0 args in
+      if_string (to_string runs S C arg) (fun S s =>
+        follow S s)
 
   | prealloc_error =>
     'let v := get_arg 0 args in
@@ -1202,14 +1152,10 @@ Definition run_construct_prealloc runs S C B (args : list value) : result :=
 
   | prealloc_native_error ne =>
     'let v := get_arg 0 args in
-    build_error S (prealloc_native_error ne) v
+    build_error S (prealloc_native_error_proto ne) v
 
-  | prealloc_native_error_proto ne =>
-    'let v := get_arg 0 args in
-    build_error S B v
-
-  | _ => (* NOTE:  Are there other cases missing? *)
-    impossible_with_heap_because S "Missing case in [run_construct_prealloc]."
+  (* LATER *)
+  | _  => not_yet_implemented_because ("Construct prealloc_" ++ string_of_prealloc B  ++ " not yet implemented.") 
 
   end.
 
@@ -1233,9 +1179,16 @@ Definition run_construct runs S C co l args : result :=
   | construct_prealloc B =>
     run_construct_prealloc runs S C B args
   | construct_after_bind =>
-    impossible_with_heap_because S "[construct_after_bind] received in [run_construct]."
+    if_some (run_object_method object_target_function_ S l) (fun otrg => if_some otrg (fun target => (* Step 1 *)
+    if_some (run_object_method object_construct_ S target)  (fun oco => 
+    match oco with
+     | None => run_error S native_error_type  (* Step 2 *)
+     | Some co =>
+       if_some (run_object_method object_bound_args_ S l) (fun oarg => if_some oarg (fun boundArgs => (* Step 3 *)    
+         'let arguments := LibList.append boundArgs args in (* Step 4 *)
+           runs_type_construct runs S C co target arguments (* Step 5 *) ))
+    end )))
   end.
-
 
 (**************************************************************)
 (** Function Calls *)
@@ -1264,10 +1217,7 @@ Definition creating_function_object_proto runs S C l : result :=
 Definition creating_function_object runs S C (names : list string) (bd : funcbody) X str : result :=
   'let O := object_new prealloc_function_proto "Function" in
   'let O1 := object_with_get O builtin_get_function in
-  'let O2 := object_with_invokation O1
-    (Some construct_default)
-    (Some call_default)
-    (Some builtin_has_instance_function) in
+  'let O2 := object_with_invokation O1 (Some construct_default) (Some call_default) (Some builtin_has_instance_function) in
   'let O3 := object_with_details O2 (Some X) (Some names) (Some bd) None None None None in
   'let p := object_alloc S O3 in (* LATER: ['let] on pairs *)
   let '(l, S1) := p in
@@ -1568,7 +1518,7 @@ Definition run_function_has_instance runs S lv vo : result :=
   end.
 
 
-Definition run_object_has_instance runs B S C l v : result :=
+Definition run_object_has_instance runs S C B l v : result :=
   match B with
 
   | builtin_has_instance_function =>
@@ -1585,8 +1535,13 @@ Definition run_object_has_instance runs B S C l v : result :=
     end
 
   | builtin_has_instance_after_bind =>
-    result_not_yet_implemented (* LATER:  Waiting for the specification *)
-
+    if_some (run_object_method object_target_function_ S l) (fun ol => 
+      if_some ol (fun l =>
+        if_some (run_object_method object_has_instance_ S l) (fun ob => 
+          match ob with 
+           | Some B => runs_type_object_has_instance runs S C B l v
+           | None => run_error S native_error_type
+        end)))
   end.
 
 
@@ -1780,7 +1735,7 @@ Definition run_binary_op runs S C (op : binary_op) v1 v2 : result :=
       if_some (run_object_method object_has_instance_ S l) (fun B =>
         option_case (fun _ => run_error S native_error_type : result)
         (fun has_instance_id _ =>
-          run_object_has_instance runs has_instance_id S C l v1)
+          run_object_has_instance runs S C has_instance_id l v1)
         B tt)
     | value_prim _ => run_error S native_error_type
     end
@@ -1919,24 +1874,52 @@ Fixpoint init_object runs S C l (pds : propdefs) {struct pds} : result :=
   | nil => out_ter S l
   | (pn, pb) :: pds' =>
     'let x := string_of_propname pn in
-    'let follows := fun S1 A =>
-      if_success (object_define_own_prop runs S1 C l x A false) (fun S2 rv =>
+    'let follows := fun S1 Desc =>
+      if_success (object_define_own_prop runs S1 C l x Desc false) (fun S2 rv =>
         init_object runs S2 C l pds') in
     match pb with
     | propbody_val e0 =>
       if_spec (run_expr_get_value runs S C e0) (fun S1 v0 =>
-        let A := attributes_data_intro v0 true true true in
-        follows S1 A)
+        let Desc := descriptor_intro (Some v0) (Some true) None None (Some true) (Some true) in
+        follows S1 Desc)
     | propbody_get bd =>
       if_value (create_new_function_in runs S C nil bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro v0 undef true true in
-        follows S1 A)
+        let Desc := descriptor_intro None None (Some v0) None (Some true) (Some true) in
+        follows S1 Desc)
     | propbody_set args bd =>
       if_value (create_new_function_in runs S C args bd) (fun S1 v0 =>
-        let A := attributes_accessor_intro undef v0 true true in
-        follows S1 A)
+        let Desc := descriptor_intro None None None (Some v0) (Some true) (Some true) in
+        follows S1 Desc)
     end
   end.
+
+Definition run_array_element_list runs S C l (oes : list (option expr)) (n : int) : result := 
+   match oes with
+    | nil => out_ter S l
+    | None :: oes' =>   
+        'let firstIndex := elision_head_count (None :: oes') in
+           runs_type_array_element_list runs S C l (elision_head_remove (None :: oes')) firstIndex  
+
+    | Some e :: oes' => 
+        'let loop_result := fun S => runs_type_array_element_list runs S C l oes' 0 in
+           if_spec (run_expr_get_value runs S C e) (fun S v =>
+             if_value (run_object_get runs S C l "length") (fun S vlen => 
+               if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+                 if_string (to_string runs S C (JsNumber.of_int (ilen + n))) (fun S slen =>
+                   'let Desc := attributes_data_intro v true true true in
+                     if_bool (object_define_own_prop runs S C l slen Desc false) (fun S _ =>
+                       if_object (loop_result S) (fun S l => res_ter S l))))))
+   end.
+
+Definition init_array runs S C l (oes : list (option expr)) : result :=
+  'let ElementList   := elision_tail_remove oes in
+  'let ElisionLength := elision_tail_count  oes in
+   if_object (run_array_element_list runs S C l ElementList 0) (fun S l => 
+     if_value (run_object_get runs S C l "length") (fun S vlen =>
+       if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+         if_spec (to_uint32 runs S C (JsNumber.of_int (ilen + ElisionLength))) (fun S len =>
+           if_not_throw (object_put runs S C l "length" len throw_false) (fun S _ => 
+             out_ter S l))))).     
 
 Definition run_var_decl_item runs S C x eo : result :=
   match eo with
@@ -2039,7 +2022,6 @@ Definition run_expr_function runs S C fo args bd : result :=
       (fun L _ => follow L) tt
   end.
 
-
 Definition entering_eval_code runs S C direct bd K : result :=
   'let str := (funcbody_is_strict bd) || (direct && execution_ctx_strict C) in
   'let C' := if direct then C else execution_ctx_initial str in
@@ -2061,7 +2043,8 @@ Definition entering_eval_code runs S C direct bd K : result :=
 Definition run_eval runs S C (is_direct_call : bool) (vs : list value) : result := (* Corresponds to the rule [spec_call_global_eval] of the specification. *)
   match get_arg 0 vs with
   | prim_string s =>
-    match pick (parse s) with
+    'let str := is_direct_call && execution_ctx_strict C in
+    match pick_option (parse s str) with
     | None =>
       run_error S native_error_syntax
     | Some p =>
@@ -2394,6 +2377,11 @@ Definition run_expr runs S C e : result :=
     if_object (run_construct_prealloc runs S C prealloc_object nil) (fun S1 l =>
       init_object runs S1 C l pds)
 
+  (* _ARRAYS_ : Initalization *)
+  | expr_array oes => 
+    if_object (run_construct_prealloc runs S C prealloc_array nil) (fun S1 l =>
+      init_array runs S1 C l oes)
+
   | expr_member e1 f =>
     runs_type_expr runs S C (expr_access e1 (expr_literal (literal_string f)))
 
@@ -2471,10 +2459,10 @@ Definition run_stat runs S C t : result :=
     run_stat_for_var runs S C ls ds eo2 eo3 s
 
   | stat_for_in ls e1 e2 s =>
-    result_not_yet_implemented (* LATER *)
+    not_yet_implemented_because "stat_for_in" (* LATER *)
 
   | stat_for_in_var ls x e1o e2 s =>
-    result_not_yet_implemented (* LATER *)
+    not_yet_implemented_because "stat_for_in_var" (* LATER *)
 
   | stat_debugger =>
     out_ter S res_empty
@@ -2513,7 +2501,7 @@ Definition run_prog runs S C p : result :=
 
 (**************************************************************)
 
-Fixpoint push runs S C l args ilen: result :=
+Fixpoint push runs S C l args ilen {struct args} : result :=
   (* Corresponds to the construction [spec_call_array_proto_push_3] of the specification. *)
   'let vlen := JsNumber.of_int ilen
   in match args with
@@ -2526,22 +2514,152 @@ Fixpoint push runs S C l args ilen: result :=
         push runs S C l vs (ilen + 1)))
   end.
 
+Fixpoint run_object_is_sealed runs S C l xs : result :=
+   match xs with
+   | nil =>
+     if_some (run_object_method object_extensible_ S l) (fun ext =>
+       res_ter S (neg ext))
+   | x :: xs' =>
+     if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
+       match D with
+       | full_descriptor_some A =>
+         if attributes_configurable A then
+           res_ter S false
+         else run_object_is_sealed runs S C l xs'
+       | full_descriptor_undef =>
+         impossible_with_heap_because S "[run_object_is_sealed]:  Undefined descriptor found in a place where it shouldn't."
+       end)
+   end.
+
+Fixpoint run_object_seal runs S C l xs {struct xs} : result :=
+  match xs with
+  | nil =>
+    if_some (run_object_heap_set_extensible false S l) (fun S =>
+      res_ter S l)
+  | x :: xs' =>
+    if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
+      match D with
+      | full_descriptor_some A =>
+        let A' :=
+          if attributes_configurable A then
+            let Desc :=
+              descriptor_intro None None None None None (Some false)
+            in attributes_update A Desc
+          else A
+        in if_bool (object_define_own_prop runs S C l x A' true) (fun S _ =>
+          run_object_seal runs S C l xs')
+      | full_descriptor_undef =>
+        impossible_with_heap_because S "[run_object_seal]:  Undefined descriptor found in a place where it shouldn't."
+      end)
+  end.
+
+Fixpoint run_object_freeze runs S C l xs {struct xs} : result :=
+  match xs with
+  | nil =>
+    if_some (run_object_heap_set_extensible false S l) (fun S =>
+      res_ter S l)
+  | x :: xs' =>
+    if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
+      match D with
+      | full_descriptor_some A =>
+        let A' :=
+          ifb attributes_is_data A /\ attributes_writable A then
+            let Desc :=
+              descriptor_intro None (Some false) None None None None
+            in attributes_update A Desc
+          else A
+        in let A'' :=
+          if attributes_configurable A' then
+            let Desc :=
+              descriptor_intro None None None None None (Some false)
+            in attributes_update A' Desc
+          else A'
+        in if_bool (object_define_own_prop runs S C l x A'' true) (fun S _ =>
+          run_object_freeze runs S C l xs')
+      | full_descriptor_undef =>
+        impossible_with_heap_because S "[run_object_freeze]:  Undefined descriptor found in a place where it shouldn't."
+      end)
+  end.
+
+
+Fixpoint run_object_is_frozen runs S C l xs : result :=
+  match xs with
+  | nil =>
+    if_some (run_object_method object_extensible_ S l) (fun ext =>
+      res_ter S (neg ext))
+  | x :: xs' =>
+    if_spec (runs_type_object_get_own_prop runs S C l x) (fun S D =>
+      'let check_configurable := fun A =>
+        if attributes_configurable A then
+          res_ter S false
+        else run_object_is_frozen runs S C l xs'
+      in match D with
+      | attributes_data_of Ad =>
+        if attributes_writable Ad then
+          res_ter S false
+        else check_configurable Ad
+      | attributes_accessor_of Aa =>
+        check_configurable Aa
+      | full_descriptor_undef =>
+        impossible_with_heap_because S "[run_object_is_frozen]:  Undefined descriptor found in a place where it shouldn't."
+      end)
+  end.
+  
+Definition run_get_args_for_apply runs S C l (index n : int) : specres (list value) := 
+  ifb (index < n) then (* Step 8 for Function.prototype.apply *)
+    if_string (to_string runs S C index) (fun S sindex => (* Step 8a *)
+      if_value (run_object_get runs S C l sindex) (fun S v => (* Step 8b *)
+        'let tail_args := runs_type_get_args_for_apply runs S C l (index + 1) n (* Step 8d *) in
+        if_spec tail_args (fun S tail => res_spec S (v :: tail)))) (* Step 8c *)
+    else
+      res_spec S nil.
+
+Definition valueToStringForJoin runs S C l k : specres string := 
+ if_string (to_string runs S C k) (fun S prop =>
+   if_value (run_object_get runs S C l prop) (fun S v => 
+     match v with
+      | undef
+      | null => res_spec S ""
+  
+      | _ => if_string (to_string runs S C v) (fun S s => res_spec S s)
+     end)).
+
+Definition run_array_join_elements runs S C l (k length : int) (sep : string) sR : result :=
+  ifb (k < length) 
+  then
+     'let Ss := sR ++ sep in
+     'let sE := valueToStringForJoin runs S C l k in
+       if_spec sE (fun S element => 
+        'let sR := Ss ++ element in
+           runs_type_array_join_elements runs S C l (k+1) length sep sR)
+  else  
+    res_ter S sR.
+
 Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   match B with
 
   | prealloc_global_is_nan =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_number (to_number runs S C v) (fun S0 n =>
       res_ter S0 (decide (n = JsNumber.nan)))
 
   | prealloc_global_is_finite =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_number (to_number runs S C v) (fun S0 n =>
       res_ter S0 (neg
         (decide (n = JsNumber.nan \/ n = JsNumber.infinity \/ n = JsNumber.neg_infinity))))
 
+  | prealloc_object =>
+    'let value := get_arg 0 args in
+    match value with
+    | prim_null
+    | prim_undef => run_construct_prealloc runs S C B args
+    | _ => to_object S value
+    end
+
   | prealloc_object_get_proto_of =>
-    match get_arg 0 args with
+    'let v := get_arg 0 args in
+    match v with
     | value_object l =>
       if_some (run_object_method object_proto_ S l) (fun proto =>
         res_ter S proto)
@@ -2550,134 +2668,54 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_get_own_prop_descriptor =>
-    match get_arg 0 args with
+    'let v := get_arg 0 args in
+    match v with
     | value_object l =>
       if_string (to_string runs S C (get_arg 1 args)) (fun S1 x =>
-      if_spec (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
-      from_prop_descriptor runs S2 C D))
+        if_spec (runs_type_object_get_own_prop runs S1 C l x) (fun S2 D =>
+          from_prop_descriptor runs S2 C D))
     | value_prim _ => run_error S native_error_type
     end
 
   | prealloc_object_seal =>
-    match get_arg 0 args with
+    'let v := get_arg 0 args in
+    match v with
     | value_object l =>
-      if_some (pick_option (object_properties_keys_as_list S l)) (
-        (fix object_seal S0 xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
-              res_ter S1 l)
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
-              match D with
-              | full_descriptor_some A =>
-                let A' :=
-                  if attributes_configurable A then
-                    let Desc :=
-                      descriptor_intro None None None None None (Some false)
-                    in attributes_update A Desc
-                  else A
-                in if_bool (object_define_own_prop runs S1 C l x A' true) (fun S2 _ =>
-                  object_seal S2 xs')
-              | full_descriptor_undef =>
-                impossible_with_heap_because S1 "[run_call_prealloc], [object_seal] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) S)
+      if_some (pick_option (object_properties_keys_as_list S l))
+        (run_object_seal runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 
   | prealloc_object_is_sealed =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l))
-        (fix object_is_sealed xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_method object_extensible_ S l) (fun ext =>
-              res_ter S (neg ext))
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
-              match D with
-              | full_descriptor_some A =>
-                if attributes_configurable A then
-                  res_ter S false
-                else object_is_sealed xs'
-              | full_descriptor_undef =>
-                impossible_with_heap_because S0 "[run_call_prealloc], [object_is_sealed] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end)
+        (run_object_is_sealed runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 
   | prealloc_object_freeze =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
-      if_some (pick_option (object_properties_keys_as_list S l)) (
-        (fix object_freeze S0 xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_heap_set_extensible false S0 l) (fun S1 =>
-              res_ter S1 l)
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S0 C l x) (fun S1 D =>
-              match D with
-              | full_descriptor_some A =>
-                let A' :=
-                  ifb attributes_is_data A /\ attributes_writable A then
-                    let Desc :=
-                      descriptor_intro None (Some false) None None None None
-                    in attributes_update A Desc
-                  else A
-                in let A'' :=
-                  if attributes_configurable A' then
-                    let Desc :=
-                      descriptor_intro None None None None None (Some false)
-                    in attributes_update A' Desc
-                  else A'
-                in if_bool (object_define_own_prop runs S1 C l x A'' true) (fun S2 _ =>
-                  object_freeze S2 xs')
-              | full_descriptor_undef =>
-                impossible_with_heap_because S1 "[run_call], [object_freeze] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end) S)
+      if_some (pick_option (object_properties_keys_as_list S l))
+        (run_object_freeze runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 
 
   | prealloc_object_is_frozen =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (pick_option (object_properties_keys_as_list S l))
-        (fix object_is_frozen xs : result :=
-          match xs with
-          | nil =>
-            if_some (run_object_method object_extensible_ S l) (fun ext =>
-              res_ter S (neg ext))
-          | x :: xs' =>
-            if_spec (runs_type_object_get_own_prop runs S C l x) (fun S0 D =>
-              'let check_configurable := fun A =>
-                if attributes_configurable A then
-                  res_ter S0 false
-                else object_is_frozen xs'
-              in match D with
-              | attributes_data_of Ad =>
-                if attributes_writable Ad then
-                  res_ter S0 false
-                else check_configurable Ad
-              | attributes_accessor_of Aa =>
-                check_configurable Aa
-              | full_descriptor_undef =>
-                impossible_with_heap_because S0 "[run_call_prealloc], [object_is_frozen] case:  Undefined descriptor found in a place where it shouldn't."
-              end)
-          end)
+        (run_object_is_frozen runs S C l)
     | value_prim _ => run_error S native_error_type
     end
 
   | prealloc_object_is_extensible =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (run_object_method object_extensible_ S l) (res_ter S)
@@ -2685,7 +2723,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_prevent_extensions =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     match v with
     | value_object l =>
       if_some (pick_option (object_binds S l)) (fun O =>
@@ -2693,6 +2731,19 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         let S' := object_write S l O1 in
         res_ter S' l)
     | value_prim _ => run_error S native_error_type
+    end
+
+  | prealloc_object_define_prop =>
+    'let o := get_arg 0 args in
+    'let p := get_arg 1 args in
+    'let attr := get_arg 2 args in
+    match o with
+    | value_prim _ => run_error S native_error_type
+    | value_object l =>
+      if_string (to_string runs S C p) (fun S1 name =>
+        if_spec (run_to_descriptor runs S1 C attr) (fun S2 desc =>
+          if_bool (object_define_own_prop runs S2 C l name desc true) (fun S3 _ =>
+            res_ter S3 l)))
     end
 
   | prealloc_object_proto_to_string =>
@@ -2709,8 +2760,8 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     to_object S vthis
 
   | prealloc_object_proto_is_prototype_of =>
-    let v := get_arg 0 args in
-    match v with
+    'let v := get_arg 0 args in
+    match v return result with
     | value_prim _ =>
       out_ter S false
     | value_object l =>
@@ -2719,7 +2770,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_object_proto_prop_is_enumerable =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
       if_object (to_object S1 vthis) (fun S2 l =>
         if_spec (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
@@ -2731,7 +2782,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
           end)))
 
   | prealloc_object_proto_has_own_prop =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     if_string (to_string runs S C v) (fun S1 x =>
       if_object (to_object S1 vthis) (fun S2 l =>
         if_spec (runs_type_object_get_own_prop runs S2 C l x) (fun S3 D =>
@@ -2744,6 +2795,13 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
   | prealloc_function_proto =>
     out_ter S undef
 
+  | prealloc_string =>
+    ifb (args = nil) then res_ter S ""
+    else
+      'let value := get_arg 0 args in
+      if_string (to_string runs S C value) (fun S s =>
+        res_ter S s)
+
   | prealloc_string_proto_to_string
   | prealloc_string_proto_value_of =>
     match vthis with
@@ -2752,6 +2810,7 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       then res_ter S vthis
       else run_error S native_error_type
     | value_object l =>
+
       if_some (run_object_method object_class_ S l) (fun s =>
         ifb s = "String"
         then run_object_prim_value S l
@@ -2759,15 +2818,42 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
     end
 
   | prealloc_bool =>
-    let v := get_arg 0 args in
+    'let v := get_arg 0 args in
     out_ter S (convert_value_to_boolean v)
 
   | prealloc_bool_proto_to_string =>
-    if_bool (bool_proto_value_of_call S vthis) (fun S' b =>
-      res_ter S' (convert_bool_to_string b))
+    match vthis with
+     | value_prim (prim_bool b) => res_ter S (convert_bool_to_string b)
+     | value_object l =>
+        if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Boolean") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
+              match wo with
+              | Some (value_prim (prim_bool b)) => res_ter S (convert_bool_to_string b)
+              | _ => run_error S native_error_type
+              end)
+          else run_error S native_error_type)
+      | _ => run_error S native_error_type
+     end
 
   | prealloc_bool_proto_value_of =>
-    bool_proto_value_of_call S vthis
+    match vthis with
+     | value_prim (prim_bool b) => res_ter S b
+     | value_object l =>
+        if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Boolean") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
+              match wo with
+              | Some (value_prim (prim_bool b)) => res_ter S b
+              | _ => run_error S native_error_type
+              end)
+          else run_error S native_error_type)
+      | _ => run_error S native_error_type
+     end
 
   | prealloc_number =>
     ifb args = nil then
@@ -2777,28 +2863,76 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
       to_number runs S C v
 
   | prealloc_number_proto_value_of =>
-    if_some (run_value_viewable_as_prim "Number" S vthis) (fun vw =>
-      match vw with
-      | Some (prim_number n) => res_ter S n
-      | _ => run_error S native_error_type
-      end)
+    match vthis with
+     | value_prim (prim_number n) => res_ter S n
+     | value_object l =>
+       if_some_or_default (run_object_method object_class_ S l) (run_error S native_error_type)
+        (fun s =>
+          ifb (s = "Number") then
+          if_some_or_default (run_object_method object_prim_value_ S l) (run_error S native_error_type) 
+            (fun wo => 
+              match wo with
+              | Some (value_prim (prim_number n)) => res_ter S n
+              | _ => run_error S native_error_type
+              end)
+          else run_error S native_error_type)
+     | _ => run_error S native_error_type
+    end
 
   | prealloc_error =>
     'let v := get_arg 0 args in
     build_error S prealloc_error_proto v
 
-  | prealloc_native_error_proto ne =>
+  | prealloc_native_error ne =>
     'let v := get_arg 0 args in
-    build_error S B v
+    build_error S (prealloc_native_error_proto ne) v
 
   | prealloc_throw_type_error =>
     run_error S native_error_type
 
+  | prealloc_array_is_array =>
+    'let arg := get_arg 0 args in 
+       match arg with 
+        | value_object arg =>
+            if_some (run_object_method object_class_ S arg) (fun class =>
+              ifb (class = "Array") then (res_ter S true) 
+                                    else (res_ter S false))
+        | _ => res_ter S false
+      end
+
+  | prealloc_array_proto_to_string =>
+    if_object (to_object S vthis) (fun S array =>
+      if_value (run_object_get runs S C array "join") (fun S vfunc =>
+        ifb (is_callable S vfunc)
+        then
+        match vfunc with
+         | value_object func =>
+             runs_type_call runs S C func array nil
+         | _ => impossible_with_heap_because S "Value is callable, but isn't an object."
+        end
+        else
+          runs_type_call_prealloc runs S C prealloc_object_proto_to_string array nil))
+
+  | prealloc_array_proto_join => 
+    'let vsep := get_arg 0 args in
+       if_object (to_object S vthis) (fun S l =>
+         if_value (run_object_get runs S C l "length") (fun S vlen =>
+           if_spec (to_uint32 runs S C vlen) (fun S ilen =>
+           'let rsep := ifb (vsep <> undef) then vsep else "," in
+            if_string (to_string runs S C rsep) (fun S sep => 
+                ifb (ilen = 0) 
+                then (res_ter S "")
+                else
+                 'let sR := valueToStringForJoin runs S C l 0%Z in
+                    if_spec sR (fun S sR =>         
+                      run_array_join_elements runs S C l 1 ilen sep sR)
+       ))))
+  
   | prealloc_array_proto_pop =>
     if_object (to_object S vthis) (fun S l =>
       if_value (run_object_get runs S C l "length") (fun S vlen =>
         if_spec (to_uint32 runs S C vlen) (fun S ilen =>
-          ifb decide (ilen = 0) then
+          ifb (ilen = 0) then
             if_not_throw (object_put runs S C l "length" JsNumber.zero throw_true) (fun S _ =>
               out_ter S undef)
           else
@@ -2814,12 +2948,94 @@ Definition run_call_prealloc runs S C B vthis (args : list value) : result :=
         if_spec (to_uint32 runs S C vlen) (fun S ilen =>
           push runs S C l args ilen)))
 
-  | _ =>
-    result_not_yet_implemented (* LATER *)
+  | prealloc_function_proto_to_string =>
+    ifb (is_callable S vthis)
+      then not_yet_implemented_because "Function.prototype.toString() is implementation dependent."
+      else run_error S native_error_type
+
+  | prealloc_function_proto_apply =>
+    'let thisArg  := get_arg 0 args in
+    'let argArray := get_arg 1 args in 
+       ifb (is_callable S vthis) (* Step 1 *)
+       then
+       match vthis with
+        | value_object this =>
+          match argArray with 
+            | value_prim prim_null
+            | value_prim prim_undef => (* Step 2 *)
+                runs_type_call runs S C this thisArg nil
+            | value_object array => (* Step 3 *)
+                if_value (run_object_get runs S C array "length") (fun S v => (* Step 4 *)
+                  if_spec (to_uint32 runs S C v) (fun S ilen => (* Step 5 *)
+                     if_spec (run_get_args_for_apply runs S C array 0 ilen) (fun S arguments => (* Steps 6-7-8 *)
+                       runs_type_call runs S C this thisArg arguments)))
+            | _ => run_error S native_error_type (* Not null, undef, or an object *) 
+          end
+        | _ => impossible_with_heap_because S "Value is callable, but isn't an object." 
+       end
+       else
+         run_error S native_error_type (* Not callable *)
+            
+  | prealloc_function_proto_bind => 
+     ifb (is_callable S vthis)                                                            (* Step  2 *)
+       then 
+       match vthis with 
+        | value_object this => 
+          let '(vthisArg, A) := get_arg_first_and_rest args in  
+          'let O1 := object_new prealloc_object_proto "Object" in                        (* Steps 4-5 *)
+          'let O2 := object_with_get O1 builtin_get_function in                          (* Step  6   *)
+          'let O3 := object_with_details O2 None None None (Some this) 
+                                                           (Some vthisArg)
+                                                           (Some A) 
+                                                           None in                       (* Steps 7-9 *)
+          'let O4 := object_set_class O3 "Function" in                                   (* Step  10  *)
+          'let O5 := object_set_proto O4 prealloc_function_proto in                      (* Step  11  *)
+          'let O6 := object_with_invokation O5 (Some construct_after_bind) 
+                                               (Some call_after_bind)
+                                               (Some builtin_has_instance_after_bind) in (* Steps 12-14 *)
+          'let O7 := object_set_extensible O6 true in                                    (* Step 18     *)
+           let '(l, S') := object_alloc S O7 in 
+           'let vlength :=                                                                (* Steps 15-16 *)       
+            if_some (run_object_method object_class_ S' this) (fun class =>
+            ifb (class = "Function") then
+              if_number (run_object_get runs S' C this "length") (fun S' n => 
+                if_spec (to_int32 runs S' C n) (fun S' ilen => 
+                  ifb (ilen < length A) then (res_spec S' 0%Z) else (res_spec S' (ilen - length A))))
+                                        else (res_spec S' 0%Z)) in
+            if_spec vlength (fun S' length =>
+           'let A := attributes_data_intro (JsNumber.of_int length) false false false in   (* Step 17 *)
+            if_some (pick_option (object_set_property S' l "length" A)) (fun S' => 
+           'let vthrower := value_object prealloc_throw_type_error in                      (* Step 19 *)
+           'let A := attributes_accessor_intro vthrower vthrower false false in         
+           if_bool (object_define_own_prop runs S' C l "caller" A false) (fun S' _ =>      (* Step 20 *)
+             if_bool (object_define_own_prop runs S' C l "arguments" A false) (fun S' _ => (* Step 21 *)
+               res_ter S' l))))                                                            (* Step 22 *)
+        | _ => impossible_with_heap_because S "Value is callable, but isn't an object." 
+       end
+       else 
+         run_error S native_error_type
+
+  | prealloc_function_proto_call => 
+      ifb (is_callable S vthis)  (* Step 1 *)
+      then 
+      match vthis with 
+       | value_object this =>
+         let '(thisArg, A) := get_arg_first_and_rest args in
+           runs_type_call runs S C this thisArg A
+       | _ => impossible_with_heap_because S "Value is callable, but isn't an object."
+      end
+      else 
+        run_error S native_error_type
+
+
+
+  | prealloc_array =>
+      run_construct_prealloc runs S C prealloc_array args
+
+  (* LATER *)
+  | _  => not_yet_implemented_because ("Call prealloc_" ++ string_of_prealloc B  ++ " not yet implemented") 
 
   end.
-
-(**************************************************************)
 
 Definition run_call runs S C l vthis args : result :=
   if_some (run_object_method object_call_ S l) (fun co =>
@@ -2830,7 +3046,12 @@ Definition run_call runs S C l vthis args : result :=
       | call_prealloc B =>
         run_call_prealloc runs S C B vthis args
       | call_after_bind =>
-        impossible_with_heap_because S "[run_call_full]:  [call_after_bind] found."
+         if_some (run_object_method object_bound_args_ S l)      (fun oarg => if_some oarg (fun boundArgs => (* Step 1 *)
+         if_some (run_object_method object_bound_this_ S l)      (fun obnd => if_some obnd (fun boundThis => (* Step 2 *)
+         if_some (run_object_method object_target_function_ S l) (fun otrg => if_some otrg (fun target =>    (* Step 3 *)
+           'let arguments := LibList.append boundArgs args in       (* Step 4 *)
+            runs_type_call runs S C target boundThis arguments      (* Step 5 *)
+         ))))))
       end)).
 
 (**************************************************************)
@@ -2853,7 +3074,11 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat := fun S _ _ => result_bottom S;
       runs_type_prog := fun S _ _ => result_bottom S;
       runs_type_call := fun S _ _ _ _ => result_bottom S;
+      runs_type_call_prealloc := fun S _ _ _ _ => result_bottom S;
+      runs_type_construct := fun S _ _ _ _ => result_bottom S;
       runs_type_function_has_instance := fun S _ _ => result_bottom S;
+      runs_type_get_args_for_apply := fun S _ _ _ _ => result_bottom S;
+      runs_type_object_has_instance := fun S _ _ _ _ => result_bottom S;
       runs_type_stat_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_stat_do_while := fun S _ _ _ _ _ => result_bottom S;
       runs_type_stat_for_loop := fun S _ _ _ _ _ _ => result_bottom S;
@@ -2865,7 +3090,12 @@ Fixpoint runs max_step : runs_type :=
       runs_type_object_put := fun S _ _ _ _ _ => result_bottom S;
       runs_type_equal := fun S _ _ _ => result_bottom S;
       runs_type_to_integer := fun S _ _ => result_bottom S;
-      runs_type_to_string := fun S _ _ => result_bottom S
+      runs_type_to_string := fun S _ _ => result_bottom S;
+
+      (* ARRAYS *)
+      runs_type_array_join_elements := fun S _ _ _ _ _ _ => result_bottom S;
+      runs_type_array_element_list := fun S _ _ _ _ => result_bottom S;
+      runs_type_object_define_own_prop_array_loop := fun S _ _ _ _ _ _ _ _ => result_bottom S
     |}
   | S max_step' =>
     let wrap {A : Type} (f : runs_type -> state -> A) S : A :=
@@ -2876,24 +3106,28 @@ Fixpoint runs max_step : runs_type :=
       runs_type_stat := wrap run_stat;
       runs_type_prog := wrap run_prog;
       runs_type_call := wrap run_call;
-      runs_type_function_has_instance :=
-        wrap run_function_has_instance;
+      runs_type_call_prealloc := wrap run_call_prealloc;
+      runs_type_construct := wrap run_construct;
+      runs_type_function_has_instance := wrap run_function_has_instance;
+      runs_type_get_args_for_apply := wrap run_get_args_for_apply;
+      runs_type_object_has_instance := wrap run_object_has_instance;
       runs_type_stat_while := wrap run_stat_while;
       runs_type_stat_do_while := wrap run_stat_do_while;
       runs_type_stat_for_loop := wrap run_stat_for_loop;
       runs_type_object_delete := wrap object_delete;
-      runs_type_object_get_own_prop :=
-        wrap run_object_get_own_prop;
-      runs_type_object_get_prop :=
-        wrap run_object_get_prop;
-      runs_type_object_get :=
-        wrap run_object_get;
-      runs_type_object_proto_is_prototype_of :=
-        wrap object_proto_is_prototype_of;
+      runs_type_object_get_own_prop := wrap run_object_get_own_prop;
+      runs_type_object_get_prop := wrap run_object_get_prop;
+      runs_type_object_get := wrap run_object_get;
+      runs_type_object_proto_is_prototype_of := wrap object_proto_is_prototype_of;
       runs_type_object_put := wrap object_put;
       runs_type_equal := wrap run_equal;
       runs_type_to_integer := wrap to_integer;
-      runs_type_to_string := wrap to_string
+      runs_type_to_string := wrap to_string;
+
+      (* ARRAYS *)
+      runs_type_array_join_elements := wrap run_array_join_elements;
+      runs_type_array_element_list := wrap run_array_element_list;
+      runs_type_object_define_own_prop_array_loop := wrap run_object_define_own_prop_array_loop
     |}
   end.
 

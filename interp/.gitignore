@@ -1,3 +1,7 @@
 run_js
-
-
+run_jsbisect
+run_jstrace
+*.native
+*.byte
+src/run_jstrace.ml
+top

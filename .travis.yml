@@ -1,0 +1,37 @@
+language: c    # Not really, but close enough
+
+env:
+  global:
+    - OPAMYES=true
+  matrix:
+    - PPA=ocaml41 OPAMROOT=~/.opam41
+    - PPA=ocaml42 OPAMROOT=~/.opam42
+    - PPA=ocaml42 OPAMROOT=~/.opam42 MAKETARGET=all
+    - PPA=ocaml42 OPAMROOT=~/.opam42 MAKETARGET=proof
+
+# Caching is only enabled for private builds
+cache:
+  apt: true
+  directories:
+    - ~/.opam41
+    - ~/.opam42
+
+before_install:
+  # Use an ubuntu ppa coq build to speed things up
+  - sudo add-apt-repository -y ppa:grand-edgemaster/coq-$PPA
+  - sudo add-apt-repository -y ppa:avsm/$PPA+opam12
+  - sudo apt-get update
+  - make init
+
+install:
+  - sudo apt-get install -y coq ocaml-compiler-libs ocaml-interp ocaml-base-nox ocaml-base ocaml ocaml-nox ocaml-native-compilers camlp4 camlp4-extra opam
+  - opam init -a
+  - opam update -u
+  - eval `opam config env`
+  - make install_optional_depend
+
+script:
+  - make $MAKETARGET
+
+notifications:
+  webhooks:  https://www-rw.doc.ic.ac.uk/ci/irc-webhook/travis-ci

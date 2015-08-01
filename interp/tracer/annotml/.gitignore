@@ -1,0 +1,12 @@
+a.out
+*.cmi
+*.cmo
+ppx_lines.native
+*.o
+test/a.out
+test/*.cmo
+test/*.cmi
+testFoo
+*.cmx
+*.native
+_build

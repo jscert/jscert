@@ -19,7 +19,7 @@
 
     JSCert depends on:
     - Coq
-	 - OCaml (version 4 or above)
+	- OCaml (version 4 or above minimum, 4.02 or above for all optional features to build)
     - Java (for the parser)
 
     In addition, in order to run the Test262 tests, and query the
@@ -27,6 +27,8 @@
     - Python
     - Haskell
     - SqlLite
+    
+    Note: JSCert is not fully supported on 32-bit Linux platforms due to floating point extended precision problems.
 
 **** Basic Install
       First, get java. On Ubuntu, this looks something like this:
@@ -46,26 +48,23 @@ apt-get update
 apt-get install opam
 #+end_src
 
-      Other platforms can download from  [[http://opam.ocamlpro.com/][here]].
+      Other platforms can download from [[http://opam.ocamlpro.com/][here]].
 
       Once you have opam, you can install OCaml and Coq:
 
 #+begin_src sh
-opam install coq 
-opam install ocamlfind ;
-opam install xml-light ;
-opam install bisect ;
+opam init
+opam switch 4.02.1
+make install_depend
 #+end_src
 
       Now you can build JSCert:
 #+begin_src sh
 make init
 make
-make
 #+end_src
 
-      Yes, you do actually have to run =make= twice. The first one,
-      will fail. Also note that the following error is normal and can
+      Note that the following error is normal and can
       be ignored:
 
 #+begin quote
@@ -90,7 +89,6 @@ may lead to incorrect or non-terminating ML terms.
 
 #+begin_src sh
 make clean
-make
 make
 #+end_src
 
@@ -163,6 +161,15 @@ Our development is described in details [[http://jscert.org/dvpt.html][on this p
     which are as they are to speed up our regular working build
     process.
 
+    It is possible to run a build with proofs enabled using the "proof"
+    Makefile target. Beware that it will patch the coq sourcefiles as
+    described above, so it is strongly recommended to only do this with
+    a clean repository checkout.
+
+#+begin_src sh
+make proof
+#+end_src
+
 **** Can I trust the parser?
 
      We do not attempt to specify a JavaScript parser as a part of the
@@ -172,7 +179,7 @@ Our development is described in details [[http://jscert.org/dvpt.html][on this p
 #+begin_src coq
   | red_spec_call_global_eval_1_string_parse : forall s p S C bdirect o, (* Step 3 and 5 *)
       parse s (Some p) ->
-      red_expr S C (spec_entering_eval_code bdirect (funcbody_intro p s) (spec_call_global_eval_2 p)) o -> 
+      red_expr S C (spec_entering_eval_code bdirect (funcbody_intro p s) (spec_call_global_eval_2 p)) o ->
       red_expr S C (spec_call_global_eval_1 bdirect s) o
 #+end_src
 
@@ -235,7 +242,7 @@ Our development is described in details [[http://jscert.org/dvpt.html][on this p
     can run just these tests like so:
 
 #+begin_src sh
-./runtests.py --webreport --title=FullRun `cat ./test_data/interesting_tests.txt` 
+./runtests.py --webreport --title=FullRun `cat ./test_data/interesting_tests.txt`
 #+end_src
 
     You don't have to trust our estimation of which tests are
@@ -272,7 +279,7 @@ cd ..
     being "interesting".
 
 #+begin_src sh
-cabal-dev/bin/make_simple_report --querytype=OnlyInteresting --reportname=Interesting 
+cabal-dev/bin/make_simple_report --querytype=OnlyInteresting --reportname=Interesting
 #+end_src
 
     Our interpreter prints warnings when it detects a feature that we
@@ -308,7 +315,15 @@ cabal-dev/bin/make_simple_report --querytype=OnlyInteresting --reportname=Intere
     To test coverage of one program or a series of test, we also support
     the [[http://bisect.x9c.fr/][Bisect]] tool. Here is how to use it.
 
-    First, run the programs using the bisect-ready version of the
+    First, install the bisect dependancy and build the bisect version of
+    the interpreter.
+
+#+BEGIN_SRC sh
+opam install bisect
+make interp/run_jsbisect
+#+END_SRC
+
+    Next, run the programs using the bisect-ready version of the
     interpreter:
 
 #+BEGIN_SRC sh
@@ -340,7 +355,7 @@ make report
 nb=0
 for file in `./test262tests`; do
   prefix=$(( $nb / 9999))
-  nb=$(( $nb + 1 )) 
+  nb=$(( $nb + 1 ))
   export BISECT_FILE=bisect_$prefix
   ./runtests.py --interp_path interp/run_jsbisect $file
 done

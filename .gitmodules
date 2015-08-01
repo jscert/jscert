@@ -1,3 +1,12 @@
 [submodule "interp/parser"]
 	path = interp/parser
 	url = https://github.com/resource-reasoning/JS_Parser.git
+[submodule "lib/tlc"]
+	path = lib/tlc
+	url = https://gforge.inria.fr/git/tlc/tlc.git
+	ignore = dirty
+[submodule "lib/test262"]
+	path = lib/test262
+	url = https://github.com/tc39/test262.git
+	branch = es5-tests
+	ignore = untracked

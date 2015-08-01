@@ -11,3 +11,6 @@ tests corresponds to Mozilla/Central/js/src/tests/
 
 jit-test corresponds to Mozilla/Central/js/src/jit-test/
 
+Both at the following commit hashes:
+git commit: f79e34d84fdb517b4cd17fbb1a1096bdb10f91d6
+hg commit: 4925a84c57cf

@@ -13,8 +13,7 @@ import System.Directory
 import System.Console.CmdArgs
 import System.Environment
 import Data.Time.Clock(getCurrentTime,UTCTime)
-import System.Locale(defaultTimeLocale)
-import Data.Time.Format(formatTime)
+import Data.Time.Format(formatTime,defaultTimeLocale)
 import Control.Monad.IO.Class
 import Data.List(intersperse)
 
