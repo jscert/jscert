@@ -2800,10 +2800,10 @@ Proof.
 Qed.
 
 
-Lemma binding_inst_function_decls_correct : forall runs S C args L fds str bconfig o,
+Lemma binding_inst_function_decls_correct : forall runs S C L fds str bconfig o,
   runs_type_correct runs ->
   binding_inst_function_decls runs S C L fds str bconfig = o ->
-  red_expr S C (spec_binding_inst_function_decls args L fds str bconfig) o.
+  red_expr S C (spec_binding_inst_function_decls L fds str bconfig) o.
 Proof.
   introv IH HR. gen S o. induction fds; introv HR.
   simpls. run_inv. applys* red_spec_binding_inst_function_decls_nil.
@@ -2813,7 +2813,7 @@ Proof.
   let_name as M. rename a into fd. rename l into fo.
   asserts M_correct: (forall S o,
       M S = o ->
-      red_expr S C (spec_binding_inst_function_decls_5 args L fd fds str fo bconfig) o).
+      red_expr S C (spec_binding_inst_function_decls_5 L fd fds str fo bconfig) o).
     clears HR S o. introv HR. subst M.
     subst fname. run red_spec_binding_inst_function_decls_5
       using env_record_set_mutable_binding_correct.
@@ -2981,12 +2981,12 @@ Proof.
     clear EQA. apply~ red_spec_create_arguments_object_4.
 Qed.
 
-Lemma binding_inst_arg_obj_correct : forall runs S C lf p xs args L o,
+Lemma binding_inst_arg_obj_correct : forall runs S C lf str xs args L o,
   runs_type_correct runs ->
-  binding_inst_arg_obj runs S C lf p xs args L = o ->
-  red_expr S C (spec_binding_inst_arg_obj lf p xs args L) o.
+  binding_inst_arg_obj runs S C lf xs args L str = o ->
+  red_expr S C (spec_binding_inst_arg_obj lf xs args L str) o.
 Proof.
-  introv IH HR. unfolds in HR. let_name.
+  introv IH HR. unfolds in HR.
   run~ red_spec_binding_inst_arg_obj using create_arguments_object_correct.
   cases_if.
    run red_spec_binding_inst_arg_obj_1_strict

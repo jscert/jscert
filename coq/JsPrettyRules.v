@@ -2662,96 +2662,95 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
      bindings for function declarations (Step 5). *)
   (* LATER: remove "args" as it's not used at all in this subroutine *)
 
-  | red_spec_binding_inst_function_decls_nil : forall L S C args str bconfig, (* Step 5b *)
-      red_expr S C (spec_binding_inst_function_decls args L nil str bconfig) (out_void S)
+  | red_spec_binding_inst_function_decls_nil : forall L S C str bconfig, (* Step 5b *)
+      red_expr S C (spec_binding_inst_function_decls L nil str bconfig) (out_void S)
 
-  | red_spec_binding_inst_function_decls_cons : forall str_fd S C L args fd fds str bconfig o1 o, (* Step 5b *)
+  | red_spec_binding_inst_function_decls_cons : forall str_fd S C L fd fds str bconfig o1 o, (* Step 5b *)
       str_fd = funcbody_is_strict (funcdecl_body fd) ->
       red_expr S C (spec_creating_function_object (funcdecl_parameters fd) (funcdecl_body fd) (execution_ctx_variable_env C) str_fd) o1 ->
-      red_expr S C (spec_binding_inst_function_decls_1 args L fd fds str bconfig o1) o ->
-      red_expr S C (spec_binding_inst_function_decls args L (fd::fds) str bconfig) o
+      red_expr S C (spec_binding_inst_function_decls_1 L fd fds str bconfig o1) o ->
+      red_expr S C (spec_binding_inst_function_decls L (fd::fds) str bconfig) o
 
-  | red_spec_binding_inst_function_decls_1 : forall o1 L S0 S C args fd fds str fo bconfig o, (* Step 5c *)
+  | red_spec_binding_inst_function_decls_1 : forall o1 L S0 S C fd fds str fo bconfig o, (* Step 5c *)
       red_expr S C (spec_env_record_has_binding L (funcdecl_name fd)) o1 ->
-      red_expr S C (spec_binding_inst_function_decls_2 args L fd fds str fo bconfig o1) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_1 args L fd fds str bconfig (out_ter S fo)) o
+      red_expr S C (spec_binding_inst_function_decls_2 L fd fds str fo bconfig o1) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_1 L fd fds str bconfig (out_ter S fo)) o
 
-  | red_spec_binding_inst_function_decls_2_false : forall o1 L S0 S C args fd fds str fo bconfig o, (* Step 5d *)
+  | red_spec_binding_inst_function_decls_2_false : forall o1 L S0 S C fd fds str fo bconfig o, (* Step 5d *)
       red_expr S C (spec_env_record_create_mutable_binding L (funcdecl_name fd) (Some bconfig)) o1 ->
-      red_expr S C (spec_binding_inst_function_decls_4 args L fd fds str fo bconfig o1) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_2 args L fd fds str fo bconfig (out_ter S false)) o
+      red_expr S C (spec_binding_inst_function_decls_4 L fd fds str fo bconfig o1) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_2 L fd fds str fo bconfig (out_ter S false)) o
 
-  | red_spec_binding_inst_function_decls_2_true_global : forall S0 S C args fd fds str fo bconfig y1 o, (* Step 5e ii *)
+  | red_spec_binding_inst_function_decls_2_true_global : forall S0 S C fd fds str fo bconfig y1 o, (* Step 5e ii *)
       red_spec S C (spec_object_get_prop prealloc_global (funcdecl_name fd)) y1 ->
-      red_expr S C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig y1) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_2 args env_loc_global_env_record fd fds str fo bconfig (out_ter S true)) o
+      red_expr S C (spec_binding_inst_function_decls_3 fd fds str fo bconfig y1) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_2 env_loc_global_env_record fd fds str fo bconfig (out_ter S true)) o
 
-  | red_spec_binding_inst_function_decls_3_true : forall S0 S C args fd fds str fo bconfig A Anew o1 o, (* Step 5e iii *)
+  | red_spec_binding_inst_function_decls_3_true : forall S0 S C fd fds str fo bconfig A Anew o1 o, (* Step 5e iii *)
       attributes_configurable A = true ->
       Anew = attributes_data_intro undef true true bconfig ->
       red_expr S C (spec_object_define_own_prop prealloc_global (funcdecl_name fd) Anew true) o1 ->
-      red_expr S C (spec_binding_inst_function_decls_4 args env_loc_global_env_record fd fds str fo bconfig o1) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (ret S (full_descriptor_some A))) o
+      red_expr S C (spec_binding_inst_function_decls_4 env_loc_global_env_record fd fds str fo bconfig o1) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_3 fd fds str fo bconfig (ret S (full_descriptor_some A))) o
 
-  | red_spec_binding_inst_function_decls_4 : forall S0 S C args L fd fds str fo bconfig rv o, (* Step 5e iii *)
-      red_expr S C (spec_binding_inst_function_decls_5 args L fd fds str fo bconfig) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_4 args L fd fds str fo bconfig (out_ter S rv)) o
+  | red_spec_binding_inst_function_decls_4 : forall S0 S C L fd fds str fo bconfig rv o, (* Step 5e iii *)
+      red_expr S C (spec_binding_inst_function_decls_5 L fd fds str fo bconfig) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_4 L fd fds str fo bconfig (out_ter S rv)) o
 
-  | red_spec_binding_inst_function_decls_3_false : forall S0 S C args fd fds str fo A bconfig o, (* Step 5e iii, else *)
+  | red_spec_binding_inst_function_decls_3_false : forall S0 S C fd fds str fo A bconfig o, (* Step 5e iii, else *)
       attributes_configurable A = false ->
-      red_expr S C (spec_binding_inst_function_decls_3a args fd fds str fo bconfig A) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_3 args fd fds str fo bconfig (ret S (full_descriptor_some A))) o
+      red_expr S C (spec_binding_inst_function_decls_3a fd fds str fo bconfig A) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_3 fd fds str fo bconfig (ret S (full_descriptor_some A))) o
 
-  | red_spec_binding_inst_function_decls_3a_type_error : forall S C args fd fds str fo A bconfig o, (* Step 5e iv *)
+  | red_spec_binding_inst_function_decls_3a_type_error : forall S C fd fds str fo A bconfig o, (* Step 5e iv *)
       (* LATER: descriptor_is_accessor A \/ ~ (attributes_writable A = true /\ attributes_enumerable A = true) ->  *)
       descriptor_is_accessor A \/ attributes_writable A = false \/ attributes_enumerable A = false ->
       red_expr S C (spec_error native_error_type) o ->
-      red_expr S C (spec_binding_inst_function_decls_3a args fd fds str fo bconfig A) o
+      red_expr S C (spec_binding_inst_function_decls_3a fd fds str fo bconfig A) o
 
-  | red_spec_binding_inst_function_decls_3a_no_error : forall S C args fd fds str fo A bconfig o, (* Step 5e iv else *)
+  | red_spec_binding_inst_function_decls_3a_no_error : forall S C fd fds str fo A bconfig o, (* Step 5e iv else *)
       ~ (descriptor_is_accessor A \/ attributes_writable A = false \/ attributes_enumerable A = false) ->
-      red_expr S C (spec_binding_inst_function_decls_5 args env_loc_global_env_record fd fds str fo bconfig) o ->
-      red_expr S C (spec_binding_inst_function_decls_3a args fd fds str fo bconfig A) o
+      red_expr S C (spec_binding_inst_function_decls_5 env_loc_global_env_record fd fds str fo bconfig) o ->
+      red_expr S C (spec_binding_inst_function_decls_3a fd fds str fo bconfig A) o
 
-  | red_spec_binding_inst_function_decls_2_true : forall L S0 S C args fd fds str fo bconfig o, (* Step 5e *)
+  | red_spec_binding_inst_function_decls_2_true : forall L S0 S C fd fds str fo bconfig o, (* Step 5e *)
       L <> env_loc_global_env_record ->
-      red_expr S C (spec_binding_inst_function_decls_5 args L fd fds str fo bconfig) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_2 args L fd fds str fo bconfig (out_ter S true)) o
+      red_expr S C (spec_binding_inst_function_decls_5 L fd fds str fo bconfig) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_2 L fd fds str fo bconfig (out_ter S true)) o
 
-  | red_spec_binding_inst_function_decls_5 : forall o1 L S C args fd fds str fo bconfig o, (* Step 5f *)
+  | red_spec_binding_inst_function_decls_5 : forall o1 L S C fd fds str fo bconfig o, (* Step 5f *)
       red_expr S C (spec_env_record_set_mutable_binding L (funcdecl_name fd) (value_object fo) str) o1 ->
-      red_expr S C (spec_binding_inst_function_decls_6 args L fds str bconfig o1) o ->
-      red_expr S C (spec_binding_inst_function_decls_5 args L fd fds str fo bconfig) o
+      red_expr S C (spec_binding_inst_function_decls_6 L fds str bconfig o1) o ->
+      red_expr S C (spec_binding_inst_function_decls_5 L fd fds str fo bconfig) o
 
-  | red_spec_binding_inst_function_decls_6 : forall L S0 S C args fds str bconfig o, (* Step 5 loop *)
-      red_expr S C (spec_binding_inst_function_decls args L fds str bconfig) o ->
-      red_expr S0 C (spec_binding_inst_function_decls_6 args L fds str bconfig (out_void S)) o
+  | red_spec_binding_inst_function_decls_6 : forall L S0 S C fds str bconfig o, (* Step 5 loop *)
+      red_expr S C (spec_binding_inst_function_decls L fds str bconfig) o ->
+      red_expr S0 C (spec_binding_inst_function_decls_6 L fds str bconfig (out_void S)) o
 
   (* Auxiliary reductions for binding instantiation:
      Declaring Arguments Object (Step 7) *)
 
-  | red_spec_binding_inst_arg_obj : forall str o1 L S C lf code xs args o, (* Step 7a *)
-      str = prog_intro_strictness code ->
+  | red_spec_binding_inst_arg_obj : forall str o1 L S C lf xs args o, (* Step 7a *)
       (* We actually need the variable environment with its pointer to parent variable environment for arguments object since it creates function objects.
          But we forget the parents at the very first step of Declaration Binding Instantiation. We do not change execution context in Declaration Binding
          Instaniation. So it is save to take the variable environment from execution context here. For the right way to do, should it be saved at the first
          step and then propagated until this point? *)
       red_expr S C (spec_create_arguments_object lf xs args (execution_ctx_variable_env C) str) o1 ->
-      red_expr S C (spec_binding_inst_arg_obj_1 code L str o1) o ->
-      red_expr S C (spec_binding_inst_arg_obj lf code xs args L) o
+      red_expr S C (spec_binding_inst_arg_obj_1 L str o1) o ->
+      red_expr S C (spec_binding_inst_arg_obj lf xs args L str) o
 
-  | red_spec_binding_inst_arg_obj_1_strict : forall o1 L S0 S C code largs o, (* Step 7b i *)
+  | red_spec_binding_inst_arg_obj_1_strict : forall o1 L S0 S C largs o, (* Step 7b i *)
       red_expr S C (spec_env_record_create_immutable_binding L "arguments") o1 ->
-      red_expr S C (spec_binding_inst_arg_obj_2 code L largs o1) o ->
-      red_expr S0 C (spec_binding_inst_arg_obj_1 code L true (out_ter S largs)) o
+      red_expr S C (spec_binding_inst_arg_obj_2 L largs o1) o ->
+      red_expr S0 C (spec_binding_inst_arg_obj_1 L true (out_ter S largs)) o
 
-  | red_spec_binding_inst_arg_obj_2 : forall L S0 S C code largs o, (* Step 7b ii *)
+  | red_spec_binding_inst_arg_obj_2 : forall L S0 S C largs o, (* Step 7b ii *)
       red_expr S C (spec_env_record_initialize_immutable_binding L "arguments" (value_object largs)) o ->
-      red_expr S0 C (spec_binding_inst_arg_obj_2 code L largs (out_void S)) o
+      red_expr S0 C (spec_binding_inst_arg_obj_2 L largs (out_void S)) o
 
-  | red_spec_binding_inst_arg_obj_1_not_strict : forall L S0 S C code largs o, (* Step 7c *)
+  | red_spec_binding_inst_arg_obj_1_not_strict : forall L S0 S C largs o, (* Step 7c *)
       red_expr S C (spec_env_record_create_set_mutable_binding L "arguments" None largs false) o ->
-      red_expr S0 C (spec_binding_inst_arg_obj_1 code L false (out_ter S largs)) o
+      red_expr S0 C (spec_binding_inst_arg_obj_1 L false (out_ter S largs)) o
 
   (* Auxiliary reductions for binding instantiation:
      bindings for variable declarations (Step 8) *)
@@ -2802,7 +2801,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
   | red_spec_binding_inst_3 : forall bconfig L S C ct olf code fds xs args o1 o, (* Step 5 *)
       bconfig = (If ct = codetype_eval then true else false) -> (* Step 2 *)
       fds = prog_funcdecl code ->
-      red_expr S C (spec_binding_inst_function_decls args L fds (prog_intro_strictness code) bconfig) o1 ->
+      red_expr S C (spec_binding_inst_function_decls L fds (prog_intro_strictness code) bconfig) o1 ->
       red_expr S C (spec_binding_inst_4 ct olf code xs args bconfig L o1) o ->
       red_expr S C (spec_binding_inst_3 ct olf code xs args L) o
 
@@ -2816,7 +2815,7 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_binding_inst_5 ct olf code xs args bconfig L) o
 
   | red_spec_binding_inst_6_arguments : forall o1 L S0 S C lf code xs args bconfig o, (* Step 7 *)
-      red_expr S C (spec_binding_inst_arg_obj lf code xs args L) o1 ->
+      red_expr S C (spec_binding_inst_arg_obj lf xs args L (prog_intro_strictness code)) o1 ->
       red_expr S C (spec_binding_inst_7 code bconfig L o1) o ->
       red_expr S0 C (spec_binding_inst_6 codetype_func (Some lf) code xs args bconfig L (out_ter S false)) o
 

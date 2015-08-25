@@ -1356,16 +1356,15 @@ Definition create_arguments_object runs S C lf xs args X str : result :=
         if_bool (object_define_own_prop runs S2 C l "callee" A false) (fun S3 b' =>
           res_ter S3 l)))).
 
-Definition binding_inst_arg_obj runs S C lf p xs args L : result_void :=
+Definition binding_inst_arg_obj runs S C lf xs args L str : result_void :=
   let arguments := "arguments" in
-  'let str := prog_intro_strictness p in
-    if_object (create_arguments_object runs S C lf xs args
-                   (execution_ctx_variable_env C) str) (fun S1 largs =>
-      if str then
-        if_void (env_record_create_immutable_binding S1 L arguments) (fun S2 =>
-          env_record_initialize_immutable_binding S2 L arguments largs)
-      else
-        env_record_create_set_mutable_binding runs S1 C L arguments None largs false).
+  if_object (create_arguments_object runs S C lf xs args
+                 (execution_ctx_variable_env C) str) (fun S1 largs =>
+    if str then
+      if_void (env_record_create_immutable_binding S1 L arguments) (fun S2 =>
+        env_record_initialize_immutable_binding S2 L arguments largs)
+    else
+      env_record_create_set_mutable_binding runs S1 C L arguments None largs false).
 
 Fixpoint binding_inst_var_decls runs S C L (vds : list string) bconfig str : result_void :=
   match vds with
@@ -1396,7 +1395,7 @@ Definition execution_ctx_binding_inst runs S C (ct : codetype) (funco : option o
             in
           match ct, funco, bdefined with
           | codetype_func, Some func, false =>
-            if_void (binding_inst_arg_obj runs S2 C func p names args L) follow2
+            if_void (binding_inst_arg_obj runs S2 C func names args L str) follow2
           | codetype_func, _, false =>
             impossible_with_heap_because S2 "Weird `arguments' object in [execution_ctx_binding_inst]."
           | _, _, _ => follow2 S2

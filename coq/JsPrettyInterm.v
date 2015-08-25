@@ -336,17 +336,17 @@ Inductive ext_expr :=
   | spec_binding_inst_formal_params_2 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> out -> ext_expr
   | spec_binding_inst_formal_params_3 : list value -> env_loc -> string -> list string -> strictness_flag -> value -> ext_expr
   | spec_binding_inst_formal_params_4 : list value -> env_loc -> list string -> strictness_flag -> out -> ext_expr
-  | spec_binding_inst_function_decls :  list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> ext_expr
-  | spec_binding_inst_function_decls_1 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
-  | spec_binding_inst_function_decls_2 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_inst_function_decls_3 : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> specret full_descriptor -> ext_expr
-  | spec_binding_inst_function_decls_3a : list value -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> full_descriptor -> ext_expr
-  | spec_binding_inst_function_decls_4 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
-  | spec_binding_inst_function_decls_5 : list value -> env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> ext_expr
-  | spec_binding_inst_function_decls_6 : list value -> env_loc -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
-  | spec_binding_inst_arg_obj :   object_loc -> prog -> list string -> list value -> env_loc -> ext_expr
-  | spec_binding_inst_arg_obj_1 : prog -> env_loc -> strictness_flag -> out -> ext_expr
-  | spec_binding_inst_arg_obj_2 : prog -> env_loc -> object_loc -> out -> ext_expr
+  | spec_binding_inst_function_decls :  env_loc -> list funcdecl -> strictness_flag -> bool -> ext_expr
+  | spec_binding_inst_function_decls_1 : env_loc -> funcdecl -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
+  | spec_binding_inst_function_decls_2 : env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_inst_function_decls_3 : funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> specret full_descriptor -> ext_expr
+  | spec_binding_inst_function_decls_3a : funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> full_descriptor -> ext_expr
+  | spec_binding_inst_function_decls_4 : env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> out -> ext_expr
+  | spec_binding_inst_function_decls_5 : env_loc -> funcdecl -> list funcdecl -> strictness_flag -> object_loc -> bool -> ext_expr
+  | spec_binding_inst_function_decls_6 : env_loc -> list funcdecl -> strictness_flag -> bool -> out -> ext_expr
+  | spec_binding_inst_arg_obj :   object_loc -> list string -> list value -> env_loc -> strictness_flag -> ext_expr
+  | spec_binding_inst_arg_obj_1 : env_loc -> strictness_flag -> out -> ext_expr
+  | spec_binding_inst_arg_obj_2 : env_loc -> object_loc -> out -> ext_expr
   | spec_binding_inst_var_decls : env_loc -> list string -> bool -> strictness_flag -> ext_expr
   | spec_binding_inst_var_decls_1 : env_loc -> string -> list string -> bool -> strictness_flag -> out -> ext_expr
   | spec_binding_inst_var_decls_2 : env_loc -> list string -> bool -> strictness_flag -> out -> ext_expr
@@ -1148,17 +1148,17 @@ Definition out_of_ext_expr (e : ext_expr) : option out :=
   | spec_binding_inst_formal_params_2 _ _ _ _ _ _ o => Some o
   | spec_binding_inst_formal_params_3 _ _ _ _ _ _ => None
   | spec_binding_inst_formal_params_4 _ _ _ _ o => Some o
-  | spec_binding_inst_function_decls _ _ _ _ _ => None
-  | spec_binding_inst_function_decls_1 _ _ _ _ _ _ o => Some o
-  | spec_binding_inst_function_decls_2 _ _ _ _ _ _ _ o => Some o
-  | spec_binding_inst_function_decls_3 _ _ _ _ _ _ y => out_of_specret y
-  | spec_binding_inst_function_decls_3a _ _ _ _ _ _ _ => None
-  | spec_binding_inst_function_decls_4 _ _ _ _ _ _ _ o => Some o
-  | spec_binding_inst_function_decls_5 _ _ _ _ _ _ _ => None
-  | spec_binding_inst_function_decls_6 _ _ _ _ _ o => Some o
+  | spec_binding_inst_function_decls _ _ _ _ => None
+  | spec_binding_inst_function_decls_1 _ _ _ _ _ o => Some o
+  | spec_binding_inst_function_decls_2 _ _ _ _ _ _ o => Some o
+  | spec_binding_inst_function_decls_3 _ _ _ _ _ y => out_of_specret y
+  | spec_binding_inst_function_decls_3a _ _ _ _ _ _ => None
+  | spec_binding_inst_function_decls_4 _ _ _ _ _ _ o => Some o
+  | spec_binding_inst_function_decls_5 _ _ _ _ _ _ => None
+  | spec_binding_inst_function_decls_6 _ _ _ _ o => Some o
   | spec_binding_inst_arg_obj   object_loc _ _ _ _ => None
-  | spec_binding_inst_arg_obj_1 _ _ _ o => Some o
-  | spec_binding_inst_arg_obj_2 _ _ _ o => Some o
+  | spec_binding_inst_arg_obj_1 _ _ o => Some o
+  | spec_binding_inst_arg_obj_2 _ _ o => Some o
   | spec_binding_inst_var_decls _ _ _ _ => None
   | spec_binding_inst_var_decls_1 _ _ _ _ _ o => Some o
   | spec_binding_inst_var_decls_2 _ _ _ _ o => Some o
