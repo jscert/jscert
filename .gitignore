@@ -25,3 +25,7 @@ report
 
 trace.log
 /coq/#JsPrettyRules.v#
+
+*.cmi
+/jsjsref/miniml/generator/tests/js/*
+/jsjsref/miniml/generator/tests/*.pre
