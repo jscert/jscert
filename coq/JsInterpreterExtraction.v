@@ -16,6 +16,11 @@ Require Import ExtrOcamlBasic.
 Require Import ExtrOcamlNatInt.
 Require Import ExtrOcamlString.
 
+(* Do not optimize anything, to make the extracted code simpler to work with *)
+Unset Extraction Optimize.
+Unset Extraction KeepSingleton.
+Unset Extraction AutoInline.
+
 (* Optimal fixpoint. *)
 Extraction Inline FixFun3 FixFun3Mod FixFun4 FixFun4Mod FixFunMod curry3 uncurry3 curry4 uncurry4.
 (* As classical logic statements are now unused, they should not be extracted

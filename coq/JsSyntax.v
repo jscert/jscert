@@ -214,7 +214,7 @@ Coercion label_string : string >-> label.
 
 (** Identifiers for builtin maths functions *)
 
-Inductive mathop :=
+Inductive mathop : Set :=
   | mathop_abs : mathop
   (* LATER: many others *)
   .
@@ -362,24 +362,24 @@ Inductive builtin_get_own_prop :=
 
 (** Identifiers for "GetProperty" methods *)
 
-Inductive builtin_get_prop :=
+Inductive builtin_get_prop : Set :=
   | builtin_get_prop_default.
 
 (** Identifiers for "Put" methods *)
 
-Inductive builtin_put :=
+Inductive builtin_put : Set :=
   | builtin_put_default.
   (* LATER: string and array *)
 
 (** Identifiers for "CanPut" methods *)
 
-Inductive builtin_can_put :=
+Inductive builtin_can_put : Set :=
   | builtin_can_put_default.
   (* LATER: string and array *)
 
 (** Identifiers for "HasProperty" methods *)
 
-Inductive builtin_has_prop :=
+Inductive builtin_has_prop : Set :=
   | builtin_has_prop_default.
   (* LATER: string and array *)
 
@@ -392,7 +392,7 @@ Inductive builtin_delete :=
 
 (** Identifiers for "DefaultValue" methods *)
 
-Inductive builtin_default_value :=
+Inductive builtin_default_value : Set :=
   | builtin_default_value_default.
   (* LATER: date *)
 
