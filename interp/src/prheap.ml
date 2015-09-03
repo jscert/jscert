@@ -73,7 +73,7 @@ let prprealloc = function
   | Coq_prealloc_string_proto_char_at -> "Coq_prealloc_string_proto_char_at"
   | Coq_prealloc_string_proto_char_code_at -> "Coq_prealloc_string_proto_char_code_at"
   | Coq_prealloc_math -> "Coq_prealloc_math"
-  | Coq_prealloc_mathop -> "Coq_prealloc_mathop"
+  | Coq_prealloc_mathop _ -> "Coq_prealloc_mathop"
   | Coq_prealloc_date -> "Coq_prealloc_date"
   | Coq_prealloc_regexp -> "Coq_prealloc_regexp"
   | Coq_prealloc_error -> "Coq_prealloc_error"
