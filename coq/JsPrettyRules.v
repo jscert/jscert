@@ -4587,11 +4587,11 @@ with red_expr : state -> execution_ctx -> ext_expr -> out -> Prop :=
       red_expr S C (spec_construct_number_1 o1) o ->
       red_expr S C (spec_construct_prealloc prealloc_number args) o
 
-  | red_spec_construct_number_1 : forall S0 S C S' O l v,
+  | red_spec_construct_number_1 : forall S0 S C S' O l n,
       let O1 := object_new prealloc_number_proto "Number" in
-      let O := object_with_primitive_value O1 v in
+      let O := object_with_primitive_value O1 n in
       (l, S') = object_alloc S O ->
-      red_expr S0 C (spec_construct_number_1 (out_ter S v)) (out_ter S' l)
+      red_expr S0 C (spec_construct_number_1 (out_ter S n)) (out_ter S' l)
 
   (*------------------------------------------------------------*)
   (** ** Number prototype builtin functions *)
