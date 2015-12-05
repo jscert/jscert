@@ -6,6 +6,7 @@ let test = ref false
 let printHeap = ref false
 let skipInit = ref false
 let noParasite = ref false
+let strictMode = ref false
 
 let string_to_list str = (* Does it already exists somewhere? *)
     let l = ref [] in
@@ -24,33 +25,46 @@ let arguments () =
   Arg.parse
     [ "-json",
       Arg.Unit(fun () -> Parser_main.use_json := true),
-      "use the JSON parser (Esprima), -jsparser argument is ignored";
+"use the JSON parser (Esprima), -jsparser argument is ignored";
+
       "-from_stdin",
       Arg.Unit(fun () -> Parser_main.from_stdin := true),
       "Get a pre-parsed intermediate representation from stdin, 
        -jsparser and -file arguments are ignored, not recommended for use with XML";
+
       "-jsparser",
       Arg.String(fun f -> Parser_main.js_to_xml_parser := f),
       "path to js_parser.jar";
+
       "-file",
       Arg.String(fun f -> file := f),
       "file to run";
+
       "-verbose",
       Arg.Unit(fun () -> Parser_main.verbose := true),
       "print the parsed program";
+
       "-test_prelude",
       Arg.String(fun f ->
          test_prelude := !test_prelude @ string_to_list f; test := true),
-      "include the given files before runnning the specified file";
+	 "include the given files before runnning the specified file";
+	 
       "-print-heap",
       Arg.Unit(fun () -> printHeap := true),
       "print the final state of the heap";
+      
       "-skip-init",
       Arg.Unit(fun () -> skipInit := true),
       "do not print the initial heap";
+      
       "-no-parasite",
       Arg.Unit(fun () -> noParasite := true),
       "do not run interpreter's code without being explicitely asked for";
+      
+      "-force-strict",
+      Arg.Unit(fun () -> strictMode := true),
+      "force strict mode"
+      
     ]
     (fun s -> Format.eprintf "WARNING: Ignored argument %s.@." s)
     usage_msg
@@ -187,18 +201,20 @@ let _ =
   arguments ();
   let exit_if_test _ = if !test then exit 1 in
   try
-    let prog = Translate_syntax.coq_syntax_from_main !file in
+    let prog = Translate_syntax.coq_syntax_from_main ~force_strict:!strictMode !file in
     let JsSyntax.Coq_prog_intro (str, el) = prog in
+    let str'  = !strictMode || str in
+    let prog' = JsSyntax.Coq_prog_intro (str', el) in
     let exp_prelude = begin
                         let els =
                           List.concat (List.map (fun f ->
                             let JsSyntax.Coq_prog_intro (_, el0) =
-                              Translate_syntax.coq_syntax_from_file ~init:true f in
+                              Translate_syntax.coq_syntax_from_file ~init:true ~force_strict:str' f in
                             el0) !test_prelude) in
-                          JsSyntax.Coq_prog_intro (str, els)
+                          JsSyntax.Coq_prog_intro (str', els)
                       end in
     let prelude_res = JsInterpreter.run_javascript (JsInterpreter.runs max_int) exp_prelude in
-    handle_result (run_prog_incremental prelude_res prog)
+    handle_result (run_prog_incremental prelude_res prog')
   with
   | AbnormalPreludeTermination res ->
     handle_result res;
