@@ -1,7 +1,7 @@
 let run_object_method proj s l =\n
   let opt = object_binds_pickable_option s l in\n
     begin match opt with\n
-      \| None -> prerr_endline (Printf.sprintf \"Warning: in run_object_method the location \%s is unfetchable.\" (Prheap.prloc l))\n
+      \| None -> Debug.run_object_method l\n
       \| _ -> ()\n
     end;\n
     LibOption.map proj opt\n

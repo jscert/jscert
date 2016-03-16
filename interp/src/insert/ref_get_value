@@ -1,1 +1,1 @@
-prerr_string (\"Warning: ref_get_value returns the undefined value on \"); prerr_string (Prheap.prref r); prerr_newline(); res_res (run_error s Coq_native_error_ref)
+Debug.ref_get_value r; res_res (run_error s Coq_native_error_ref)
