@@ -16,6 +16,11 @@ Require Import ExtrOcamlBasic.
 Require Import ExtrOcamlNatInt.
 Require Import ExtrOcamlString.
 
+(* Do not optimize anything, to make the extracted code simpler to work with *)
+Unset Extraction Optimize.
+Unset Extraction KeepSingleton.
+Unset Extraction AutoInline.
+
 (* Optimal fixpoint. *)
 Extraction Inline FixFun3 FixFun3Mod FixFun4 FixFun4Mod FixFunMod curry3 uncurry3 curry4 uncurry4.
 (* As classical logic statements are now unused, they should not be extracted
@@ -227,16 +232,9 @@ Extract Constant parse_pickable => "(fun s strict ->
 
 
 (* Debugging *)
-Extract Inlined Constant not_yet_implemented_because => "(fun s ->
-  print_endline (__LOC__ ^ "": Not implemented because: "" ^ Prheap.string_of_char_list s) ;
-  Coq_result_not_yet_implemented)".
-Extract Inlined Constant impossible_because => "(fun s ->
-  print_endline (__LOC__ ^ "": Stuck because: "" ^ Prheap.string_of_char_list s) ;
-  Coq_result_impossible)".
-Extract Inlined Constant impossible_with_heap_because => "(fun s message ->
-  print_endline (__LOC__ ^ "": Stuck!\nState:  "" ^ Prheap.prstate true s
-    ^ ""\nMessage:\t"" ^ Prheap.string_of_char_list message) ;
-  Coq_result_impossible)".
+Extract Inlined Constant not_yet_implemented_because => "(fun s -> Debug.not_yet_implemented_because __LOC__ s; Coq_result_impossible)".
+Extract Inlined Constant impossible_because => "(fun s -> Debug.impossible_because __LOC__ s; Coq_result_impossible)".
+Extract Inlined Constant impossible_with_heap_because => "(fun s m -> Debug.impossible_with_heap_because __LOC__ s m; Coq_result_impossible)".
 
 
 (* Final Extraction *)

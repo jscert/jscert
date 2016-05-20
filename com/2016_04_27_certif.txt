@@ -1,0 +1,59 @@
+
+@erights, all,
+
+I discussed with Alan and here are a few answers/comments.
+
+*) I did tell you that, to establish a security theorem, you need to
+formalize all the "features" of the language. As Dominique 
+pointed out, for many libraries, which are written in pure JS 
+(or at least are morally equivalent to pure JS code), we don't need
+to formalize them, because such libraries don't introduce additional
+"language features" which might give rise to security breaches. 
+However, any library that has an internal state (e.g. Date, Random, 
+and I suppose many interactions with the DOM, etc..) can be potential 
+sources of trouble. Indeed, as soon as a stateful module might get 
+called both by trusted code and untrusted code, you may have 
+an information channel that might be exploited.
+
+*) We agree that it is somewhat unrealistic to expect all language
+features to be formalized before starting to work on the proof
+of security theorems. Like you said, we should attempt to work out 
+and to formally state in Coq the invariants that are required for
+proving the theorems of interest. Then, we could advertise these
+invariants (translated in English prose) to the developers of the
+various language features, in the hope that those developers can
+confirm that their features indeed satisfy the invariants---or 
+at least that they intend to.
+
+*) Regarding the statement of the invariants, we should work on them
+together. In particular, Alan and I came up with some ideas for
+specifying what a proxy should guarantee. We should discuss that
+with you, probably offline (we expect a certain number of iterations 
+may be needed to converge to something that makes enough sense).
+In general, to formally express particular invariants, it is required
+to augment the semantics with so-called "ghost" information, used
+for keeping track, e.g., of the set of pointers that have been 
+leaked on purpose.
+
+*) In parallel, we believe it would still be worthwhile extending our 
+reference interpreter from ES5 to a large subset of ES6. However,
+we simply don't have the manpower to do this work ourselves. 
+Nevertheless, we would be happy to help whenever a difficulty is 
+encountered. Note that our interpreter is currently written in a 
+tiny subset of the OCaml language. Overall, we believe it should 
+not be hard for a programmer with no experience in OCaml to extend our interpreter.
+
+---Remark: our interpreter used to be written in Coq and extracted 
+to OCaml but we cound it simpler to write OCaml directly; we are 
+looking forward to generate Coq definitions from OCaml code in the 
+future. We were even tempted to consider writing the interpreter 
+a tiny subset of JS, but we found that OCaml provides a far more 
+concise syntax, moreover it provides handy type-checking of the code. 
+In addition, that our OCaml interpreter gets translated to readable 
+and executable JS code.)
+
+(Alan will present the interpreter and give a demo in May.)
+
+
+Best,
+Arthur

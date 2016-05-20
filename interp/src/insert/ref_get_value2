@@ -2,7 +2,7 @@ let ref_get_value runs s c r =\n
   let res = ref_get_value runs s c r in match res with\n
     \| JsInterpreterMonads.Coq_result_some (Coq_specret_val (_, rs)) -> begin match rs with\n
         \| Coq_value_prim (Coq_prim_undef) ->\n
-          prerr_string (\"Warning: ref_get_value returns the undefined value on \"); prerr_string (Prheap.prresvalue r); prerr_newline(); res\n
+          Debug.ref_get_value_2 r; res\n
         \| _ -> res\n
       end\n
     \| _ -> res\n
