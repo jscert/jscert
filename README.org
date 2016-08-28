@@ -18,7 +18,7 @@
     You can get the latest source from [[https://github.com/jscert/jscert][here]].
 
     JSCert depends on:
-    - Coq
+    - Coq (version 8.4.6)
 	- OCaml (version 4 or above minimum, 4.02 or above for all optional features to build)
     - Java (for the parser)
 

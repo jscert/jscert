@@ -1,4 +1,4 @@
-% SERGIO: some of these rely on features we don't have yet, but it's useful to keep them around else I'l forget.
+% SERGIO: some of these rely on features we don't have yet, but it's useful to keep them around else I'll forget.
 
 % APLAS 08
 
