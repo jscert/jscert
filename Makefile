@@ -123,7 +123,7 @@ tags: $(JS_SRC)
 .PHONY: install_depend install_optional_depend
 install_depend:
 	# Install coq if required
-	if ! which $(COQC); then opam install -y coq; fi
+	if ! which $(COQC); then opam pin add coq 8.4.6; opam install -y coq; fi
 	opam install -y xml-light ocamlfind yojson
 
 install_optional_depend: install_depend
