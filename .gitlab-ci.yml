@@ -1,5 +1,9 @@
----
+stages:
+  - test
+  - Git Sync
+
 git-sync:
+  stage: Git Sync
   script:
   - eval `ssh-agent`
   - echo "$PUSH_KEY" | ssh-add -
