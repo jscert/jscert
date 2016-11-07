@@ -232,7 +232,7 @@ Extract Constant parse_pickable => "(fun s strict ->
 
 
 (* Debugging *)
-Extract Inlined Constant not_yet_implemented_because => "(fun s -> Debug.not_yet_implemented_because __LOC__ s; Coq_result_impossible)".
+Extract Inlined Constant not_yet_implemented_because => "(fun s -> Debug.not_yet_implemented_because __LOC__ s; Coq_result_not_yet_implemented)".
 Extract Inlined Constant impossible_because => "(fun s -> Debug.impossible_because __LOC__ s; Coq_result_impossible)".
 Extract Inlined Constant impossible_with_heap_because => "(fun s m -> Debug.impossible_with_heap_because __LOC__ s m; Coq_result_impossible)".
 
