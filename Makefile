@@ -108,7 +108,7 @@ debug: OCAMLBUILDFLAGS+=-tag debug
 debug: default interp/run_js.byte interp/prtest.cmo
 
 report:
-	bisect-report -html report bisect*.out
+	cd interp; bisect-report -I _build -html ../report ../bisect*.out
 	firefox report/index.html || open report/index.html
 	rm bisect*.out
 
