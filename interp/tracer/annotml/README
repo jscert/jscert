@@ -1,9 +1,0 @@
-To compile, one needs ocaml 4.02. Right now the simplest way to install it is through
-  opam switch 4.02.0+trunk
-  opam install ocamlfind
-
-To switch back to your previous ocaml, you can type
-  opam switch
-to see the list of installed compilers.
-
-Many thanks to http://whitequark.org/blog/2014/04/16/a-guide-to-extension-points-in-ocaml/

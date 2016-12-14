@@ -272,22 +272,6 @@ interp/run_jsbisect.native: interp/src/extract/JsInterpreterBisect.ml
 # interp/run_jsbisect is an implicit rule
 
 #######################################################
-# Tracing version of the interpreter
-
-interp/tracer/annotml/ppx_lines.native:
-	$(MAKE) -C interp/tracer/annotml ppx_lines.native
-
-interp/src/extract/JsInterpreterTrace.ml: interp/src/extract/JsInterpreter.ml extract_interpreter
-	cp $< $@
-
-interp/src/run_jstrace.ml: interp/src/run_js.ml
-	perl -pe 's/JsInterpreter\./JsInterpreterTrace\./g' $< > $@
-
-interp/run_jstrace.native: interp/src/extract/JsInterpreterTrace.ml interp/tracer/annotml/ppx_lines.native
-
-# interp/run_jstrace is an implicit rule
-
-#######################################################
 # Interpreter run helpers
 .PHONY: run_tests run_tests_spidermonkey run_tests_lambdaS5 run_tests_nodejs
 
@@ -314,7 +298,6 @@ clean_interp:
 	-rm -f interp/run_jsbisect interp/src/run_jsbisect.ml
 	-rm -f interp/run_jstrace interp/src/run_jstrace.ml
 	cd interp && $(OCAMLBUILD) -quiet -clean
-	$(MAKE) -C interp/tracer/annotml clean
 
 clean: clean_interp
 	-rm -f coq/*.{vo,glob,d}
