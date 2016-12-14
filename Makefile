@@ -135,6 +135,8 @@ install_optional_depend: install_depend
 init:
 	tools/git-hooks/install.sh .
 	git submodule update --init
+	opam pin -y add JS_Parser "https://github.com/resource-reasoning/JS_Parser.git#v0.1.0"
+	opam install JS_Parser
 	mkdir -p lib/flocq
 	tar -xzf lib/flocq-2.1.0.tar.gz -C lib/flocq --strip-components 1
 # alternative: pull git from svn

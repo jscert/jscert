@@ -1,8 +1,0 @@
-This is where I'm keeping the modified esprima.js. Some changes are bugfixes, others are the new functionality needed for builtins/strict eval. This version of esprima.js is the node.js version, so the original must be installed with npm and then the esprima.js file there replaced with this one.
-
-BUGFIXES:
-Esprima was reporting a literal on the LHS of an AssignmentExpression as an early error, which is not spec compliant.
-
-EXTENSIONS:
-force_strict argument added to allow correct parsing in strict mode eval
-builtin_init argument added to allow enhanced parsing when initialising builtins using V8

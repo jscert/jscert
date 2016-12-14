@@ -1,7 +1,7 @@
 module Environment =
 struct
   
-  Parser_main.js_to_xml_parser := "parser/lib/js_parser.jar";;
+  let _ = Parser_main.init ()
   
   let (get, set, up) =
     let compt = ref 0 in

@@ -1,6 +1,7 @@
 exception AbnormalPreludeTermination of JsInterpreterMonads.result
 
 let file = ref ""
+let jsparser = ref None
 let test_prelude = ref []
 let test = ref false
 let printHeap = ref false
@@ -33,7 +34,7 @@ let arguments () =
        -jsparser and -file arguments are ignored, not recommended for use with XML";
 
       "-jsparser",
-      Arg.String(fun f -> Parser_main.js_to_xml_parser := f),
+      Arg.String(fun f -> jsparser := Some f),
       "path to js_parser.jar";
 
       "-file",
@@ -199,6 +200,7 @@ let run_prog_incremental prog_res prog =
 
 let _ =
   arguments ();
+  Parser_main.init ?path:(!jsparser) ();
   let exit_if_test _ = if !test then exit 1 in
   try
     let prog = Translate_syntax.coq_syntax_from_main ~force_strict:!strictMode !file in
