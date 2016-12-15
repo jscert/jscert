@@ -1,0 +1,33 @@
+opam-version: "1.2"
+name: "coq-jscert"
+version: "~unknown"
+maintainer: "Thomas Wood <thomas.wood09@imperial.ac.uk>"
+authors: [
+  "Martin Bodin <martin.bodin@inria.fr>"
+  "Arthur Charguéraud <arthur@chargueraud.org>"
+  "Daniele Filaretti"
+  "Sergio Maffeis <maffeis@doc.ic.ac.uk>"
+  "Petar Maksimovic <p.maksimovic@imperial.ac.uk>"
+  "Daiva Naudziuniene <d.naudziuniene11@imperial.ac.uk>"
+  "Alan Schmitt <alan.schmitt@inria.fr>"
+  "Gareth Smith"
+  "Thomas Wood <thomas.wood09@imperial.ac.uk>"
+]
+
+homepage: "http://www.jscert.org/"
+bug-reports: "https://github.com/jscert/jscert/issues"
+license: "BSD"
+dev-repo: "https://github.com/jscert/jscert.git"
+build: [
+  [make]
+]
+available: [ ocaml-version >= "4.02" & ocaml-version < "4.04~" ]
+depends: [
+  "ocamlfind" {build}
+  "coq" { >= "8.4" & < "8.5~" }
+  (* "coq-tlc" *)
+  "coq-flocq" { >= "2.1" & < "2.6~" }
+  "lwt"
+  "bisect"
+  "JS_Parser"
+]

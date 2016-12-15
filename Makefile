@@ -13,8 +13,6 @@
 
 COQBIN=
 TLC=lib/tlc/src
-FLOCQ=lib/flocq
-FLOCQ_INC=-R $(FLOCQ)/src Flocq
 
 # Define FAST to be non empty for compiling Coq proofs faster
 FAST=
@@ -26,10 +24,6 @@ LAMBDAS5=~/Documents/data/LambdaS5/tests/s5
 SPIDERMONKEY=~/Mozilla/Central/Central/js/src/build_release/js
 NODEJS=/usr/bin/nodejs
 
-# Alternative definition for FLOCQ_INC:
-# FLOCQ_FOLDERS=$(addprefix $(FLOCQ)/src/,Core Calc Appli Prop)
-# FLOCQ_INC=$(addprefix -I ,$(FLOCQ_FOLDERS))
-
 # Edit settings.sh to modify the default paths mentioned above
 -include settings.sh
 
@@ -39,13 +33,10 @@ NODEJS=/usr/bin/nodejs
 TLC_SRC=$(wildcard $(TLC)/*.v)
 TLC_VO=$(TLC_SRC:.v=.vo)
 
-FLOCQ_SRC=$(wildcard $(FLOCQ)/src/*/*.v)
-FLOCQ_VO=$(FLOCQ_SRC:.v=.vo)
-
 
 #######################################################
 
-COQINCLUDES=-I coq -I $(TLC) $(FLOCQ_INC)
+COQINCLUDES=-I coq -I $(TLC)
 COQC=$(COQBIN)coqc
 COQDEP=$(COQBIN)coqdep
 COQFLAGS=-dont-load-proofs
@@ -115,7 +106,7 @@ report:
 tags: $(JS_SRC)
 	./gentags.sh
 
-.PHONY: all default debug report init tlc flocq lib \
+.PHONY: all default debug report init tlc lib \
         local nofast
 
 #######################################################
@@ -135,18 +126,13 @@ install_optional_depend: install_depend
 init:
 	tools/git-hooks/install.sh .
 	git submodule update --init
-	opam pin -y add JS_Parser "https://github.com/resource-reasoning/JS_Parser.git#v0.1.0"
-	opam install JS_Parser
-	mkdir -p lib/flocq
-	tar -xzf lib/flocq-2.1.0.tar.gz -C lib/flocq --strip-components 1
-# alternative: pull git from svn
-#	git clone https://gforge.inria.fr/git/flocq/flocq.git flocq
+	opam pin -yn add JS_Parser "https://github.com/resource-reasoning/JS_Parser.git#v0.1.0"
+	opam pin -yn add coq-jscert .
+	opam install -yv --deps-only coq-jscert
 
-lib: tlc flocq
+lib: tlc
 
 tlc: $(TLC_VO)
-
-flocq: $(FLOCQ_VO)
 
 #######################################################
 # Coq Compilation Implicit Rules
@@ -304,16 +290,16 @@ clean: clean_interp
 	-rm -f coq/*.{vo,glob,d}
 
 clean_all: clean
+	-rm -rf lib/flocq
 	find . -iname "*.vo" -exec rm {} \;
 	find . -iname "*.glob" -exec rm {} \;
 	find . -iname "*.d" -exec rm {} \;
 
 
 #######################################################
-# LOCAL: copy all flocq and tlc .vo files to the head folder
+# LOCAL: copy all tlc .vo files to the head folder
 
 local:
-	@$(foreach file, $(FLOCQ_VO), cp $(file) $(notdir $(file));)
 	@$(foreach file, $(TLC_VO), cp $(file) $(notdir $(file));)
 
 #######################################################
@@ -323,5 +309,4 @@ local:
 ifeq ($(filter init clean% install%,$(MAKECMDGOALS)),)
 -include $(JS_SRC:.v=.v.d)
 -include $(TLC_SRC:.v=.v.d)
--include $(FLOCQ_SRC:.v=.v.d)
 endif
