@@ -102,7 +102,7 @@ FAST_VO=$(FAST_SRC:.v=.vo)
 
 default: coq interpreter tags
 
-all: default interp/run_jsbisect interp/run_jstrace
+all: default interp/run_jsbisect
 
 debug: OCAMLBUILDFLAGS+=-tag debug
 debug: default interp/run_js.byte interp/prtest.cmo
@@ -298,7 +298,6 @@ clean_interp:
 	-rm -rf interp/src/extract
 	-rm -f interp/run_js interp/top
 	-rm -f interp/run_jsbisect interp/src/run_jsbisect.ml
-	-rm -f interp/run_jstrace interp/src/run_jstrace.ml
 	cd interp && $(OCAMLBUILD) -quiet -clean
 
 clean: clean_interp
