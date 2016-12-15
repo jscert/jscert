@@ -255,7 +255,7 @@ let coq_syntax_from_main ?force_strict:(str = false) filename =
   exp_to_prog exp
 
 let coq_syntax_from_file ?init:(i = false) ?force_strict:(str = false) filename =
-  let exp = Parser_main.exp_from_file ~init:i ~force_strict:(str = false) filename in
+  let exp = Parser_main.exp_from_file ~init:i ~force_strict:str filename in
   exp_to_prog exp
   
 let coq_syntax_from_string s =
