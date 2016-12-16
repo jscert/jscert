@@ -3,6 +3,7 @@ language: c    # Not really, but close enough
 env:
   global:
     - OPAMYES=true
+    - OPAMVERBOSE=true
   matrix:
     - MAKETARGET=all
     - MAKETARGET=proof
@@ -29,5 +30,5 @@ install:
 # Always keep coq-jscert installed so correct versions of dependencies are installed
 # on upgrade step above, even if this duplicates compilations.
 script:
-  - opam reinstall -yv coq-jscert
+  - opam reinstall coq-jscert
   - travis_wait 30 make $MAKETARGET

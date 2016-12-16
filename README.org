@@ -43,7 +43,7 @@ sudo apt-get install openjdk-6-jre
       is to use opam tool. You can get it with Ubuntu like this:
 
 #+begin_src sh
-add-apt-repository ppa:avsm/ppa
+add-apt-repository ppa:avsm/ocaml42+opam12
 apt-get update
 apt-get install opam
 #+end_src
@@ -54,13 +54,12 @@ apt-get install opam
 
 #+begin_src sh
 opam init
-opam switch 4.02.1
-make install_depend
+opam switch 4.02.3
+make init
 #+end_src
 
       Now you can build JSCert:
 #+begin_src sh
-make init
 make
 #+end_src
 

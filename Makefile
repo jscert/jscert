@@ -110,25 +110,15 @@ tags: $(JS_SRC)
         local nofast
 
 #######################################################
-# EXTERNAL OCAML DEPENDENCIES
-.PHONY: install_depend install_optional_depend
-install_depend:
-	# Install coq if required
-	if ! which $(COQC); then opam pin add coq 8.4.6; opam install -y coq; fi
-	opam install -y xml-light ocamlfind yojson
-
-install_optional_depend: install_depend
-	opam install -y js_of_ocaml bisect lwt
-
-#######################################################
 # EXTERNAL LIBRARIES: TLC and Flocq
 
 init:
 	tools/git-hooks/install.sh .
 	git submodule update --init
+	-opam repo add coq-released https://coq.inria.fr/opam/released
 	opam pin -yn add JS_Parser "https://github.com/resource-reasoning/JS_Parser.git#v0.1.0"
 	opam pin -yn add coq-jscert .
-	opam install -yv --deps-only coq-jscert
+	opam install -y --deps-only coq-jscert
 
 lib: tlc
 
