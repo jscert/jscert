@@ -74,7 +74,7 @@ Having invalid logical axiom in the environment when extracting
 may lead to incorrect or non-terminating ML terms.
 #+end quote
 
-   This is because, as reported in [[http://www.doc.ic.ac.uk/~gds/jscert_popl14.pdf][the paper]], we have not yet proved
+   This is because, as reported in [[https://psvg.doc.ic.ac.uk/publications/Bodin2014Trusted.pdf][the paper]], we have not yet proved
    correctness for all the native libraries.
 
    You can now explore any of the Coq files in JSCert using [[http://proofgeneral.inf.ed.ac.uk/][Proof
