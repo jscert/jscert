@@ -1,6 +1,6 @@
 [submodule "lib/tlc"]
 	path = lib/tlc
-	url = https://gforge.inria.fr/git/tlc/tlc.git
+	url = https://github.com/charguer/tlc.git
 	ignore = dirty
 [submodule "lib/test262"]
 	path = lib/test262
