@@ -14,6 +14,7 @@ import calendar
 import sqlite3 as db
 import time
 import re
+import tempfile
 
 
 # Our command-line interface
@@ -418,9 +419,20 @@ elif args.nodejs:
 elif args.lambdaS5:
     current_dir = os.getcwd()
     setup = lambda : os.chdir(os.path.dirname(args.interp_path))
+    interp_path = os.path.abspath(args.interp_path)
+    init_heap = tempfile.NamedTemporaryFile('w', prefix='init-', suffix='.heap')
+    with tempfile.NamedTemporaryFile('w', prefix='snapshot', suffix='.ljs') as fd:
+        fd.write('___takeS5Snapshot()')
+        fd.seek(0)
+        print('Building LambdaS5\'s heap file...')
+        subprocess.call([os.path.join(os.path.dirname(interp_path), '..', 'tests', 's5'),
+                         fd.name, '-eval-s5', '-save', init_heap.name])
+        print('done.')
     teardown = lambda : os.chdir(current_dir)
-    test_runner = lambda filename: [os.path.abspath(args.interp_path),
-                                    filename]
+    test_runner = lambda filename: [interp_path,
+        '-load', init_heap.name,
+        '-desugar', filename,
+        '-continue-s5-eval']
 else:
     test_runner = jsRefArgBuilder
 
